@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice-Controlled Flappy Bird</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Voice-Controlled Flappy Bird</h1>
+        <p class="instructions">Shout to make the bird fly higher! Stay quiet to let it fall.</p>
+
+        <div id="startScreen" class="screen">
+            <button id="startBtn" class="btn">Start Game (Enable Microphone)</button>
+            <p class="tip">You'll need to allow microphone access to play!</p>
+        </div>
+
+        <div id="gameContainer" style="display: none;">
+            <canvas id="gameCanvas" width="400" height="600"></canvas>
+            <div class="volume-indicator">
+                <div class="volume-label">Volume:</div>
+                <div class="volume-bar">
+                    <div id="volumeLevel" class="volume-level"></div>
+                </div>
+            </div>
+            <div class="score-display">
+                <div>Score: <span id="score">0</span></div>
+                <div>High Score: <span id="highScore">0</span></div>
+            </div>
+        </div>
+
+        <div id="gameOverScreen" class="screen" style="display: none;">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="finalScore">0</span></p>
+            <button id="restartBtn" class="btn">Play Again</button>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
