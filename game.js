@@ -19,7 +19,8 @@ let bird = {
     width: 34,
     height: 24,
     velocity: 0,
-    gravity: 0.25
+    targetY: 300,
+    rotation: 0
 };
 
 let pipes = [];
@@ -27,10 +28,11 @@ let score = 0;
 let highScore = localStorage.getItem('highScore') || 0;
 let gameRunning = false;
 let gameOver = false;
+let frameCount = 0;
 
 const pipeWidth = 52;
-const pipeGap = 150;
-const pipeSpeed = 2;
+const pipeGap = 160;
+const pipeSpeed = 2.5;
 
 // Audio Variables
 let audioContext;
@@ -38,6 +40,9 @@ let analyser;
 let microphone;
 let dataArray;
 let volumeLevel = 0;
+let smoothedVolume = 0;
+let baselineVolume = 0;
+let calibrationFrames = 0;
 
 // UI Elements
 const startBtn = document.getElementById('startBtn');
@@ -49,6 +54,7 @@ const scoreDisplay = document.getElementById('score');
 const highScoreDisplay = document.getElementById('highScore');
 const finalScoreDisplay = document.getElementById('finalScore');
 const volumeLevelBar = document.getElementById('volumeLevel');
+const calibrationMsg = document.getElementById('calibrationMsg');
 
 highScoreDisplay.textContent = highScore;
 
@@ -91,13 +97,28 @@ function getVolume() {
     }
     const average = sum / dataArray.length;
 
-    // Normalize to 0-100
-    volumeLevel = Math.min(100, (average / 128) * 100);
+    // Calibrate baseline volume in first 60 frames (1 second)
+    if (calibrationFrames < 60) {
+        baselineVolume = (baselineVolume * calibrationFrames + average) / (calibrationFrames + 1);
+        calibrationFrames++;
+
+        // Hide calibration message after calibration
+        if (calibrationFrames === 60) {
+            calibrationMsg.style.display = 'none';
+        }
+    }
+
+    // Subtract baseline and normalize
+    const adjustedAverage = Math.max(0, average - baselineVolume);
+    volumeLevel = Math.min(100, (adjustedAverage / 100) * 100);
+
+    // Smooth volume changes for more natural control
+    smoothedVolume = smoothedVolume * 0.7 + volumeLevel * 0.3;
 
     // Update volume indicator
-    volumeLevelBar.style.width = volumeLevel + '%';
+    volumeLevelBar.style.width = smoothedVolume + '%';
 
-    return volumeLevel;
+    return smoothedVolume;
 }
 
 // Create new pipe
@@ -114,43 +135,112 @@ function createPipe() {
     });
 }
 
-// Draw bird
+// Draw bird with animation
 function drawBird() {
-    ctx.fillStyle = '#FFD700';
+    ctx.save();
+
+    // Translate to bird center for rotation
+    const centerX = bird.x + bird.width / 2;
+    const centerY = bird.y + bird.height / 2;
+    ctx.translate(centerX, centerY);
+    ctx.rotate((bird.rotation * Math.PI) / 180);
+    ctx.translate(-centerX, -centerY);
+
+    // Bird body with gradient
+    const gradient = ctx.createRadialGradient(centerX, centerY - 3, 2, centerX, centerY, bird.width / 2);
+    gradient.addColorStop(0, '#FFE55C');
+    gradient.addColorStop(1, '#FFD700');
+    ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(bird.x + bird.width / 2, bird.y + bird.height / 2, bird.width / 2, 0, Math.PI * 2);
+    ctx.arc(centerX, centerY, bird.width / 2, 0, Math.PI * 2);
     ctx.fill();
 
-    // Eye
+    // Animated wing flapping
+    const wingAngle = Math.sin(frameCount * 0.3) * 0.3;
+
+    // Wing
+    ctx.fillStyle = '#FFA500';
+    ctx.beginPath();
+    ctx.ellipse(centerX - 5, centerY + 5, 12, 8, wingAngle, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye white
+    ctx.fillStyle = '#FFF';
+    ctx.beginPath();
+    ctx.arc(centerX + 8, centerY - 5, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye pupil
     ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.arc(bird.x + bird.width / 2 + 8, bird.y + bird.height / 2 - 3, 3, 0, Math.PI * 2);
+    ctx.arc(centerX + 10, centerY - 5, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eye shine
+    ctx.fillStyle = '#FFF';
+    ctx.beginPath();
+    ctx.arc(centerX + 11, centerY - 6, 1.5, 0, Math.PI * 2);
     ctx.fill();
 
     // Beak
-    ctx.fillStyle = '#FF6347';
+    ctx.fillStyle = '#FF8C00';
     ctx.beginPath();
-    ctx.moveTo(bird.x + bird.width, bird.y + bird.height / 2);
-    ctx.lineTo(bird.x + bird.width + 10, bird.y + bird.height / 2 - 5);
-    ctx.lineTo(bird.x + bird.width + 10, bird.y + bird.height / 2 + 5);
+    ctx.moveTo(centerX + 14, centerY);
+    ctx.lineTo(centerX + 24, centerY - 3);
+    ctx.lineTo(centerX + 24, centerY + 3);
     ctx.closePath();
     ctx.fill();
+
+    // Beak highlight
+    ctx.fillStyle = '#FFA500';
+    ctx.beginPath();
+    ctx.moveTo(centerX + 14, centerY - 1);
+    ctx.lineTo(centerX + 20, centerY - 2);
+    ctx.lineTo(centerX + 20, centerY);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
 }
 
-// Draw pipes
+// Draw pipes with gradients
 function drawPipes() {
-    ctx.fillStyle = '#228B22';
-
     pipes.forEach(pipe => {
-        // Top pipe
-        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
-        // Top pipe cap
-        ctx.fillRect(pipe.x - 2, pipe.topHeight - 20, pipeWidth + 4, 20);
+        // Pipe gradient
+        const pipeGradient = ctx.createLinearGradient(pipe.x, 0, pipe.x + pipeWidth, 0);
+        pipeGradient.addColorStop(0, '#2d8b3e');
+        pipeGradient.addColorStop(0.5, '#3ea852');
+        pipeGradient.addColorStop(1, '#2d8b3e');
 
-        // Bottom pipe
+        // Top pipe body
+        ctx.fillStyle = pipeGradient;
+        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+
+        // Top pipe cap with darker gradient
+        const capGradient = ctx.createLinearGradient(pipe.x - 2, 0, pipe.x + pipeWidth + 2, 0);
+        capGradient.addColorStop(0, '#1f5f2b');
+        capGradient.addColorStop(0.5, '#2d8b3e');
+        capGradient.addColorStop(1, '#1f5f2b');
+        ctx.fillStyle = capGradient;
+        ctx.fillRect(pipe.x - 3, pipe.topHeight - 25, pipeWidth + 6, 25);
+
+        // Pipe border/highlight
+        ctx.strokeStyle = '#1f5f2b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+
+        // Bottom pipe body
+        ctx.fillStyle = pipeGradient;
         ctx.fillRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
+
         // Bottom pipe cap
-        ctx.fillRect(pipe.x - 2, pipe.bottomY, pipeWidth + 4, 20);
+        ctx.fillStyle = capGradient;
+        ctx.fillRect(pipe.x - 3, pipe.bottomY, pipeWidth + 6, 25);
+
+        // Bottom pipe border
+        ctx.strokeStyle = '#1f5f2b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(pipe.x, pipe.bottomY, pipeWidth, canvas.height - pipe.bottomY);
     });
 }
 
@@ -158,21 +248,34 @@ function drawPipes() {
 function update() {
     if (!gameRunning || gameOver) return;
 
-    // Get current volume and map to bird lift
+    frameCount++;
+
+    // Get current volume and map directly to target height
     const volume = getVolume();
 
-    // Map volume to upward force
-    // Higher volume = more lift (negative velocity)
-    // Lower volume = bird falls (gravity)
-    const liftForce = (volume / 100) * 8; // Adjust this multiplier for sensitivity
+    // Map volume to target Y position (0-100 volume -> canvas height range)
+    // Higher volume = lower Y (top of screen)
+    // Lower volume = higher Y (bottom of screen)
+    const minY = 50; // Don't go too close to top
+    const maxY = canvas.height - 100; // Don't go too close to bottom
 
-    bird.velocity += bird.gravity;
-    bird.velocity -= liftForce * 0.3; // Apply lift based on volume
+    // Inverse mapping: 0 volume = bottom, 100 volume = top
+    bird.targetY = maxY - (volume / 100) * (maxY - minY);
 
-    // Limit maximum fall and rise speed
-    bird.velocity = Math.max(-6, Math.min(6, bird.velocity));
+    // Smoothly move bird towards target Y using spring-like physics
+    const diff = bird.targetY - bird.y;
+    const springStrength = 0.15; // How quickly bird responds to volume changes
+    const damping = 0.8; // Smooth out oscillations
+
+    bird.velocity = bird.velocity * damping + diff * springStrength;
+
+    // Limit velocity for safety
+    bird.velocity = Math.max(-8, Math.min(8, bird.velocity));
 
     bird.y += bird.velocity;
+
+    // Calculate rotation based on velocity
+    bird.rotation = Math.max(-30, Math.min(30, bird.velocity * 3));
 
     // Keep bird in bounds
     if (bird.y < 0) {
@@ -215,28 +318,55 @@ function checkCollisions() {
     });
 }
 
+// Draw animated clouds
+function drawCloud(x, y, scale) {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.3)';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(x, y, 25 * scale, 0, Math.PI * 2);
+    ctx.arc(x + 25 * scale, y, 30 * scale, 0, Math.PI * 2);
+    ctx.arc(x + 50 * scale, y, 25 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+
 // Draw everything
 function draw() {
-    // Clear canvas
-    ctx.fillStyle = '#70c5ce';
+    // Sky gradient background
+    const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGradient.addColorStop(0, '#87CEEB');
+    skyGradient.addColorStop(0.7, '#98D8E8');
+    skyGradient.addColorStop(1, '#B0E2F0');
+    ctx.fillStyle = skyGradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw clouds
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.beginPath();
-    ctx.arc(100, 100, 30, 0, Math.PI * 2);
-    ctx.arc(130, 100, 40, 0, Math.PI * 2);
-    ctx.arc(160, 100, 30, 0, Math.PI * 2);
-    ctx.fill();
+    // Animated clouds moving slowly
+    const cloudOffset = (frameCount * 0.2) % canvas.width;
+    drawCloud(50 - cloudOffset * 0.3, 80, 0.8);
+    drawCloud(250 - cloudOffset * 0.5, 120, 1);
+    drawCloud(380 - cloudOffset * 0.4, 90, 0.9);
+    drawCloud(-100 + canvas.width - cloudOffset * 0.3, 150, 0.85);
 
-    ctx.beginPath();
-    ctx.arc(280, 150, 25, 0, Math.PI * 2);
-    ctx.arc(305, 150, 35, 0, Math.PI * 2);
-    ctx.arc(330, 150, 25, 0, Math.PI * 2);
-    ctx.fill();
+    // Ground
+    ctx.fillStyle = '#8BC34A';
+    ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+
+    // Ground shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    ctx.fillRect(0, canvas.height - 30, canvas.width, 5);
 
     drawPipes();
     drawBird();
+
+    // Draw score on canvas
+    ctx.fillStyle = '#FFF';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.font = 'bold 36px Arial';
+    ctx.textAlign = 'center';
+    ctx.strokeText(score, canvas.width / 2, 50);
+    ctx.fillText(score, canvas.width / 2, 50);
 }
 
 // Game loop
@@ -262,13 +392,20 @@ async function startGame() {
     startScreen.style.display = 'none';
     gameContainer.style.display = 'block';
     gameOverScreen.style.display = 'none';
+    calibrationMsg.style.display = 'block';
 
     // Reset game state
     bird.y = 300;
     bird.velocity = 0;
+    bird.rotation = 0;
+    bird.targetY = 300;
     pipes = [];
     score = 0;
     gameOver = false;
+    frameCount = 0;
+    calibrationFrames = 0;
+    baselineVolume = 0;
+    smoothedVolume = 0;
     scoreDisplay.textContent = '0';
 
     gameRunning = true;
