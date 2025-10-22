@@ -8,12 +8,39 @@
 </head>
 <body>
     <div class="container">
-        <h1>Voice-Controlled Flappy Bird</h1>
-        <p class="instructions">Shout to make the bird fly higher! Stay quiet to let it fall.</p>
+        <div id="startScreen" class="screen start-screen">
+            <div class="game-logo">
+                <div class="logo-bird">🐦</div>
+                <h1 class="game-title">
+                    <span class="title-voice">Voice</span>
+                    <span class="title-flappy">Flappy Bird</span>
+                </h1>
+            </div>
 
-        <div id="startScreen" class="screen">
-            <button id="startBtn" class="btn">Start Game (Enable Microphone)</button>
-            <p class="tip">You'll need to allow microphone access to play!</p>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <span class="feature-icon">🎤</span>
+                    <span class="feature-text">Use your voice to fly</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📢</span>
+                    <span class="feature-text">Louder = Higher</span>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🤫</span>
+                    <span class="feature-text">Quiet = Fall</span>
+                </div>
+            </div>
+
+            <button id="startBtn" class="btn btn-start">
+                <span class="btn-icon">🎮</span>
+                <span class="btn-text">Start Game</span>
+            </button>
+
+            <p class="tip">
+                <span class="tip-icon">🔒</span>
+                Microphone access required
+            </p>
         </div>
 
         <div id="gameContainer" style="display: none;">
@@ -33,10 +60,28 @@
             </div>
         </div>
 
-        <div id="gameOverScreen" class="screen" style="display: none;">
-            <h2>Game Over!</h2>
-            <p>Final Score: <span id="finalScore">0</span></p>
-            <button id="restartBtn" class="btn">Play Again</button>
+        <div id="gameOverScreen" class="screen game-over-screen" style="display: none;">
+            <div class="game-over-content">
+                <div class="game-over-emoji">😢</div>
+                <h2 class="game-over-title">Game Over!</h2>
+
+                <div class="score-box">
+                    <div class="score-item">
+                        <div class="score-label">Your Score</div>
+                        <div class="score-value" id="finalScore">0</div>
+                    </div>
+                    <div class="score-divider"></div>
+                    <div class="score-item">
+                        <div class="score-label">High Score</div>
+                        <div class="score-value score-high" id="finalHighScore">0</div>
+                    </div>
+                </div>
+
+                <button id="restartBtn" class="btn btn-restart">
+                    <span class="btn-icon">🔄</span>
+                    <span class="btn-text">Play Again</span>
+                </button>
+            </div>
         </div>
     </div>
 

@@ -71,6 +71,7 @@ const gameOverScreen = document.getElementById('gameOverScreen');
 const scoreDisplay = document.getElementById('score');
 const highScoreDisplay = document.getElementById('highScore');
 const finalScoreDisplay = document.getElementById('finalScore');
+const finalHighScoreDisplay = document.getElementById('finalHighScore');
 const volumeLevelBar = document.getElementById('volumeLevel');
 const calibrationMsg = document.getElementById('calibrationMsg');
 
@@ -446,6 +447,7 @@ function endGame() {
     }
 
     finalScoreDisplay.textContent = score;
+    finalHighScoreDisplay.textContent = highScore;
     gameOverScreen.style.display = 'block';
 }
 
