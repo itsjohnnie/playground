@@ -2,12 +2,30 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Make canvas responsive for mobile
+// Make canvas responsive for mobile - fit within 100dvh
 function resizeCanvas() {
-    const maxWidth = Math.min(window.innerWidth - 40, 400);
-    const scale = maxWidth / 400;
-    canvas.style.width = maxWidth + 'px';
-    canvas.style.height = (600 * scale) + 'px';
+    // Calculate available space (accounting for other UI elements)
+    const availableHeight = window.innerHeight - 120; // Reserve space for UI
+    const availableWidth = Math.min(window.innerWidth - 20, 400);
+
+    // Canvas aspect ratio is 400:600 (2:3)
+    const canvasRatio = 400 / 600;
+
+    let width, height;
+
+    // Determine limiting dimension
+    if (availableWidth / availableHeight > canvasRatio) {
+        // Height is limiting
+        height = Math.min(availableHeight, 600);
+        width = height * canvasRatio;
+    } else {
+        // Width is limiting
+        width = availableWidth;
+        height = width / canvasRatio;
+    }
+
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
 }
 resizeCanvas();
 window.addEventListener('resize', resizeCanvas);
