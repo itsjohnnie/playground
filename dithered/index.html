@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dithered Camera</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Dithered Camera</h1>
+        <div class="camera-container">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+        </div>
+        <div class="controls">
+            <button id="startBtn">Start Camera</button>
+            <button id="captureBtn" disabled>Capture Photo</button>
+            <label>
+                Dither Threshold:
+                <input type="range" id="threshold" min="0" max="255" value="128">
+                <span id="thresholdValue">128</span>
+            </label>
+        </div>
+        <div id="error" class="error"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
