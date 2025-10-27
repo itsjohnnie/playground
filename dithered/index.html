@@ -116,6 +116,42 @@
 
     <div id="error" class="error"></div>
 
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox" style="display: none;">
+        <div class="lightbox-overlay"></div>
+        <button id="closeLightbox" class="lightbox-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+
+        <button id="prevImage" class="lightbox-nav lightbox-prev" aria-label="Previous">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+
+        <button id="nextImage" class="lightbox-nav lightbox-next" aria-label="Next">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </button>
+
+        <div class="lightbox-content">
+            <img id="lightboxImage" src="" alt="Dithered photo">
+        </div>
+
+        <button id="downloadImage" class="lightbox-download" aria-label="Download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download
+        </button>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
