@@ -880,5 +880,23 @@ lightboxImage.addEventListener('touchend', (e) => {
     }
 }, { passive: true });
 
+// Prevent pull-to-refresh and scrolling on mobile
+document.body.addEventListener('touchmove', (e) => {
+    // Allow scrolling within panels when they're open
+    if (e.target.closest('.settings-panel.open') ||
+        e.target.closest('.gallery-panel.open') ||
+        e.target.closest('.lightbox')) {
+        return;
+    }
+    e.preventDefault();
+}, { passive: false });
+
+// Prevent bounce/overscroll on iOS
+document.body.addEventListener('touchstart', (e) => {
+    if (e.target === document.body) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
 // Initialize thumbnail on load
 updateThumbnail();
