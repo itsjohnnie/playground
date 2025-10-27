@@ -41,6 +41,72 @@ canvas {
     display: none;
 }
 
+/* Camera Flip Button (Top Right) */
+.flip-btn {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 20;
+}
+
+.flip-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.flip-btn:active {
+    transform: scale(0.95);
+}
+
+.flip-btn svg {
+    width: 24px;
+    height: 24px;
+    color: white;
+}
+
+/* Camera Permission Toast */
+.camera-toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: white;
+    padding: 20px 32px;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-weight: 500;
+    z-index: 15;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.camera-toast.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.camera-toast p {
+    margin: 0;
+    text-align: center;
+}
+
 /* Minimal Camera Controls (Bottom Bar) */
 .camera-controls {
     position: fixed;
@@ -160,12 +226,27 @@ canvas {
     backdrop-filter: blur(40px);
     -webkit-backdrop-filter: blur(40px);
     border-radius: 20px 20px 0 0;
-    padding: 24px;
+    padding: 12px 24px 40px 24px;
     z-index: 100;
     transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     max-height: 80dvh;
     overflow-y: auto;
+    touch-action: pan-y;
+}
+
+/* Panel Handle for Swipe Indicator */
+.panel-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+    margin: 8px auto 16px;
+    cursor: grab;
+}
+
+.panel-handle:active {
+    cursor: grabbing;
 }
 
 .settings-panel.open,
@@ -393,8 +474,20 @@ canvas {
 
     .settings-panel,
     .gallery-panel {
-        padding: 20px;
+        padding: 12px 20px 36px 20px;
         max-height: 85dvh;
+    }
+
+    .flip-btn {
+        top: 20px;
+        right: 20px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .camera-toast {
+        font-size: 0.9rem;
+        padding: 16px 24px;
     }
 
     .gallery-grid {

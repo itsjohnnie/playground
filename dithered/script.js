@@ -17,6 +17,8 @@ const grainValue = document.getElementById('grainValue');
 const ditherSelect = document.getElementById('ditherAlgorithm');
 const galleryGrid = document.getElementById('galleryGrid');
 const errorDiv = document.getElementById('error');
+const flipBtn = document.getElementById('flipBtn');
+const cameraToast = document.getElementById('cameraToast');
 
 // State
 let stream = null;
@@ -25,6 +27,7 @@ let threshold = 128;
 let grainSize = 1;
 let ditherAlgorithm = 'floyd-steinberg';
 let cameraActive = false;
+let currentFacingMode = 'user';
 
 // LocalStorage for photos
 const STORAGE_KEY = 'dithered_photos';
@@ -42,6 +45,7 @@ grainSlider.addEventListener('input', (e) => {
 
 ditherSelect.addEventListener('change', (e) => {
     ditherAlgorithm = e.target.value;
+    console.log('Dithering algorithm changed to:', ditherAlgorithm);
 });
 
 actionBtn.addEventListener('click', handleAction);
@@ -52,6 +56,54 @@ galleryBtn.addEventListener('click', () => {
 });
 closeSettings.addEventListener('click', () => togglePanel(settingsPanel));
 closeGallery.addEventListener('click', () => togglePanel(galleryPanel));
+
+// Camera flip button
+flipBtn.addEventListener('click', async () => {
+    if (!cameraActive) return;
+    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    console.log('Flipping camera to:', currentFacingMode);
+    await stopCamera();
+    await startCamera();
+});
+
+// Swipe to dismiss for panels
+let touchStartY = 0;
+let touchStartTime = 0;
+
+function setupSwipeToDismiss(panel) {
+    panel.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+    }, { passive: true });
+
+    panel.addEventListener('touchmove', (e) => {
+        const touchY = e.touches[0].clientY;
+        const deltaY = touchY - touchStartY;
+
+        // Only allow downward swipes
+        if (deltaY > 0) {
+            panel.style.transform = `translateY(${deltaY}px)`;
+        }
+    }, { passive: true });
+
+    panel.addEventListener('touchend', (e) => {
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaY = touchEndY - touchStartY;
+        const deltaTime = Date.now() - touchStartTime;
+        const velocity = deltaY / deltaTime;
+
+        // Dismiss if swiped down more than 100px or fast swipe
+        if (deltaY > 100 || (velocity > 0.5 && deltaY > 50)) {
+            togglePanel(panel);
+        }
+
+        // Reset transform
+        panel.style.transform = '';
+    }, { passive: true });
+}
+
+setupSwipeToDismiss(settingsPanel);
+setupSwipeToDismiss(galleryPanel);
 
 // Dual-purpose action button
 async function handleAction() {
@@ -611,7 +663,7 @@ async function startCamera() {
     try {
         errorDiv.textContent = '';
         stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } }
+            video: { facingMode: currentFacingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }
         });
         video.srcObject = stream;
         await new Promise((resolve) => { video.onloadedmetadata = resolve; });
@@ -622,9 +674,27 @@ async function startCamera() {
         processFrame();
         cameraActive = true;
         actionBtn.setAttribute('aria-label', 'Capture Photo');
+
+        // Hide camera toast and show flip button
+        cameraToast.classList.add('hidden');
+        flipBtn.style.display = 'flex';
+
+        console.log('Camera started successfully with facing mode:', currentFacingMode);
     } catch (err) {
         console.error('Error accessing camera:', err);
         errorDiv.textContent = `Error: ${err.message}`;
+        cameraToast.classList.remove('hidden');
+    }
+}
+
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
     }
 }
 
