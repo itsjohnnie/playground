@@ -1,0 +1,497 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #000;
+    color: white;
+    overflow: hidden;
+    width: 100vw;
+    height: 100dvh;
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+/* Fullscreen camera */
+.camera-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100dvh;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+}
+
+video, canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+canvas {
+    display: none;
+}
+
+/* Camera Flip Button (Top Right) */
+.flip-btn {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 20;
+}
+
+.flip-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.flip-btn:active {
+    transform: scale(0.95);
+}
+
+.flip-btn svg {
+    width: 24px;
+    height: 24px;
+    color: white;
+}
+
+/* Camera Permission Toast */
+.camera-toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: white;
+    padding: 20px 32px;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-weight: 500;
+    z-index: 15;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.camera-toast.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.camera-toast p {
+    margin: 0;
+    text-align: center;
+}
+
+/* Minimal Camera Controls (Bottom Bar) */
+.camera-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px 40px;
+    z-index: 10;
+    background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0) 100%);
+}
+
+/* Control Buttons (Gallery and Settings) */
+.control-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.control-btn:active {
+    transform: scale(0.95);
+}
+
+.control-btn svg {
+    width: 24px;
+    height: 24px;
+    color: white;
+}
+
+/* Gallery Button with Photo Thumbnail */
+.gallery-btn {
+    overflow: hidden;
+    border: 3px solid white;
+}
+
+.photo-thumb {
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    background-size: cover;
+    background-position: center;
+}
+
+.photo-thumb:empty::before {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Main Action Button (Center) */
+.action-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 4px solid white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.action-btn:hover {
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.action-btn:active {
+    transform: scale(0.95);
+}
+
+.action-inner {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: white;
+    transition: all 0.15s ease;
+}
+
+.action-btn:active .action-inner {
+    transform: scale(0.85);
+}
+
+/* Settings Panel (Drop-up) */
+.settings-panel,
+.gallery-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border-radius: 20px 20px 0 0;
+    padding: 12px 24px 40px 24px;
+    z-index: 100;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 80dvh;
+    overflow-y: auto;
+    touch-action: pan-y;
+}
+
+/* Panel Handle for Swipe Indicator */
+.panel-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+    margin: 8px auto 16px;
+    cursor: grab;
+}
+
+.panel-handle:active {
+    cursor: grabbing;
+}
+
+.settings-panel.open,
+.gallery-panel.open {
+    transform: translateY(0);
+}
+
+.settings-header,
+.gallery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.settings-header h2,
+.gallery-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #000;
+}
+
+.close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.05);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.close-btn svg {
+    width: 18px;
+    height: 18px;
+    color: #000;
+}
+
+/* Settings Content */
+.settings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.setting-label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.label-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #000;
+}
+
+.value {
+    display: inline-block;
+    min-width: 2.5rem;
+    font-weight: 600;
+    color: #000;
+}
+
+/* Select Dropdown */
+.select {
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 400;
+    padding: 12px 16px;
+    background: white;
+    color: #000;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.select:hover {
+    border-color: rgba(0, 0, 0, 0.2);
+}
+
+.select:focus {
+    border-color: #000;
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Range Slider */
+.slider {
+    width: 100%;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    border-radius: 9999px;
+    outline: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #000;
+    border: 3px solid white;
+    border-radius: 9999px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #000;
+    border: 3px solid white;
+    border-radius: 9999px;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/* Gallery Grid */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.gallery-item {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    position: relative;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.gallery-item-delete {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.gallery-item:hover .gallery-item-delete {
+    opacity: 1;
+}
+
+.gallery-item-delete svg {
+    width: 16px;
+    height: 16px;
+    color: white;
+}
+
+/* Error Message */
+.error {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #ff4444;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(10px);
+    padding: 12px 24px;
+    border-radius: 8px;
+    z-index: 200;
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+    .camera-controls {
+        height: 120px;
+        padding: 0 20px 30px;
+    }
+
+    .control-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .action-btn {
+        width: 64px;
+        height: 64px;
+    }
+
+    .action-inner {
+        width: 54px;
+        height: 54px;
+    }
+
+    .settings-panel,
+    .gallery-panel {
+        padding: 12px 20px 36px 20px;
+        max-height: 85dvh;
+    }
+
+    .flip-btn {
+        top: 20px;
+        right: 20px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .camera-toast {
+        font-size: 0.9rem;
+        padding: 16px 24px;
+    }
+
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 8px;
+    }
+}
