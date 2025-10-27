@@ -22,6 +22,7 @@ thresholdSlider.addEventListener('input', (e) => {
 // Update dither algorithm
 ditherSelect.addEventListener('change', (e) => {
     ditherAlgorithm = e.target.value;
+    console.log('Algorithm changed to:', ditherAlgorithm);
 });
 
 // Helper function to convert to grayscale
@@ -29,25 +30,19 @@ function toGrayscale(r, g, b) {
     return r * 0.299 + g * 0.587 + b * 0.114;
 }
 
-// Helper function to set pixel
-function setPixel(data, idx, value) {
-    data[idx] = data[idx + 1] = data[idx + 2] = value;
-}
+// Simple threshold dithering (no error diffusion)
+function simpleDither(imageData) {
+    const data = imageData.data;
+    const width = imageData.width;
+    const height = imageData.height;
 
-// Helper function to get grayscale value at position
-function getGray(data, width, x, y) {
-    const idx = (y * width + x) * 4;
-    return toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-}
-
-// Helper function to add error to pixel
-function addError(data, width, height, x, y, error, factor) {
-    if (x >= 0 && x < width && y >= 0 && y < height) {
-        const idx = (y * width + x) * 4;
-        const gray = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-        const newGray = Math.min(255, Math.max(0, gray + error * factor));
-        setPixel(data, idx, newGray);
+    for (let i = 0; i < data.length; i += 4) {
+        const gray = toGrayscale(data[i], data[i + 1], data[i + 2]);
+        const newGray = gray < threshold ? 0 : 255;
+        data[i] = data[i + 1] = data[i + 2] = newGray;
     }
+
+    return imageData;
 }
 
 // Floyd-Steinberg dithering
@@ -56,19 +51,36 @@ function floydSteinbergDither(imageData) {
     const width = imageData.width;
     const height = imageData.height;
 
+    // Create a copy to read from while modifying original
+    const gray = new Float32Array(width * height);
+
+    // Convert to grayscale
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const idx = (y * width + x) * 4;
-            const gray = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-            const newGray = gray < threshold ? 0 : 255;
-            const error = gray - newGray;
+            gray[y * width + x] = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
+        }
+    }
 
-            setPixel(data, idx, newGray);
+    // Apply dithering
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const idx = y * width + x;
+            const oldPixel = gray[idx];
+            const newPixel = oldPixel < threshold ? 0 : 255;
+            const error = oldPixel - newPixel;
 
-            addError(data, width, height, x + 1, y, error, 7/16);
-            addError(data, width, height, x - 1, y + 1, error, 3/16);
-            addError(data, width, height, x, y + 1, error, 5/16);
-            addError(data, width, height, x + 1, y + 1, error, 1/16);
+            // Set pixel
+            const dataIdx = idx * 4;
+            data[dataIdx] = data[dataIdx + 1] = data[dataIdx + 2] = newPixel;
+
+            // Distribute error
+            if (x + 1 < width) gray[idx + 1] += error * 7/16;
+            if (y + 1 < height) {
+                if (x > 0) gray[idx + width - 1] += error * 3/16;
+                gray[idx + width] += error * 5/16;
+                if (x + 1 < width) gray[idx + width + 1] += error * 1/16;
+            }
         }
     }
 
@@ -81,21 +93,36 @@ function atkinsonDither(imageData) {
     const width = imageData.width;
     const height = imageData.height;
 
+    const gray = new Float32Array(width * height);
+
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const idx = (y * width + x) * 4;
-            const gray = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-            const newGray = gray < threshold ? 0 : 255;
-            const error = (gray - newGray) / 8;
+            gray[y * width + x] = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
+        }
+    }
 
-            setPixel(data, idx, newGray);
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const idx = y * width + x;
+            const oldPixel = gray[idx];
+            const newPixel = oldPixel < threshold ? 0 : 255;
+            const error = (oldPixel - newPixel) / 8;
 
-            addError(data, width, height, x + 1, y, error, 1);
-            addError(data, width, height, x + 2, y, error, 1);
-            addError(data, width, height, x - 1, y + 1, error, 1);
-            addError(data, width, height, x, y + 1, error, 1);
-            addError(data, width, height, x + 1, y + 1, error, 1);
-            addError(data, width, height, x, y + 2, error, 1);
+            const dataIdx = idx * 4;
+            data[dataIdx] = data[dataIdx + 1] = data[dataIdx + 2] = newPixel;
+
+            // Atkinson dithering pattern
+            if (x + 1 < width) gray[idx + 1] += error;
+            if (x + 2 < width) gray[idx + 2] += error;
+            if (y + 1 < height) {
+                if (x > 0) gray[idx + width - 1] += error;
+                gray[idx + width] += error;
+                if (x + 1 < width) gray[idx + width + 1] += error;
+            }
+            if (y + 2 < height) {
+                gray[idx + width * 2] += error;
+            }
         }
     }
 
@@ -108,26 +135,32 @@ function orderedDither(imageData) {
     const width = imageData.width;
     const height = imageData.height;
 
-    // 8x8 Bayer matrix
+    // 8x8 Bayer matrix (normalized to 0-64)
     const bayerMatrix = [
-        [0, 32, 8, 40, 2, 34, 10, 42],
-        [48, 16, 56, 24, 50, 18, 58, 26],
-        [12, 44, 4, 36, 14, 46, 6, 38],
-        [60, 28, 52, 20, 62, 30, 54, 22],
-        [3, 35, 11, 43, 1, 33, 9, 41],
-        [51, 19, 59, 27, 49, 17, 57, 25],
-        [15, 47, 7, 39, 13, 45, 5, 37],
-        [63, 31, 55, 23, 61, 29, 53, 21]
+        [ 0, 48, 12, 60,  3, 51, 15, 63],
+        [32, 16, 44, 28, 35, 19, 47, 31],
+        [ 8, 56,  4, 52, 11, 59,  7, 55],
+        [40, 24, 36, 20, 43, 27, 39, 23],
+        [ 2, 50, 14, 62,  1, 49, 13, 61],
+        [34, 18, 46, 30, 33, 17, 45, 29],
+        [10, 58,  6, 54,  9, 57,  5, 53],
+        [42, 26, 38, 22, 41, 25, 37, 21]
     ];
 
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const idx = (y * width + x) * 4;
             const gray = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
+
+            // Get Bayer threshold
             const bayerValue = bayerMatrix[y % 8][x % 8];
-            const scaledThreshold = threshold + (bayerValue - 32) * 2;
-            const newGray = gray < scaledThreshold ? 0 : 255;
-            setPixel(data, idx, newGray);
+            const bayerThreshold = (bayerValue / 64) * 255;
+
+            // Adjust threshold based on Bayer matrix
+            const adjustedThreshold = threshold + (bayerThreshold - 128) * 0.5;
+            const newGray = gray < adjustedThreshold ? 0 : 255;
+
+            data[idx] = data[idx + 1] = data[idx + 2] = newGray;
         }
     }
 
@@ -144,75 +177,12 @@ function randomDither(imageData) {
         for (let x = 0; x < width; x++) {
             const idx = (y * width + x) * 4;
             const gray = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-            const randomThreshold = threshold + (Math.random() - 0.5) * 100;
+
+            // Add random noise to threshold
+            const randomThreshold = threshold + (Math.random() - 0.5) * 80;
             const newGray = gray < randomThreshold ? 0 : 255;
-            setPixel(data, idx, newGray);
-        }
-    }
 
-    return imageData;
-}
-
-// Stucki dithering
-function stuckiDither(imageData) {
-    const data = imageData.data;
-    const width = imageData.width;
-    const height = imageData.height;
-
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            const gray = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-            const newGray = gray < threshold ? 0 : 255;
-            const error = (gray - newGray) / 42;
-
-            setPixel(data, idx, newGray);
-
-            addError(data, width, height, x + 1, y, error, 8);
-            addError(data, width, height, x + 2, y, error, 4);
-            addError(data, width, height, x - 2, y + 1, error, 2);
-            addError(data, width, height, x - 1, y + 1, error, 4);
-            addError(data, width, height, x, y + 1, error, 8);
-            addError(data, width, height, x + 1, y + 1, error, 4);
-            addError(data, width, height, x + 2, y + 1, error, 2);
-            addError(data, width, height, x - 2, y + 2, error, 1);
-            addError(data, width, height, x - 1, y + 2, error, 2);
-            addError(data, width, height, x, y + 2, error, 4);
-            addError(data, width, height, x + 1, y + 2, error, 2);
-            addError(data, width, height, x + 2, y + 2, error, 1);
-        }
-    }
-
-    return imageData;
-}
-
-// Jarvis-Judice-Ninke dithering
-function jarvisDither(imageData) {
-    const data = imageData.data;
-    const width = imageData.width;
-    const height = imageData.height;
-
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            const gray = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-            const newGray = gray < threshold ? 0 : 255;
-            const error = (gray - newGray) / 48;
-
-            setPixel(data, idx, newGray);
-
-            addError(data, width, height, x + 1, y, error, 7);
-            addError(data, width, height, x + 2, y, error, 5);
-            addError(data, width, height, x - 2, y + 1, error, 3);
-            addError(data, width, height, x - 1, y + 1, error, 5);
-            addError(data, width, height, x, y + 1, error, 7);
-            addError(data, width, height, x + 1, y + 1, error, 5);
-            addError(data, width, height, x + 2, y + 1, error, 3);
-            addError(data, width, height, x - 2, y + 2, error, 1);
-            addError(data, width, height, x - 1, y + 2, error, 3);
-            addError(data, width, height, x, y + 2, error, 5);
-            addError(data, width, height, x + 1, y + 2, error, 3);
-            addError(data, width, height, x + 2, y + 2, error, 1);
+            data[idx] = data[idx + 1] = data[idx + 2] = newGray;
         }
     }
 
@@ -230,10 +200,8 @@ function applyDithering(imageData) {
             return orderedDither(imageData);
         case 'random':
             return randomDither(imageData);
-        case 'stucki':
-            return stuckiDither(imageData);
-        case 'jarvis':
-            return jarvisDither(imageData);
+        case 'simple':
+            return simpleDither(imageData);
         default:
             return floydSteinbergDither(imageData);
     }
