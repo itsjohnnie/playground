@@ -1,42 +1,75 @@
+// DOM Elements
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d', { willReadFrequently: true });
-const startBtn = document.getElementById('startBtn');
-const captureBtn = document.getElementById('captureBtn');
+const actionBtn = document.getElementById('actionBtn');
+const settingsBtn = document.getElementById('settingsBtn');
+const galleryBtn = document.getElementById('galleryBtn');
+const lastPhotoThumb = document.getElementById('lastPhotoThumb');
+const settingsPanel = document.getElementById('settingsPanel');
+const galleryPanel = document.getElementById('galleryPanel');
+const closeSettings = document.getElementById('closeSettings');
+const closeGallery = document.getElementById('closeGallery');
 const thresholdSlider = document.getElementById('threshold');
 const thresholdValue = document.getElementById('thresholdValue');
 const grainSlider = document.getElementById('grainSize');
 const grainValue = document.getElementById('grainValue');
 const ditherSelect = document.getElementById('ditherAlgorithm');
+const galleryGrid = document.getElementById('galleryGrid');
 const errorDiv = document.getElementById('error');
-const playIcon = startBtn.querySelector('.play-icon');
-const stopIcon = startBtn.querySelector('.stop-icon');
 
+// State
 let stream = null;
 let animationId = null;
 let threshold = 128;
 let grainSize = 1;
 let ditherAlgorithm = 'floyd-steinberg';
+let cameraActive = false;
 
-// Update threshold value display
+// LocalStorage for photos
+const STORAGE_KEY = 'dithered_photos';
+
+// Event Listeners
 thresholdSlider.addEventListener('input', (e) => {
     threshold = parseInt(e.target.value);
     thresholdValue.textContent = threshold;
 });
 
-// Update grain size value display
 grainSlider.addEventListener('input', (e) => {
     grainSize = parseInt(e.target.value);
     grainValue.textContent = grainSize;
 });
 
-// Update dither algorithm
 ditherSelect.addEventListener('change', (e) => {
     ditherAlgorithm = e.target.value;
-    console.log('Algorithm changed to:', ditherAlgorithm);
 });
 
-// Helper function to convert to grayscale
+actionBtn.addEventListener('click', handleAction);
+settingsBtn.addEventListener('click', () => togglePanel(settingsPanel));
+galleryBtn.addEventListener('click', () => {
+    togglePanel(galleryPanel);
+    loadGallery();
+});
+closeSettings.addEventListener('click', () => togglePanel(settingsPanel));
+closeGallery.addEventListener('click', () => togglePanel(galleryPanel));
+
+// Dual-purpose action button
+async function handleAction() {
+    if (!cameraActive) {
+        await startCamera();
+    } else {
+        capturePhoto();
+    }
+}
+
+// Toggle panels
+function togglePanel(panel) {
+    const isOpen = panel.classList.contains('open');
+    document.querySelectorAll('.settings-panel, .gallery-panel').forEach(p => p.classList.remove('open'));
+    if (!isOpen) panel.classList.add('open');
+}
+
+// Helper: convert to grayscale
 function toGrayscale(r, g, b) {
     return r * 0.299 + g * 0.587 + b * 0.114;
 }
@@ -541,126 +574,100 @@ function randomDither(imageData) {
     return imageData;
 }
 
-// Apply selected dithering algorithm
-function applyDithering(imageData) {
-    switch (ditherAlgorithm) {
-        case 'floyd-steinberg':
-            return floydSteinbergDither(imageData);
-        case 'atkinson':
-            return atkinsonDither(imageData);
-        case 'jarvis':
-            return jarvisDither(imageData);
-        case 'stucki':
-            return stuckiDither(imageData);
-        case 'burkes':
-            return burkesDither(imageData);
-        case 'sierra':
-            return sierraDither(imageData);
-        case 'sierra-two':
-            return sierraTwoDither(imageData);
-        case 'sierra-lite':
-            return sierraLiteDither(imageData);
-        case 'ordered':
-            return orderedDither(imageData);
-        case 'halftone':
-            return halftoneDither(imageData);
-        case 'random':
-            return randomDither(imageData);
-        case 'simple':
-            return simpleDither(imageData);
-        default:
-            return floydSteinbergDither(imageData);
+// Camera Controls
+async function startCamera() {
+    try {
+        errorDiv.textContent = '';
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } }
+        });
+        video.srcObject = stream;
+        await new Promise((resolve) => { video.onloadedmetadata = resolve; });
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        video.style.display = 'none';
+        canvas.style.display = 'block';
+        processFrame();
+        cameraActive = true;
+        actionBtn.setAttribute('aria-label', 'Capture Photo');
+    } catch (err) {
+        console.error('Error accessing camera:', err);
+        errorDiv.textContent = `Error: ${err.message}`;
     }
 }
 
-// Process video frame
 function processFrame() {
     if (!stream) return;
-
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const ditheredData = applyDithering(imageData);
     ctx.putImageData(ditheredData, 0, 0);
-
     animationId = requestAnimationFrame(processFrame);
 }
 
-// Start camera
-async function startCamera() {
-    try {
-        errorDiv.textContent = '';
-
-        stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: 'user',
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
-            }
-        });
-
-        video.srcObject = stream;
-
-        await new Promise((resolve) => {
-            video.onloadedmetadata = resolve;
-        });
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        video.style.display = 'none';
-        canvas.style.display = 'block';
-
-        processFrame();
-
-        // Toggle icons
-        playIcon.classList.add('hidden');
-        stopIcon.classList.remove('hidden');
-        startBtn.setAttribute('aria-label', 'Stop Camera');
-        captureBtn.disabled = false;
-
-    } catch (err) {
-        console.error('Error accessing camera:', err);
-        errorDiv.textContent = `Error: ${err.message}. Please allow camera access.`;
-    }
-}
-
-// Stop camera
-function stopCamera() {
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-    }
-
-    if (animationId) {
-        cancelAnimationFrame(animationId);
-        animationId = null;
-    }
-
-    video.style.display = 'block';
-    canvas.style.display = 'none';
-
-    // Toggle icons
-    playIcon.classList.remove('hidden');
-    stopIcon.classList.add('hidden');
-    startBtn.setAttribute('aria-label', 'Start Camera');
-    captureBtn.disabled = true;
-}
-
-// Capture photo
 function capturePhoto() {
-    const link = document.createElement('a');
-    link.download = `dithered-${ditherAlgorithm}-${Date.now()}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    const dataUrl = canvas.toDataURL('image/png');
+    savePhoto(dataUrl);
+    updateThumbnail(dataUrl);
 }
 
-// Event listeners
-startBtn.addEventListener('click', () => {
-    if (stream) {
-        stopCamera();
-    } else {
-        startCamera();
-    }
-});
+// Gallery Functions
+function savePhoto(dataUrl) {
+    const photos = getPhotos();
+    photos.unshift({ id: Date.now(), data: dataUrl, algorithm: ditherAlgorithm });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(photos.slice(0, 50))); // Keep last 50
+}
 
-captureBtn.addEventListener('click', capturePhoto);
+function getPhotos() {
+    try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    } catch {
+        return [];
+    }
+}
+
+function deletePhoto(id) {
+    const photos = getPhotos().filter(p => p.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(photos));
+    loadGallery();
+    updateThumbnail();
+}
+
+function updateThumbnail(dataUrl) {
+    const photos = getPhotos();
+    const latest = dataUrl || (photos[0] && photos[0].data);
+    if (latest) {
+        lastPhotoThumb.style.backgroundImage = `url(${latest})`;
+    }
+}
+
+function loadGallery() {
+    const photos = getPhotos();
+    galleryGrid.innerHTML = '';
+    photos.forEach(photo => {
+        const item = document.createElement('div');
+        item.className = 'gallery-item';
+        item.innerHTML = `
+            <img src="${photo.data}" alt="Dithered photo">
+            <button class="gallery-item-delete" onclick="deletePhoto(${photo.id})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        `;
+        item.querySelector('img').addEventListener('click', () => {
+            const a = document.createElement('a');
+            a.href = photo.data;
+            a.download = `dithered-${photo.algorithm}-${photo.id}.png`;
+            a.click();
+        });
+        galleryGrid.appendChild(item);
+    });
+}
+
+// Make deletePhoto globally accessible
+window.deletePhoto = deletePhoto;
+
+// Initialize thumbnail on load
+updateThumbnail();

@@ -12,66 +12,94 @@
         <canvas id="canvas"></canvas>
     </div>
 
-    <div class="overlay-ui">
-        <div class="header">
-            <h1>Dithered Camera</h1>
+    <!-- Minimal UI Controls -->
+    <div class="camera-controls">
+        <!-- Last Photo Thumbnail (Bottom Left) -->
+        <button id="galleryBtn" class="control-btn gallery-btn" aria-label="View Gallery">
+            <div id="lastPhotoThumb" class="photo-thumb"></div>
+        </button>
+
+        <!-- Main Action Button (Bottom Center) -->
+        <button id="actionBtn" class="action-btn" aria-label="Start Camera">
+            <span class="action-inner"></span>
+        </button>
+
+        <!-- Settings Button (Bottom Right) -->
+        <button id="settingsBtn" class="control-btn settings-btn" aria-label="Settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 1v6m0 6v6"></path>
+                <path d="M4.22 4.22l1.42 1.42m12.72 0l1.42-1.42"></path>
+                <path d="M1 12h6m6 0h6"></path>
+                <path d="M4.22 19.78l1.42-1.42m12.72 0l1.42 1.42"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Settings Panel (Drop-up) -->
+    <div id="settingsPanel" class="settings-panel">
+        <div class="settings-header">
+            <h2>Settings</h2>
+            <button id="closeSettings" class="close-btn" aria-label="Close Settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
         </div>
 
-        <div class="controls-container">
-            <div class="controls">
-                <!-- Camera style capture button -->
-                <button id="captureBtn" class="capture-btn" disabled aria-label="Capture Photo">
-                    <span class="capture-inner"></span>
-                </button>
+        <div class="settings-content">
+            <div class="setting-group">
+                <label class="setting-label">
+                    <span class="label-text">Dither Algorithm</span>
+                    <select id="ditherAlgorithm" class="select">
+                        <option value="floyd-steinberg">Floyd-Steinberg</option>
+                        <option value="atkinson">Atkinson</option>
+                        <option value="jarvis">Jarvis-Judice-Ninke</option>
+                        <option value="stucki">Stucki</option>
+                        <option value="burkes">Burkes</option>
+                        <option value="sierra">Sierra</option>
+                        <option value="sierra-two">Two-Row Sierra</option>
+                        <option value="sierra-lite">Sierra Lite</option>
+                        <option value="ordered">Ordered (Bayer)</option>
+                        <option value="halftone">Halftone Dots</option>
+                        <option value="random">Random Threshold</option>
+                        <option value="simple">Simple Threshold</option>
+                    </select>
+                </label>
+            </div>
 
-                <div class="control-group">
-                    <label class="control-label">
-                        <span class="label-text">Dither Algorithm</span>
-                        <select id="ditherAlgorithm" class="select">
-                            <option value="floyd-steinberg">Floyd-Steinberg</option>
-                            <option value="atkinson">Atkinson</option>
-                            <option value="jarvis">Jarvis-Judice-Ninke</option>
-                            <option value="stucki">Stucki</option>
-                            <option value="burkes">Burkes</option>
-                            <option value="sierra">Sierra</option>
-                            <option value="sierra-two">Two-Row Sierra</option>
-                            <option value="sierra-lite">Sierra Lite</option>
-                            <option value="ordered">Ordered (Bayer)</option>
-                            <option value="halftone">Halftone Dots</option>
-                            <option value="random">Random Threshold</option>
-                            <option value="simple">Simple Threshold</option>
-                        </select>
-                    </label>
-                </div>
+            <div class="setting-group">
+                <label class="setting-label">
+                    <span class="label-text">Threshold: <span id="thresholdValue" class="value">128</span></span>
+                    <input type="range" id="threshold" min="0" max="255" value="128" class="slider">
+                </label>
+            </div>
 
-                <div class="control-group">
-                    <label class="control-label">
-                        <span class="label-text">Threshold: <span id="thresholdValue" class="value">128</span></span>
-                        <input type="range" id="threshold" min="0" max="255" value="128" class="slider">
-                    </label>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">
-                        <span class="label-text">Grain Size: <span id="grainValue" class="value">1</span></span>
-                        <input type="range" id="grainSize" min="1" max="8" value="1" step="1" class="slider">
-                    </label>
-                </div>
-
-                <!-- Play/Stop button -->
-                <button id="startBtn" class="btn-icon" aria-label="Start Camera">
-                    <svg class="play-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                    </svg>
-                    <svg class="stop-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="6" y="6" width="12" height="12"></rect>
-                    </svg>
-                </button>
-
-                <div id="error" class="error"></div>
+            <div class="setting-group">
+                <label class="setting-label">
+                    <span class="label-text">Grain Size: <span id="grainValue" class="value">1</span></span>
+                    <input type="range" id="grainSize" min="1" max="8" value="1" step="1" class="slider">
+                </label>
             </div>
         </div>
     </div>
+
+    <!-- Gallery Panel -->
+    <div id="galleryPanel" class="gallery-panel">
+        <div class="gallery-header">
+            <h2>Gallery</h2>
+            <button id="closeGallery" class="close-btn" aria-label="Close Gallery">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div id="galleryGrid" class="gallery-grid"></div>
+    </div>
+
+    <div id="error" class="error"></div>
 
     <script src="script.js"></script>
 </body>
