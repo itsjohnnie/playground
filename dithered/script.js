@@ -674,6 +674,10 @@ async function startCamera() {
         });
         video.srcObject = stream;
         await new Promise((resolve) => { video.onloadedmetadata = resolve; });
+
+        // Explicitly play the video
+        await video.play();
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         video.style.display = 'none';
@@ -706,7 +710,14 @@ function stopCamera() {
 }
 
 function processFrame() {
-    if (!stream) return;
+    if (!stream) {
+        console.log('processFrame stopped: no stream');
+        return;
+    }
+    if (video.paused || video.ended) {
+        console.log('Video is paused or ended');
+        return;
+    }
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const ditheredData = applyDithering(imageData);
@@ -883,9 +894,12 @@ lightboxImage.addEventListener('touchend', (e) => {
 // Prevent pull-to-refresh and scrolling on mobile
 document.body.addEventListener('touchmove', (e) => {
     // Allow scrolling within panels when they're open
+    // Also allow touch on canvas and video elements
     if (e.target.closest('.settings-panel.open') ||
         e.target.closest('.gallery-panel.open') ||
-        e.target.closest('.lightbox')) {
+        e.target.closest('.lightbox') ||
+        e.target.closest('canvas') ||
+        e.target.closest('video')) {
         return;
     }
     e.preventDefault();
