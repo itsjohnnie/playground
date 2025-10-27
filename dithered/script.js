@@ -574,6 +574,38 @@ function randomDither(imageData) {
     return imageData;
 }
 
+// Apply selected dithering algorithm
+function applyDithering(imageData) {
+    switch (ditherAlgorithm) {
+        case 'floyd-steinberg':
+            return floydSteinbergDither(imageData);
+        case 'atkinson':
+            return atkinsonDither(imageData);
+        case 'jarvis':
+            return jarvisDither(imageData);
+        case 'stucki':
+            return stuckiDither(imageData);
+        case 'burkes':
+            return burkesDither(imageData);
+        case 'sierra':
+            return sierraDither(imageData);
+        case 'sierra-two':
+            return sierraTwoDither(imageData);
+        case 'sierra-lite':
+            return sierraLiteDither(imageData);
+        case 'ordered':
+            return orderedDither(imageData);
+        case 'halftone':
+            return halftoneDither(imageData);
+        case 'random':
+            return randomDither(imageData);
+        case 'simple':
+            return simpleDither(imageData);
+        default:
+            return floydSteinbergDither(imageData);
+    }
+}
+
 // Camera Controls
 async function startCamera() {
     try {
