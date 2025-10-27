@@ -17,6 +17,14 @@ const grainValue = document.getElementById('grainValue');
 const ditherSelect = document.getElementById('ditherAlgorithm');
 const galleryGrid = document.getElementById('galleryGrid');
 const errorDiv = document.getElementById('error');
+const flipBtn = document.getElementById('flipBtn');
+const cameraToast = document.getElementById('cameraToast');
+const lightbox = document.getElementById('lightbox');
+const lightboxImage = document.getElementById('lightboxImage');
+const closeLightbox = document.getElementById('closeLightbox');
+const prevImage = document.getElementById('prevImage');
+const nextImage = document.getElementById('nextImage');
+const downloadImage = document.getElementById('downloadImage');
 
 // State
 let stream = null;
@@ -25,6 +33,8 @@ let threshold = 128;
 let grainSize = 1;
 let ditherAlgorithm = 'floyd-steinberg';
 let cameraActive = false;
+let currentFacingMode = 'user';
+let currentLightboxIndex = 0;
 
 // LocalStorage for photos
 const STORAGE_KEY = 'dithered_photos';
@@ -42,6 +52,7 @@ grainSlider.addEventListener('input', (e) => {
 
 ditherSelect.addEventListener('change', (e) => {
     ditherAlgorithm = e.target.value;
+    console.log('Dithering algorithm changed to:', ditherAlgorithm);
 });
 
 actionBtn.addEventListener('click', handleAction);
@@ -52,6 +63,54 @@ galleryBtn.addEventListener('click', () => {
 });
 closeSettings.addEventListener('click', () => togglePanel(settingsPanel));
 closeGallery.addEventListener('click', () => togglePanel(galleryPanel));
+
+// Camera flip button
+flipBtn.addEventListener('click', async () => {
+    if (!cameraActive) return;
+    currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    console.log('Flipping camera to:', currentFacingMode);
+    await stopCamera();
+    await startCamera();
+});
+
+// Swipe to dismiss for panels
+let touchStartY = 0;
+let touchStartTime = 0;
+
+function setupSwipeToDismiss(panel) {
+    panel.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+    }, { passive: true });
+
+    panel.addEventListener('touchmove', (e) => {
+        const touchY = e.touches[0].clientY;
+        const deltaY = touchY - touchStartY;
+
+        // Only allow downward swipes
+        if (deltaY > 0) {
+            panel.style.transform = `translateY(${deltaY}px)`;
+        }
+    }, { passive: true });
+
+    panel.addEventListener('touchend', (e) => {
+        const touchEndY = e.changedTouches[0].clientY;
+        const deltaY = touchEndY - touchStartY;
+        const deltaTime = Date.now() - touchStartTime;
+        const velocity = deltaY / deltaTime;
+
+        // Dismiss if swiped down more than 100px or fast swipe
+        if (deltaY > 100 || (velocity > 0.5 && deltaY > 50)) {
+            togglePanel(panel);
+        }
+
+        // Reset transform
+        panel.style.transform = '';
+    }, { passive: true });
+}
+
+setupSwipeToDismiss(settingsPanel);
+setupSwipeToDismiss(galleryPanel);
 
 // Dual-purpose action button
 async function handleAction() {
@@ -611,7 +670,7 @@ async function startCamera() {
     try {
         errorDiv.textContent = '';
         stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } }
+            video: { facingMode: currentFacingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }
         });
         video.srcObject = stream;
         await new Promise((resolve) => { video.onloadedmetadata = resolve; });
@@ -622,9 +681,27 @@ async function startCamera() {
         processFrame();
         cameraActive = true;
         actionBtn.setAttribute('aria-label', 'Capture Photo');
+
+        // Hide camera toast and show flip button
+        cameraToast.classList.add('hidden');
+        flipBtn.style.display = 'flex';
+
+        console.log('Camera started successfully with facing mode:', currentFacingMode);
     } catch (err) {
         console.error('Error accessing camera:', err);
         errorDiv.textContent = `Error: ${err.message}`;
+        cameraToast.classList.remove('hidden');
+    }
+}
+
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
     }
 }
 
@@ -676,7 +753,7 @@ function updateThumbnail(dataUrl) {
 function loadGallery() {
     const photos = getPhotos();
     galleryGrid.innerHTML = '';
-    photos.forEach(photo => {
+    photos.forEach((photo, index) => {
         const item = document.createElement('div');
         item.className = 'gallery-item';
         item.innerHTML = `
@@ -689,10 +766,7 @@ function loadGallery() {
             </button>
         `;
         item.querySelector('img').addEventListener('click', () => {
-            const a = document.createElement('a');
-            a.href = photo.data;
-            a.download = `dithered-${photo.algorithm}-${photo.id}.png`;
-            a.click();
+            openLightbox(index);
         });
         galleryGrid.appendChild(item);
     });
@@ -700,6 +774,111 @@ function loadGallery() {
 
 // Make deletePhoto globally accessible
 window.deletePhoto = deletePhoto;
+
+// Lightbox Functions
+function openLightbox(index) {
+    const photos = getPhotos();
+    if (photos.length === 0) return;
+
+    currentLightboxIndex = index;
+    updateLightboxImage();
+    lightbox.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // Update navigation button visibility
+    updateNavButtons();
+}
+
+function closeLightboxModal() {
+    lightbox.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function updateLightboxImage() {
+    const photos = getPhotos();
+    if (photos.length === 0) return;
+
+    const photo = photos[currentLightboxIndex];
+    lightboxImage.src = photo.data;
+    updateNavButtons();
+}
+
+function updateNavButtons() {
+    const photos = getPhotos();
+    prevImage.style.display = currentLightboxIndex > 0 ? 'flex' : 'none';
+    nextImage.style.display = currentLightboxIndex < photos.length - 1 ? 'flex' : 'none';
+}
+
+function showPrevImage() {
+    if (currentLightboxIndex > 0) {
+        currentLightboxIndex--;
+        updateLightboxImage();
+    }
+}
+
+function showNextImage() {
+    const photos = getPhotos();
+    if (currentLightboxIndex < photos.length - 1) {
+        currentLightboxIndex++;
+        updateLightboxImage();
+    }
+}
+
+function downloadCurrentImage() {
+    const photos = getPhotos();
+    const photo = photos[currentLightboxIndex];
+    const a = document.createElement('a');
+    a.href = photo.data;
+    a.download = `dithered-${photo.algorithm}-${photo.id}.png`;
+    a.click();
+}
+
+// Lightbox event listeners
+closeLightbox.addEventListener('click', closeLightboxModal);
+prevImage.addEventListener('click', showPrevImage);
+nextImage.addEventListener('click', showNextImage);
+downloadImage.addEventListener('click', downloadCurrentImage);
+
+// Close lightbox on overlay click
+lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox || e.target.classList.contains('lightbox-overlay')) {
+        closeLightboxModal();
+    }
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+    if (lightbox.style.display === 'flex') {
+        if (e.key === 'Escape') closeLightboxModal();
+        if (e.key === 'ArrowLeft') showPrevImage();
+        if (e.key === 'ArrowRight') showNextImage();
+    }
+});
+
+// Touch swipe for lightbox navigation
+let lightboxTouchStartX = 0;
+let lightboxTouchStartTime = 0;
+
+lightboxImage.addEventListener('touchstart', (e) => {
+    lightboxTouchStartX = e.touches[0].clientX;
+    lightboxTouchStartTime = Date.now();
+}, { passive: true });
+
+lightboxImage.addEventListener('touchend', (e) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const deltaX = touchEndX - lightboxTouchStartX;
+    const deltaTime = Date.now() - lightboxTouchStartTime;
+    const velocity = Math.abs(deltaX) / deltaTime;
+
+    // Swipe left to go to next image
+    if (deltaX < -50 || (velocity > 0.5 && deltaX < -30)) {
+        showNextImage();
+    }
+    // Swipe right to go to previous image
+    else if (deltaX > 50 || (velocity > 0.5 && deltaX > 30)) {
+        showPrevImage();
+    }
+}, { passive: true });
 
 // Initialize thumbnail on load
 updateThumbnail();

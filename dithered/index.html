@@ -12,6 +12,21 @@
         <canvas id="canvas"></canvas>
     </div>
 
+    <!-- Camera Flip Button (Top Right) -->
+    <button id="flipBtn" class="flip-btn" aria-label="Flip Camera" style="display: none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 4v6h6"></path>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+            <path d="M23 20v-6h-6"></path>
+            <path d="M20.49 9A9 9 0 0 0 18.36 4.64L23 0"></path>
+        </svg>
+    </button>
+
+    <!-- Camera Permission Toast -->
+    <div id="cameraToast" class="camera-toast">
+        <p>Tap the button below to enable camera</p>
+    </div>
+
     <!-- Minimal UI Controls -->
     <div class="camera-controls">
         <!-- Last Photo Thumbnail (Bottom Left) -->
@@ -26,18 +41,17 @@
 
         <!-- Settings Button (Bottom Right) -->
         <button id="settingsBtn" class="control-btn settings-btn" aria-label="Settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>
-                <path d="M12 1v6m0 6v6"></path>
-                <path d="M4.22 4.22l1.42 1.42m12.72 0l1.42-1.42"></path>
-                <path d="M1 12h6m6 0h6"></path>
-                <path d="M4.22 19.78l1.42-1.42m12.72 0l1.42 1.42"></path>
+                <path d="M12 1v6m0 6v6M1 12h6m6 0h6"></path>
+                <path d="M19.07 4.93l-2.12 2.12M6.34 17.66l-2.12 2.12M19.07 19.07l-2.12-2.12M6.34 6.34L4.22 4.22"></path>
             </svg>
         </button>
     </div>
 
     <!-- Settings Panel (Drop-up) -->
     <div id="settingsPanel" class="settings-panel">
+        <div class="panel-handle"></div>
         <div class="settings-header">
             <h2>Settings</h2>
             <button id="closeSettings" class="close-btn" aria-label="Close Settings">
@@ -87,6 +101,7 @@
 
     <!-- Gallery Panel -->
     <div id="galleryPanel" class="gallery-panel">
+        <div class="panel-handle"></div>
         <div class="gallery-header">
             <h2>Gallery</h2>
             <button id="closeGallery" class="close-btn" aria-label="Close Gallery">
@@ -100,6 +115,42 @@
     </div>
 
     <div id="error" class="error"></div>
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox" style="display: none;">
+        <div class="lightbox-overlay"></div>
+        <button id="closeLightbox" class="lightbox-close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+
+        <button id="prevImage" class="lightbox-nav lightbox-prev" aria-label="Previous">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        </button>
+
+        <button id="nextImage" class="lightbox-nav lightbox-next" aria-label="Next">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        </button>
+
+        <div class="lightbox-content">
+            <img id="lightboxImage" src="" alt="Dithered photo">
+        </div>
+
+        <button id="downloadImage" class="lightbox-download" aria-label="Download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download
+        </button>
+    </div>
 
     <script src="script.js"></script>
 </body>

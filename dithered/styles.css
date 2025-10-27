@@ -41,6 +41,72 @@ canvas {
     display: none;
 }
 
+/* Camera Flip Button (Top Right) */
+.flip-btn {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 20;
+}
+
+.flip-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.flip-btn:active {
+    transform: scale(0.95);
+}
+
+.flip-btn svg {
+    width: 24px;
+    height: 24px;
+    color: white;
+}
+
+/* Camera Permission Toast */
+.camera-toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: white;
+    padding: 20px 32px;
+    border-radius: 16px;
+    font-size: 1rem;
+    font-weight: 500;
+    z-index: 15;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+}
+
+.camera-toast.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.camera-toast p {
+    margin: 0;
+    text-align: center;
+}
+
 /* Minimal Camera Controls (Bottom Bar) */
 .camera-controls {
     position: fixed;
@@ -160,12 +226,27 @@ canvas {
     backdrop-filter: blur(40px);
     -webkit-backdrop-filter: blur(40px);
     border-radius: 20px 20px 0 0;
-    padding: 24px;
+    padding: 12px 24px 40px 24px;
     z-index: 100;
     transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     max-height: 80dvh;
     overflow-y: auto;
+    touch-action: pan-y;
+}
+
+/* Panel Handle for Swipe Indicator */
+.panel-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 2px;
+    margin: 8px auto 16px;
+    cursor: grab;
+}
+
+.panel-handle:active {
+    cursor: grabbing;
 }
 
 .settings-panel.open,
@@ -393,12 +474,194 @@ canvas {
 
     .settings-panel,
     .gallery-panel {
-        padding: 20px;
+        padding: 12px 20px 36px 20px;
         max-height: 85dvh;
+    }
+
+    .flip-btn {
+        top: 20px;
+        right: 20px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .camera-toast {
+        font-size: 0.9rem;
+        padding: 16px 24px;
     }
 
     .gallery-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
         gap: 8px;
+    }
+}
+
+/* Lightbox */
+.lightbox {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.lightbox-content {
+    position: relative;
+    z-index: 1001;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lightbox-content img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-close {
+    position: absolute;
+    top: 30px;
+    right: 30px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1002;
+}
+
+.lightbox-close:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.lightbox-close svg {
+    width: 24px;
+    height: 24px;
+    color: white;
+}
+
+.lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1002;
+}
+
+.lightbox-nav:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-50%) scale(1.05);
+}
+
+.lightbox-nav svg {
+    width: 28px;
+    height: 28px;
+    color: white;
+}
+
+.lightbox-prev {
+    left: 30px;
+}
+
+.lightbox-next {
+    right: 30px;
+}
+
+.lightbox-download {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 14px 28px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 1002;
+}
+
+.lightbox-download:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateX(-50%) scale(1.05);
+}
+
+.lightbox-download svg {
+    width: 20px;
+    height: 20px;
+}
+
+@media (max-width: 768px) {
+    .lightbox-close {
+        top: 20px;
+        right: 20px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .lightbox-nav {
+        width: 48px;
+        height: 48px;
+    }
+
+    .lightbox-prev {
+        left: 20px;
+    }
+
+    .lightbox-next {
+        right: 20px;
+    }
+
+    .lightbox-download {
+        bottom: 30px;
+        padding: 12px 24px;
+        font-size: 0.9rem;
     }
 }
