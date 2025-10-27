@@ -128,7 +128,7 @@ canvas {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 30px 40px;
+    padding: 0 30px 1rem;
     z-index: 10;
     background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0) 100%);
 }
@@ -619,7 +619,7 @@ canvas {
 
 .lightbox-download {
     position: absolute;
-    bottom: 40px;
+    bottom: 1rem;
     left: 50%;
     transform: translateX(-50%);
     padding: 14px 28px;
@@ -671,7 +671,7 @@ canvas {
     }
 
     .lightbox-download {
-        bottom: 30px;
+        bottom: 1rem;
         padding: 12px 24px;
         font-size: 0.9rem;
     }
