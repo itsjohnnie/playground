@@ -19,6 +19,12 @@ const galleryGrid = document.getElementById('galleryGrid');
 const errorDiv = document.getElementById('error');
 const flipBtn = document.getElementById('flipBtn');
 const cameraToast = document.getElementById('cameraToast');
+const lightbox = document.getElementById('lightbox');
+const lightboxImage = document.getElementById('lightboxImage');
+const closeLightbox = document.getElementById('closeLightbox');
+const prevImage = document.getElementById('prevImage');
+const nextImage = document.getElementById('nextImage');
+const downloadImage = document.getElementById('downloadImage');
 
 // State
 let stream = null;
@@ -28,6 +34,7 @@ let grainSize = 1;
 let ditherAlgorithm = 'floyd-steinberg';
 let cameraActive = false;
 let currentFacingMode = 'user';
+let currentLightboxIndex = 0;
 
 // LocalStorage for photos
 const STORAGE_KEY = 'dithered_photos';
@@ -746,7 +753,7 @@ function updateThumbnail(dataUrl) {
 function loadGallery() {
     const photos = getPhotos();
     galleryGrid.innerHTML = '';
-    photos.forEach(photo => {
+    photos.forEach((photo, index) => {
         const item = document.createElement('div');
         item.className = 'gallery-item';
         item.innerHTML = `
@@ -759,10 +766,7 @@ function loadGallery() {
             </button>
         `;
         item.querySelector('img').addEventListener('click', () => {
-            const a = document.createElement('a');
-            a.href = photo.data;
-            a.download = `dithered-${photo.algorithm}-${photo.id}.png`;
-            a.click();
+            openLightbox(index);
         });
         galleryGrid.appendChild(item);
     });
@@ -770,6 +774,111 @@ function loadGallery() {
 
 // Make deletePhoto globally accessible
 window.deletePhoto = deletePhoto;
+
+// Lightbox Functions
+function openLightbox(index) {
+    const photos = getPhotos();
+    if (photos.length === 0) return;
+
+    currentLightboxIndex = index;
+    updateLightboxImage();
+    lightbox.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // Update navigation button visibility
+    updateNavButtons();
+}
+
+function closeLightboxModal() {
+    lightbox.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function updateLightboxImage() {
+    const photos = getPhotos();
+    if (photos.length === 0) return;
+
+    const photo = photos[currentLightboxIndex];
+    lightboxImage.src = photo.data;
+    updateNavButtons();
+}
+
+function updateNavButtons() {
+    const photos = getPhotos();
+    prevImage.style.display = currentLightboxIndex > 0 ? 'flex' : 'none';
+    nextImage.style.display = currentLightboxIndex < photos.length - 1 ? 'flex' : 'none';
+}
+
+function showPrevImage() {
+    if (currentLightboxIndex > 0) {
+        currentLightboxIndex--;
+        updateLightboxImage();
+    }
+}
+
+function showNextImage() {
+    const photos = getPhotos();
+    if (currentLightboxIndex < photos.length - 1) {
+        currentLightboxIndex++;
+        updateLightboxImage();
+    }
+}
+
+function downloadCurrentImage() {
+    const photos = getPhotos();
+    const photo = photos[currentLightboxIndex];
+    const a = document.createElement('a');
+    a.href = photo.data;
+    a.download = `dithered-${photo.algorithm}-${photo.id}.png`;
+    a.click();
+}
+
+// Lightbox event listeners
+closeLightbox.addEventListener('click', closeLightboxModal);
+prevImage.addEventListener('click', showPrevImage);
+nextImage.addEventListener('click', showNextImage);
+downloadImage.addEventListener('click', downloadCurrentImage);
+
+// Close lightbox on overlay click
+lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox || e.target.classList.contains('lightbox-overlay')) {
+        closeLightboxModal();
+    }
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+    if (lightbox.style.display === 'flex') {
+        if (e.key === 'Escape') closeLightboxModal();
+        if (e.key === 'ArrowLeft') showPrevImage();
+        if (e.key === 'ArrowRight') showNextImage();
+    }
+});
+
+// Touch swipe for lightbox navigation
+let lightboxTouchStartX = 0;
+let lightboxTouchStartTime = 0;
+
+lightboxImage.addEventListener('touchstart', (e) => {
+    lightboxTouchStartX = e.touches[0].clientX;
+    lightboxTouchStartTime = Date.now();
+}, { passive: true });
+
+lightboxImage.addEventListener('touchend', (e) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const deltaX = touchEndX - lightboxTouchStartX;
+    const deltaTime = Date.now() - lightboxTouchStartTime;
+    const velocity = Math.abs(deltaX) / deltaTime;
+
+    // Swipe left to go to next image
+    if (deltaX < -50 || (velocity > 0.5 && deltaX < -30)) {
+        showNextImage();
+    }
+    // Swipe right to go to previous image
+    else if (deltaX > 50 || (velocity > 0.5 && deltaX > 30)) {
+        showPrevImage();
+    }
+}, { passive: true });
 
 // Initialize thumbnail on load
 updateThumbnail();
