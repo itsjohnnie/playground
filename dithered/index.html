@@ -17,30 +17,60 @@
             <h1>Dithered Camera</h1>
         </div>
 
-        <div class="controls">
-            <button id="startBtn">Start Camera</button>
-            <button id="captureBtn" disabled>Capture Photo</button>
+        <div class="controls-container">
+            <div class="controls">
+                <!-- Camera style capture button -->
+                <button id="captureBtn" class="capture-btn" disabled aria-label="Capture Photo">
+                    <span class="capture-inner"></span>
+                </button>
 
-            <label>
-                Dither Algorithm:
-                <select id="ditherAlgorithm">
-                    <option value="floyd-steinberg">Floyd-Steinberg</option>
-                    <option value="atkinson">Atkinson</option>
-                    <option value="ordered">Ordered (Bayer)</option>
-                    <option value="random">Random Threshold</option>
-                    <option value="stucki">Stucki</option>
-                    <option value="jarvis">Jarvis-Judice-Ninke</option>
-                </select>
-            </label>
+                <div class="control-group">
+                    <label class="control-label">
+                        <span class="label-text">Dither Algorithm</span>
+                        <select id="ditherAlgorithm" class="select">
+                            <option value="floyd-steinberg">Floyd-Steinberg</option>
+                            <option value="atkinson">Atkinson</option>
+                            <option value="jarvis">Jarvis-Judice-Ninke</option>
+                            <option value="stucki">Stucki</option>
+                            <option value="burkes">Burkes</option>
+                            <option value="sierra">Sierra</option>
+                            <option value="sierra-two">Two-Row Sierra</option>
+                            <option value="sierra-lite">Sierra Lite</option>
+                            <option value="ordered">Ordered (Bayer)</option>
+                            <option value="halftone">Halftone Dots</option>
+                            <option value="random">Random Threshold</option>
+                            <option value="simple">Simple Threshold</option>
+                        </select>
+                    </label>
+                </div>
 
-            <label>
-                Threshold:
-                <input type="range" id="threshold" min="0" max="255" value="128">
-                <span id="thresholdValue">128</span>
-            </label>
+                <div class="control-group">
+                    <label class="control-label">
+                        <span class="label-text">Threshold: <span id="thresholdValue" class="value">128</span></span>
+                        <input type="range" id="threshold" min="0" max="255" value="128" class="slider">
+                    </label>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">
+                        <span class="label-text">Grain Size: <span id="grainValue" class="value">1</span></span>
+                        <input type="range" id="grainSize" min="1" max="8" value="1" step="1" class="slider">
+                    </label>
+                </div>
+
+                <!-- Play/Stop button -->
+                <button id="startBtn" class="btn-icon" aria-label="Start Camera">
+                    <svg class="play-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    <svg class="stop-icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="6" y="6" width="12" height="12"></rect>
+                    </svg>
+                </button>
+
+                <div id="error" class="error"></div>
+            </div>
         </div>
-
-        <div id="error" class="error"></div>
     </div>
 
     <script src="script.js"></script>
