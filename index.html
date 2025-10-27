@@ -17,30 +17,36 @@
             <h1>Dithered Camera</h1>
         </div>
 
-        <div class="controls">
-            <button id="startBtn">Start Camera</button>
-            <button id="captureBtn" disabled>Capture Photo</button>
+        <div class="controls-container">
+            <div class="controls">
+                <div class="button-group">
+                    <button id="startBtn" class="btn btn-primary">Start Camera</button>
+                    <button id="captureBtn" class="btn btn-secondary" disabled>Capture Photo</button>
+                </div>
 
-            <label>
-                Dither Algorithm:
-                <select id="ditherAlgorithm">
-                    <option value="floyd-steinberg">Floyd-Steinberg</option>
-                    <option value="atkinson">Atkinson</option>
-                    <option value="ordered">Ordered (Bayer)</option>
-                    <option value="random">Random Threshold</option>
-                    <option value="stucki">Stucki</option>
-                    <option value="jarvis">Jarvis-Judice-Ninke</option>
-                </select>
-            </label>
+                <div class="control-group">
+                    <label class="control-label">
+                        <span class="label-text">Dither Algorithm</span>
+                        <select id="ditherAlgorithm" class="select">
+                            <option value="floyd-steinberg">Floyd-Steinberg</option>
+                            <option value="atkinson">Atkinson</option>
+                            <option value="ordered">Ordered (Bayer)</option>
+                            <option value="random">Random Threshold</option>
+                            <option value="simple">Simple Threshold</option>
+                        </select>
+                    </label>
+                </div>
 
-            <label>
-                Threshold:
-                <input type="range" id="threshold" min="0" max="255" value="128">
-                <span id="thresholdValue">128</span>
-            </label>
+                <div class="control-group">
+                    <label class="control-label">
+                        <span class="label-text">Threshold: <span id="thresholdValue" class="value">128</span></span>
+                        <input type="range" id="threshold" min="0" max="255" value="128" class="slider">
+                    </label>
+                </div>
+
+                <div id="error" class="error"></div>
+            </div>
         </div>
-
-        <div id="error" class="error"></div>
     </div>
 
     <script src="script.js"></script>
