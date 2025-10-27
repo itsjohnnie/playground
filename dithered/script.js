@@ -115,6 +115,8 @@ setupSwipeToDismiss(galleryPanel);
 // Dual-purpose action button
 async function handleAction() {
     if (!cameraActive) {
+        // Show toast to prompt user for camera permission
+        cameraToast.classList.remove('hidden');
         await startCamera();
     } else {
         capturePhoto();
