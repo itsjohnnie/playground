@@ -31,14 +31,15 @@ setCanvasSize();
 // Physics constants - DRAMATICALLY enhanced for visible mobile movement
 const GRAVITY = 1.5;
 const DAMPING = 0.97;
-const PARTICLE_COUNT = 400;
-const PARTICLE_RADIUS = 2.8;
+const PARTICLE_COUNT = 300; // Reduced for better performance
+const PARTICLE_RADIUS = 3.2; // Slightly larger to compensate
 const REST_DENSITY = 1.2;
 const GAS_CONSTANT = 5000;
 const VISCOSITY = 0.3;
 const SURFACE_TENSION = 0.08;
-const INTERACTION_RADIUS = 18;
+const INTERACTION_RADIUS = 20;
 const BOUNCE_FORCE = 0.4; // Energy retention on bounce
+const GRID_CELL_SIZE = INTERACTION_RADIUS; // Spatial hash grid cell size
 
 // Device orientation - amplified for dramatic effect
 let tiltX = 0;
@@ -107,19 +108,29 @@ class Particle {
 
 // Initialize particles after canvas is sized
 let particles = [];
+let spatialGrid = {};
 
 const initParticles = () => {
     particles = [];
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const initialRadius = canvas.width * 0.3;
+    const maxRadius = canvas.width / 2 - PARTICLE_RADIUS * 3;
 
-    // Create particles in a dense, realistic distribution
+    // Fill circle to 50% capacity - fill from bottom
+    // For a circle, 50% by area means filling from the bottom up
+    const totalArea = Math.PI * maxRadius * maxRadius;
+    const targetArea = totalArea * 0.5;
+
+    // Use a smaller packing area to account for 50% fill
+    const packingRadius = maxRadius * 0.7; // Reduced area for particles
+
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-        const angle = (Math.PI * 2 * i) / PARTICLE_COUNT;
-        const radius = Math.sqrt(Math.random()) * initialRadius;
-        const x = centerX + Math.cos(angle) * radius;
-        const y = centerY + Math.sin(angle) * radius + canvas.height * 0.08;
+        const angle = Math.random() * Math.PI * 2;
+        const r = Math.sqrt(Math.random()) * packingRadius;
+
+        let x = centerX + Math.cos(angle) * r;
+        let y = centerY + r * 0.5 + maxRadius * 0.25; // Position in bottom half
+
         particles.push(new Particle(x, y));
     }
 };
@@ -127,34 +138,75 @@ const initParticles = () => {
 // Initialize particles after first canvas setup
 initParticles();
 
-// SPH kernel functions (optimized)
-const smoothingKernel = (distance, radius) => {
-    if (distance >= radius) return 0;
-    const volume = (Math.PI * Math.pow(radius, 4)) / 6;
-    return Math.max(0, Math.pow(radius - distance, 2)) / volume;
+// Spatial hash grid for fast neighbor lookup
+const buildSpatialGrid = () => {
+    spatialGrid = {};
+    for (let i = 0; i < particles.length; i++) {
+        const particle = particles[i];
+        const cellX = Math.floor(particle.x / GRID_CELL_SIZE);
+        const cellY = Math.floor(particle.y / GRID_CELL_SIZE);
+        const key = `${cellX},${cellY}`;
+
+        if (!spatialGrid[key]) {
+            spatialGrid[key] = [];
+        }
+        spatialGrid[key].push(i);
+    }
 };
 
-const smoothingKernelDerivative = (distance, radius) => {
-    if (distance >= radius) return 0;
-    const scale = 12 / (Math.PI * Math.pow(radius, 4));
-    return (distance - radius) * scale;
+const getNeighborCells = (x, y) => {
+    const cellX = Math.floor(x / GRID_CELL_SIZE);
+    const cellY = Math.floor(y / GRID_CELL_SIZE);
+    const neighbors = [];
+
+    // Check 3x3 grid around particle
+    for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+            const key = `${cellX + dx},${cellY + dy}`;
+            if (spatialGrid[key]) {
+                neighbors.push(...spatialGrid[key]);
+            }
+        }
+    }
+    return neighbors;
 };
 
-// Calculate SPH properties
+// SPH kernel functions (optimized with cached values)
+const KERNEL_VOLUME = (Math.PI * Math.pow(INTERACTION_RADIUS, 4)) / 6;
+const KERNEL_SCALE = 12 / (Math.PI * Math.pow(INTERACTION_RADIUS, 4));
+
+const smoothingKernel = (distance) => {
+    if (distance >= INTERACTION_RADIUS) return 0;
+    const diff = INTERACTION_RADIUS - distance;
+    return (diff * diff) / KERNEL_VOLUME;
+};
+
+const smoothingKernelDerivative = (distance) => {
+    if (distance >= INTERACTION_RADIUS) return 0;
+    return (distance - INTERACTION_RADIUS) * KERNEL_SCALE;
+};
+
+// Calculate SPH properties with spatial grid optimization
 const calculateSPH = () => {
-    // Calculate density and pressure
+    // Build spatial grid for fast neighbor lookup
+    buildSpatialGrid();
+
+    // Calculate density and pressure using spatial grid
     for (let i = 0; i < particles.length; i++) {
         particles[i].density = 0;
         particles[i].neighbors = [];
 
-        for (let j = 0; j < particles.length; j++) {
+        const potentialNeighbors = getNeighborCells(particles[i].x, particles[i].y);
+
+        for (const j of potentialNeighbors) {
             const dx = particles[j].x - particles[i].x;
             const dy = particles[j].y - particles[i].y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const distSq = dx * dx + dy * dy;
 
-            if (distance < INTERACTION_RADIUS) {
+            if (distSq < INTERACTION_RADIUS * INTERACTION_RADIUS) {
+                const distance = Math.sqrt(distSq);
                 particles[i].neighbors.push(j);
-                const influence = smoothingKernel(distance, INTERACTION_RADIUS);
+                const influence = smoothingKernel(distance);
                 particles[i].density += influence;
             }
         }
@@ -182,7 +234,7 @@ const calculateSPH = () => {
             const dirY = dy / distance;
 
             // Pressure force (enhanced)
-            const pressureGradient = smoothingKernelDerivative(distance, INTERACTION_RADIUS);
+            const pressureGradient = smoothingKernelDerivative(distance);
             const sharedPressure = (particles[i].pressure + particles[j].pressure) / 2;
             pressureForceX -= sharedPressure * dirX * pressureGradient / Math.max(particles[i].density, 0.1);
             pressureForceY -= sharedPressure * dirY * pressureGradient / Math.max(particles[i].density, 0.1);
@@ -190,7 +242,7 @@ const calculateSPH = () => {
             // Viscosity force
             const velocityDiffX = particles[j].vx - particles[i].vx;
             const velocityDiffY = particles[j].vy - particles[i].vy;
-            const viscosityInfluence = smoothingKernel(distance, INTERACTION_RADIUS);
+            const viscosityInfluence = smoothingKernel(distance);
             viscosityForceX += velocityDiffX * viscosityInfluence;
             viscosityForceY += velocityDiffY * viscosityInfluence;
         }
@@ -214,7 +266,7 @@ const calculateSPH = () => {
 
             if (distance < 0.001) continue;
 
-            const gradient = smoothingKernelDerivative(distance, INTERACTION_RADIUS);
+            const gradient = smoothingKernelDerivative(distance);
             surfaceNormalX += dx / distance * gradient;
             surfaceNormalY += dy / distance * gradient;
         }
@@ -385,28 +437,43 @@ if (gl) {
     programInfo.texture = texture;
 }
 
-// Enhanced metaball rendering with higher quality
+// Optimized metaball rendering with reduced resolution and spatial grid
 const renderMetaballs = () => {
-    const imageData = ctx.createImageData(canvas.width, canvas.height);
-    const data = imageData.data;
-    const width = imageData.width;
-    const height = imageData.height;
+    // Render at half resolution for 4x performance boost
+    const renderScale = 0.5;
+    const renderWidth = Math.floor(canvas.width * renderScale);
+    const renderHeight = Math.floor(canvas.height * renderScale);
 
-    for (let x = 0; x < width; x++) {
-        for (let y = 0; y < height; y++) {
+    const imageData = ctx.createImageData(renderWidth, renderHeight);
+    const data = imageData.data;
+
+    // Use spatial grid to only check nearby particles
+    const checkRadius = 50; // Max influence radius in pixels
+    const checkRadiusSq = checkRadius * checkRadius;
+
+    for (let y = 0; y < renderHeight; y++) {
+        for (let x = 0; x < renderWidth; x++) {
+            const worldX = x / renderScale;
+            const worldY = y / renderScale;
+
             let sum = 0;
 
-            for (const particle of particles) {
-                const dx = x - particle.x;
-                const dy = y - particle.y;
+            // Only check particles in nearby grid cells
+            const nearbyParticles = getNeighborCells(worldX, worldY);
+
+            for (const particleIdx of nearbyParticles) {
+                const particle = particles[particleIdx];
+                const dx = worldX - particle.x;
+                const dy = worldY - particle.y;
                 const distSq = dx * dx + dy * dy;
-                if (distSq > 0 && distSq < 10000) {
+
+                if (distSq > 0 && distSq < checkRadiusSq) {
                     const influence = Math.max(particle.density, 1.0);
-                    sum += (particle.radius * particle.radius * 400 * influence) / distSq;
+                    sum += (particle.radius * particle.radius * 250 * influence) / distSq; // Reduced from 400 to 250
                 }
             }
 
-            const index = (y * width + x) * 4;
+            const index = (y * renderWidth + x) * 4;
             const value = Math.min(255, sum * 60);
             data[index] = value;
             data[index + 1] = value;
@@ -415,7 +482,10 @@ const renderMetaballs = () => {
         }
     }
 
+    // Scale up to full canvas size
     ctx.putImageData(imageData, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(canvas, 0, 0, renderWidth, renderHeight, 0, 0, canvas.width, canvas.height);
 
     if (gl && programInfo) {
         gl.bindTexture(gl.TEXTURE_2D, programInfo.texture);
