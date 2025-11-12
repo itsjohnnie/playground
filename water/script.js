@@ -471,36 +471,55 @@ const handleMotion = (event) => {
 
 // Request permission for iOS 13+
 const requestPermission = async () => {
+    let orientationGranted = false;
+    let motionGranted = false;
+
+    // Try to request DeviceOrientation permission
     if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
         try {
             const permission = await DeviceOrientationEvent.requestPermission();
             if (permission === 'granted') {
                 window.addEventListener('deviceorientation', handleOrientation);
-                permissionBtn.style.display = 'none';
+                orientationGranted = true;
             }
         } catch (error) {
-            console.error('Permission denied:', error);
+            console.error('DeviceOrientation permission denied:', error);
         }
-    } else if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    }
+
+    // Try to request DeviceMotion permission
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
         try {
             const permission = await DeviceMotionEvent.requestPermission();
             if (permission === 'granted') {
                 window.addEventListener('devicemotion', handleMotion);
-                permissionBtn.style.display = 'none';
+                motionGranted = true;
             }
         } catch (error) {
-            console.error('Permission denied:', error);
+            console.error('DeviceMotion permission denied:', error);
         }
+    }
+
+    // Hide button if at least one permission was granted
+    if (orientationGranted || motionGranted) {
+        permissionBtn.style.display = 'none';
     }
 };
 
 // Initialize device motion
-if (typeof DeviceOrientationEvent !== 'undefined') {
-    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-        permissionBtn.style.display = 'block';
-        permissionBtn.addEventListener('click', requestPermission);
-    } else {
+const needsPermission = (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') ||
+                        (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function');
+
+if (needsPermission) {
+    // Show button for iOS 13+ devices that require permission
+    permissionBtn.style.display = 'block';
+    permissionBtn.addEventListener('click', requestPermission);
+} else {
+    // Automatically add listeners for devices that don't require permission
+    if (typeof DeviceOrientationEvent !== 'undefined') {
         window.addEventListener('deviceorientation', handleOrientation);
+    }
+    if (typeof DeviceMotionEvent !== 'undefined') {
         window.addEventListener('devicemotion', handleMotion);
     }
 }
