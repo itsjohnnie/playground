@@ -9,16 +9,15 @@ const permissionBtn = document.getElementById('requestPermission');
 const setCanvasSize = () => {
     const container = canvas.parentElement;
     const size = container.offsetWidth;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = 1; // Use 1:1 pixel ratio for simplicity
 
-    canvas.width = size * dpr;
-    canvas.height = size * dpr;
+    canvas.width = size;
+    canvas.height = size;
     canvas.style.width = size + 'px';
     canvas.style.height = size + 'px';
-    ctx.scale(dpr, dpr);
 
-    glCanvas.width = size * dpr;
-    glCanvas.height = size * dpr;
+    glCanvas.width = size;
+    glCanvas.height = size;
     glCanvas.style.width = size + 'px';
     glCanvas.style.height = size + 'px';
 
@@ -28,7 +27,6 @@ const setCanvasSize = () => {
 };
 
 setCanvasSize();
-window.addEventListener('resize', setCanvasSize);
 
 // Physics constants - DRAMATICALLY enhanced for visible mobile movement
 const GRAVITY = 1.5;
@@ -80,10 +78,9 @@ class Particle {
         this.y += this.vy * dt;
 
         // Circle boundary collision with dramatic bounce
-        const dpr = window.devicePixelRatio || 1;
-        const centerX = canvas.width / dpr / 2;
-        const centerY = canvas.height / dpr / 2;
-        const maxRadius = (canvas.width / dpr) / 2 - this.radius * 3;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const maxRadius = canvas.width / 2 - this.radius * 3;
 
         const dx = this.x - centerX;
         const dy = this.y - centerY;
@@ -108,21 +105,27 @@ class Particle {
     }
 }
 
-// Create particles - fill more of the circle
-const particles = [];
-const dpr = window.devicePixelRatio || 1;
-const centerX = canvas.width / dpr / 2;
-const centerY = canvas.height / dpr / 2;
-const initialRadius = (canvas.width / dpr) * 0.3;
+// Initialize particles after canvas is sized
+let particles = [];
 
-// Create particles in a dense, realistic distribution
-for (let i = 0; i < PARTICLE_COUNT; i++) {
-    const angle = (Math.PI * 2 * i) / PARTICLE_COUNT;
-    const radius = Math.sqrt(Math.random()) * initialRadius;
-    const x = centerX + Math.cos(angle) * radius;
-    const y = centerY + Math.sin(angle) * radius + (canvas.height / dpr) * 0.08;
-    particles.push(new Particle(x, y));
-}
+const initParticles = () => {
+    particles = [];
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const initialRadius = canvas.width * 0.3;
+
+    // Create particles in a dense, realistic distribution
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+        const angle = (Math.PI * 2 * i) / PARTICLE_COUNT;
+        const radius = Math.sqrt(Math.random()) * initialRadius;
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius + canvas.height * 0.08;
+        particles.push(new Particle(x, y));
+    }
+};
+
+// Initialize particles after first canvas setup
+initParticles();
 
 // SPH kernel functions (optimized)
 const smoothingKernel = (distance, radius) => {
@@ -384,8 +387,7 @@ if (gl) {
 
 // Enhanced metaball rendering with higher quality
 const renderMetaballs = () => {
-    const dpr = window.devicePixelRatio || 1;
-    const imageData = ctx.createImageData(canvas.width / dpr, canvas.height / dpr);
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
@@ -561,9 +563,16 @@ const animate = (currentTime) => {
 // Start animation
 animate(0);
 
-// Handle visibility change
+// Handle visibility and resize
+const handleResize = () => {
+    setCanvasSize();
+    initParticles();
+};
+
+window.addEventListener('resize', handleResize);
+
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden) {
-        setCanvasSize();
+        handleResize();
     }
 });
