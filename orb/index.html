@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orb</title>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+            "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.webgpu.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+        }
+    }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            overflow: hidden;
+            background: #000;
+            width: 100%;
+            height: 100%;
+        }
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        #canvas {
+            width: 100%;
+            height: 100%;
+            transform: scale(1.75);
+            transform-origin: center center;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script type="module">
+        // Override MouseEvent BEFORE loading the library
+        const fakeMouseEvent = new Proxy(MouseEvent, {
+            construct(target, args) {
+                const event = new target(...args)
+                // Force mouse position to be far off-screen
+                Object.defineProperty(event, 'clientX', { value: -99999, writable: false })
+                Object.defineProperty(event, 'clientY', { value: -99999, writable: false })
+                return event
+            }
+        })
+
+        import TubesCursor from "https://cdn.jsdelivr.net/npm/threejs-components@0.0.19/build/cursors/tubes1.min.js"
+
+        const canvas = document.getElementById('canvas')
+
+        // Make canvas completely invisible to mouse
+        canvas.style.pointerEvents = 'none'
+
+        const app = TubesCursor(canvas, {
+            tubes: {
+                colors: ["#f967fb", "#53bc28", "#6958d5"],
+                lights: {
+                    intensity: 200,
+                    colors: ["#83f36e", "#fe8a2e", "#ff008a", "#60aed5"]
+                }
+            },
+            sleepRadiusX: 0,
+            sleepRadiusY: 0,
+            sleepTimeScale1: 1,
+            sleepTimeScale2: 1
+        })
+
+        // Create an overlay to block mouse from reaching canvas
+        const overlay = document.createElement('div')
+        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; pointer-events: auto;'
+        document.body.appendChild(overlay)
+
+        // Keep canvas below overlay
+        canvas.style.zIndex = '-1'
+
+        document.body.addEventListener('click', () => {
+            const colors = randomColors(3)
+            const lightsColors = randomColors(4)
+            console.log(colors, lightsColors)
+            app.tubes.setColors(colors)
+            app.tubes.setLightsColors(lightsColors)
+        })
+
+        function randomColors (count) {
+            return new Array(count)
+                .fill(0)
+                .map(() => "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'))
+        }
+    </script>
+</body>
+</html>

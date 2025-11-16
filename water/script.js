@@ -116,20 +116,30 @@ const initParticles = () => {
     const centerY = canvas.height / 2;
     const maxRadius = canvas.width / 2 - PARTICLE_RADIUS * 3;
 
-    // Fill circle to 50% capacity - fill from bottom
-    // For a circle, 50% by area means filling from the bottom up
-    const totalArea = Math.PI * maxRadius * maxRadius;
-    const targetArea = totalArea * 0.5;
-
-    // Use a smaller packing area to account for 50% fill
-    const packingRadius = maxRadius * 0.7; // Reduced area for particles
+    // Fill bottom 50% of circle
+    // Start from the bottom and fill up to the horizontal center line
+    const bottomY = centerY + maxRadius;
+    const topY = centerY; // Halfway point
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const r = Math.sqrt(Math.random()) * packingRadius;
+        let x, y;
+        let valid = false;
 
-        let x = centerX + Math.cos(angle) * r;
-        let y = centerY + r * 0.5 + maxRadius * 0.25; // Position in bottom half
+        // Keep trying until we get a valid position in the bottom half
+        while (!valid) {
+            // Random position in bounding box of bottom half
+            x = centerX + (Math.random() - 0.5) * maxRadius * 2;
+            y = topY + Math.random() * (bottomY - topY);
+
+            // Check if inside circle and in bottom half
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const distFromCenter = Math.sqrt(dx * dx + dy * dy);
+
+            if (distFromCenter < maxRadius * 0.9 && y >= centerY) {
+                valid = true;
+            }
+        }
 
         particles.push(new Particle(x, y));
     }
