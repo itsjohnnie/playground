@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Jitter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="controls-panel">
+        <h2>SVG Jitter</h2>
+        
+        <div class="upload-section">
+            <input type="file" id="svgUpload" accept=".svg" class="file-input">
+            <label for="svgUpload" class="upload-label" tabindex="0">
+                Choose SVG file
+            </label>
+        </div>
+        
+        <div class="control-group">
+            <label for="speedControl">Jitter Speed</label>
+            <div class="control-row">
+                <input type="range" id="speedControl" min="50" max="500" value="200" step="10">
+                <span id="speedValue" class="editable-value" contenteditable="true">200ms</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label for="intensityControl">Jitter Intensity</label>
+            <div class="control-row">
+                <input type="range" id="intensityControl" min="1" max="16" value="3">
+                <span id="intensityValue" class="editable-value" contenteditable="true">3px</span>
+            </div>
+        </div>
+        
+        <label for="realisticJitter" class="checkbox-label">
+            <input type="checkbox" id="realisticJitter">
+            <span>Realistic Jitter</span>
+        </label>
+        <p class="checkbox-description">Applies SVG turbulence filters for internal distortion effects instead of position-based movement.</p>
+    </div>
+    
+    <div id="svgContainer" class="svg-canvas"></div>
+    
+    <div class="keyboard-hint">Press Space to pause the jitter</div>
+    
+    <script src="script.js"></script>
+</body>
+</html>

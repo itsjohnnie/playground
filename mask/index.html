@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masking SVGs</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.17/paper-full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/4.0.1/simplex-noise.min.js"></script>
+</head>
+<body>
+    <div class="controls-panel">
+        <h2>Masking SVGs</h2>
+        
+        <div class="upload-section">
+            <input type="file" id="svgUpload" accept=".svg" class="file-input">
+            <label for="svgUpload" class="upload-label" tabindex="0">
+                Choose SVG file
+            </label>
+        </div>
+        
+        <div class="control-group">
+            <label for="revealSpeed">Reveal Speed</label>
+            <div class="control-row">
+                <input type="range" id="revealSpeed" min="10" max="80" value="50" step="10">
+                <span id="speedValue" class="editable-value" contenteditable="true">50ms</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label for="brushSize">Brush Size</label>
+            <div class="control-row">
+                <input type="range" id="brushSize" min="20" max="200" value="120" step="10">
+                <span id="sizeValue" class="editable-value" contenteditable="true">120px</span>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label for="brushType">Brush Type</label>
+            <select id="brushType" class="brush-select">
+                <option value="splatter">Splatter</option>
+                <option value="brush">Brush</option>
+                <option value="airbrush">Airbrush</option>
+                <option value="watercolor">Watercolor</option>
+            </select>
+        </div>
+        
+        <div class="control-group">
+            <label for="revealDirection">Reveal Direction</label>
+            <select id="revealDirection" class="brush-select">
+                <option value="random">Random</option>
+                <option value="left-right">Left to Right</option>
+                <option value="right-left">Right to Left</option>
+                <option value="top-bottom">Top to Bottom</option>
+                <option value="bottom-top">Bottom to Top</option>
+                <option value="tl-br">Top-left to Bottom-right</option>
+                <option value="bl-tr">Bottom-left to Top-right</option>
+                <option value="center-out">Center Out</option>
+                <option value="out-center">Outside In</option>
+            </select>
+        </div>
+        
+        <label for="autoReveal" class="checkbox-label">
+            <input type="checkbox" id="autoReveal" checked>
+            <span>Auto Reveal</span>
+        </label>
+        
+        <label for="experimental" class="checkbox-label">
+            <input type="checkbox" id="experimental">
+            <span>Experimental</span>
+        </label>
+        <p class="checkbox-description">Adds extra reveal density to content areas of your SVG for more detailed coverage.</p>
+        
+        <button id="resetMask" class="reset-button">Reset mask</button>
+    </div>
+    
+    <div id="svgContainer" class="svg-canvas"></div>
+    
+    <div class="keyboard-hint">Press R to reset • Press ` to toggle UI</div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
