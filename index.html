@@ -511,7 +511,7 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
         terminalInput.addEventListener('input', (e) => {
             const input = e.target.textContent.trim();
 
-            if (input === '/') {
+            if (input === '/' || input.startsWith('/')) {
                 showCommandHints();
             } else {
                 hideCommandHints();
@@ -560,6 +560,7 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
         }
 
         function selectCommand(cmd) {
+            // Clear the "/" and replace with the command
             terminalInput.textContent = cmd;
             hideCommandHints();
             terminalInput.focus();
