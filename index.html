@@ -3,104 +3,584 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dithered Camera</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>~/playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        @font-face {
+            font-family: Anthropic Sans;
+            src: url('https://cdn.prod.website-files.com/6889473510b50328dbb70ae6/68c8b3afb3bfa0054f8d947a_AnthropicSans-Romans-Variable-25x258.woff2') format("woff2");
+            font-weight: 300 800;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2b2b2b;
+            --bg-tertiary: #3a3a3a;
+            --text-primary: #e8e8e8;
+            --text-secondary: #9b9b9b;
+            --accent: #e8e8e8;
+            --border: #404040;
+            --terminal-bg: #1f1f1f;
+            --terminal-text: #e8e8e8;
+        }
+
+        body {
+            font-family: 'Anthropic Sans', Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .terminal-container {
+            display: inline-block;
+            max-width: 800px;
+            width: 100%;
+            box-shadow:
+                0 2px 4px rgba(0, 0, 0, 0.06),
+                0 4px 8px rgba(0, 0, 0, 0.08),
+                0 8px 16px rgba(0, 0, 0, 0.1),
+                0 16px 32px rgba(0, 0, 0, 0.08);
+            border-radius: 8px;
+        }
+
+        .terminal-header {
+            background-color: var(--bg-tertiary);
+            padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px 8px 0 0;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .terminal-header:active {
+            cursor: grabbing;
+        }
+
+        .terminal-container.dragging {
+            position: fixed;
+            z-index: 1000;
+        }
+
+        .terminal-buttons {
+            display: flex;
+            gap: 0.375rem;
+        }
+
+        .terminal-button {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .terminal-button.close {
+            background-color: #ff5f56;
+        }
+
+        .terminal-button.minimize {
+            background-color: #ffbd2e;
+        }
+
+        .terminal-button.maximize {
+            background-color: #27c93f;
+        }
+
+        .terminal-title {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .terminal-body {
+            background-color: var(--terminal-bg);
+            padding: 1.5rem 1.5rem 0.75rem 1.5rem;
+            height: 500px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            line-height: 1.4;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .terminal-content {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .terminal-input-wrapper {
+            flex-shrink: 0;
+            padding-bottom: 0.75rem;
+        }
+
+        .terminal-body::-webkit-scrollbar {
+            width: 14px;
+        }
+
+        .terminal-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            border: 4px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .terminal-body::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+            background-clip: padding-box;
+        }
+
+        .prompt-line {
+            margin-bottom: 1.5rem;
+            color: var(--terminal-text);
+        }
+
+        .user {
+            color: #c96442;
+            font-weight: 500;
+        }
+
+        .prompt {
+            color: var(--text-secondary);
+        }
+
+        .path {
+            color: #9b9b9b;
+        }
+
+        .command {
+            color: var(--text-primary);
+        }
+
+        .output {
+            margin-top: 1.5rem;
+        }
+
+        .directory-header {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .project-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.25rem 1.5rem;
+            line-height: 1.6;
+        }
+
+        .project-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .project-item::before {
+            content: "drwxr-xr-x";
+            color: var(--text-secondary);
+            margin-right: 1rem;
+            font-size: 0.75rem;
+            opacity: 0.6;
+        }
+
+        .project-link {
+            color: #6b9bff;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .project-link:hover {
+            text-decoration: underline;
+            color: #8fb4ff;
+        }
+
+        .cursor {
+            display: inline-block;
+            color: var(--terminal-text);
+            animation: blink 1s infinite;
+            margin-left: 2px;
+            font-weight: bold;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        #terminal-input {
+            outline: none;
+            border: none;
+            background: transparent;
+            color: var(--terminal-text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            min-width: 10px;
+            caret-color: var(--terminal-text);
+        }
+
+        #command-output {
+            color: var(--terminal-text);
+        }
+
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .terminal-body {
+                padding: 1rem;
+                font-size: 0.8125rem;
+                height: 400px;
+            }
+
+            .project-list {
+                grid-template-columns: 1fr;
+            }
+
+            .project-item::before {
+                font-size: 0.65rem;
+                margin-right: 0.5rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="camera-container">
-        <video id="video" autoplay playsinline></video>
-        <canvas id="canvas"></canvas>
-    </div>
-
-    <!-- Minimal UI Controls -->
-    <div class="camera-controls">
-        <!-- Last Photo Thumbnail (Bottom Left) -->
-        <button id="galleryBtn" class="control-btn gallery-btn" aria-label="View Gallery">
-            <div id="lastPhotoThumb" class="photo-thumb"></div>
-        </button>
-
-        <!-- Main Action Button (Bottom Center) -->
-        <button id="actionBtn" class="action-btn" aria-label="Start Camera">
-            <span class="action-inner"></span>
-        </button>
-
-        <!-- Settings Button (Bottom Right) -->
-        <button id="settingsBtn" class="control-btn settings-btn" aria-label="Settings">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M12 1v6m0 6v6"></path>
-                <path d="M4.22 4.22l1.42 1.42m12.72 0l1.42-1.42"></path>
-                <path d="M1 12h6m6 0h6"></path>
-                <path d="M4.22 19.78l1.42-1.42m12.72 0l1.42 1.42"></path>
-            </svg>
-        </button>
-    </div>
-
-    <!-- Settings Panel (Drop-up) -->
-    <div id="settingsPanel" class="settings-panel">
-        <div class="settings-header">
-            <h2>Settings</h2>
-            <button id="closeSettings" class="close-btn" aria-label="Close Settings">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div class="terminal-buttons">
+                <span class="terminal-button close"></span>
+                <span class="terminal-button minimize"></span>
+                <span class="terminal-button maximize"></span>
+            </div>
+            <div class="terminal-title">~/playground</div>
         </div>
-
-        <div class="settings-content">
-            <div class="setting-group">
-                <label class="setting-label">
-                    <span class="label-text">Dither Algorithm</span>
-                    <select id="ditherAlgorithm" class="select">
-                        <option value="floyd-steinberg">Floyd-Steinberg</option>
-                        <option value="atkinson">Atkinson</option>
-                        <option value="jarvis">Jarvis-Judice-Ninke</option>
-                        <option value="stucki">Stucki</option>
-                        <option value="burkes">Burkes</option>
-                        <option value="sierra">Sierra</option>
-                        <option value="sierra-two">Two-Row Sierra</option>
-                        <option value="sierra-lite">Sierra Lite</option>
-                        <option value="ordered">Ordered (Bayer)</option>
-                        <option value="halftone">Halftone Dots</option>
-                        <option value="random">Random Threshold</option>
-                        <option value="simple">Simple Threshold</option>
-                    </select>
-                </label>
+        <div class="terminal-body">
+            <div class="terminal-content">
+                <pre style="color: #c96442; line-height: 1.2; margin-bottom: 1.5rem; font-size: 0.75rem;">   ▗▖ ▗▄▖ ▗▖ ▗▖▗▖  ▗▖▗▖  ▗▖▗▄▄▄▖▗▄▄▄▖ ▗▄▄▖
+   ▐▌▐▌ ▐▌▐▌ ▐▌▐▛▚▖▐▌▐▛▚▖▐▌  █  ▐▌   ▐▌
+   ▐▌▐▌ ▐▌▐▛▀▜▌▐▌ ▝▜▌▐▌ ▝▜▌  █  ▐▛▀▀▘ ▝▀▚▖
+▗▄▄▞▘▝▚▄▞▘▐▌ ▐▌▐▌  ▐▌▐▌  ▐▌▗▄█▄▖▐▙▄▄▖▗▄▄▞▘</pre>
+                <div class="output">
+                    <ul class="project-list">
+                        <li class="project-item">
+                            <a href="dithered/" class="project-link">dithered/</a>
+                        </li>
+                        <li class="project-item">
+                            <a href="jitter/" class="project-link">jitter/</a>
+                        </li>
+                        <li class="project-item">
+                            <a href="liquid/" class="project-link">liquid/</a>
+                        </li>
+                        <li class="project-item">
+                            <a href="mask/" class="project-link">mask/</a>
+                        </li>
+                        <li class="project-item">
+                            <a href="orb/" class="project-link">orb/</a>
+                        </li>
+                        <li class="project-item">
+                            <a href="toaster/" class="project-link">toaster/</a>
+                        </li>
+                        <li class="project-item">
+                            <a href="water/" class="project-link">water/</a>
+                        </li>
+                    </ul>
+                </div>
+                <div id="command-history"></div>
             </div>
 
-            <div class="setting-group">
-                <label class="setting-label">
-                    <span class="label-text">Threshold: <span id="thresholdValue" class="value">128</span></span>
-                    <input type="range" id="threshold" min="0" max="255" value="128" class="slider">
-                </label>
-            </div>
-
-            <div class="setting-group">
-                <label class="setting-label">
-                    <span class="label-text">Grain Size: <span id="grainValue" class="value">1</span></span>
-                    <input type="range" id="grainSize" min="1" max="8" value="1" step="1" class="slider">
-                </label>
+            <div class="terminal-input-wrapper">
+                <div class="prompt-line" style="padding-top: 2rem; margin-bottom: 0;">
+                    <span class="user">johnnie</span><span class="prompt">@</span><span class="user">local</span><span class="prompt">:</span><span class="path">~/playground</span><span class="prompt">$</span> <span id="terminal-input" contenteditable="true" spellcheck="false"></span><span class="cursor">_</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Gallery Panel -->
-    <div id="galleryPanel" class="gallery-panel">
-        <div class="gallery-header">
-            <h2>Gallery</h2>
-            <button id="closeGallery" class="close-btn" aria-label="Close Gallery">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </div>
-        <div id="galleryGrid" class="gallery-grid"></div>
-    </div>
+    <canvas id="matrix-canvas"></canvas>
 
-    <div id="error" class="error"></div>
+    <script>
+        // Konami code detection
+        const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA'];
+        let konamiIndex = 0;
+        let matrixEnabled = false;
 
-    <script src="script.js"></script>
+        // Terminal commands
+        const commands = {
+            help: `Available commands:
+  help      - Show this help message
+  whoami    - Display current user
+  ls        - List projects (already shown!)
+  cowsay    - Make a cow say something
+  clear     - Clear the terminal
+  matrix    - Toggle matrix effect
+
+Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!`,
+
+            whoami: 'johnnie',
+
+            ls: 'Projects already listed above!',
+
+            cowsay: (args) => {
+                const message = args.join(' ') || 'Hello from the terminal!';
+                return ` ${'_'.repeat(message.length + 2)}
+< ${message} >
+ ${'-'.repeat(message.length + 2)}
+        \\   ^__^
+         \\  (oo)\\_______
+            (__)\\       )\\/\\
+                ||----w |
+                ||     ||`;
+            },
+
+            clear: () => {
+                const output = document.getElementById('command-output');
+                output.innerHTML = '';
+                return '';
+            },
+
+            matrix: () => {
+                matrixEnabled = !matrixEnabled;
+                toggleMatrix();
+                return `Matrix effect ${matrixEnabled ? 'enabled' : 'disabled'}`;
+            },
+
+            exit: () => {
+                return 'Type commands anytime! Matrix effect available via Konami code.';
+            }
+        };
+
+        // Konami code listener
+        document.addEventListener('keydown', (e) => {
+            if (e.code === konamiCode[konamiIndex]) {
+                konamiIndex++;
+                if (konamiIndex === konamiCode.length) {
+                    konamiIndex = 0;
+                    activateMatrix();
+                }
+            } else {
+                konamiIndex = 0;
+            }
+        });
+
+        function activateMatrix() {
+            const output = document.getElementById('command-output');
+
+            const asciiArt = `
+    _____ ____  __  __ __  __    _    _   _ ____
+   / ____/ __ \\|  \\/  |  \\/  |  / \\  | \\ | |  _ \\
+  | |   | |  | | |\\/| | |\\/| | / _ \\ |  \\| | | | |
+  | |___| |__| | |  | | |  | |/ ___ \\| |\\  | |_| |
+   \\_____\\____/|_|  |_|_|  |_/_/   \\_\\_| \\_|____/
+
+   __  __  ___  ____  _____
+  |  \\/  |/ _ \\|  _ \\| ____|
+  | |\\/| | | | | | | |  _|
+  | |  | | |_| | |_| | |___
+  |_|  |_|\\___/|____/|_____|
+
+  Matrix mode activated!
+            `;
+
+            output.innerHTML = `<pre style="color: #c96442; line-height: 1.2; margin: 1rem 0;">${asciiArt}</pre>`;
+
+            matrixEnabled = true;
+            toggleMatrix();
+
+            setTimeout(() => {
+                output.innerHTML = '';
+            }, 3000);
+        }
+
+        // Focus terminal input when clicking in terminal
+        document.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'A' && e.target.closest('.terminal-body')) {
+                document.getElementById('terminal-input').focus();
+            }
+        });
+
+        // Handle terminal input
+        const terminalInput = document.getElementById('terminal-input');
+        const commandHistory = document.getElementById('command-history');
+
+        terminalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const input = e.target.textContent.trim();
+
+                if (!input) {
+                    return;
+                }
+
+                // Create command echo
+                const cmdLine = document.createElement('div');
+                cmdLine.className = 'prompt-line';
+                cmdLine.style.marginTop = '2rem';
+                cmdLine.innerHTML = `<span class="user">johnnie</span><span class="prompt">@</span><span class="user">local</span><span class="prompt">:</span><span class="path">~/playground</span><span class="prompt">$</span> <span style="color: var(--text-primary)">${input}</span>`;
+                commandHistory.appendChild(cmdLine);
+
+                // Process command
+                const parts = input.split(' ');
+                const cmd = parts[0];
+                const args = parts.slice(1);
+
+                let result = '';
+                if (commands[cmd]) {
+                    result = typeof commands[cmd] === 'function' ? commands[cmd](args) : commands[cmd];
+                } else if (cmd) {
+                    result = `Command not found: ${cmd}. Type 'help' for available commands.`;
+                }
+
+                if (result) {
+                    const resultDiv = document.createElement('pre');
+                    resultDiv.style.margin = '0.5rem 0 0 0';
+                    resultDiv.style.whiteSpace = 'pre-wrap';
+                    resultDiv.textContent = result;
+                    commandHistory.appendChild(resultDiv);
+                }
+
+                // Clear input
+                e.target.textContent = '';
+
+                // Scroll to bottom
+                const terminalBody = document.querySelector('.terminal-body');
+                terminalBody.scrollTop = terminalBody.scrollHeight;
+            }
+        });
+
+        // Matrix rain effect
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const columns = Math.floor(canvas.width / 20);
+        const drops = Array(columns).fill(0).map(() => Math.floor(Math.random() * canvas.height / 20));
+
+        function drawMatrix() {
+            if (!matrixEnabled) return;
+
+            ctx.fillStyle = 'rgba(26, 26, 26, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#c96442';
+            ctx.font = '15px monospace';
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = String.fromCharCode(0x30A0 + Math.random() * 96);
+                ctx.fillText(text, i * 20, drops[i] * 20);
+
+                if (drops[i] * 20 > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        let matrixInterval;
+
+        function toggleMatrix() {
+            const canvas = document.getElementById('matrix-canvas');
+            if (matrixEnabled) {
+                canvas.style.display = 'block';
+                matrixInterval = setInterval(drawMatrix, 33);
+            } else {
+                canvas.style.display = 'none';
+                clearInterval(matrixInterval);
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Draggable terminal window
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        const terminalContainer = document.querySelector('.terminal-container');
+        const terminalHeader = document.querySelector('.terminal-header');
+
+        terminalHeader.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            if (e.target === terminalHeader || terminalHeader.contains(e.target)) {
+                isDragging = true;
+                terminalContainer.classList.add('dragging');
+
+                // Get current position
+                const rect = terminalContainer.getBoundingClientRect();
+
+                // Calculate offset between mouse position and element position
+                dragOffsetX = e.clientX - rect.left;
+                dragOffsetY = e.clientY - rect.top;
+
+                // Convert to fixed positioning if not already
+                if (terminalContainer.style.position !== 'fixed') {
+                    terminalContainer.style.position = 'fixed';
+                    terminalContainer.style.left = rect.left + 'px';
+                    terminalContainer.style.top = rect.top + 'px';
+                    terminalContainer.style.margin = '0';
+                }
+            }
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+
+                // Set position based on mouse position minus the offset
+                const newX = e.clientX - dragOffsetX;
+                const newY = e.clientY - dragOffsetY;
+
+                terminalContainer.style.left = newX + 'px';
+                terminalContainer.style.top = newY + 'px';
+            }
+        }
+
+        function dragEnd(e) {
+            isDragging = false;
+        }
+    </script>
 </body>
 </html>

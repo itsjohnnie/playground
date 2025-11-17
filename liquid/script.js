@@ -46,7 +46,7 @@ let physicsMode = 'sph';
 
 // SPH Physics constants - matching reference implementation
 const SPH_GRAVITY = 0.05;
-const SPH_PARTICLE_COUNT = 700;
+const SPH_PARTICLE_COUNT = 600;
 const SPH_PARTICLE_RADIUS = 2.5;
 const INTERACTION_RADIUS = 16;
 const INTERACTION_RADIUS_SQ = INTERACTION_RADIUS * INTERACTION_RADIUS;
