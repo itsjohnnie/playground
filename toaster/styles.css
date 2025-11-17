@@ -22,10 +22,10 @@ body {
     bottom: 40px;
     left: 50%;
     transform: translateX(-50%) translateY(150px);
-    display: inline-flex;
+    display: flex;
     justify-content: center;
     align-items: center;
-    padding: 20px 0;
+    padding: 18px 0;
     border-radius: 56px;
     z-index: 1000;
     backdrop-filter: blur(6px);
@@ -33,7 +33,7 @@ body {
     overflow: hidden;
     transition: none;
     text-align: center;
-    max-width: 0;
+    width: 0;
     white-space: nowrap;
     font-size: 1.25rem;
     font-weight: 600;
@@ -56,6 +56,7 @@ body {
     padding: 0 28px;
     position: relative;
     z-index: 3;
+    flex-shrink: 0;
     background: linear-gradient(180deg, #FFF 0%, rgba(255, 255, 255, 0.60) 100%);
     color: transparent;
     background-clip: text;
@@ -82,22 +83,22 @@ body {
 
 .toast.show {
     transform: translateX(-50%) translateY(0);
-    max-width: 90vw;
+    width: auto;
     opacity: 1;
     filter: blur(0px);
     transition: transform 1.2s cubic-bezier(0.19, 1, 0.22, 1),
-                max-width 1.2s cubic-bezier(0.19, 1, 0.22, 1),
+                width 1.2s cubic-bezier(0.19, 1, 0.22, 1),
                 opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1),
                 filter 1.2s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .toast.hide {
     transform: translateX(-50%) translateY(-24px);
-    max-width: 0;
+    width: 0;
     opacity: 0;
     filter: blur(12px);
     transition: transform 1.6s cubic-bezier(0.4, 0, 0.2, 1),
-                max-width 1.6s cubic-bezier(0.4, 0, 0.2, 1),
+                width 1.6s cubic-bezier(0.4, 0, 0.2, 1),
                 opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1),
                 filter 1.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -110,7 +111,7 @@ body {
 /* Mobile Responsive */
 @media (max-width: 640px) {
     .toast {
-        padding: 16px 0;
+        padding: 14px 0;
         font-size: 0.9rem;
         bottom: calc(30px + env(safe-area-inset-bottom));
         white-space: nowrap;
