@@ -257,7 +257,6 @@
             max-height: 300px;
             overflow-y: auto;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            min-width: 200px;
         }
 
         .command-hint-header {
@@ -543,11 +542,15 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
                 commandItems.push(item);
             });
 
-            // Position the hint above and to the left of the input
+            // Position the hint above the input, full width of terminal body
+            const terminalBody = document.querySelector('.terminal-body');
             const inputWrapper = document.querySelector('.terminal-input-wrapper');
-            const rect = inputWrapper.getBoundingClientRect();
-            commandHint.style.bottom = (window.innerHeight - rect.top + 10) + 'px';
-            commandHint.style.left = rect.left + 'px';
+            const bodyRect = terminalBody.getBoundingClientRect();
+            const inputRect = inputWrapper.getBoundingClientRect();
+
+            commandHint.style.bottom = (window.innerHeight - inputRect.top + 10) + 'px';
+            commandHint.style.left = bodyRect.left + 'px';
+            commandHint.style.width = bodyRect.width + 'px';
 
             document.body.appendChild(commandHint);
         }
