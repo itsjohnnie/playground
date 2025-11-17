@@ -646,9 +646,12 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
                     const cmd = parts[0];
                     const args = parts.slice(1);
 
-                    if (commands[cmd]) {
+                    if (!cmd) {
+                        // Just "/" was entered, show available commands
+                        result = `Type '/' to see available commands, or use /help for more info.`;
+                    } else if (commands[cmd]) {
                         result = typeof commands[cmd] === 'function' ? commands[cmd](args) : commands[cmd];
-                    } else if (cmd) {
+                    } else {
                         result = `Command not found: /${cmd}. Type '/' for available commands.`;
                     }
                 } else {
