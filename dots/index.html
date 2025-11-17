@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P5 Pill Grid</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 20, 20, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            min-width: 200px;
+            color: #fff;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.6;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+        }
+
+        .control-group button {
+            width: 100%;
+            padding: 10px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .control-group button:hover {
+            background: #444;
+        }
+
+        .control-group select {
+            width: 100%;
+            padding: 8px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .control-group select:hover {
+            background: #444;
+        }
+
+        .value-display {
+            float: right;
+            opacity: 1;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <div class="control-group">
+            <label>Grid Density <span class="value-display" id="gridValue">40</span></label>
+            <input type="range" id="gridSlider" min="2" max="80" value="40">
+        </div>
+
+        <div class="control-group">
+            <label>Pill Count <span class="value-display" id="countValue">200</span></label>
+            <input type="range" id="countSlider" min="80" max="500" value="200">
+        </div>
+
+        <div class="control-group">
+            <label>Speed <span class="value-display" id="speedValue">1.0x</span></label>
+            <input type="range" id="speedSlider" min="5" max="30" value="10" step="1">
+        </div>
+
+        <div class="control-group">
+            <label>Stretch <span class="value-display" id="stretchValue">2.5</span></label>
+            <input type="range" id="stretchSlider" min="0" max="5" value="2.5" step="0.1">
+        </div>
+
+        <div class="control-group">
+            <label>Concurrent Movement <span class="value-display" id="frequencyValue">50%</span></label>
+            <input type="range" id="frequencySlider" min="1" max="100" value="50" step="1">
+        </div>
+
+        <div class="control-group">
+            <label>Overshoot/Bounce <span class="value-display" id="overshootValue">0.0</span></label>
+            <input type="range" id="overshootSlider" min="0" max="2" value="0" step="0.1">
+        </div>
+
+        <div class="control-group">
+            <label>Grid Opacity <span class="value-display" id="opacityValue">60</span></label>
+            <input type="range" id="opacitySlider" min="0" max="255" value="60" step="5">
+        </div>
+
+        <div class="control-group">
+            <label>Grid Thickness <span class="value-display" id="thicknessValue">3</span></label>
+            <input type="range" id="thicknessSlider" min="1" max="8" value="3" step="0.5">
+        </div>
+
+        <div class="control-group">
+            <label>Easing</label>
+            <select id="easingSelect">
+                <option value="inOutCubic" selected>Cubic</option>
+                <option value="inOutQuad">Quadratic</option>
+                <option value="inOutSine">Sine</option>
+                <option value="linear">Linear</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <button id="regenerate">Regenerate</button>
+        </div>
+    </div>
+
+    <script src="sketch.js"></script>
+    <script>
+        // Setup controls
+        document.getElementById('gridSlider').addEventListener('input', (e) => {
+            gridSize = parseInt(e.target.value);
+            document.getElementById('gridValue').textContent = gridSize;
+            let compositionSize = min(windowWidth, windowHeight - 128);
+            cellSize = compositionSize / gridSize;
+        });
+
+        document.getElementById('countSlider').addEventListener('input', (e) => {
+            pillCount = parseInt(e.target.value);
+            document.getElementById('countValue').textContent = pillCount;
+            regeneratePills();
+        });
+
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            animationSpeed = parseInt(e.target.value) / 10;
+            document.getElementById('speedValue').textContent = animationSpeed.toFixed(1) + 'x';
+        });
+
+        document.getElementById('stretchSlider').addEventListener('input', (e) => {
+            stretchAmount = parseFloat(e.target.value);
+            document.getElementById('stretchValue').textContent = stretchAmount.toFixed(1);
+        });
+
+        document.getElementById('frequencySlider').addEventListener('input', (e) => {
+            movementFrequency = parseInt(e.target.value);
+            document.getElementById('frequencyValue').textContent = movementFrequency + '%';
+        });
+
+        document.getElementById('overshootSlider').addEventListener('input', (e) => {
+            overshoot = parseFloat(e.target.value);
+            document.getElementById('overshootValue').textContent = overshoot.toFixed(1);
+        });
+
+        document.getElementById('opacitySlider').addEventListener('input', (e) => {
+            gridOpacity = parseInt(e.target.value);
+            document.getElementById('opacityValue').textContent = gridOpacity;
+        });
+
+        document.getElementById('thicknessSlider').addEventListener('input', (e) => {
+            gridThickness = parseFloat(e.target.value);
+            document.getElementById('thicknessValue').textContent = gridThickness;
+        });
+
+        document.getElementById('easingSelect').addEventListener('change', (e) => {
+            easingType = e.target.value;
+        });
+
+        document.getElementById('regenerate').addEventListener('click', () => {
+            regeneratePills();
+        });
+    </script>
+</body>
+</html>
