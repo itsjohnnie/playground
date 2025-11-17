@@ -137,6 +137,7 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
             max-width: 100%;
+            padding-bottom: 0;
         }
 
         .terminal-input-wrapper {
@@ -163,6 +164,7 @@
             );
             pointer-events: none;
             z-index: 0;
+            transition: opacity 0.3s ease;
         }
 
         .blur-layer {
@@ -171,6 +173,7 @@
             right: 0;
             pointer-events: none;
             z-index: 0;
+            transition: opacity 0.3s ease;
         }
 
         .blur-layer-1 { top: -3rem; height: 0.2rem; backdrop-filter: blur(0.5px); -webkit-backdrop-filter: blur(0.5px); }
@@ -959,6 +962,45 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
         // Auto-focus terminal input on page load
         window.addEventListener('load', () => {
             terminalInput.focus();
+        });
+
+        // Fade out blur layers when scrolled to bottom
+        const terminalBody = document.querySelector('.terminal-body');
+        const inputWrapper = document.querySelector('.terminal-input-wrapper');
+        const blurLayers = document.querySelectorAll('.blur-layer');
+        const gradientLayer = inputWrapper.querySelector('::before');
+
+        terminalBody.addEventListener('scroll', () => {
+            const scrollTop = terminalBody.scrollTop;
+            const scrollHeight = terminalBody.scrollHeight;
+            const clientHeight = terminalBody.clientHeight;
+
+            // Calculate how close to bottom (0 = at top, 1 = at bottom)
+            const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+
+            // Start fading out when 90% scrolled
+            if (scrollPercentage > 0.9) {
+                const fadeAmount = (scrollPercentage - 0.9) / 0.1; // 0 to 1 in last 10%
+                const opacity = 1 - fadeAmount;
+
+                // Fade out all blur layers and gradient
+                blurLayers.forEach(layer => {
+                    layer.style.opacity = opacity;
+                });
+
+                // Fade out gradient background
+                const beforeElement = inputWrapper.querySelector('::before');
+                if (beforeElement) {
+                    beforeElement.style.opacity = opacity;
+                }
+                inputWrapper.style.setProperty('--gradient-opacity', opacity);
+            } else {
+                // Reset to full opacity
+                blurLayers.forEach(layer => {
+                    layer.style.opacity = 1;
+                });
+                inputWrapper.style.setProperty('--gradient-opacity', 1);
+            }
         });
 
         // Draggable terminal window
