@@ -542,15 +542,18 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
                 commandItems.push(item);
             });
 
-            // Position the hint above the input, full width of terminal body
+            // Position the hint above the input, matching content width (with padding)
             const terminalBody = document.querySelector('.terminal-body');
             const inputWrapper = document.querySelector('.terminal-input-wrapper');
             const bodyRect = terminalBody.getBoundingClientRect();
             const inputRect = inputWrapper.getBoundingClientRect();
 
+            // Account for the 1.5rem padding on each side
+            const padding = parseFloat(getComputedStyle(terminalBody).paddingLeft);
+
             commandHint.style.bottom = (window.innerHeight - inputRect.top + 10) + 'px';
-            commandHint.style.left = bodyRect.left + 'px';
-            commandHint.style.width = bodyRect.width + 'px';
+            commandHint.style.left = (bodyRect.left + padding) + 'px';
+            commandHint.style.width = (bodyRect.width - padding * 2) + 'px';
 
             document.body.appendChild(commandHint);
         }
