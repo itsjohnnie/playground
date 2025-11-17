@@ -552,7 +552,7 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
             // Account for the 1.5rem padding on each side
             const padding = parseFloat(getComputedStyle(terminalBody).paddingLeft);
 
-            commandHint.style.bottom = (window.innerHeight - inputRect.top + 10) + 'px';
+            commandHint.style.bottom = (window.innerHeight - inputRect.top + 5) + 'px';
             commandHint.style.left = (bodyRect.left + padding) + 'px';
             commandHint.style.width = (bodyRect.width - padding * 2) + 'px';
 
