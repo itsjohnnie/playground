@@ -410,12 +410,12 @@
         // Terminal commands
         const commands = {
             help: `Available commands:
-  help      - Show this help message
-  whoami    - Display current user
-  ls        - List projects (already shown!)
-  cowsay    - Make a cow say something
-  clear     - Clear the terminal
-  matrix    - Toggle matrix effect
+  /help      - Show this help message
+  /whoami    - Display current user
+  /ls        - List projects (already shown!)
+  /cowsay    - Make a cow say something
+  /clear     - Clear the terminal
+  /matrix    - Toggle matrix effect
 
 Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!`,
 
@@ -560,8 +560,8 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
         }
 
         function selectCommand(cmd) {
-            // Clear the "/" and replace with the command
-            terminalInput.textContent = cmd;
+            // Keep the "/" prefix when selecting command
+            terminalInput.textContent = '/' + cmd;
             hideCommandHints();
             terminalInput.focus();
             // Move cursor to end
@@ -639,16 +639,20 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
                 cmdLine.innerHTML = `<span class="user">johnnie</span><span class="prompt">@</span><span class="user">local</span><span class="prompt">:</span><span class="path">~/playground</span><span class="prompt">$</span> <span style="color: var(--text-primary)">${input}</span>`;
                 commandHistory.appendChild(cmdLine);
 
-                // Process command
-                const parts = input.split(' ');
-                const cmd = parts[0];
-                const args = parts.slice(1);
-
+                // Process command - check for "/" prefix
                 let result = '';
-                if (commands[cmd]) {
-                    result = typeof commands[cmd] === 'function' ? commands[cmd](args) : commands[cmd];
-                } else if (cmd) {
-                    result = `Command not found: ${cmd}. Type 'help' or '/' for available commands.`;
+                if (input.startsWith('/')) {
+                    const parts = input.substring(1).split(' '); // Remove "/" and split
+                    const cmd = parts[0];
+                    const args = parts.slice(1);
+
+                    if (commands[cmd]) {
+                        result = typeof commands[cmd] === 'function' ? commands[cmd](args) : commands[cmd];
+                    } else if (cmd) {
+                        result = `Command not found: /${cmd}. Type '/' for available commands.`;
+                    }
+                } else {
+                    result = `Commands must start with '/'. Type '/' for available commands.`;
                 }
 
                 if (result) {
