@@ -703,3 +703,41 @@ window.deletePhoto = deletePhoto;
 
 // Initialize thumbnail on load
 updateThumbnail();
+
+// Toast Notification System
+const toast = document.getElementById('encouragementToast');
+const toastMessage = document.getElementById('toastMessage');
+
+const encouragingMessages = [
+    "You're doing amazing! 💫",
+    "Keep up the great work! ✨",
+    "You've got this! 🌟",
+    "Believe in yourself! 💪",
+    "You're making progress! 🚀",
+    "Stay positive! ☀️",
+    "You're stronger than you think! 💎",
+    "Every moment counts! ⏰",
+    "You're capable of amazing things! 🌈",
+    "Keep pushing forward! 🎯",
+    "Your potential is limitless! 🌠",
+    "You're on the right path! 🛤️",
+    "Trust the process! 🌱",
+    "You're making a difference! 💝",
+    "Stay focused and shine! ⭐"
+];
+
+function showToast() {
+    const randomMessage = encouragingMessages[Math.floor(Math.random() * encouragingMessages.length)];
+    toastMessage.textContent = randomMessage;
+    toast.classList.add('show');
+
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// Show toast every 10 seconds
+setInterval(showToast, 10000);
+
+// Show first toast after 2 seconds
+setTimeout(showToast, 2000);
