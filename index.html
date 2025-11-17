@@ -560,17 +560,39 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
         }
 
         function selectCommand(cmd) {
-            // Keep the "/" prefix when selecting command
-            terminalInput.textContent = '/' + cmd;
+            // Execute the command directly
             hideCommandHints();
+
+            const input = '/' + cmd;
+
+            // Create command echo
+            const cmdLine = document.createElement('div');
+            cmdLine.className = 'prompt-line';
+            cmdLine.style.marginTop = '2rem';
+            cmdLine.innerHTML = `<span class="user">johnnie</span><span class="prompt">@</span><span class="user">local</span><span class="prompt">:</span><span class="path">~/playground</span><span class="prompt">$</span> <span style="color: var(--text-primary)">${input}</span>`;
+            commandHistory.appendChild(cmdLine);
+
+            // Execute command
+            let result = '';
+            if (commands[cmd]) {
+                result = typeof commands[cmd] === 'function' ? commands[cmd]([]) : commands[cmd];
+            }
+
+            if (result) {
+                const resultDiv = document.createElement('pre');
+                resultDiv.style.margin = '0.5rem 0 0 0';
+                resultDiv.style.whiteSpace = 'pre-wrap';
+                resultDiv.textContent = result;
+                commandHistory.appendChild(resultDiv);
+            }
+
+            // Clear input
+            terminalInput.textContent = '';
             terminalInput.focus();
-            // Move cursor to end
-            const range = document.createRange();
-            const sel = window.getSelection();
-            range.selectNodeContents(terminalInput);
-            range.collapse(false);
-            sel.removeAllRanges();
-            sel.addRange(range);
+
+            // Scroll to bottom
+            const terminalBody = document.querySelector('.terminal-body');
+            terminalBody.scrollTop = terminalBody.scrollHeight;
         }
 
         function updateSelection() {
