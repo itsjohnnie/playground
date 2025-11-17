@@ -715,6 +715,11 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
             canvas.height = window.innerHeight;
         });
 
+        // Auto-focus terminal input on page load
+        window.addEventListener('load', () => {
+            terminalInput.focus();
+        });
+
         // Draggable terminal window
         let isDragging = false;
         let dragOffsetX = 0;
