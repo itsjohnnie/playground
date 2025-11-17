@@ -34,8 +34,8 @@ body {
     position: fixed;
     bottom: 40px;
     left: 50%;
-    transform: translateX(-50%) translateY(150px) scale(0.5);
-    -webkit-transform: translateX(-50%) translateY(150px) scale(0.5);
+    transform: translateX(-50%) translateY(150px);
+    -webkit-transform: translateX(-50%) translateY(150px);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -54,11 +54,7 @@ body {
     filter: blur(12px);
     -webkit-filter: blur(12px);
     will-change: transform, opacity, filter;
-    transition: transform 1.6s cubic-bezier(0.4, 0, 0.2, 1),
-                -webkit-transform 1.6s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1),
-                filter 1.3s cubic-bezier(0.4, 0, 0.2, 1),
-                -webkit-filter 1.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: none;
     background: radial-gradient(214.46% 115.1% at 51.74% 16.04%, rgba(55, 70, 74, 0.60) 0%, rgba(116, 128, 150, 0.10) 58.65%, rgba(214, 218, 227, 0.05) 100%);
     box-shadow: -4px -4px 24px 0 rgba(149, 159, 165, 0),
                 0 0.7px 0 0 rgba(255, 255, 255, 0.60) inset,
@@ -102,8 +98,8 @@ body {
 }
 
 .toast.show {
-    transform: translateX(-50%) translateY(0) scale(1);
-    -webkit-transform: translateX(-50%) translateY(0) scale(1);
+    transform: translateX(-50%) translateY(0);
+    -webkit-transform: translateX(-50%) translateY(0);
     width: auto;
     max-width: 90vw;
     opacity: 1;
@@ -118,21 +114,8 @@ body {
 }
 
 .toast.show.hide {
-    transform: translateX(-50%) translateY(-24px) scale(0.5);
-    -webkit-transform: translateX(-50%) translateY(-24px) scale(0.5);
-    opacity: 0;
-    filter: blur(12px);
-    -webkit-filter: blur(12px);
-    transition: transform 1.6s cubic-bezier(0.4, 0, 0.2, 1),
-                -webkit-transform 1.6s cubic-bezier(0.4, 0, 0.2, 1),
-                opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1),
-                filter 1.3s cubic-bezier(0.4, 0, 0.2, 1),
-                -webkit-filter 1.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.toast.hide {
-    transform: translateX(-50%) translateY(-24px) scale(0.5);
-    -webkit-transform: translateX(-50%) translateY(-24px) scale(0.5);
+    transform: translateX(-50%) translateY(-24px);
+    -webkit-transform: translateX(-50%) translateY(-24px);
     opacity: 0;
     filter: blur(12px);
     -webkit-filter: blur(12px);
