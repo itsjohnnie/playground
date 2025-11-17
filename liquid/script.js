@@ -5,6 +5,18 @@ const glCanvas = document.getElementById('glCanvas');
 const gl = glCanvas.getContext('webgl', { alpha: true, premultipliedAlpha: false });
 const permissionBtn = document.getElementById('requestPermission');
 const tiltDebug = document.getElementById('tiltDebug');
+const controlMessage = document.getElementById('controlMessage');
+
+// Detect if device is mobile
+const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+                 (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+
+// Set appropriate message
+if (isMobile) {
+    controlMessage.textContent = 'Tilt your device to move the liquid';
+} else {
+    controlMessage.textContent = 'Use arrow keys or WASD to tilt';
+}
 
 // Set canvas resolution
 const setCanvasSize = () => {
@@ -669,11 +681,14 @@ const renderWebGL = (time) => {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 };
 
-// Device motion handlers - enhanced sensitivity
+// Device motion handlers - tuned for mobile
 const handleOrientation = (event) => {
     if (event.beta !== null && event.gamma !== null) {
-        tiltX = Math.max(-1, Math.min(1, event.gamma / 30)); // More sensitive
-        tiltY = Math.max(-1, Math.min(1, event.beta / 30));
+        useDeviceMotion = true;
+        // beta: front-to-back tilt (-180 to 180), gamma: left-to-right tilt (-90 to 90)
+        // More sensitive for better response
+        tiltX = Math.max(-1, Math.min(1, event.gamma / 45));
+        tiltY = Math.max(-1, Math.min(1, (event.beta - 90) / 45)); // Normalize around portrait (90°)
     }
 };
 
@@ -683,7 +698,8 @@ const handleMotion = (event) => {
         const ay = event.accelerationIncludingGravity.y;
 
         if (ax !== null && ay !== null) {
-            // More sensitive for laptop detection
+            useDeviceMotion = true;
+            // Use acceleration for tilt
             tiltX = Math.max(-1, Math.min(1, ax / 5));
             tiltY = Math.max(-1, Math.min(1, -ay / 5));
         }
@@ -702,6 +718,7 @@ const requestPermission = async () => {
             if (permission === 'granted') {
                 window.addEventListener('deviceorientation', handleOrientation);
                 orientationGranted = true;
+                useDeviceMotion = true;
             }
         } catch (error) {
             console.error('DeviceOrientation permission denied:', error);
@@ -715,6 +732,7 @@ const requestPermission = async () => {
             if (permission === 'granted') {
                 window.addEventListener('devicemotion', handleMotion);
                 motionGranted = true;
+                useDeviceMotion = true;
             }
         } catch (error) {
             console.error('DeviceMotion permission denied:', error);
@@ -754,7 +772,10 @@ glCanvas.addEventListener('click', (e) => {
     pulseStrength = 1.0;
 });
 
-// Keyboard controls for tilt (since device motion isn't available)
+// Track if device motion is available
+let useDeviceMotion = false;
+
+// Keyboard controls for tilt (fallback when device motion isn't available)
 const keyState = {};
 
 window.addEventListener('keydown', (e) => {
@@ -765,8 +786,10 @@ window.addEventListener('keyup', (e) => {
     keyState[e.key] = false;
 });
 
-// Update tilt based on keyboard input
+// Update tilt based on keyboard input (only if device motion not available)
 const updateKeyboardTilt = () => {
+    if (useDeviceMotion) return; // Don't interfere with device motion
+
     const tiltSpeed = 0.02;
     const decay = 0.95;
 
