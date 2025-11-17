@@ -34,7 +34,7 @@ let physicsMode = 'sph';
 
 // SPH Physics constants - matching reference implementation
 const SPH_GRAVITY = 0.05;
-const SPH_PARTICLE_COUNT = 500;
+const SPH_PARTICLE_COUNT = 700;
 const SPH_PARTICLE_RADIUS = 2.5;
 const INTERACTION_RADIUS = 16;
 const INTERACTION_RADIUS_SQ = INTERACTION_RADIUS * INTERACTION_RADIUS;
@@ -201,9 +201,10 @@ const initParticles = () => {
     const particleCount = SPH_PARTICLE_COUNT;
     const ParticleClass = SPHParticle;
 
-    // Create particles in a dense, realistic distribution
+    // Create particles with uniform random distribution
     for (let i = 0; i < particleCount; i++) {
-        const angle = (Math.PI * 2 * i) / particleCount;
+        // Uniform random distribution within circle
+        const angle = Math.random() * Math.PI * 2;
         const radius = Math.sqrt(Math.random()) * initialRadius;
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius + canvas.height * 0.08;
@@ -577,11 +578,13 @@ const renderParticles = () => {
     }
 
     // Draw each particle as a colored circle
+    // Color scheme: Blue to Purple to Pink gradient
     for (let i = 0; i < particles.length; i++) {
         const p = particles[i];
-        const hue = (i * 360 / particles.length + debugFrameCount) % 360;
+        // Hue range: 200 (cyan/blue) to 320 (magenta/pink)
+        const hue = 200 + (i * 120 / particles.length + debugFrameCount * 0.5) % 120;
 
-        ctx.fillStyle = `hsla(${hue}, 95%, 50%, 1)`;
+        ctx.fillStyle = `hsla(${hue}, 85%, 60%, 1)`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();
@@ -743,60 +746,51 @@ if (needsPermission) {
 }
 
 
-// Add mouse interaction for desktop testing
-let mouseDown = false;
-let lastMouseX = 0;
-let lastMouseY = 0;
-let centerX = 0;
-let centerY = 0;
+// Add click interaction for pulse effect only
+let pulseStrength = 0;
 
-const updateMouseTilt = (e) => {
-    const rect = glCanvas.getBoundingClientRect();
-    centerX = rect.left + rect.width / 2;
-    centerY = rect.top + rect.height / 2;
-
-    const mouseX = e.clientX;
-    const mouseY = e.clientY;
-
-    // Calculate tilt based on mouse position relative to center
-    const dx = mouseX - centerX;
-    const dy = mouseY - centerY;
-
-    tiltX = Math.max(-1, Math.min(1, dx / (rect.width / 2)));
-    tiltY = Math.max(-1, Math.min(1, dy / (rect.height / 2)));
-};
-
-glCanvas.addEventListener('mousedown', (e) => {
-    mouseDown = true;
-    lastMouseX = e.clientX;
-    lastMouseY = e.clientY;
+glCanvas.addEventListener('click', (e) => {
+    // Create pulse effect on click
+    pulseStrength = 1.0;
 });
 
-glCanvas.addEventListener('mousemove', (e) => {
-    if (mouseDown) {
-        // Drag mode: relative movement
-        const dx = e.clientX - lastMouseX;
-        const dy = e.clientY - lastMouseY;
-        tiltX = Math.max(-1, Math.min(1, dx / 50));
-        tiltY = Math.max(-1, Math.min(1, dy / 50));
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
+// Keyboard controls for tilt (since device motion isn't available)
+const keyState = {};
+
+window.addEventListener('keydown', (e) => {
+    keyState[e.key] = true;
+});
+
+window.addEventListener('keyup', (e) => {
+    keyState[e.key] = false;
+});
+
+// Update tilt based on keyboard input
+const updateKeyboardTilt = () => {
+    const tiltSpeed = 0.02;
+    const decay = 0.95;
+
+    // Arrow keys or WASD
+    if (keyState['ArrowLeft'] || keyState['a'] || keyState['A']) {
+        tiltX = Math.max(-1, tiltX - tiltSpeed);
+    } else if (keyState['ArrowRight'] || keyState['d'] || keyState['D']) {
+        tiltX = Math.min(1, tiltX + tiltSpeed);
     } else {
-        // Hover mode: position-based tilt
-        updateMouseTilt(e);
+        // Decay back to center when no key pressed
+        tiltX *= decay;
+        if (Math.abs(tiltX) < 0.01) tiltX = 0;
     }
-});
 
-glCanvas.addEventListener('mouseup', () => {
-    mouseDown = false;
-});
-
-glCanvas.addEventListener('mouseleave', () => {
-    mouseDown = false;
-    // Reset tilt when mouse leaves
-    tiltX = 0;
-    tiltY = 0;
-});
+    if (keyState['ArrowUp'] || keyState['w'] || keyState['W']) {
+        tiltY = Math.max(-1, tiltY - tiltSpeed);
+    } else if (keyState['ArrowDown'] || keyState['s'] || keyState['S']) {
+        tiltY = Math.min(1, tiltY + tiltSpeed);
+    } else {
+        // Decay back to center when no key pressed
+        tiltY *= decay;
+        if (Math.abs(tiltY) < 0.01) tiltY = 0;
+    }
+};
 
 
 // Animation loop with fixed timestep
@@ -808,6 +802,9 @@ const fixedDt = 1000 / targetFPS / 1000; // Convert to seconds
 const animate = (currentTime) => {
     const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.1); // Cap at 100ms
     lastTime = currentTime;
+
+    // Update keyboard tilt controls
+    updateKeyboardTilt();
 
     // Smooth tilt transitions
     const smoothing = 0.1;
@@ -823,6 +820,29 @@ const animate = (currentTime) => {
     // Update SPH physics
     calculateSPH();
     particles.forEach(particle => particle.update(1));
+
+    // Apply pulse effect to particles
+    if (pulseStrength > 0) {
+        const canvasCenterX = canvas.width / 2;
+        const canvasCenterY = canvas.height / 2;
+
+        particles.forEach(particle => {
+            const dx = particle.x - canvasCenterX;
+            const dy = particle.y - canvasCenterY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > 0) {
+                // Push particles outward from center
+                const force = pulseStrength * 3;
+                particle.vx += (dx / dist) * force;
+                particle.vy += (dy / dist) * force;
+            }
+        });
+
+        // Decay pulse
+        pulseStrength *= 0.85;
+        if (pulseStrength < 0.01) pulseStrength = 0;
+    }
 
     // Render particles directly instead of metaballs
     renderParticles();
