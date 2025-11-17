@@ -4,6 +4,7 @@ const ctx = canvas.getContext('2d');
 const glCanvas = document.getElementById('glCanvas');
 const gl = glCanvas.getContext('webgl', { alpha: true, premultipliedAlpha: false });
 const permissionBtn = document.getElementById('requestPermission');
+const tiltDebug = document.getElementById('tiltDebug');
 
 // Set canvas resolution
 const setCanvasSize = () => {
@@ -28,17 +29,28 @@ const setCanvasSize = () => {
 
 setCanvasSize();
 
-// Physics constants - DRAMATICALLY enhanced for visible mobile movement
-const GRAVITY = 1.5;
-const DAMPING = 0.97;
-const PARTICLE_COUNT = 400;
-const PARTICLE_RADIUS = 2.8;
-const REST_DENSITY = 1.2;
-const GAS_CONSTANT = 5000;
-const VISCOSITY = 0.3;
-const SURFACE_TENSION = 0.08;
-const INTERACTION_RADIUS = 18;
-const BOUNCE_FORCE = 0.4; // Energy retention on bounce
+// Physics mode - SPH only
+let physicsMode = 'sph';
+
+// SPH Physics constants - matching reference implementation
+const SPH_GRAVITY = 0.05;
+const SPH_PARTICLE_COUNT = 500;
+const SPH_PARTICLE_RADIUS = 2.5;
+const INTERACTION_RADIUS = 16;
+const INTERACTION_RADIUS_SQ = INTERACTION_RADIUS * INTERACTION_RADIUS;
+const REST_DENSITY = 2.5;
+const FORCE_CONSTANT = 1;
+const NEAR_FORCE_CONSTANT = 1;
+const PLASTICITY = 0.1; // Viscosity coefficient
+
+// Grid Physics constants - tuned for liquid behavior
+const GRID_GRAVITY = 0.4;
+const GRID_DAMPING = 0.99; // Less damping
+const GRID_PARTICLE_COUNT = 400;
+const GRID_PARTICLE_RADIUS = 2.5;
+const GRID_BOUNCE = 0.4; // Less bouncy
+const GRID_FRICTION = 0.95; // More friction for cohesion
+const GRID_SIZE = 25; // Smaller cells for better collision detection
 
 // Device orientation - amplified for dramatic effect
 let tiltX = 0;
@@ -46,38 +58,100 @@ let tiltY = 0;
 let smoothTiltX = 0;
 let smoothTiltY = 0;
 
-// Enhanced SPH Particle class
-class Particle {
+// SPH Particle class - matching reference implementation
+class SPHParticle {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0;
+        this.fx = 0;
+        this.fy = 0;
+        this.radius = SPH_PARTICLE_RADIUS;
+        this.density = 0;
+        this.nearDensity = 0;
+        this.gridX = 0;
+        this.gridY = 0;
+    }
+
+    update(dt) {
+        // Apply gravity - downward force is constant, tilt just rotates the direction
+        const baseGravity = 0.15; // Stronger base gravity
+        const gravityX = smoothTiltX * baseGravity;
+        const gravityY = baseGravity + smoothTiltY * baseGravity;
+
+        this.vy += gravityY;
+        this.vx += gravityX;
+
+        // Apply forces from density pressure
+        if (this.density > 0) {
+            this.vx += this.fx / (this.density * 0.9 + 0.1);
+            this.vy += this.fy / (this.density * 0.9 + 0.1);
+        }
+
+        // Update position
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Circle boundary collision - constrain to circular boundary
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const maxRadius = canvas.width / 2 - 10; // 2px more padding from border
+
+        const dx = this.x - centerX;
+        const dy = this.y - centerY;
+        const distSq = dx * dx + dy * dy;
+        const maxRadiusSq = maxRadius * maxRadius;
+
+        if (distSq > maxRadiusSq) {
+            const distance = Math.sqrt(distSq);
+            const excess = distance - maxRadius;
+
+            // Push particle back inside
+            const nx = dx / distance;
+            const ny = dy / distance;
+
+            this.x = centerX + nx * maxRadius;
+            this.y = centerY + ny * maxRadius;
+
+            // Apply damping to velocity in the direction of the normal
+            const dot = this.vx * nx + this.vy * ny;
+            this.vx -= dot * nx * 1.5;
+            this.vy -= dot * ny * 1.5;
+        }
+    }
+}
+
+// Grid-based Particle class
+class GridParticle {
     constructor(x, y) {
         this.x = x;
         this.y = y;
         this.vx = (Math.random() - 0.5) * 2;
         this.vy = (Math.random() - 0.5) * 2;
-        this.radius = PARTICLE_RADIUS;
-        this.density = 0;
-        this.pressure = 0;
-        this.neighbors = [];
-        this.nearWall = false;
+        this.radius = GRID_PARTICLE_RADIUS;
+        this.gridX = 0;
+        this.gridY = 0;
+        this.density = 1.0; // Add density for rendering compatibility
     }
 
     update(dt) {
-        // Smooth tilt for more fluid response
-        const gravityMultiplier = 2.5; // Make gravity effect much stronger
-        const gravityX = smoothTiltX * GRAVITY * gravityMultiplier;
-        const gravityY = smoothTiltY * GRAVITY * gravityMultiplier + GRAVITY;
+        const gravityMultiplier = 2.5;
+        const gravityX = smoothTiltX * GRID_GRAVITY * gravityMultiplier;
+        const gravityY = smoothTiltY * GRID_GRAVITY * gravityMultiplier + GRID_GRAVITY;
 
         this.vx += gravityX * dt;
         this.vy += gravityY * dt;
 
         // Apply damping
-        this.vx *= DAMPING;
-        this.vy *= DAMPING;
+        this.vx *= GRID_DAMPING;
+        this.vy *= GRID_DAMPING;
 
         // Update position
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
-        // Circle boundary collision with dramatic bounce
+        // Circle boundary collision
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const maxRadius = canvas.width / 2 - this.radius * 3;
@@ -86,41 +160,59 @@ class Particle {
         const dy = this.y - centerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        this.nearWall = distance > maxRadius * 0.85;
-
         if (distance > maxRadius) {
             const angle = Math.atan2(dy, dx);
             this.x = centerX + Math.cos(angle) * maxRadius;
             this.y = centerY + Math.sin(angle) * maxRadius;
 
-            // Enhanced bounce with energy retention
             const normalX = dx / distance;
             const normalY = dy / distance;
             const dot = this.vx * normalX + this.vy * normalY;
 
-            // Add extra force to bounce for dramatic effect
-            this.vx -= 2 * dot * normalX * (1 + BOUNCE_FORCE);
-            this.vy -= 2 * dot * normalY * (1 + BOUNCE_FORCE);
+            this.vx = (this.vx - 2 * dot * normalX) * GRID_BOUNCE;
+            this.vy = (this.vy - 2 * dot * normalY) * GRID_BOUNCE;
         }
+
+        // Update grid position
+        this.gridX = Math.floor(this.x / GRID_SIZE);
+        this.gridY = Math.floor(this.y / GRID_SIZE);
     }
 }
 
 // Initialize particles after canvas is sized
 let particles = [];
+let spatialGrid = {};
+let neighbors = [];
+let neighborCount = 0;
+
+// Spatial grid setup
+const GRID_CELLS = 18;
+const gridScale = GRID_CELLS / canvas.width;
 
 const initParticles = () => {
     particles = [];
+    spatialGrid = {};
+    neighbors = [];
+
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
     const initialRadius = canvas.width * 0.3;
 
+    const particleCount = SPH_PARTICLE_COUNT;
+    const ParticleClass = SPHParticle;
+
     // Create particles in a dense, realistic distribution
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-        const angle = (Math.PI * 2 * i) / PARTICLE_COUNT;
+    for (let i = 0; i < particleCount; i++) {
+        const angle = (Math.PI * 2 * i) / particleCount;
         const radius = Math.sqrt(Math.random()) * initialRadius;
         const x = centerX + Math.cos(angle) * radius;
         const y = centerY + Math.sin(angle) * radius + canvas.height * 0.08;
-        particles.push(new Particle(x, y));
+        particles.push(new ParticleClass(x, y));
+    }
+
+    // Pre-allocate neighbor pairs
+    for (let i = 0; i < 10000; i++) {
+        neighbors[i] = { p1: null, p2: null, dist: 0, nx: 0, ny: 0, weight: 0 };
     }
 };
 
@@ -140,90 +232,181 @@ const smoothingKernelDerivative = (distance, radius) => {
     return (distance - radius) * scale;
 };
 
-// Calculate SPH properties
-const calculateSPH = () => {
-    // Calculate density and pressure
+// Spatial grid functions
+const getGridKey = (x, y) => `${x},${y}`;
+
+const updateSpatialGrid = () => {
+    spatialGrid = {};
+
     for (let i = 0; i < particles.length; i++) {
-        particles[i].density = 0;
-        particles[i].neighbors = [];
+        const particle = particles[i];
+        const key = getGridKey(particle.gridX, particle.gridY);
 
-        for (let j = 0; j < particles.length; j++) {
-            const dx = particles[j].x - particles[i].x;
-            const dy = particles[j].y - particles[i].y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+        if (!spatialGrid[key]) {
+            spatialGrid[key] = [];
+        }
+        spatialGrid[key].push(i);
+    }
+};
 
-            if (distance < INTERACTION_RADIUS) {
-                particles[i].neighbors.push(j);
-                const influence = smoothingKernel(distance, INTERACTION_RADIUS);
-                particles[i].density += influence;
+const getNeighbors = (particle) => {
+    const neighbors = [];
+    const checkRadius = 1;
+
+    for (let dx = -checkRadius; dx <= checkRadius; dx++) {
+        for (let dy = -checkRadius; dy <= checkRadius; dy++) {
+            const key = getGridKey(particle.gridX + dx, particle.gridY + dy);
+            const cell = spatialGrid[key];
+
+            if (cell) {
+                neighbors.push(...cell);
             }
         }
-
-        particles[i].pressure = GAS_CONSTANT * (particles[i].density - REST_DENSITY);
     }
 
-    // Calculate pressure and viscosity forces
+    return neighbors;
+};
+
+const resolveGridCollisions = () => {
+    const minDist = GRID_PARTICLE_RADIUS * 2;
+    const minDistSq = minDist * minDist;
+
     for (let i = 0; i < particles.length; i++) {
-        let pressureForceX = 0;
-        let pressureForceY = 0;
-        let viscosityForceX = 0;
-        let viscosityForceY = 0;
+        const p1 = particles[i];
+        const neighbors = getNeighbors(p1);
 
-        for (const j of particles[i].neighbors) {
-            if (i === j) continue;
+        for (const j of neighbors) {
+            if (i >= j) continue;
 
-            const dx = particles[j].x - particles[i].x;
-            const dy = particles[j].y - particles[i].y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+            const p2 = particles[j];
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const distSq = dx * dx + dy * dy;
 
-            if (distance < 0.001) continue;
+            if (distSq < minDistSq && distSq > 0) {
+                const dist = Math.sqrt(distSq);
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
 
-            const dirX = dx / distance;
-            const dirY = dy / distance;
+                // Separate particles
+                p1.x -= nx * overlap * 0.5;
+                p1.y -= ny * overlap * 0.5;
+                p2.x += nx * overlap * 0.5;
+                p2.y += ny * overlap * 0.5;
 
-            // Pressure force (enhanced)
-            const pressureGradient = smoothingKernelDerivative(distance, INTERACTION_RADIUS);
-            const sharedPressure = (particles[i].pressure + particles[j].pressure) / 2;
-            pressureForceX -= sharedPressure * dirX * pressureGradient / Math.max(particles[i].density, 0.1);
-            pressureForceY -= sharedPressure * dirY * pressureGradient / Math.max(particles[i].density, 0.1);
+                // Apply friction
+                const relVx = p2.vx - p1.vx;
+                const relVy = p2.vy - p1.vy;
+                const impulse = (relVx * nx + relVy * ny) * GRID_FRICTION;
 
-            // Viscosity force
-            const velocityDiffX = particles[j].vx - particles[i].vx;
-            const velocityDiffY = particles[j].vy - particles[i].vy;
-            const viscosityInfluence = smoothingKernel(distance, INTERACTION_RADIUS);
-            viscosityForceX += velocityDiffX * viscosityInfluence;
-            viscosityForceY += velocityDiffY * viscosityInfluence;
+                p1.vx += impulse * nx;
+                p1.vy += impulse * ny;
+                p2.vx -= impulse * nx;
+                p2.vy -= impulse * ny;
+            }
         }
+    }
+};
 
-        // Apply forces with enhanced scaling
-        particles[i].vx += pressureForceX * 0.8 + viscosityForceX * VISCOSITY;
-        particles[i].vy += pressureForceY * 0.8 + viscosityForceY * VISCOSITY;
+// Calculate SPH properties - reference implementation
+const calculateSPH = () => {
+    // Step 1: Update spatial grid
+    spatialGrid = {};
+    for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.fx = 0;
+        p.fy = 0;
+        p.density = 0;
+        p.nearDensity = 0;
+
+        p.gridX = Math.floor(p.x * gridScale);
+        p.gridY = Math.floor(p.y * gridScale);
+
+        // Clamp to grid bounds
+        p.gridX = Math.max(0, Math.min(GRID_CELLS - 1, p.gridX));
+        p.gridY = Math.max(0, Math.min(GRID_CELLS - 1, p.gridY));
     }
 
-    // Surface tension
+    // Step 2: Find neighbors and calculate density
+    neighborCount = 0;
+
     for (let i = 0; i < particles.length; i++) {
-        let surfaceNormalX = 0;
-        let surfaceNormalY = 0;
+        const pi = particles[i];
+        const minX = pi.gridX > 0;
+        const maxX = pi.gridX < GRID_CELLS - 1;
+        const minY = pi.gridY > 0;
+        const maxY = pi.gridY < GRID_CELLS - 1;
 
-        for (const j of particles[i].neighbors) {
-            if (i === j) continue;
+        // Check neighboring grid cells
+        const cellsToCheck = [[pi.gridX, pi.gridY]];
+        if (minX) cellsToCheck.push([pi.gridX - 1, pi.gridY]);
+        if (maxX) cellsToCheck.push([pi.gridX + 1, pi.gridY]);
+        if (minY) cellsToCheck.push([pi.gridX, pi.gridY - 1]);
+        if (maxY) cellsToCheck.push([pi.gridX, pi.gridY + 1]);
+        if (minX && minY) cellsToCheck.push([pi.gridX - 1, pi.gridY - 1]);
+        if (minX && maxY) cellsToCheck.push([pi.gridX - 1, pi.gridY + 1]);
+        if (maxX && minY) cellsToCheck.push([pi.gridX + 1, pi.gridY - 1]);
+        if (maxX && maxY) cellsToCheck.push([pi.gridX + 1, pi.gridY + 1]);
 
-            const dx = particles[j].x - particles[i].x;
-            const dy = particles[j].y - particles[i].y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+        for (let j = i + 1; j < particles.length; j++) {
+            const pj = particles[j];
 
-            if (distance < 0.001) continue;
+            const dx = pi.x - pj.x;
+            const dy = pi.y - pj.y;
+            const distSq = dx * dx + dy * dy;
 
-            const gradient = smoothingKernelDerivative(distance, INTERACTION_RADIUS);
-            surfaceNormalX += dx / distance * gradient;
-            surfaceNormalY += dy / distance * gradient;
+            if (distSq < INTERACTION_RADIUS_SQ) {
+                const dist = Math.sqrt(distSq);
+                const weight = 1 - dist / INTERACTION_RADIUS;
+                const densityContrib = weight * weight;
+
+                pi.density += densityContrib;
+                pj.density += densityContrib;
+
+                const nearDensityContrib = densityContrib * weight * NEAR_FORCE_CONSTANT;
+                pi.nearDensity += nearDensityContrib;
+                pj.nearDensity += nearDensityContrib;
+
+                // Store neighbor pair
+                if (neighborCount < neighbors.length) {
+                    const n = neighbors[neighborCount++];
+                    n.p1 = pi;
+                    n.p2 = pj;
+                    n.dist = dist;
+                    n.weight = weight;
+                    const invDist = 1 / dist;
+                    n.nx = dx * invDist;
+                    n.ny = dy * invDist;
+                }
+            }
         }
+    }
 
-        const normalLength = Math.sqrt(surfaceNormalX * surfaceNormalX + surfaceNormalY * surfaceNormalY);
-        if (normalLength > 0.01) {
-            particles[i].vx -= surfaceNormalX * SURFACE_TENSION;
-            particles[i].vy -= surfaceNormalY * SURFACE_TENSION;
-        }
+    // Step 3: Calculate pressure forces
+    for (let i = 0; i < neighborCount; i++) {
+        const n = neighbors[i];
+        const p1 = n.p1;
+        const p2 = n.p2;
+
+        // Pressure from density
+        const pressure = (p1.density + p2.density - REST_DENSITY * 2) * FORCE_CONSTANT;
+        const nearPressure = (p1.nearDensity + p2.nearDensity) * NEAR_FORCE_CONSTANT;
+        const pressureWeight = n.weight * (pressure + n.weight * nearPressure);
+
+        // Viscosity/plasticity
+        const plasticityWeight = n.weight * PLASTICITY;
+
+        let fx = n.nx * pressureWeight;
+        let fy = n.ny * pressureWeight;
+
+        fx += (p2.vx - p1.vx) * plasticityWeight;
+        fy += (p2.vy - p1.vy) * plasticityWeight;
+
+        p1.fx += fx;
+        p1.fy += fy;
+        p2.fx -= fx;
+        p2.fy -= fy;
     }
 };
 
@@ -290,7 +473,8 @@ const fragmentShaderSource = `
         vec2 pixelPos = uv * u_resolution;
         float density = texture2D(u_texture, uv).r;
 
-        if (density < 0.4) {
+        // Discard pixels with low density (threshold in 0-1 range)
+        if (density < 0.10) {
             discard;
         }
 
@@ -316,12 +500,10 @@ const fragmentShaderSource = `
         // Apply Bayer dithering
         float threshold = bayerMatrix4x4(pixelPos);
         float dithered = step(threshold, brightness);
-
-        // Output black or white
         vec3 color = vec3(dithered);
 
         // Smooth alpha at edges
-        float alpha = smoothstep(0.4, 0.6, density);
+        float alpha = smoothstep(0.2, 0.4, density);
 
         gl_FragColor = vec4(color, alpha);
     }
@@ -385,29 +567,62 @@ if (gl) {
     programInfo.texture = texture;
 }
 
-// Enhanced metaball rendering with higher quality
+// Simple particle rendering (colorful dots)
+const renderParticles = () => {
+    // Clear both canvases
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (gl) {
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+
+    // Draw each particle as a colored circle
+    for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const hue = (i * 360 / particles.length + debugFrameCount) % 360;
+
+        ctx.fillStyle = `hsla(${hue}, 95%, 50%, 1)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+    }
+};
+
+// Optimized metaball rendering with lower resolution (currently disabled)
 const renderMetaballs = () => {
-    const imageData = ctx.createImageData(canvas.width, canvas.height);
+    // Render at half resolution for performance
+    const scale = 0.5;
+    const renderWidth = Math.floor(canvas.width * scale);
+    const renderHeight = Math.floor(canvas.height * scale);
+
+    const imageData = ctx.createImageData(renderWidth, renderHeight);
     const data = imageData.data;
-    const width = imageData.width;
-    const height = imageData.height;
 
-    for (let x = 0; x < width; x++) {
-        for (let y = 0; y < height; y++) {
+    // Pre-calculate particle influence radius squared
+    const maxDistSq = 10000;
+    const radiusSqMultiplier = 400;
+
+    for (let y = 0; y < renderHeight; y++) {
+        for (let x = 0; x < renderWidth; x++) {
             let sum = 0;
+            const worldX = x / scale;
+            const worldY = y / scale;
 
-            for (const particle of particles) {
-                const dx = x - particle.x;
-                const dy = y - particle.y;
+            for (let i = 0; i < particles.length; i++) {
+                const particle = particles[i];
+                const dx = worldX - particle.x;
+                const dy = worldY - particle.y;
                 const distSq = dx * dx + dy * dy;
-                if (distSq > 0 && distSq < 10000) {
-                    const influence = Math.max(particle.density, 1.0);
-                    sum += (particle.radius * particle.radius * 400 * influence) / distSq;
+
+                if (distSq > 0 && distSq < maxDistSq) {
+                    sum += (particle.radius * particle.radius * radiusSqMultiplier) / distSq;
                 }
             }
 
-            const index = (y * width + x) * 4;
-            const value = Math.min(255, sum * 60);
+            const index = (y * renderWidth + x) * 4;
+            // Normalize sum to 0-1 range for better gradient
+            const normalized = Math.min(sum / 4, 1.0);
+            const value = Math.floor(normalized * 255);
             data[index] = value;
             data[index + 1] = value;
             data[index + 2] = value;
@@ -415,7 +630,9 @@ const renderMetaballs = () => {
         }
     }
 
+    // Scale up to full resolution
     ctx.putImageData(imageData, 0, 0);
+    ctx.drawImage(canvas, 0, 0, renderWidth, renderHeight, 0, 0, canvas.width, canvas.height);
 
     if (gl && programInfo) {
         gl.bindTexture(gl.TEXTURE_2D, programInfo.texture);
@@ -463,8 +680,9 @@ const handleMotion = (event) => {
         const ay = event.accelerationIncludingGravity.y;
 
         if (ax !== null && ay !== null) {
-            tiltX = Math.max(-1, Math.min(1, ax / 7)); // More sensitive
-            tiltY = Math.max(-1, Math.min(1, -ay / 7));
+            // More sensitive for laptop detection
+            tiltX = Math.max(-1, Math.min(1, ax / 5));
+            tiltY = Math.max(-1, Math.min(1, -ay / 5));
         }
     }
 };
@@ -524,10 +742,29 @@ if (needsPermission) {
     }
 }
 
-// Add mouse simulation for desktop testing
+
+// Add mouse interaction for desktop testing
 let mouseDown = false;
 let lastMouseX = 0;
 let lastMouseY = 0;
+let centerX = 0;
+let centerY = 0;
+
+const updateMouseTilt = (e) => {
+    const rect = glCanvas.getBoundingClientRect();
+    centerX = rect.left + rect.width / 2;
+    centerY = rect.top + rect.height / 2;
+
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+
+    // Calculate tilt based on mouse position relative to center
+    const dx = mouseX - centerX;
+    const dy = mouseY - centerY;
+
+    tiltX = Math.max(-1, Math.min(1, dx / (rect.width / 2)));
+    tiltY = Math.max(-1, Math.min(1, dy / (rect.height / 2)));
+};
 
 glCanvas.addEventListener('mousedown', (e) => {
     mouseDown = true;
@@ -537,12 +774,16 @@ glCanvas.addEventListener('mousedown', (e) => {
 
 glCanvas.addEventListener('mousemove', (e) => {
     if (mouseDown) {
+        // Drag mode: relative movement
         const dx = e.clientX - lastMouseX;
         const dy = e.clientY - lastMouseY;
         tiltX = Math.max(-1, Math.min(1, dx / 50));
         tiltY = Math.max(-1, Math.min(1, dy / 50));
         lastMouseX = e.clientX;
         lastMouseY = e.clientY;
+    } else {
+        // Hover mode: position-based tilt
+        updateMouseTilt(e);
     }
 });
 
@@ -552,10 +793,15 @@ glCanvas.addEventListener('mouseup', () => {
 
 glCanvas.addEventListener('mouseleave', () => {
     mouseDown = false;
+    // Reset tilt when mouse leaves
+    tiltX = 0;
+    tiltY = 0;
 });
+
 
 // Animation loop with fixed timestep
 let lastTime = 0;
+let debugFrameCount = 0;
 const targetFPS = 60;
 const fixedDt = 1000 / targetFPS / 1000; // Convert to seconds
 
@@ -568,13 +814,20 @@ const animate = (currentTime) => {
     smoothTiltX += (tiltX - smoothTiltX) * smoothing;
     smoothTiltY += (tiltY - smoothTiltY) * smoothing;
 
-    // Update physics
-    calculateSPH();
-    particles.forEach(particle => particle.update(fixedDt));
+    // Update tilt debug display
+    if (tiltDebug && debugFrameCount % 10 === 0) {
+        tiltDebug.textContent = `Tilt: ${tiltX.toFixed(2)}, ${tiltY.toFixed(2)}`;
+    }
+    debugFrameCount++;
 
-    // Render
-    renderMetaballs();
-    renderWebGL(currentTime);
+    // Update SPH physics
+    calculateSPH();
+    particles.forEach(particle => particle.update(1));
+
+    // Render particles directly instead of metaballs
+    renderParticles();
+    // renderMetaballs();
+    // renderWebGL(currentTime);
 
     requestAnimationFrame(animate);
 };
