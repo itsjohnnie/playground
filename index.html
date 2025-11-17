@@ -540,8 +540,9 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
             commandList.forEach((cmd, index) => {
                 const item = document.createElement('div');
                 item.className = 'command-hint-item';
-                item.textContent = cmd;
+                item.textContent = '/' + cmd;
                 item.dataset.index = index;
+                item.dataset.command = cmd;
                 item.onclick = () => selectCommand(cmd);
                 commandHint.appendChild(item);
                 commandItems.push(item);
@@ -632,13 +633,13 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
                     updateSelection();
                     return;
                 }
-                if (e.key === 'Tab') {
+                if (e.key === 'Tab' || e.key === 'Enter') {
                     e.preventDefault();
                     if (selectedIndex >= 0) {
-                        const cmd = commandItems[selectedIndex].textContent;
+                        const cmd = commandItems[selectedIndex].dataset.command;
                         selectCommand(cmd);
                     } else if (commandItems.length > 0) {
-                        const cmd = commandItems[0].textContent;
+                        const cmd = commandItems[0].dataset.command;
                         selectCommand(cmd);
                     }
                     return;
@@ -649,7 +650,7 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
                 hideCommandHints();
             }
 
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !commandHint) {
                 e.preventDefault();
                 hideCommandHints();
                 const input = e.target.textContent.trim();
