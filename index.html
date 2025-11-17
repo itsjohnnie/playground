@@ -276,9 +276,7 @@
             border-radius: 4px;
             margin: 0.25rem 0;
             transition: all 0.15s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            position: relative;
         }
 
         .command-hint-item::before {
@@ -286,13 +284,15 @@
             color: #c96442;
             font-weight: bold;
             opacity: 0;
-            transition: opacity 0.15s ease;
+            transition: all 0.15s ease;
+            position: absolute;
+            left: 0.5rem;
         }
 
         .command-hint-item:hover {
             background: rgba(201, 100, 66, 0.15);
             color: #c96442;
-            transform: translateX(4px);
+            padding-left: 1.5rem;
         }
 
         .command-hint-item:hover::before {
@@ -302,6 +302,7 @@
         .command-hint-item.selected {
             background: rgba(201, 100, 66, 0.15);
             color: #c96442;
+            padding-left: 1.5rem;
         }
 
         .command-hint-item.selected::before {
