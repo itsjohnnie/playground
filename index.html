@@ -134,10 +134,57 @@
         .terminal-input-wrapper {
             flex-shrink: 0;
             margin-top: auto;
-            padding: 0.75rem 0;
+            padding: 0.75rem 0 1.5rem 0;
             position: sticky;
             bottom: 0;
-            background-color: var(--terminal-bg);
+        }
+
+        .terminal-input-wrapper::before {
+            content: '';
+            position: absolute;
+            top: -3rem;
+            left: -1.5rem;
+            right: -1.5rem;
+            bottom: 0;
+            background: linear-gradient(to bottom,
+                transparent 0%,
+                rgba(31, 31, 31, 0.3) 30%,
+                rgba(31, 31, 31, 0.7) 50%,
+                rgba(31, 31, 31, 0.95) 70%,
+                rgba(31, 31, 31, 1) 100%
+            );
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .blur-layer {
+            position: absolute;
+            left: -1.5rem;
+            right: -1.5rem;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .blur-layer-1 { top: -3rem; height: 0.2rem; backdrop-filter: blur(0.5px); -webkit-backdrop-filter: blur(0.5px); }
+        .blur-layer-2 { top: -2.8rem; height: 0.2rem; backdrop-filter: blur(1px); -webkit-backdrop-filter: blur(1px); }
+        .blur-layer-3 { top: -2.6rem; height: 0.2rem; backdrop-filter: blur(1.3px); -webkit-backdrop-filter: blur(1.3px); }
+        .blur-layer-4 { top: -2.4rem; height: 0.2rem; backdrop-filter: blur(1.6px); -webkit-backdrop-filter: blur(1.6px); }
+        .blur-layer-5 { top: -2.2rem; height: 0.2rem; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+        .blur-layer-6 { top: -2rem; height: 0.2rem; backdrop-filter: blur(2.4px); -webkit-backdrop-filter: blur(2.4px); }
+        .blur-layer-7 { top: -1.8rem; height: 0.2rem; backdrop-filter: blur(2.8px); -webkit-backdrop-filter: blur(2.8px); }
+        .blur-layer-8 { top: -1.6rem; height: 0.2rem; backdrop-filter: blur(3.2px); -webkit-backdrop-filter: blur(3.2px); }
+        .blur-layer-9 { top: -1.4rem; height: 0.2rem; backdrop-filter: blur(3.6px); -webkit-backdrop-filter: blur(3.6px); }
+        .blur-layer-10 { top: -1.2rem; height: 0.2rem; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+        .blur-layer-11 { top: -1rem; height: 0.2rem; backdrop-filter: blur(4.5px); -webkit-backdrop-filter: blur(4.5px); }
+        .blur-layer-12 { top: -0.8rem; height: 0.2rem; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+        .blur-layer-13 { top: -0.6rem; height: 0.2rem; backdrop-filter: blur(5.5px); -webkit-backdrop-filter: blur(5.5px); }
+        .blur-layer-14 { top: -0.4rem; height: 0.2rem; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+        .blur-layer-15 { top: -0.2rem; height: 0.2rem; backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
+        .blur-layer-16 { top: 0; bottom: 0; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+
+        .prompt-line {
+            position: relative;
+            z-index: 1;
         }
 
         .terminal-body::-webkit-scrollbar {
@@ -225,19 +272,19 @@
 
         .project-title {
             color: #c96442;
-            font-size: 1rem;
+            font-size: 0.875rem;
             font-weight: 600;
             text-transform: capitalize;
         }
 
         .project-time {
             color: var(--text-secondary);
-            font-size: 0.75rem;
+            font-size: 0.875rem;
         }
 
         .project-url {
             color: #6b9bff;
-            font-size: 0.75rem;
+            font-size: 0.875rem;
             margin-bottom: 0.5rem;
             display: block;
         }
@@ -249,16 +296,7 @@
         }
 
         .cursor {
-            display: inline-block;
-            color: var(--terminal-text);
-            animation: blink 1s infinite;
-            margin-left: 2px;
-            font-weight: bold;
-        }
-
-        @keyframes blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0; }
+            display: none;
         }
 
         #terminal-input {
@@ -268,8 +306,13 @@
             color: var(--terminal-text);
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.875rem;
-            min-width: 10px;
+            min-width: 1px;
             caret-color: var(--terminal-text);
+            display: inline-block;
+        }
+
+        #terminal-input:empty {
+            min-width: 1px;
         }
 
         .command-hint {
@@ -361,6 +404,10 @@
                 padding: 1rem;
                 font-size: 0.8125rem;
                 height: 400px;
+            }
+
+            .terminal-input-wrapper {
+                padding: 0.75rem 0 0.75rem 0;
             }
 
             .project-list {
@@ -459,6 +506,22 @@
             </div>
 
             <div class="terminal-input-wrapper">
+                <div class="blur-layer blur-layer-1"></div>
+                <div class="blur-layer blur-layer-2"></div>
+                <div class="blur-layer blur-layer-3"></div>
+                <div class="blur-layer blur-layer-4"></div>
+                <div class="blur-layer blur-layer-5"></div>
+                <div class="blur-layer blur-layer-6"></div>
+                <div class="blur-layer blur-layer-7"></div>
+                <div class="blur-layer blur-layer-8"></div>
+                <div class="blur-layer blur-layer-9"></div>
+                <div class="blur-layer blur-layer-10"></div>
+                <div class="blur-layer blur-layer-11"></div>
+                <div class="blur-layer blur-layer-12"></div>
+                <div class="blur-layer blur-layer-13"></div>
+                <div class="blur-layer blur-layer-14"></div>
+                <div class="blur-layer blur-layer-15"></div>
+                <div class="blur-layer blur-layer-16"></div>
                 <div class="prompt-line" style="padding-top: 2rem; margin-bottom: 0;">
                     <span class="user">johnnie</span><span class="prompt">@</span><span class="user">local</span><span class="prompt">:</span><span class="path">~/playground</span><span class="prompt">$</span> <span id="terminal-input" contenteditable="true" spellcheck="false"></span><span class="cursor">_</span>
                 </div>
@@ -478,17 +541,11 @@
         const commands = {
             help: `Available commands:
   /help      - Show this help message
-  /whoami    - Display current user
-  /ls        - List projects (already shown!)
   /cowsay    - Make a cow say something
   /clear     - Clear the terminal
   /matrix    - Toggle matrix effect
 
 Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!`,
-
-            whoami: 'johnnie',
-
-            ls: 'Projects already listed above!',
 
             cowsay: (args) => {
                 const message = args.join(' ') || 'Hello from the terminal!';
