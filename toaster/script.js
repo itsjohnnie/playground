@@ -39,7 +39,7 @@ function showToast() {
     }, 50);
 
     setTimeout(() => {
-        toast.classList.remove('show');
+        // Keep show class and add hide to trigger out animation
         toast.classList.add('hide');
     }, 4000);
 }

@@ -103,16 +103,31 @@ body {
 
 .toast.show {
     transform: translateX(-50%) translateY(0) scale(1);
+    -webkit-transform: translateX(-50%) translateY(0) scale(1);
     width: auto;
     max-width: 90vw;
     opacity: 1;
     filter: blur(0px);
-    -webkit-transform: translateX(-50%) translateY(0) scale(1);
+    -webkit-filter: blur(0px);
     transition: transform 1.2s cubic-bezier(0.19, 1, 0.22, 1),
                 -webkit-transform 1.2s cubic-bezier(0.19, 1, 0.22, 1),
                 max-width 1.2s cubic-bezier(0.19, 1, 0.22, 1),
                 opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1),
-                filter 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+                filter 1.2s cubic-bezier(0.19, 1, 0.22, 1),
+                -webkit-filter 1.2s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.toast.show.hide {
+    transform: translateX(-50%) translateY(-24px) scale(0.5);
+    -webkit-transform: translateX(-50%) translateY(-24px) scale(0.5);
+    opacity: 0;
+    filter: blur(12px);
+    -webkit-filter: blur(12px);
+    transition: transform 1.6s cubic-bezier(0.4, 0, 0.2, 1),
+                -webkit-transform 1.6s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+                filter 1.3s cubic-bezier(0.4, 0, 0.2, 1),
+                -webkit-filter 1.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toast.hide {
