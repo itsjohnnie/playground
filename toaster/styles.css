@@ -97,21 +97,22 @@ body {
 .toast.show {
     transform: translateX(-50%) translateY(0);
     width: auto;
+    max-width: 90vw;
     opacity: 1;
     filter: blur(0px);
     transition: transform 1.2s cubic-bezier(0.19, 1, 0.22, 1),
-                width 1.2s cubic-bezier(0.19, 1, 0.22, 1),
+                max-width 1.2s cubic-bezier(0.19, 1, 0.22, 1),
                 opacity 1.4s cubic-bezier(0.19, 1, 0.22, 1),
                 filter 1.2s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .toast.hide {
     transform: translateX(-50%) translateY(-24px);
-    width: 0;
+    max-width: 0;
     opacity: 0;
     filter: blur(12px);
     transition: transform 1.6s cubic-bezier(0.4, 0, 0.2, 1),
-                width 1.6s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 1.6s cubic-bezier(0.4, 0, 0.2, 1),
                 opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1),
                 filter 1.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
