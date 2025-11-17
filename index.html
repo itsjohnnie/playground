@@ -146,6 +146,7 @@
             padding: 0.75rem 0 1.5rem 0;
             position: sticky;
             bottom: 0;
+            background-color: var(--terminal-bg);
         }
 
         .terminal-input-wrapper::before {
@@ -330,7 +331,7 @@
             background: transparent;
             color: var(--terminal-text);
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.875rem;
+            font-size: 1rem;
             min-width: 1px;
             caret-color: var(--terminal-text);
             display: inline-block;
@@ -348,6 +349,16 @@
             word-wrap: break-word;
             overflow-wrap: break-word;
             max-width: 100%;
+        }
+
+        @media (max-width: 768px) {
+            #terminal-input {
+                font-size: 16px;
+            }
+
+            .prompt-line {
+                font-size: 16px;
+            }
         }
 
         .command-hint {
@@ -459,7 +470,8 @@
             }
 
             .terminal-input-wrapper {
-                padding: 0.75rem 0 0.75rem 0;
+                padding: 0.75rem 0;
+                margin-bottom: -1px;
             }
 
             .terminal-input-wrapper::before {
