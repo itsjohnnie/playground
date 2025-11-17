@@ -245,30 +245,68 @@
         }
 
         .command-hint {
-            position: absolute;
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 0.5rem;
-            bottom: 100%;
-            margin-bottom: 0.5rem;
+            position: fixed;
+            background: var(--bg-secondary);
+            border: 1px solid rgba(201, 100, 66, 0.3);
+            border-radius: 6px;
+            padding: 0.75rem;
             z-index: 1000;
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.75rem;
             color: var(--text-secondary);
-            max-height: 200px;
+            max-height: 300px;
             overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            min-width: 200px;
+        }
+
+        .command-hint-header {
+            color: #c96442;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .command-hint-item {
-            padding: 0.25rem 0.5rem;
+            padding: 0.5rem 0.75rem;
             cursor: pointer;
-            border-radius: 2px;
+            border-radius: 4px;
+            margin: 0.25rem 0;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .command-hint-item::before {
+            content: "›";
+            color: #c96442;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.15s ease;
         }
 
         .command-hint-item:hover {
-            background: rgba(201, 100, 66, 0.2);
-            color: var(--text-primary);
+            background: rgba(201, 100, 66, 0.15);
+            color: #c96442;
+            transform: translateX(4px);
+        }
+
+        .command-hint-item:hover::before {
+            opacity: 1;
+        }
+
+        .command-hint-item.selected {
+            background: rgba(201, 100, 66, 0.15);
+            color: #c96442;
+        }
+
+        .command-hint-item.selected::before {
+            opacity: 1;
         }
 
         #command-output {
@@ -466,6 +504,8 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
         const terminalInput = document.getElementById('terminal-input');
         const commandHistory = document.getElementById('command-history');
         let commandHint = null;
+        let selectedIndex = -1;
+        let commandItems = [];
 
         // Show command hints when "/" is typed
         terminalInput.addEventListener('input', (e) => {
@@ -480,33 +520,60 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
 
         function showCommandHints() {
             hideCommandHints();
+            selectedIndex = -1;
+            commandItems = [];
 
             commandHint = document.createElement('div');
             commandHint.className = 'command-hint';
 
+            // Add header
+            const header = document.createElement('div');
+            header.className = 'command-hint-header';
+            header.textContent = 'Available Commands';
+            commandHint.appendChild(header);
+
             const commandList = Object.keys(commands);
-            commandList.forEach(cmd => {
+            commandList.forEach((cmd, index) => {
                 const item = document.createElement('div');
                 item.className = 'command-hint-item';
                 item.textContent = cmd;
-                item.onclick = () => {
-                    terminalInput.textContent = cmd;
-                    hideCommandHints();
-                    terminalInput.focus();
-                    // Move cursor to end
-                    const range = document.createRange();
-                    const sel = window.getSelection();
-                    range.selectNodeContents(terminalInput);
-                    range.collapse(false);
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                };
+                item.dataset.index = index;
+                item.onclick = () => selectCommand(cmd);
                 commandHint.appendChild(item);
+                commandItems.push(item);
             });
 
+            // Position the hint above and to the left of the input
             const inputWrapper = document.querySelector('.terminal-input-wrapper');
-            inputWrapper.style.position = 'relative';
-            inputWrapper.appendChild(commandHint);
+            const rect = inputWrapper.getBoundingClientRect();
+            commandHint.style.bottom = (window.innerHeight - rect.top + 10) + 'px';
+            commandHint.style.left = rect.left + 'px';
+
+            document.body.appendChild(commandHint);
+        }
+
+        function selectCommand(cmd) {
+            terminalInput.textContent = cmd;
+            hideCommandHints();
+            terminalInput.focus();
+            // Move cursor to end
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(terminalInput);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+
+        function updateSelection() {
+            commandItems.forEach((item, index) => {
+                if (index === selectedIndex) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
         }
 
         function hideCommandHints() {
@@ -517,6 +584,33 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
         }
 
         terminalInput.addEventListener('keydown', (e) => {
+            // Handle arrow keys for command selection
+            if (commandHint && commandItems.length > 0) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedIndex = (selectedIndex + 1) % commandItems.length;
+                    updateSelection();
+                    return;
+                }
+                if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedIndex = selectedIndex <= 0 ? commandItems.length - 1 : selectedIndex - 1;
+                    updateSelection();
+                    return;
+                }
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    if (selectedIndex >= 0) {
+                        const cmd = commandItems[selectedIndex].textContent;
+                        selectCommand(cmd);
+                    } else if (commandItems.length > 0) {
+                        const cmd = commandItems[0].textContent;
+                        selectCommand(cmd);
+                    }
+                    return;
+                }
+            }
+
             if (e.key === 'Escape') {
                 hideCommandHints();
             }
