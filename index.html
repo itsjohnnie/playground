@@ -243,6 +243,30 @@
             caret-color: var(--terminal-text);
         }
 
+        .command-hint {
+            position: absolute;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.5rem;
+            margin-top: 0.25rem;
+            z-index: 1000;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .command-hint-item {
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .command-hint-item:hover {
+            background: rgba(201, 100, 66, 0.2);
+            color: var(--text-primary);
+        }
+
         #command-output {
             color: var(--terminal-text);
         }
@@ -370,8 +394,7 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
             },
 
             clear: () => {
-                const output = document.getElementById('command-output');
-                output.innerHTML = '';
+                commandHistory.innerHTML = '';
                 return '';
             },
 
@@ -438,10 +461,65 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
         // Handle terminal input
         const terminalInput = document.getElementById('terminal-input');
         const commandHistory = document.getElementById('command-history');
+        let commandHint = null;
+
+        // Show command hints when "/" is typed
+        terminalInput.addEventListener('input', (e) => {
+            const input = e.target.textContent.trim();
+
+            if (input === '/') {
+                showCommandHints();
+            } else {
+                hideCommandHints();
+            }
+        });
+
+        function showCommandHints() {
+            hideCommandHints();
+
+            commandHint = document.createElement('div');
+            commandHint.className = 'command-hint';
+
+            const commandList = Object.keys(commands);
+            commandList.forEach(cmd => {
+                const item = document.createElement('div');
+                item.className = 'command-hint-item';
+                item.textContent = cmd;
+                item.onclick = () => {
+                    terminalInput.textContent = cmd;
+                    hideCommandHints();
+                    terminalInput.focus();
+                    // Move cursor to end
+                    const range = document.createRange();
+                    const sel = window.getSelection();
+                    range.selectNodeContents(terminalInput);
+                    range.collapse(false);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                };
+                commandHint.appendChild(item);
+            });
+
+            const inputWrapper = document.querySelector('.terminal-input-wrapper');
+            inputWrapper.style.position = 'relative';
+            inputWrapper.appendChild(commandHint);
+        }
+
+        function hideCommandHints() {
+            if (commandHint) {
+                commandHint.remove();
+                commandHint = null;
+            }
+        }
 
         terminalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideCommandHints();
+            }
+
             if (e.key === 'Enter') {
                 e.preventDefault();
+                hideCommandHints();
                 const input = e.target.textContent.trim();
 
                 if (!input) {
@@ -464,7 +542,7 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
                 if (commands[cmd]) {
                     result = typeof commands[cmd] === 'function' ? commands[cmd](args) : commands[cmd];
                 } else if (cmd) {
-                    result = `Command not found: ${cmd}. Type 'help' for available commands.`;
+                    result = `Command not found: ${cmd}. Type 'help' or '/' for available commands.`;
                 }
 
                 if (result) {
