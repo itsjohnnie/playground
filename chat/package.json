@@ -1,0 +1,18 @@
+{
+  "name": "ai-best-friend-chat",
+  "version": "1.0.0",
+  "description": "An AI-powered chat application where you can talk to an AI agent like your best friend",
+  "main": "chat.js",
+  "type": "module",
+  "scripts": {
+    "start": "node chat.js"
+  },
+  "keywords": ["ai", "chat", "openai", "best-friend"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^4.20.0",
+    "readline": "^1.3.0",
+    "dotenv": "^16.3.1"
+  }
+}
