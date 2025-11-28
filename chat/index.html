@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Best Friend Chat</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="chat-header">
+            <h1>🤖 AI Best Friend Chat</h1>
+            <p>Talk to your AI best friend about anything!</p>
+        </div>
+
+        <!-- API Key Setup (shown first time) -->
+        <div id="setup-screen" class="setup-screen">
+            <div class="setup-card">
+                <h2>Welcome! Let's Get Started</h2>
+                <p>To use this chat, you'll need an OpenAI API key.</p>
+
+                <div class="info-box">
+                    <strong>Don't have an API key?</strong>
+                    <ol>
+                        <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI API Keys</a></li>
+                        <li>Sign up or log in</li>
+                        <li>Create a new API key</li>
+                        <li>Copy and paste it below</li>
+                    </ol>
+                    <p><small>💰 Cost: ~$0.002 per 1,000 tokens (a few cents per conversation)</small></p>
+                    <p><small>🔒 Your API key is stored only in your browser and never sent anywhere except OpenAI.</small></p>
+                </div>
+
+                <div class="input-group">
+                    <label for="api-key-input">Enter your OpenAI API Key:</label>
+                    <input
+                        type="password"
+                        id="api-key-input"
+                        placeholder="sk-..."
+                        autocomplete="off"
+                    >
+                </div>
+
+                <button id="save-key-btn" class="primary-btn">Start Chatting</button>
+                <p class="error-message" id="setup-error"></p>
+            </div>
+        </div>
+
+        <!-- Chat Interface (shown after setup) -->
+        <div id="chat-screen" class="chat-screen" style="display: none;">
+            <div class="settings-bar">
+                <button id="change-key-btn" class="secondary-btn">Change API Key</button>
+                <button id="clear-chat-btn" class="secondary-btn">Clear Chat</button>
+            </div>
+
+            <div id="chat-messages" class="chat-messages">
+                <div class="message bot-message">
+                    <div class="message-content">
+                        Hey! I'm here for you. What's on your mind? 😊
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <textarea
+                    id="user-input"
+                    placeholder="Type your message here..."
+                    rows="1"
+                ></textarea>
+                <button id="send-btn" class="send-btn">Send</button>
+            </div>
+
+            <div id="status" class="status"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
