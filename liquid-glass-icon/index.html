@@ -13,9 +13,28 @@
     <div class="container">
         <div class="app-icon">
             <div class="icon-content">
+                <div class="inner-border"></div>
                 <div class="glow-layer"></div>
                 <div class="glass-layer"></div>
-                <div class="symbol">⚡</div>
+                <svg class="symbol" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="glassGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:rgba(255,255,255,0.9);stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:rgba(255,255,255,0.6);stop-opacity:1" />
+                        </linearGradient>
+                        <filter id="glow">
+                            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <path d="M50 15 L65 45 L95 50 L65 55 L50 85 L35 55 L5 50 L35 45 Z"
+                          fill="url(#glassGradient)"
+                          filter="url(#glow)"
+                          opacity="0.95"/>
+                </svg>
             </div>
         </div>
         <div class="info">
