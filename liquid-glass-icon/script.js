@@ -1,5 +1,6 @@
 // Get DOM elements
 const iconContent = document.querySelector('.icon-content');
+const innerBorder = document.querySelector('.inner-border');
 const glowLayer = document.querySelector('.glow-layer');
 const glassLayer = document.querySelector('.glass-layer');
 const requestButton = document.getElementById('requestPermission');
@@ -88,6 +89,26 @@ function updateIcon() {
         const shineOpacity = 0.3 + (tiltIntensity * 0.4);
         glassLayer.style.setProperty('--shine-opacity', shineOpacity);
 
+        // Update inner border based on gyroscope
+        // Border angle follows the tilt direction
+        const borderAngle = angle + 90; // Perpendicular to the glass angle for nice effect
+        innerBorder.style.setProperty('--border-angle', `${borderAngle}deg`);
+
+        // Calculate which edge is "up" (brightest) based on tilt
+        // Normalize gamma and beta to create color intensity
+        const normalizedGamma = smoothGamma / 90; // -1 to 1
+        const normalizedBeta = (smoothBeta - 45) / 90; // -1 to 1
+
+        // Create dynamic border colors based on position
+        // The side facing "up" gets brighter
+        const brightnessBoost = 1 + (tiltIntensity * 0.5);
+        const baseOpacity = 0.6 + (tiltIntensity * 0.3);
+
+        innerBorder.style.setProperty('--border-color-1', `rgba(147, 197, 253, ${baseOpacity * brightnessBoost})`);
+        innerBorder.style.setProperty('--border-color-2', `rgba(96, 165, 250, ${baseOpacity * 0.8})`);
+        innerBorder.style.setProperty('--border-color-3', `rgba(59, 130, 246, ${baseOpacity * 0.6})`);
+        innerBorder.style.setProperty('--border-opacity', 0.8 + (tiltIntensity * 0.2));
+
         // Apply 3D transform to icon
         const maxTilt = 15; // degrees
         const tiltX = (smoothBeta - 45) / 6; // Front-back tilt
@@ -141,6 +162,19 @@ document.addEventListener('mousemove', (e) => {
         // Update glass angle
         const angle = Math.atan2(mouseY, mouseX) * (180 / Math.PI);
         glassLayer.style.setProperty('--glass-angle', `${angle + 135}deg`);
+
+        // Update inner border for mouse interaction
+        const borderAngle = angle + 90;
+        innerBorder.style.setProperty('--border-angle', `${borderAngle}deg`);
+
+        const distance = Math.sqrt(mouseX * mouseX + mouseY * mouseY) / 100;
+        const baseOpacity = 0.6 + (distance * 0.3);
+        const brightnessBoost = 1 + (distance * 0.5);
+
+        innerBorder.style.setProperty('--border-color-1', `rgba(147, 197, 253, ${baseOpacity * brightnessBoost})`);
+        innerBorder.style.setProperty('--border-color-2', `rgba(96, 165, 250, ${baseOpacity * 0.8})`);
+        innerBorder.style.setProperty('--border-color-3', `rgba(59, 130, 246, ${baseOpacity * 0.6})`);
+        innerBorder.style.setProperty('--border-opacity', 0.8 + (distance * 0.2));
     }
 });
 
