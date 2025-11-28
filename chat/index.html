@@ -4,76 +4,387 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Best Friend Chat</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
+            max-height: 800px;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .info-banner {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 12px;
+            font-size: 13px;
+            color: #2e7d32;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-content {
+            padding: 12px 16px;
+            border-radius: 12px;
+            max-width: 85%;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .bot-message .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+        }
+
+        .user-message {
+            justify-content: flex-end;
+        }
+
+        .user-message .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+            padding: 12px 16px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: none;
+            min-height: 45px;
+            max-height: 120px;
+        }
+
+        #user-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            padding: 8px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            background: #f8f9fa;
+            min-height: 28px;
+        }
+
+        .error-message {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-left: 4px solid #c62828;
+            margin: 10px 20px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
         <div class="chat-header">
             <h1>🤖 AI Best Friend Chat</h1>
-            <p>Talk to your AI best friend about anything!</p>
+            <p>100% Free - No API Key Needed!</p>
         </div>
 
-        <!-- API Key Setup (shown first time) -->
-        <div id="setup-screen" class="setup-screen">
-            <div class="setup-card">
-                <h2>Welcome! Let's Get Started</h2>
-                <p>To use this chat, you'll need an OpenAI API key.</p>
+        <div class="info-banner">
+            ✨ This chat uses free AI technology. Just start typing!
+        </div>
 
-                <div class="info-box">
-                    <strong>Don't have an API key?</strong>
-                    <ol>
-                        <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI API Keys</a></li>
-                        <li>Sign up or log in</li>
-                        <li>Create a new API key</li>
-                        <li>Copy and paste it below</li>
-                    </ol>
-                    <p><small>💰 Cost: ~$0.002 per 1,000 tokens (a few cents per conversation)</small></p>
-                    <p><small>🔒 Your API key is stored only in your browser and never sent anywhere except OpenAI.</small></p>
+        <div id="chat-messages" class="chat-messages">
+            <div class="message bot-message">
+                <div class="message-content">
+                    Hey! I'm your AI friend. What's on your mind? 😊
                 </div>
-
-                <div class="input-group">
-                    <label for="api-key-input">Enter your OpenAI API Key:</label>
-                    <input
-                        type="password"
-                        id="api-key-input"
-                        placeholder="sk-..."
-                        autocomplete="off"
-                    >
-                </div>
-
-                <button id="save-key-btn" class="primary-btn">Start Chatting</button>
-                <p class="error-message" id="setup-error"></p>
             </div>
         </div>
 
-        <!-- Chat Interface (shown after setup) -->
-        <div id="chat-screen" class="chat-screen" style="display: none;">
-            <div class="settings-bar">
-                <button id="change-key-btn" class="secondary-btn">Change API Key</button>
-                <button id="clear-chat-btn" class="secondary-btn">Clear Chat</button>
-            </div>
-
-            <div id="chat-messages" class="chat-messages">
-                <div class="message bot-message">
-                    <div class="message-content">
-                        Hey! I'm here for you. What's on your mind? 😊
-                    </div>
-                </div>
-            </div>
-
-            <div class="chat-input-container">
-                <textarea
-                    id="user-input"
-                    placeholder="Type your message here..."
-                    rows="1"
-                ></textarea>
-                <button id="send-btn" class="send-btn">Send</button>
-            </div>
-
-            <div id="status" class="status"></div>
+        <div class="chat-input-container">
+            <textarea
+                id="user-input"
+                placeholder="Type your message here..."
+                rows="1"
+            ></textarea>
+            <button id="send-btn" class="send-btn">Send</button>
         </div>
+
+        <div id="status" class="status"></div>
     </div>
 
-    <script src="app.js"></script>
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const statusDiv = document.getElementById('status');
+
+        const conversationHistory = [];
+
+        const SYSTEM_PROMPT = "You are a supportive, understanding best friend. Be casual, empathetic, and fun. Keep responses concise (2-3 sentences max).";
+
+        // Auto-resize textarea
+        userInput.addEventListener('input', () => {
+            userInput.style.height = 'auto';
+            userInput.style.height = userInput.scrollHeight + 'px';
+        });
+
+        // Send on Enter (but Shift+Enter for new line)
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+
+        async function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+
+            addMessageToUI(message, 'user');
+            userInput.value = '';
+            userInput.style.height = 'auto';
+
+            conversationHistory.push({
+                role: 'user',
+                content: message
+            });
+
+            const typingIndicator = addTypingIndicator();
+            setInputState(false);
+
+            try {
+                const response = await callAI(message);
+                typingIndicator.remove();
+
+                addMessageToUI(response, 'bot');
+                conversationHistory.push({
+                    role: 'assistant',
+                    content: response
+                });
+            } catch (error) {
+                typingIndicator.remove();
+                addMessageToUI("Sorry, I'm having trouble connecting right now. Try again in a moment!", 'bot');
+                console.error('Error:', error);
+            }
+
+            setInputState(true);
+            userInput.focus();
+        }
+
+        async function callAI(message) {
+            // Using Hugging Face's free inference API with a conversational model
+            const API_URL = 'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium';
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        inputs: message,
+                        parameters: {
+                            max_length: 100,
+                            temperature: 0.8,
+                            top_p: 0.9
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('API error');
+                }
+
+                const data = await response.json();
+
+                if (data.error) {
+                    // Model might be loading
+                    if (data.error.includes('loading')) {
+                        return "Hold on, I'm waking up! Try again in just a moment... 😴";
+                    }
+                    throw new Error(data.error);
+                }
+
+                // Extract the response
+                let aiResponse = '';
+                if (Array.isArray(data) && data[0]?.generated_text) {
+                    aiResponse = data[0].generated_text;
+                    // Remove the input prompt if it's included
+                    aiResponse = aiResponse.replace(message, '').trim();
+                } else if (data.generated_text) {
+                    aiResponse = data.generated_text;
+                    aiResponse = aiResponse.replace(message, '').trim();
+                }
+
+                return aiResponse || "I'm here! Tell me more about that...";
+
+            } catch (error) {
+                console.error('AI Error:', error);
+                throw error;
+            }
+        }
+
+        function addMessageToUI(content, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}-message`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+
+            messageDiv.appendChild(contentDiv);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            return messageDiv;
+        }
+
+        function addTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot-message';
+            typingDiv.id = 'typing-indicator';
+
+            const indicatorDiv = document.createElement('div');
+            indicatorDiv.className = 'typing-indicator';
+            indicatorDiv.innerHTML = '<span></span><span></span><span></span>';
+
+            typingDiv.appendChild(indicatorDiv);
+            chatMessages.appendChild(typingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            return typingDiv;
+        }
+
+        function setInputState(enabled) {
+            userInput.disabled = !enabled;
+            sendBtn.disabled = !enabled;
+            statusDiv.textContent = enabled ? '' : 'Thinking...';
+        }
+    </script>
 </body>
 </html>
