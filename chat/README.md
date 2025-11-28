@@ -13,36 +13,40 @@ A conversational AI chat application where you can talk to an AI agent as if it 
 
 ## 🚀 Quick Start (Web Version)
 
-**The easiest way to use this app is through the web interface!**
+**100% FREE! No API Key Required!**
 
-### Option 1: GitHub Pages (Recommended)
+### Just Open and Chat!
+
+**Option 1: GitHub Pages (Recommended)**
 Simply visit: **[https://itsjohnnie.github.io/playground/chat](https://itsjohnnie.github.io/playground/chat)**
 
-### Option 2: Local File
-1. Open `index.html` in your web browser
-2. Enter your OpenAI API key when prompted
-3. Start chatting!
+**Option 2: Local File**
+Open `index.html` in your web browser and start chatting immediately!
 
-### Getting an OpenAI API Key
+### How It Works
 
-1. Go to [OpenAI API Keys](https://platform.openai.com/api-keys)
-2. Sign up or log in
-3. Create a new API key
-4. Copy it and paste into the chat interface
+- Uses Hugging Face's free AI inference API
+- No signup, no API keys, no payment required
+- Powered by DialoGPT, a conversational AI model
+- Works directly in your browser
+- 100% free for personal use
 
-**Cost:** ~$0.002 per 1,000 tokens (a few cents per conversation)
+### Features
 
-**Privacy:** Your API key is stored only in your browser's localStorage and is never sent anywhere except directly to OpenAI.
+✨ Instant start - no setup required
+💬 Real AI conversations
+📱 Mobile-friendly
+🔒 Private - conversations stay in your browser
 
 ---
 
-## 💻 Alternative: Command Line Version
+## 💻 Alternative: Command Line Version (OpenAI)
 
-If you prefer using the terminal:
+If you prefer using the terminal and want to use OpenAI's GPT-3.5 (more advanced, but requires payment):
 
 ### Prerequisites
 - Node.js (v14 or higher)
-- An OpenAI API key
+- An OpenAI API key (paid service, ~$0.002 per 1,000 tokens)
 
 ### Setup
 
@@ -54,7 +58,7 @@ If you prefer using the terminal:
 2. **Configure API Key**
    ```bash
    cp .env.example .env
-   # Edit .env and add your API key
+   # Edit .env and add your OpenAI API key
    ```
 
 ### Usage
@@ -64,6 +68,8 @@ npm start
 ```
 
 Type and chat! To exit, type `exit` or `quit`.
+
+**Note:** The web version (`index.html`) uses a free AI service, while the CLI version (`chat.js`) uses OpenAI's paid API for potentially better responses.
 
 ## Example Conversation
 
