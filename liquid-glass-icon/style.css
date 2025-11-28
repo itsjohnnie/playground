@@ -1,0 +1,156 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.app-icon {
+    width: 180px;
+    height: 180px;
+    perspective: 1000px;
+}
+
+.icon-content {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    border-radius: 42px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow:
+        0 8px 32px 0 rgba(0, 0, 0, 0.37),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+        inset 0 -1px 0 0 rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    transition: transform 0.1s ease-out;
+}
+
+.glow-layer {
+    position: absolute;
+    width: 200%;
+    height: 200%;
+    top: -50%;
+    left: -50%;
+    background: radial-gradient(
+        circle at var(--glow-x, 50%) var(--glow-y, 50%),
+        rgba(147, 197, 253, 0.6) 0%,
+        rgba(96, 165, 250, 0.4) 20%,
+        rgba(59, 130, 246, 0.2) 40%,
+        transparent 70%
+    );
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    mix-blend-mode: screen;
+}
+
+.glass-layer {
+    position: absolute;
+    inset: 0;
+    border-radius: 42px;
+    background: linear-gradient(
+        var(--glass-angle, 135deg),
+        rgba(255, 255, 255, 0.15) 0%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0.1) 100%
+    );
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transition: background 0.2s ease-out;
+}
+
+.glass-layer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    border-radius: 42px 42px 0 0;
+    background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.3) 0%,
+        transparent 100%
+    );
+    opacity: var(--shine-opacity, 0.5);
+    transition: opacity 0.2s ease-out;
+}
+
+.symbol {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    color: rgba(255, 255, 255, 0.9);
+    text-shadow:
+        0 2px 10px rgba(0, 0, 0, 0.3),
+        0 0 20px rgba(147, 197, 253, 0.5);
+    z-index: 10;
+}
+
+.info {
+    position: absolute;
+    bottom: 60px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    padding: 0 20px;
+}
+
+.info p {
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+#requestPermission {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#requestPermission:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+#requestPermission:active {
+    transform: translateY(0);
+}
+
+@media (max-width: 480px) {
+    .app-icon {
+        width: 160px;
+        height: 160px;
+    }
+
+    .symbol {
+        font-size: 70px;
+    }
+}
