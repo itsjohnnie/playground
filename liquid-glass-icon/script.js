@@ -108,21 +108,6 @@ function updateIcon() {
         innerBorder.style.setProperty('--border-color-2', `rgba(96, 165, 250, ${baseOpacity * 0.8})`);
         innerBorder.style.setProperty('--border-color-3', `rgba(59, 130, 246, ${baseOpacity * 0.6})`);
         innerBorder.style.setProperty('--border-opacity', 0.8 + (tiltIntensity * 0.2));
-
-        // Apply 3D transform to icon
-        const maxTilt = 15; // degrees
-        const tiltX = (smoothBeta - 45) / 6; // Front-back tilt
-        const tiltY = -smoothGamma / 6; // Left-right tilt
-
-        const clampedTiltX = Math.max(-maxTilt, Math.min(maxTilt, tiltX));
-        const clampedTiltY = Math.max(-maxTilt, Math.min(maxTilt, tiltY));
-
-        iconContent.style.transform = `
-            perspective(1000px)
-            rotateX(${clampedTiltX}deg)
-            rotateY(${clampedTiltY}deg)
-            scale(1.0)
-        `;
     }
 
     requestAnimationFrame(updateIcon);
@@ -147,17 +132,6 @@ document.addEventListener('mousemove', (e) => {
 
         glowLayer.style.setProperty('--glow-x', `${glowX}%`);
         glowLayer.style.setProperty('--glow-y', `${glowY}%`);
-
-        // Apply subtle 3D transform
-        const tiltX = -mouseY / 5;
-        const tiltY = mouseX / 5;
-
-        iconContent.style.transform = `
-            perspective(1000px)
-            rotateX(${tiltX}deg)
-            rotateY(${tiltY}deg)
-            scale(1.0)
-        `;
 
         // Update glass angle
         const angle = Math.atan2(mouseY, mouseX) * (180 / Math.PI);

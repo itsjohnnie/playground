@@ -39,14 +39,13 @@ body {
     box-shadow:
         0 8px 32px 0 rgba(0, 0, 0, 0.37);
     overflow: hidden;
-    transition: transform 0.1s ease-out;
 }
 
 .inner-border {
     position: absolute;
     inset: 0;
     border-radius: 42px;
-    padding: 2px;
+    padding: 3px;
     background: linear-gradient(
         var(--border-angle, 135deg),
         var(--border-color-1, rgba(147, 197, 253, 0.8)),
