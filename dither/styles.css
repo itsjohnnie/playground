@@ -88,6 +88,50 @@ canvas {
     color: white;
 }
 
+/* Aspect Ratio Button (Top Left - Desktop Only) */
+.aspect-btn {
+    position: fixed;
+    top: 30px;
+    left: 30px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    z-index: 20;
+}
+
+.aspect-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.05);
+}
+
+.aspect-btn:active {
+    transform: scale(0.95);
+}
+
+.aspect-btn svg {
+    width: 24px;
+    height: 24px;
+    color: white;
+}
+
+.aspect-btn .aspect-portrait {
+    display: none;
+}
+
+.aspect-btn .aspect-landscape {
+    display: block;
+}
+
 /* Camera Permission Toast */
 .camera-toast {
     position: fixed;
@@ -674,5 +718,60 @@ canvas {
         bottom: 1rem;
         padding: 12px 24px;
         font-size: 0.9rem;
+    }
+}
+
+/* Desktop Aspect Ratio Modes */
+@media (min-width: 1024px) {
+    /* Portrait mode (phone-like vertical crop) */
+    .camera-container.portrait-mode {
+        width: auto;
+        height: 100dvh;
+        aspect-ratio: 9 / 16;
+        max-width: 100vw;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 0;
+        overflow: hidden;
+    }
+
+    .camera-container.portrait-mode video,
+    .camera-container.portrait-mode canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* Landscape mode (wider view) */
+    .camera-container.landscape-mode {
+        width: auto;
+        height: 100dvh;
+        aspect-ratio: 16 / 9;
+        max-width: 100vw;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 0;
+        overflow: hidden;
+    }
+
+    .camera-container.landscape-mode video,
+    .camera-container.landscape-mode canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* Subtle border effect for desktop modes */
+    .camera-container.portrait-mode::before,
+    .camera-container.landscape-mode::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+        pointer-events: none;
+        z-index: 2;
     }
 }

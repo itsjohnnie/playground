@@ -25,6 +25,7 @@ const closeLightbox = document.getElementById('closeLightbox');
 const prevImage = document.getElementById('prevImage');
 const nextImage = document.getElementById('nextImage');
 const downloadImage = document.getElementById('downloadImage');
+const aspectBtn = document.getElementById('aspectBtn');
 
 // State
 let stream = null;
@@ -35,6 +36,14 @@ let ditherAlgorithm = 'floyd-steinberg';
 let cameraActive = false;
 let currentFacingMode = 'user';
 let currentLightboxIndex = 0;
+let aspectMode = 'portrait'; // 'portrait' or 'landscape' (desktop only)
+
+// Performance optimization: reusable buffers
+let grayBuffer = null;
+let lastBufferSize = 0;
+
+// Desktop detection
+const isDesktop = () => window.innerWidth >= 1024;
 
 // LocalStorage for photos
 const STORAGE_KEY = 'dithered_photos';
@@ -71,6 +80,40 @@ flipBtn.addEventListener('click', async () => {
     console.log('Flipping camera to:', currentFacingMode);
     await stopCamera();
     await startCamera();
+});
+
+// Aspect ratio toggle (desktop only)
+aspectBtn.addEventListener('click', () => {
+    if (!isDesktop()) return;
+    aspectMode = aspectMode === 'portrait' ? 'landscape' : 'portrait';
+    updateAspectMode();
+    updateAspectButtonIcon();
+});
+
+function updateAspectMode() {
+    const container = document.querySelector('.camera-container');
+    if (isDesktop()) {
+        container.classList.remove('portrait-mode', 'landscape-mode');
+        container.classList.add(`${aspectMode}-mode`);
+    } else {
+        container.classList.remove('portrait-mode', 'landscape-mode');
+    }
+}
+
+function updateAspectButtonIcon() {
+    if (!aspectBtn) return;
+    const isPortrait = aspectMode === 'portrait';
+    aspectBtn.querySelector('.aspect-portrait').style.display = isPortrait ? 'none' : 'block';
+    aspectBtn.querySelector('.aspect-landscape').style.display = isPortrait ? 'block' : 'none';
+}
+
+// Update aspect mode on resize
+window.addEventListener('resize', () => {
+    updateAspectMode();
+    // Show/hide aspect button based on desktop
+    if (aspectBtn) {
+        aspectBtn.style.display = isDesktop() && cameraActive ? 'flex' : 'none';
+    }
 });
 
 // Swipe to dismiss for panels
@@ -130,24 +173,41 @@ function togglePanel(panel) {
     if (!isOpen) panel.classList.add('open');
 }
 
-// Helper: convert to grayscale
+// Helper: convert to grayscale (inlined for performance in hot paths)
 function toGrayscale(r, g, b) {
     return r * 0.299 + g * 0.587 + b * 0.114;
 }
 
-// Simple threshold dithering (no error diffusion)
+// Helper: get or create reusable grayscale buffer
+function getGrayBuffer(size) {
+    if (!grayBuffer || lastBufferSize !== size) {
+        grayBuffer = new Float32Array(size);
+        lastBufferSize = size;
+    }
+    return grayBuffer;
+}
+
+// Simple threshold dithering (no error diffusion) - optimized
 function simpleDither(imageData) {
     const data = imageData.data;
-    for (let i = 0; i < data.length; i += 4 * grainSize) {
-        const gray = toGrayscale(data[i], data[i + 1], data[i + 2]);
-        const newGray = gray < threshold ? 0 : 255;
+    const width = imageData.width;
+    const height = imageData.height;
+    const g = grainSize;
 
-        // Apply to grain block
-        for (let dy = 0; dy < grainSize; dy++) {
-            for (let dx = 0; dx < grainSize; dx++) {
-                const idx = i + (dy * canvas.width + dx) * 4;
-                if (idx < data.length) {
-                    data[idx] = data[idx + 1] = data[idx + 2] = newGray;
+    for (let y = 0; y < height; y += g) {
+        for (let x = 0; x < width; x += g) {
+            const idx = (y * width + x) << 2;
+            const gray = data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
+            const newGray = gray < threshold ? 0 : 255;
+
+            // Fill grain block
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
+                    data[i] = data[i + 1] = data[i + 2] = newGray;
                 }
             }
         }
@@ -155,40 +215,56 @@ function simpleDither(imageData) {
     return imageData;
 }
 
-// Floyd-Steinberg dithering
+// Floyd-Steinberg dithering (optimized)
 function floydSteinbergDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const gray = new Float32Array(width * height);
+    const pixelCount = width * height;
+    const gray = getGrayBuffer(pixelCount);
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            gray[y * width + x] = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-        }
+    // Pre-calculate constants
+    const g = grainSize;
+    const widthG = width * g;
+    const e7_16 = 7 / 16;
+    const e3_16 = 3 / 16;
+    const e5_16 = 5 / 16;
+    const e1_16 = 1 / 16;
+
+    // Convert to grayscale in a single pass with inlined calculation
+    for (let i = 0, j = 0; i < pixelCount; i++, j += 4) {
+        gray[i] = data[j] * 0.299 + data[j + 1] * 0.587 + data[j + 2] * 0.114;
     }
 
-    for (let y = 0; y < height; y += grainSize) {
-        for (let x = 0; x < width; x += grainSize) {
-            const idx = y * width + x;
+    // Process with error diffusion
+    for (let y = 0; y < height; y += g) {
+        const yOffset = y * width;
+        const nextRowOffset = yOffset + widthG;
+
+        for (let x = 0; x < width; x += g) {
+            const idx = yOffset + x;
             const oldPixel = gray[idx];
             const newPixel = oldPixel < threshold ? 0 : 255;
             const error = oldPixel - newPixel;
 
-            const dataIdx = idx * 4;
-            for (let dy = 0; dy < grainSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < grainSize && x + dx < width; dx++) {
-                    const i = ((y + dy) * width + (x + dx)) * 4;
+            // Fill grain block
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
                     data[i] = data[i + 1] = data[i + 2] = newPixel;
                 }
             }
 
-            if (x + grainSize < width) gray[idx + grainSize] += error * 7/16;
-            if (y + grainSize < height) {
-                if (x > 0) gray[idx + width * grainSize - grainSize] += error * 3/16;
-                gray[idx + width * grainSize] += error * 5/16;
-                if (x + grainSize < width) gray[idx + width * grainSize + grainSize] += error * 1/16;
+            // Distribute error
+            const xPlusG = x + g;
+            if (xPlusG < width) gray[idx + g] += error * e7_16;
+            if (y + g < height) {
+                if (x >= g) gray[nextRowOffset + x - g] += error * e3_16;
+                gray[nextRowOffset + x] += error * e5_16;
+                if (xPlusG < width) gray[nextRowOffset + xPlusG] += error * e1_16;
             }
         }
     }
@@ -196,44 +272,55 @@ function floydSteinbergDither(imageData) {
     return imageData;
 }
 
-// Atkinson dithering
+// Atkinson dithering (optimized)
 function atkinsonDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const gray = new Float32Array(width * height);
+    const pixelCount = width * height;
+    const gray = getGrayBuffer(pixelCount);
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            gray[y * width + x] = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-        }
+    const g = grainSize;
+    const g2 = g * 2;
+    const widthG = width * g;
+    const widthG2 = width * g2;
+
+    // Convert to grayscale
+    for (let i = 0, j = 0; i < pixelCount; i++, j += 4) {
+        gray[i] = data[j] * 0.299 + data[j + 1] * 0.587 + data[j + 2] * 0.114;
     }
 
-    for (let y = 0; y < height; y += grainSize) {
-        for (let x = 0; x < width; x += grainSize) {
-            const idx = y * width + x;
+    for (let y = 0; y < height; y += g) {
+        const yOffset = y * width;
+
+        for (let x = 0; x < width; x += g) {
+            const idx = yOffset + x;
             const oldPixel = gray[idx];
             const newPixel = oldPixel < threshold ? 0 : 255;
-            const error = (oldPixel - newPixel) / 8;
+            const error = (oldPixel - newPixel) * 0.125; // /8
 
-            const dataIdx = idx * 4;
-            for (let dy = 0; dy < grainSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < grainSize && x + dx < width; dx++) {
-                    const i = ((y + dy) * width + (x + dx)) * 4;
+            // Fill grain block
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
                     data[i] = data[i + 1] = data[i + 2] = newPixel;
                 }
             }
 
-            if (x + grainSize < width) gray[idx + grainSize] += error;
-            if (x + grainSize * 2 < width) gray[idx + grainSize * 2] += error;
-            if (y + grainSize < height) {
-                if (x > 0) gray[idx + width * grainSize - grainSize] += error;
-                gray[idx + width * grainSize] += error;
-                if (x + grainSize < width) gray[idx + width * grainSize + grainSize] += error;
+            // Distribute error (Atkinson pattern)
+            if (x + g < width) gray[idx + g] += error;
+            if (x + g2 < width) gray[idx + g2] += error;
+            if (y + g < height) {
+                const nextRow = idx + widthG;
+                if (x >= g) gray[nextRow - g] += error;
+                gray[nextRow] += error;
+                if (x + g < width) gray[nextRow + g] += error;
             }
-            if (y + grainSize * 2 < height) {
-                gray[idx + width * grainSize * 2] += error;
+            if (y + g2 < height) {
+                gray[idx + widthG2] += error;
             }
         }
     }
@@ -241,51 +328,60 @@ function atkinsonDither(imageData) {
     return imageData;
 }
 
-// Jarvis-Judice-Ninke dithering
+// Jarvis-Judice-Ninke dithering (optimized)
 function jarvisDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const gray = new Float32Array(width * height);
+    const pixelCount = width * height;
+    const gray = getGrayBuffer(pixelCount);
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            gray[y * width + x] = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-        }
+    const g = grainSize;
+    const g2 = g * 2;
+    const widthG = width * g;
+    const widthG2 = width * g2;
+    const invDiv = 1 / 48;
+
+    for (let i = 0, j = 0; i < pixelCount; i++, j += 4) {
+        gray[i] = data[j] * 0.299 + data[j + 1] * 0.587 + data[j + 2] * 0.114;
     }
 
-    for (let y = 0; y < height; y += grainSize) {
-        for (let x = 0; x < width; x += grainSize) {
-            const idx = y * width + x;
+    for (let y = 0; y < height; y += g) {
+        const yOffset = y * width;
+
+        for (let x = 0; x < width; x += g) {
+            const idx = yOffset + x;
             const oldPixel = gray[idx];
             const newPixel = oldPixel < threshold ? 0 : 255;
-            const error = (oldPixel - newPixel) / 48;
+            const error = (oldPixel - newPixel) * invDiv;
 
-            const dataIdx = idx * 4;
-            for (let dy = 0; dy < grainSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < grainSize && x + dx < width; dx++) {
-                    const i = ((y + dy) * width + (x + dx)) * 4;
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
                     data[i] = data[i + 1] = data[i + 2] = newPixel;
                 }
             }
 
-            const g = grainSize;
             if (x + g < width) gray[idx + g] += error * 7;
-            if (x + g * 2 < width) gray[idx + g * 2] += error * 5;
+            if (x + g2 < width) gray[idx + g2] += error * 5;
             if (y + g < height) {
-                if (x - g * 2 >= 0) gray[idx + width * g - g * 2] += error * 3;
-                if (x - g >= 0) gray[idx + width * g - g] += error * 5;
-                gray[idx + width * g] += error * 7;
-                if (x + g < width) gray[idx + width * g + g] += error * 5;
-                if (x + g * 2 < width) gray[idx + width * g + g * 2] += error * 3;
+                const row1 = idx + widthG;
+                if (x >= g2) gray[row1 - g2] += error * 3;
+                if (x >= g) gray[row1 - g] += error * 5;
+                gray[row1] += error * 7;
+                if (x + g < width) gray[row1 + g] += error * 5;
+                if (x + g2 < width) gray[row1 + g2] += error * 3;
             }
-            if (y + g * 2 < height) {
-                if (x - g * 2 >= 0) gray[idx + width * g * 2 - g * 2] += error;
-                if (x - g >= 0) gray[idx + width * g * 2 - g] += error * 3;
-                gray[idx + width * g * 2] += error * 5;
-                if (x + g < width) gray[idx + width * g * 2 + g] += error * 3;
-                if (x + g * 2 < width) gray[idx + width * g * 2 + g * 2] += error;
+            if (y + g2 < height) {
+                const row2 = idx + widthG2;
+                if (x >= g2) gray[row2 - g2] += error;
+                if (x >= g) gray[row2 - g] += error * 3;
+                gray[row2] += error * 5;
+                if (x + g < width) gray[row2 + g] += error * 3;
+                if (x + g2 < width) gray[row2 + g2] += error;
             }
         }
     }
@@ -293,51 +389,60 @@ function jarvisDither(imageData) {
     return imageData;
 }
 
-// Stucki dithering
+// Stucki dithering (optimized)
 function stuckiDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const gray = new Float32Array(width * height);
+    const pixelCount = width * height;
+    const gray = getGrayBuffer(pixelCount);
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            gray[y * width + x] = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-        }
+    const g = grainSize;
+    const g2 = g * 2;
+    const widthG = width * g;
+    const widthG2 = width * g2;
+    const invDiv = 1 / 42;
+
+    for (let i = 0, j = 0; i < pixelCount; i++, j += 4) {
+        gray[i] = data[j] * 0.299 + data[j + 1] * 0.587 + data[j + 2] * 0.114;
     }
 
-    for (let y = 0; y < height; y += grainSize) {
-        for (let x = 0; x < width; x += grainSize) {
-            const idx = y * width + x;
+    for (let y = 0; y < height; y += g) {
+        const yOffset = y * width;
+
+        for (let x = 0; x < width; x += g) {
+            const idx = yOffset + x;
             const oldPixel = gray[idx];
             const newPixel = oldPixel < threshold ? 0 : 255;
-            const error = (oldPixel - newPixel) / 42;
+            const error = (oldPixel - newPixel) * invDiv;
 
-            const dataIdx = idx * 4;
-            for (let dy = 0; dy < grainSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < grainSize && x + dx < width; dx++) {
-                    const i = ((y + dy) * width + (x + dx)) * 4;
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
                     data[i] = data[i + 1] = data[i + 2] = newPixel;
                 }
             }
 
-            const g = grainSize;
             if (x + g < width) gray[idx + g] += error * 8;
-            if (x + g * 2 < width) gray[idx + g * 2] += error * 4;
+            if (x + g2 < width) gray[idx + g2] += error * 4;
             if (y + g < height) {
-                if (x - g * 2 >= 0) gray[idx + width * g - g * 2] += error * 2;
-                if (x - g >= 0) gray[idx + width * g - g] += error * 4;
-                gray[idx + width * g] += error * 8;
-                if (x + g < width) gray[idx + width * g + g] += error * 4;
-                if (x + g * 2 < width) gray[idx + width * g + g * 2] += error * 2;
+                const row1 = idx + widthG;
+                if (x >= g2) gray[row1 - g2] += error * 2;
+                if (x >= g) gray[row1 - g] += error * 4;
+                gray[row1] += error * 8;
+                if (x + g < width) gray[row1 + g] += error * 4;
+                if (x + g2 < width) gray[row1 + g2] += error * 2;
             }
-            if (y + g * 2 < height) {
-                if (x - g * 2 >= 0) gray[idx + width * g * 2 - g * 2] += error;
-                if (x - g >= 0) gray[idx + width * g * 2 - g] += error * 2;
-                gray[idx + width * g * 2] += error * 4;
-                if (x + g < width) gray[idx + width * g * 2 + g] += error * 2;
-                if (x + g * 2 < width) gray[idx + width * g * 2 + g * 2] += error;
+            if (y + g2 < height) {
+                const row2 = idx + widthG2;
+                if (x >= g2) gray[row2 - g2] += error;
+                if (x >= g) gray[row2 - g] += error * 2;
+                gray[row2] += error * 4;
+                if (x + g < width) gray[row2 + g] += error * 2;
+                if (x + g2 < width) gray[row2 + g2] += error;
             }
         }
     }
@@ -345,44 +450,51 @@ function stuckiDither(imageData) {
     return imageData;
 }
 
-// Burkes dithering
+// Burkes dithering (optimized)
 function burkesDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const gray = new Float32Array(width * height);
+    const pixelCount = width * height;
+    const gray = getGrayBuffer(pixelCount);
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            gray[y * width + x] = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-        }
+    const g = grainSize;
+    const g2 = g * 2;
+    const widthG = width * g;
+    const invDiv = 1 / 32;
+
+    for (let i = 0, j = 0; i < pixelCount; i++, j += 4) {
+        gray[i] = data[j] * 0.299 + data[j + 1] * 0.587 + data[j + 2] * 0.114;
     }
 
-    for (let y = 0; y < height; y += grainSize) {
-        for (let x = 0; x < width; x += grainSize) {
-            const idx = y * width + x;
+    for (let y = 0; y < height; y += g) {
+        const yOffset = y * width;
+
+        for (let x = 0; x < width; x += g) {
+            const idx = yOffset + x;
             const oldPixel = gray[idx];
             const newPixel = oldPixel < threshold ? 0 : 255;
-            const error = (oldPixel - newPixel) / 32;
+            const error = (oldPixel - newPixel) * invDiv;
 
-            const dataIdx = idx * 4;
-            for (let dy = 0; dy < grainSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < grainSize && x + dx < width; dx++) {
-                    const i = ((y + dy) * width + (x + dx)) * 4;
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
                     data[i] = data[i + 1] = data[i + 2] = newPixel;
                 }
             }
 
-            const g = grainSize;
             if (x + g < width) gray[idx + g] += error * 8;
-            if (x + g * 2 < width) gray[idx + g * 2] += error * 4;
+            if (x + g2 < width) gray[idx + g2] += error * 4;
             if (y + g < height) {
-                if (x - g * 2 >= 0) gray[idx + width * g - g * 2] += error * 2;
-                if (x - g >= 0) gray[idx + width * g - g] += error * 4;
-                gray[idx + width * g] += error * 8;
-                if (x + g < width) gray[idx + width * g + g] += error * 4;
-                if (x + g * 2 < width) gray[idx + width * g + g * 2] += error * 2;
+                const row1 = idx + widthG;
+                if (x >= g2) gray[row1 - g2] += error * 2;
+                if (x >= g) gray[row1 - g] += error * 4;
+                gray[row1] += error * 8;
+                if (x + g < width) gray[row1 + g] += error * 4;
+                if (x + g2 < width) gray[row1 + g2] += error * 2;
             }
         }
     }
@@ -390,49 +502,58 @@ function burkesDither(imageData) {
     return imageData;
 }
 
-// Sierra dithering
+// Sierra dithering (optimized)
 function sierraDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const gray = new Float32Array(width * height);
+    const pixelCount = width * height;
+    const gray = getGrayBuffer(pixelCount);
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            gray[y * width + x] = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-        }
+    const g = grainSize;
+    const g2 = g * 2;
+    const widthG = width * g;
+    const widthG2 = width * g2;
+    const invDiv = 1 / 32;
+
+    for (let i = 0, j = 0; i < pixelCount; i++, j += 4) {
+        gray[i] = data[j] * 0.299 + data[j + 1] * 0.587 + data[j + 2] * 0.114;
     }
 
-    for (let y = 0; y < height; y += grainSize) {
-        for (let x = 0; x < width; x += grainSize) {
-            const idx = y * width + x;
+    for (let y = 0; y < height; y += g) {
+        const yOffset = y * width;
+
+        for (let x = 0; x < width; x += g) {
+            const idx = yOffset + x;
             const oldPixel = gray[idx];
             const newPixel = oldPixel < threshold ? 0 : 255;
-            const error = (oldPixel - newPixel) / 32;
+            const error = (oldPixel - newPixel) * invDiv;
 
-            const dataIdx = idx * 4;
-            for (let dy = 0; dy < grainSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < grainSize && x + dx < width; dx++) {
-                    const i = ((y + dy) * width + (x + dx)) * 4;
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
                     data[i] = data[i + 1] = data[i + 2] = newPixel;
                 }
             }
 
-            const g = grainSize;
             if (x + g < width) gray[idx + g] += error * 5;
-            if (x + g * 2 < width) gray[idx + g * 2] += error * 3;
+            if (x + g2 < width) gray[idx + g2] += error * 3;
             if (y + g < height) {
-                if (x - g * 2 >= 0) gray[idx + width * g - g * 2] += error * 2;
-                if (x - g >= 0) gray[idx + width * g - g] += error * 4;
-                gray[idx + width * g] += error * 5;
-                if (x + g < width) gray[idx + width * g + g] += error * 4;
-                if (x + g * 2 < width) gray[idx + width * g + g * 2] += error * 2;
+                const row1 = idx + widthG;
+                if (x >= g2) gray[row1 - g2] += error * 2;
+                if (x >= g) gray[row1 - g] += error * 4;
+                gray[row1] += error * 5;
+                if (x + g < width) gray[row1 + g] += error * 4;
+                if (x + g2 < width) gray[row1 + g2] += error * 2;
             }
-            if (y + g * 2 < height) {
-                if (x - g >= 0) gray[idx + width * g * 2 - g] += error * 2;
-                gray[idx + width * g * 2] += error * 3;
-                if (x + g < width) gray[idx + width * g * 2 + g] += error * 2;
+            if (y + g2 < height) {
+                const row2 = idx + widthG2;
+                if (x >= g) gray[row2 - g] += error * 2;
+                gray[row2] += error * 3;
+                if (x + g < width) gray[row2 + g] += error * 2;
             }
         }
     }
@@ -440,44 +561,51 @@ function sierraDither(imageData) {
     return imageData;
 }
 
-// Two-Row Sierra dithering
+// Two-Row Sierra dithering (optimized)
 function sierraTwoDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const gray = new Float32Array(width * height);
+    const pixelCount = width * height;
+    const gray = getGrayBuffer(pixelCount);
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            gray[y * width + x] = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-        }
+    const g = grainSize;
+    const g2 = g * 2;
+    const widthG = width * g;
+    const invDiv = 1 / 16;
+
+    for (let i = 0, j = 0; i < pixelCount; i++, j += 4) {
+        gray[i] = data[j] * 0.299 + data[j + 1] * 0.587 + data[j + 2] * 0.114;
     }
 
-    for (let y = 0; y < height; y += grainSize) {
-        for (let x = 0; x < width; x += grainSize) {
-            const idx = y * width + x;
+    for (let y = 0; y < height; y += g) {
+        const yOffset = y * width;
+
+        for (let x = 0; x < width; x += g) {
+            const idx = yOffset + x;
             const oldPixel = gray[idx];
             const newPixel = oldPixel < threshold ? 0 : 255;
-            const error = (oldPixel - newPixel) / 16;
+            const error = (oldPixel - newPixel) * invDiv;
 
-            const dataIdx = idx * 4;
-            for (let dy = 0; dy < grainSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < grainSize && x + dx < width; dx++) {
-                    const i = ((y + dy) * width + (x + dx)) * 4;
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
                     data[i] = data[i + 1] = data[i + 2] = newPixel;
                 }
             }
 
-            const g = grainSize;
             if (x + g < width) gray[idx + g] += error * 4;
-            if (x + g * 2 < width) gray[idx + g * 2] += error * 3;
+            if (x + g2 < width) gray[idx + g2] += error * 3;
             if (y + g < height) {
-                if (x - g * 2 >= 0) gray[idx + width * g - g * 2] += error;
-                if (x - g >= 0) gray[idx + width * g - g] += error * 2;
-                gray[idx + width * g] += error * 3;
-                if (x + g < width) gray[idx + width * g + g] += error * 2;
-                if (x + g * 2 < width) gray[idx + width * g + g * 2] += error;
+                const row1 = idx + widthG;
+                if (x >= g2) gray[row1 - g2] += error;
+                if (x >= g) gray[row1 - g] += error * 2;
+                gray[row1] += error * 3;
+                if (x + g < width) gray[row1 + g] += error * 2;
+                if (x + g2 < width) gray[row1 + g2] += error;
             }
         }
     }
@@ -485,40 +613,45 @@ function sierraTwoDither(imageData) {
     return imageData;
 }
 
-// Sierra Lite dithering
+// Sierra Lite dithering (optimized)
 function sierraLiteDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const gray = new Float32Array(width * height);
+    const pixelCount = width * height;
+    const gray = getGrayBuffer(pixelCount);
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const idx = (y * width + x) * 4;
-            gray[y * width + x] = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
-        }
+    const g = grainSize;
+    const widthG = width * g;
+
+    for (let i = 0, j = 0; i < pixelCount; i++, j += 4) {
+        gray[i] = data[j] * 0.299 + data[j + 1] * 0.587 + data[j + 2] * 0.114;
     }
 
-    for (let y = 0; y < height; y += grainSize) {
-        for (let x = 0; x < width; x += grainSize) {
-            const idx = y * width + x;
+    for (let y = 0; y < height; y += g) {
+        const yOffset = y * width;
+
+        for (let x = 0; x < width; x += g) {
+            const idx = yOffset + x;
             const oldPixel = gray[idx];
             const newPixel = oldPixel < threshold ? 0 : 255;
-            const error = (oldPixel - newPixel) / 4;
+            const error = (oldPixel - newPixel) * 0.25; // /4
 
-            const dataIdx = idx * 4;
-            for (let dy = 0; dy < grainSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < grainSize && x + dx < width; dx++) {
-                    const i = ((y + dy) * width + (x + dx)) * 4;
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
                     data[i] = data[i + 1] = data[i + 2] = newPixel;
                 }
             }
 
-            const g = grainSize;
             if (x + g < width) gray[idx + g] += error * 2;
             if (y + g < height) {
-                if (x - g >= 0) gray[idx + width * g - g] += error;
-                gray[idx + width * g] += error;
+                const row1 = idx + widthG;
+                if (x >= g) gray[row1 - g] += error;
+                gray[row1] += error;
             }
         }
     }
@@ -526,36 +659,43 @@ function sierraLiteDither(imageData) {
     return imageData;
 }
 
-// Ordered (Bayer) dithering
+// Ordered (Bayer) dithering - optimized with flat matrix
+const bayerMatrix8x8 = new Uint8Array([
+     0, 48, 12, 60,  3, 51, 15, 63,
+    32, 16, 44, 28, 35, 19, 47, 31,
+     8, 56,  4, 52, 11, 59,  7, 55,
+    40, 24, 36, 20, 43, 27, 39, 23,
+     2, 50, 14, 62,  1, 49, 13, 61,
+    34, 18, 46, 30, 33, 17, 45, 29,
+    10, 58,  6, 54,  9, 57,  5, 53,
+    42, 26, 38, 22, 41, 25, 37, 21
+]);
+
 function orderedDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
+    const g = grainSize;
 
-    const bayerMatrix = [
-        [ 0, 48, 12, 60,  3, 51, 15, 63],
-        [32, 16, 44, 28, 35, 19, 47, 31],
-        [ 8, 56,  4, 52, 11, 59,  7, 55],
-        [40, 24, 36, 20, 43, 27, 39, 23],
-        [ 2, 50, 14, 62,  1, 49, 13, 61],
-        [34, 18, 46, 30, 33, 17, 45, 29],
-        [10, 58,  6, 54,  9, 57,  5, 53],
-        [42, 26, 38, 22, 41, 25, 37, 21]
-    ];
+    for (let y = 0; y < height; y += g) {
+        const by = ((y / g) & 7) << 3; // (y/g % 8) * 8
 
-    for (let y = 0; y < height; y += grainSize) {
-        for (let x = 0; x < width; x += grainSize) {
-            const idx = (y * width + x) * 4;
-            const gray = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
+        for (let x = 0; x < width; x += g) {
+            const idx = (y * width + x) << 2;
+            const gray = data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
 
-            const bayerValue = bayerMatrix[Math.floor(y / grainSize) % 8][Math.floor(x / grainSize) % 8];
-            const bayerThreshold = (bayerValue / 64) * 255;
-            const adjustedThreshold = threshold + (bayerThreshold - 128) * 0.5;
+            const bx = (x / g) & 7; // x/g % 8
+            const bayerValue = bayerMatrix8x8[by + bx];
+            const adjustedThreshold = threshold + ((bayerValue * 3.984375) - 128) * 0.5; // bayerValue/64*255 = bayerValue*3.984375
             const newGray = gray < adjustedThreshold ? 0 : 255;
 
-            for (let dy = 0; dy < grainSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < grainSize && x + dx < width; dx++) {
-                    const i = ((y + dy) * width + (x + dx)) * 4;
+            // Fill grain block
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
                     data[i] = data[i + 1] = data[i + 2] = newGray;
                 }
             }
@@ -565,41 +705,53 @@ function orderedDither(imageData) {
     return imageData;
 }
 
-// Halftone dots dithering
+// Halftone dots dithering (optimized)
 function halftoneDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
-    const dotSize = grainSize * 2;
+    const dotSize = grainSize << 1; // * 2
+    const halfDot = dotSize * 0.5;
+    const invDotSize = 1 / dotSize;
 
     for (let y = 0; y < height; y += dotSize) {
         for (let x = 0; x < width; x += dotSize) {
             let sum = 0;
             let count = 0;
 
+            const maxDy = Math.min(dotSize, height - y);
+            const maxDx = Math.min(dotSize, width - x);
+
             // Calculate average brightness in dot area
-            for (let dy = 0; dy < dotSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < dotSize && x + dx < width; dx++) {
-                    const idx = ((y + dy) * width + (x + dx)) * 4;
-                    sum += toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const idx = rowStart + (dx << 2);
+                    sum += data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
                     count++;
                 }
             }
 
             const avg = sum / count;
-            const dotRadius = ((255 - avg) / 255) * (dotSize / 2);
+            const dotRadius = (255 - avg) * 0.00392156862745098 * halfDot; // /255
+            const dotRadiusSq = dotRadius * dotRadius;
 
             // Draw halftone dot
-            const centerX = x + dotSize / 2;
-            const centerY = y + dotSize / 2;
+            const centerX = x + halfDot;
+            const centerY = y + halfDot;
 
-            for (let dy = 0; dy < dotSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < dotSize && x + dx < width; dx++) {
+            for (let dy = 0; dy < maxDy; dy++) {
+                const py = y + dy;
+                const dyFromCenter = py - centerY;
+                const dySq = dyFromCenter * dyFromCenter;
+                const rowStart = (py * width + x) << 2;
+
+                for (let dx = 0; dx < maxDx; dx++) {
                     const px = x + dx;
-                    const py = y + dy;
-                    const dist = Math.sqrt((px - centerX) ** 2 + (py - centerY) ** 2);
-                    const idx = (py * width + px) * 4;
-                    const newGray = dist < dotRadius ? 0 : 255;
+                    const dxFromCenter = px - centerX;
+                    const distSq = dxFromCenter * dxFromCenter + dySq;
+                    const idx = rowStart + (dx << 2);
+                    const newGray = distSq < dotRadiusSq ? 0 : 255;
                     data[idx] = data[idx + 1] = data[idx + 2] = newGray;
                 }
             }
@@ -609,23 +761,27 @@ function halftoneDither(imageData) {
     return imageData;
 }
 
-// Random threshold dithering
+// Random threshold dithering (optimized)
 function randomDither(imageData) {
     const data = imageData.data;
     const width = imageData.width;
     const height = imageData.height;
+    const g = grainSize;
 
-    for (let y = 0; y < height; y += grainSize) {
-        for (let x = 0; x < width; x += grainSize) {
-            const idx = (y * width + x) * 4;
-            const gray = toGrayscale(data[idx], data[idx + 1], data[idx + 2]);
+    for (let y = 0; y < height; y += g) {
+        for (let x = 0; x < width; x += g) {
+            const idx = (y * width + x) << 2;
+            const gray = data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
 
             const randomThreshold = threshold + (Math.random() - 0.5) * 80;
             const newGray = gray < randomThreshold ? 0 : 255;
 
-            for (let dy = 0; dy < grainSize && y + dy < height; dy++) {
-                for (let dx = 0; dx < grainSize && x + dx < width; dx++) {
-                    const i = ((y + dy) * width + (x + dx)) * 4;
+            const maxDy = Math.min(g, height - y);
+            const maxDx = Math.min(g, width - x);
+            for (let dy = 0; dy < maxDy; dy++) {
+                const rowStart = ((y + dy) * width + x) << 2;
+                for (let dx = 0; dx < maxDx; dx++) {
+                    const i = rowStart + (dx << 2);
                     data[i] = data[i + 1] = data[i + 2] = newGray;
                 }
             }
@@ -692,6 +848,13 @@ async function startCamera() {
         cameraToast.classList.add('hidden');
         flipBtn.style.display = 'flex';
 
+        // Show aspect button on desktop only
+        if (aspectBtn) {
+            aspectBtn.style.display = isDesktop() ? 'flex' : 'none';
+            updateAspectMode();
+            updateAspectButtonIcon();
+        }
+
         console.log('Camera started successfully with facing mode:', currentFacingMode);
     } catch (err) {
         console.error('Error accessing camera:', err);
@@ -708,6 +871,10 @@ function stopCamera() {
     if (animationId) {
         cancelAnimationFrame(animationId);
         animationId = null;
+    }
+    // Hide aspect button when camera stops
+    if (aspectBtn) {
+        aspectBtn.style.display = 'none';
     }
 }
 
