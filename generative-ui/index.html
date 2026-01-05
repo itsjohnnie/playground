@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generative UI Lab</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #000; --card: #050505; --border: #111; --text: #fff; --muted: #555; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        .container { max-width: 1800px; margin: 0 auto; padding: 4rem 1.5rem; }
+        .header { text-align: center; margin-bottom: 4rem; }
+        h1 { font-size: clamp(2.5rem, 6vw, 5rem); font-weight: 700; letter-spacing: -0.04em; margin-bottom: 1rem; }
+        .subtitle { font-size: 0.9rem; color: var(--muted); max-width: 400px; margin: 0 auto; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        @media (max-width: 1200px) { .grid { grid-template-columns: 1fr; } }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        .card-header { padding: 1rem 1.25rem 0; display: flex; justify-content: space-between; align-items: center; }
+        .card-title { font-size: 0.75rem; font-weight: 600; }
+        .card-description { font-size: 0.65rem; color: var(--muted); }
+        .card-content { padding: 0.5rem; }
+        .viz-area { background: #000; border-radius: 8px; position: relative; overflow: hidden; aspect-ratio: 16/9; }
+        canvas { display: block; width: 100%; height: 100%; cursor: none; }
+        .hint { position: absolute; bottom: 0.5rem; left: 0.5rem; font-size: 0.55rem; color: #333; letter-spacing: 0.05em; text-transform: uppercase; pointer-events: none; }
+        .btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #444; width: 26px; height: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
+        .btn svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2; fill: none; }
+        .footer { text-align: center; padding: 4rem 2rem 2rem; color: var(--muted); font-size: 0.65rem; }
+        .footer a { color: var(--text); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Generative UI</h1>
+            <p class="subtitle">Interactive experiments in computational aesthetics</p>
+        </header>
+        <div class="grid" id="grid"></div>
+    </div>
+    <footer class="footer"><a href="../">Back to Playground</a></footer>
+
+    <script>
+    const experiments = [
+        { id: 'membrane', title: 'Elastic Membrane', desc: 'Wave propagation physics', hint: 'Press & drag' },
+        { id: 'textmorph', title: 'Liquid Typography', desc: 'Morphing letterforms', hint: 'Move cursor' },
+        { id: 'sphere3d', title: 'Wireframe Shape', desc: 'Rotating 3D projection', hint: 'Drag to rotate' },
+        { id: 'metaballs', title: 'Metaballs', desc: 'Organic blob fusion', hint: 'Move cursor' },
+        { id: 'voronoi', title: 'Voronoi Cells', desc: 'Dynamic tessellation', hint: 'Click to add' },
+        { id: 'curl', title: 'Curl Noise', desc: 'Turbulent flow field', hint: 'Move to attract' },
+        { id: 'gravity', title: 'Gravity Wells', desc: 'N-body simulation', hint: 'Click to spawn' },
+        { id: 'strings', title: 'String Art', desc: 'Generative thread patterns', hint: 'Move to warp' },
+        { id: 'reaction', title: 'Reaction Diffusion', desc: 'Chemical pattern formation', hint: 'Click to seed' },
+        { id: 'waves', title: 'Interference', desc: 'Wave superposition', hint: 'Click to emit' }
+    ];
+
+    const grid = document.getElementById('grid');
+    experiments.forEach(e => {
+        grid.innerHTML += `<div class="card"><div class="card-header"><div><h2 class="card-title">${e.title}</h2><p class="card-description">${e.desc}</p></div><button class="btn" onclick="init${e.id.charAt(0).toUpperCase()+e.id.slice(1)}()"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button></div><div class="card-content"><div class="viz-area"><canvas id="${e.id}"></canvas><div class="hint">${e.hint}</div></div></div></div>`;
+    });
+
+    // Utils
+    const rand = (a=0,b=1) => Math.random()*(b-a)+a;
+    const lerp = (a,b,t) => a+(b-a)*t;
+    const clamp = (v,min,max) => Math.max(min,Math.min(max,v));
+    const dist = (x1,y1,x2,y2) => Math.sqrt((x2-x1)**2+(y2-y1)**2);
+
+    function setup(id) {
+        const c = document.getElementById(id);
+        const r = c.parentElement.getBoundingClientRect();
+        const d = Math.min(window.devicePixelRatio||1, 2);
+        c.width = r.width*d; c.height = r.height*d;
+        c.style.width = r.width+'px'; c.style.height = r.height+'px';
+        const ctx = c.getContext('2d');
+        ctx.scale(d,d);
+        return {c, ctx, w:r.width, h:r.height};
+    }
+
+    class Noise {
+        constructor(){this.p=[];for(let i=0;i<256;i++)this.p[i]=i;for(let i=255;i>0;i--){const j=Math.floor(Math.random()*(i+1));[this.p[i],this.p[j]]=[this.p[j],this.p[i]];}for(let i=0;i<256;i++)this.p[256+i]=this.p[i];}
+        fade(t){return t*t*t*(t*(t*6-15)+10);}
+        grad(h,x,y){return((h&1)?-x:x)+((h&2)?-y:y);}
+        get(x,y){const X=Math.floor(x)&255,Y=Math.floor(y)&255;x-=Math.floor(x);y-=Math.floor(y);const u=this.fade(x),v=this.fade(y),A=this.p[X]+Y,B=this.p[X+1]+Y;return lerp(lerp(this.grad(this.p[A],x,y),this.grad(this.p[B],x-1,y),u),lerp(this.grad(this.p[A+1],x,y-1),this.grad(this.p[B+1],x-1,y-1),u),v);}
+    }
+
+    // 1. MEMBRANE
+    let membraneAnim;
+    function initMembrane() {
+        cancelAnimationFrame(membraneAnim);
+        const {c, ctx, w, h} = setup('membrane');
+        const cols=80, rows=45, pts=[];
+        const sp = {x:w/cols, y:h/rows};
+        for(let y=0;y<=rows;y++) for(let x=0;x<=cols;x++) pts.push({z:0, vz:0, x:x*sp.x, y:y*sp.y});
+        let mx=-1e3, my=-1e3, pressed=false;
+        c.onmousedown=()=>pressed=true; c.onmouseup=()=>pressed=false; c.onmouseleave=()=>pressed=false;
+        c.onmousemove=e=>{const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;};
+        const get=(x,y)=>(x<0||x>cols||y<0||y>rows)?null:pts[y*(cols+1)+x];
+        function draw() {
+            ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
+            if(pressed) pts.forEach(p=>{const d=dist(p.x,p.y,mx,my);if(d<100)p.vz+=(100-d)*0.08;});
+            for(let y=0;y<=rows;y++) for(let x=0;x<=cols;x++){
+                const p=get(x,y), nb=[get(x-1,y),get(x+1,y),get(x,y-1),get(x,y+1)].filter(n=>n);
+                let f=0; nb.forEach(n=>f+=(n.z-p.z)*0.25);
+                p.vz+=f; p.vz-=p.z*0.02; p.vz*=0.97;
+            }
+            pts.forEach(p=>p.z+=p.vz);
+            for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
+                const p1=get(x,y),p2=get(x+1,y),p3=get(x+1,y+1),p4=get(x,y+1);
+                const az=(p1.z+p2.z+p3.z+p4.z)/4;
+                const l=clamp(30+az*2,5,100), hue=200+az*0.3;
+                ctx.beginPath();
+                ctx.moveTo(p1.x,p1.y-p1.z); ctx.lineTo(p2.x,p2.y-p2.z);
+                ctx.lineTo(p3.x,p3.y-p3.z); ctx.lineTo(p4.x,p4.y-p4.z);
+                ctx.closePath();
+                ctx.fillStyle=`hsl(${hue},60%,${l}%)`; ctx.fill();
+            }
+            membraneAnim=requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // 2. LIQUID TYPOGRAPHY
+    let textmorphAnim;
+    function initTextmorph() {
+        cancelAnimationFrame(textmorphAnim);
+        const {c, ctx, w, h} = setup('textmorph');
+        const noise = new Noise();
+        const text = 'FLOW';
+        const fontSize = Math.min(h*0.45, w*0.18);
+        ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff'; ctx.fillText(text, w/2, h/2);
+        const imgData = ctx.getImageData(0,0,w,h);
+        const pts = [];
+        const step = Math.max(3, Math.floor(Math.min(w,h)/120));
+        for(let y=0;y<h;y+=step) for(let x=0;x<w;x+=step){
+            const i = (y*w+x)*4;
+            if(imgData.data[i+3]>128) pts.push({bx:x, by:y, x:x, y:y, vx:0, vy:0});
+        }
+        let mx=w/2, my=h/2, t=0;
+        c.onmousemove=e=>{const r=c.getBoundingClientRect();mx=e.clientX-r.left;my=e.clientY-r.top;};
+        function draw() {
+            ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
+            t+=0.02;
+            pts.forEach(p=>{
+                const d=dist(p.x,p.y,mx,my);
+                const n=noise.get(p.bx*0.01+t,p.by*0.01)*25;
+                if(d<120){
+                    const f=(120-d)/120;
+                    p.vx+=(p.x-mx)*f*0.04;
+                    p.vy+=(p.y-my)*f*0.04;
+                }
+                p.vx+=(p.bx+n-p.x)*0.12;
+                p.vy+=(p.by+noise.get(p.bx*0.01,p.by*0.01+t)*25-p.y)*0.12;
+                p.vx*=0.82; p.vy*=0.82;
+                p.x+=p.vx; p.y+=p.vy;
+                const sp=Math.sqrt(p.vx**2+p.vy**2);
+                ctx.beginPath(); ctx.arc(p.x,p.y,2.5+sp*0.3,0,Math.PI*2);
+                ctx.fillStyle=`hsl(${200+sp*15},80%,${60+sp*4}%)`;
+                ctx.fill();
+            });
+            textmorphAnim=requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // 3. WIREFRAME SHAPE (cycles through shapes on refresh)
+    let sphere3dAnim, shapeIndex = 0;
+    const shapes = ['sphere', 'torus', 'cube', 'octahedron', 'icosahedron'];
+    function initSphere3d() {
+        cancelAnimationFrame(sphere3dAnim);
+        const {c, ctx, w, h} = setup('sphere3d');
+        const pts = [], edges = [];
+        const r = Math.min(w,h)*0.32;
+        const shape = shapes[shapeIndex++ % shapes.length];
+
+        if(shape === 'sphere') {
+            const rings=16, segs=24;
+            for(let i=0;i<=rings;i++){
+                const phi=(i/rings)*Math.PI;
+                for(let j=0;j<segs;j++){
+                    const theta=(j/segs)*Math.PI*2;
+                    pts.push({x:r*Math.sin(phi)*Math.cos(theta), y:r*Math.cos(phi), z:r*Math.sin(phi)*Math.sin(theta)});
+                }
+            }
+            for(let i=0;i<rings;i++) for(let j=0;j<segs;j++){
+                edges.push([i*segs+j, i*segs+(j+1)%segs]);
+                edges.push([i*segs+j, (i+1)*segs+j]);
+            }
+        } else if(shape === 'torus') {
+            const rings=20, segs=12, R=r*0.7, rr=r*0.3;
+            for(let i=0;i<rings;i++) for(let j=0;j<segs;j++){
+                const u=(i/rings)*Math.PI*2, v=(j/segs)*Math.PI*2;
+                pts.push({x:(R+rr*Math.cos(v))*Math.cos(u), y:rr*Math.sin(v), z:(R+rr*Math.cos(v))*Math.sin(u)});
+            }
+            for(let i=0;i<rings;i++) for(let j=0;j<segs;j++){
+                edges.push([i*segs+j, i*segs+(j+1)%segs]);
+                edges.push([i*segs+j, ((i+1)%rings)*segs+j]);
+            }
+        } else if(shape === 'cube') {
+            const s=r*0.8;
+            [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]].forEach(v=>pts.push({x:v[0]*s,y:v[1]*s,z:v[2]*s}));
+            [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(e=>edges.push(e));
+        } else if(shape === 'octahedron') {
+            [[0,r,0],[0,-r,0],[r,0,0],[-r,0,0],[0,0,r],[0,0,-r]].forEach(v=>pts.push({x:v[0],y:v[1],z:v[2]}));
+            [[0,2],[0,3],[0,4],[0,5],[1,2],[1,3],[1,4],[1,5],[2,4],[4,3],[3,5],[5,2]].forEach(e=>edges.push(e));
+        } else if(shape === 'icosahedron') {
+            const t=(1+Math.sqrt(5))/2, s=r/Math.sqrt(1+t*t);
+            [[-1,t,0],[1,t,0],[-1,-t,0],[1,-t,0],[0,-1,t],[0,1,t],[0,-1,-t],[0,1,-t],[t,0,-1],[t,0,1],[-t,0,-1],[-t,0,1]].forEach(v=>pts.push({x:v[0]*s,y:v[1]*s,z:v[2]*s}));
+            [[0,11],[0,5],[0,1],[0,7],[0,10],[1,5],[5,11],[11,10],[10,7],[7,1],[3,9],[3,4],[3,2],[3,6],[3,8],[4,9],[2,4],[6,2],[8,6],[9,8],[4,5],[2,11],[6,10],[8,7],[9,1],[5,9],[11,4],[10,2],[7,6],[1,8]].forEach(e=>edges.push(e));
+        }
+
+        let rx=0, ry=0, drag=false, pmx=0, pmy=0, vrx=0.008, vry=0.012;
+        c.onmousedown=e=>{drag=true;const rect=c.getBoundingClientRect();pmx=e.clientX-rect.left;pmy=e.clientY-rect.top;};
+        c.onmouseup=()=>drag=false; c.onmouseleave=()=>drag=false;
+        c.onmousemove=e=>{if(!drag)return;const rect=c.getBoundingClientRect();const mx=e.clientX-rect.left,my=e.clientY-rect.top;vry+=(mx-pmx)*0.0005;vrx+=(my-pmy)*0.0005;pmx=mx;pmy=my;};
+
+        function project(p){
+            let y1=p.y*Math.cos(rx)-p.z*Math.sin(rx), z1=p.y*Math.sin(rx)+p.z*Math.cos(rx);
+            let x2=p.x*Math.cos(ry)+z1*Math.sin(ry), z2=-p.x*Math.sin(ry)+z1*Math.cos(ry);
+            const fov=400, scale=fov/(fov+z2);
+            return {x:w/2+x2*scale, y:h/2+y1*scale, z:z2, scale};
+        }
+        function draw() {
+            ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
+            rx+=vrx; ry+=vry; vrx*=0.998; vry*=0.998;
+            const projected = pts.map(p=>project(p));
+            edges.forEach(([a,b])=>{
+                const p1=projected[a], p2=projected[b];
+                const avgZ=(p1.z+p2.z)/2, alpha=clamp((avgZ+r)/(r*2)*0.8+0.15,0.1,0.95);
+                ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);
+                ctx.strokeStyle=`hsla(${180+avgZ*0.3},70%,60%,${alpha})`; ctx.lineWidth=Math.max(1,p1.scale*1.2); ctx.stroke();
+            });
+            projected.forEach(p=>{
+                const alpha=clamp((p.z+r)/(r*2)*0.9+0.1,0.15,1);
+                ctx.beginPath(); ctx.arc(p.x,p.y,Math.max(2,p.scale*2.5),0,Math.PI*2);
+                ctx.fillStyle=`hsla(200,80%,70%,${alpha})`; ctx.fill();
+            });
+            sphere3dAnim=requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // 4. METABALLS
+    let metaballsAnim;
+    function initMetaballs() {
+        cancelAnimationFrame(metaballsAnim);
+        const {c, ctx, w, h} = setup('metaballs');
+        const balls = Array.from({length:8}, ()=>({
+            x:rand(100,w-100), y:rand(80,h-80), vx:rand(-2,2), vy:rand(-2,2), r:rand(40,80)
+        }));
+        let mx=w/2, my=h/2;
+        c.onmousemove=e=>{const rect=c.getBoundingClientRect();mx=e.clientX-rect.left;my=e.clientY-rect.top;};
+        const sc=4, imgW=Math.floor(w/sc), imgH=Math.floor(h/sc);
+        function draw() {
+            balls.forEach(b=>{
+                b.x+=b.vx; b.y+=b.vy;
+                if(b.x<b.r||b.x>w-b.r)b.vx*=-1;
+                if(b.y<b.r||b.y>h-b.r)b.vy*=-1;
+                const dx=mx-b.x, dy=my-b.y, d=Math.sqrt(dx*dx+dy*dy)+1;
+                b.vx+=dx/d*0.3; b.vy+=dy/d*0.3;
+                const sp=Math.sqrt(b.vx**2+b.vy**2);
+                if(sp>4){b.vx=b.vx/sp*4;b.vy=b.vy/sp*4;}
+            });
+            const img = ctx.createImageData(imgW,imgH);
+            for(let py=0;py<imgH;py++) for(let px=0;px<imgW;px++){
+                const x=px*sc, y=py*sc;
+                let sum=0;
+                balls.forEach(b=>{const dx=x-b.x,dy=y-b.y;sum+=b.r*b.r/(dx*dx+dy*dy+1);});
+                const idx=(py*imgW+px)*4;
+                if(sum>1){
+                    const v=Math.min(1,(sum-1)*2);
+                    img.data[idx]=50+v*150; img.data[idx+1]=100+v*100; img.data[idx+2]=180+v*75; img.data[idx+3]=255;
+                }else if(sum>0.6){
+                    const e=(sum-0.6)/0.4;
+                    img.data[idx]=30*e; img.data[idx+1]=60*e; img.data[idx+2]=100*e; img.data[idx+3]=255;
+                }
+            }
+            ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
+            ctx.putImageData(img,0,0);
+            ctx.drawImage(c,0,0,imgW,imgH,0,0,w,h);
+            metaballsAnim=requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // 5. VORONOI
+    let voronoiAnim;
+    function initVoronoi() {
+        cancelAnimationFrame(voronoiAnim);
+        const {c, ctx, w, h} = setup('voronoi');
+        let sites = Array.from({length:30}, ()=>({x:rand(0,w),y:rand(0,h),vx:rand(-1,1),vy:rand(-1,1),hue:rand(0,360)}));
+        c.onclick=e=>{const rect=c.getBoundingClientRect();sites.push({x:e.clientX-rect.left,y:e.clientY-rect.top,vx:rand(-1,1),vy:rand(-1,1),hue:rand(0,360)});if(sites.length>60)sites.shift();};
+        const sc=6, imgW=Math.floor(w/sc), imgH=Math.floor(h/sc);
+        function draw() {
+            sites.forEach(s=>{
+                s.x+=s.vx; s.y+=s.vy;
+                if(s.x<0||s.x>w)s.vx*=-1;
+                if(s.y<0||s.y>h)s.vy*=-1;
+                s.hue=(s.hue+0.1)%360;
+            });
+            const img = ctx.createImageData(imgW,imgH);
+            for(let py=0;py<imgH;py++) for(let px=0;px<imgW;px++){
+                const x=px*sc, y=py*sc;
+                let minD=1e9, minD2=1e9, closest=null;
+                sites.forEach(s=>{
+                    const d=(x-s.x)**2+(y-s.y)**2;
+                    if(d<minD){minD2=minD;minD=d;closest=s;}
+                    else if(d<minD2)minD2=d;
+                });
+                const edge=Math.sqrt(minD2)-Math.sqrt(minD);
+                const idx=(py*imgW+px)*4;
+                const [r,g,b]=hslToRgb(closest.hue/360,0.6,edge<15?0.3:0.5);
+                img.data[idx]=r; img.data[idx+1]=g; img.data[idx+2]=b; img.data[idx+3]=255;
+            }
+            ctx.putImageData(img,0,0);
+            ctx.drawImage(c,0,0,imgW,imgH,0,0,w,h);
+            voronoiAnim=requestAnimationFrame(draw);
+        }
+        draw();
+    }
+    function hslToRgb(h,s,l){const a=s*Math.min(l,1-l);const f=n=>{const k=(n+h*12)%12;return l-a*Math.max(Math.min(k-3,9-k,1),-1);};return [f(0)*255,f(8)*255,f(4)*255];}
+
+    // 6. CURL NOISE FLOW
+    let curlAnim;
+    function initCurl() {
+        cancelAnimationFrame(curlAnim);
+        const {c, ctx, w, h} = setup('curl');
+        const noise = new Noise();
+        const particles = Array.from({length:3000}, ()=>({x:rand(0,w),y:rand(0,h),hue:rand(180,280)}));
+        let mx=w/2, my=h/2, t=0;
+        c.onmousemove=e=>{const rect=c.getBoundingClientRect();mx=e.clientX-rect.left;my=e.clientY-rect.top;};
+        ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
+        function draw() {
+            ctx.fillStyle='rgba(0,0,0,0.03)'; ctx.fillRect(0,0,w,h);
+            t+=0.003;
+            particles.forEach(p=>{
+                const n1=noise.get(p.x*0.003+t,p.y*0.003);
+                const n2=noise.get(p.x*0.003,p.y*0.003+t);
+                const angle=n1*Math.PI*4;
+                const curl=n2*2;
+                let vx=Math.cos(angle)*2+curl, vy=Math.sin(angle)*2;
+                const dx=mx-p.x, dy=my-p.y, d=Math.sqrt(dx*dx+dy*dy)+1;
+                if(d<200){vx+=dx/d*3;vy+=dy/d*3;}
+                p.x+=vx; p.y+=vy;
+                if(p.x<0)p.x=w; if(p.x>w)p.x=0; if(p.y<0)p.y=h; if(p.y>h)p.y=0;
+                ctx.beginPath(); ctx.arc(p.x,p.y,1,0,Math.PI*2);
+                ctx.fillStyle=`hsla(${p.hue+d*0.1},70%,60%,0.8)`; ctx.fill();
+            });
+            curlAnim=requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // 7. GRAVITY WELLS (N-body)
+    let gravityAnim;
+    function initGravity() {
+        cancelAnimationFrame(gravityAnim);
+        const {c, ctx, w, h} = setup('gravity');
+        let bodies = [{x:w/2,y:h/2,vx:0,vy:0,m:500,hue:50,fixed:true}];
+        for(let i=0;i<100;i++){
+            const a=rand(0,Math.PI*2), r=rand(80,Math.min(w,h)*0.4);
+            const orbitV=Math.sqrt(500/r)*0.8;
+            bodies.push({x:w/2+Math.cos(a)*r,y:h/2+Math.sin(a)*r,vx:-Math.sin(a)*orbitV,vy:Math.cos(a)*orbitV,m:1,hue:rand(0,360),trail:[]});
+        }
+        c.onclick=e=>{const rect=c.getBoundingClientRect();bodies.push({x:e.clientX-rect.left,y:e.clientY-rect.top,vx:0,vy:0,m:100,hue:rand(0,60),fixed:false,trail:[]});};
+        function draw() {
+            ctx.fillStyle='rgba(0,0,0,0.15)'; ctx.fillRect(0,0,w,h);
+            bodies.forEach(b=>{
+                if(b.fixed)return;
+                bodies.forEach(o=>{
+                    if(o===b)return;
+                    const dx=o.x-b.x, dy=o.y-b.y, d=Math.sqrt(dx*dx+dy*dy)+5;
+                    const f=o.m/(d*d)*0.5;
+                    b.vx+=dx/d*f; b.vy+=dy/d*f;
+                });
+                const sp=Math.sqrt(b.vx**2+b.vy**2);
+                if(sp>10){b.vx=b.vx/sp*10;b.vy=b.vy/sp*10;}
+                b.x+=b.vx; b.y+=b.vy;
+                if(b.trail){b.trail.push({x:b.x,y:b.y});if(b.trail.length>30)b.trail.shift();}
+            });
+            bodies.forEach(b=>{
+                if(b.trail)b.trail.forEach((p,i)=>{
+                    ctx.beginPath(); ctx.arc(p.x,p.y,1,0,Math.PI*2);
+                    ctx.fillStyle=`hsla(${b.hue},70%,60%,${i/b.trail.length*0.5})`; ctx.fill();
+                });
+                const size=b.fixed?12:b.m>50?6:2;
+                ctx.beginPath(); ctx.arc(b.x,b.y,size,0,Math.PI*2);
+                ctx.fillStyle=`hsl(${b.hue},80%,${b.fixed?70:60}%)`; ctx.fill();
+            });
+            bodies=bodies.filter(b=>b.x>-50&&b.x<w+50&&b.y>-50&&b.y<h+50);
+            gravityAnim=requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // 8. STRING ART
+    let stringsAnim;
+    function initStrings() {
+        cancelAnimationFrame(stringsAnim);
+        const {c, ctx, w, h} = setup('strings');
+        const n=80;
+        const pts = Array.from({length:n}, (_,i)=>{
+            const a=(i/n)*Math.PI*2;
+            const r=Math.min(w,h)*0.4;
+            return {bx:w/2+Math.cos(a)*r, by:h/2+Math.sin(a)*r, x:w/2+Math.cos(a)*r, y:h/2+Math.sin(a)*r};
+        });
+        let mx=w/2, my=h/2, t=0;
+        c.onmousemove=e=>{const rect=c.getBoundingClientRect();mx=e.clientX-rect.left;my=e.clientY-rect.top;};
+        function draw() {
+            ctx.fillStyle='#000'; ctx.fillRect(0,0,w,h);
+            t+=0.02;
+            pts.forEach((p,i)=>{
+                const d=dist(p.bx,p.by,mx,my);
+                const warp=d<200?(200-d)/200*50:0;
+                const angle=Math.atan2(p.by-my,p.bx-mx);
+                p.x=p.bx+Math.cos(angle)*warp+Math.sin(t+i*0.1)*10;
+                p.y=p.by+Math.sin(angle)*warp+Math.cos(t+i*0.1)*10;
+            });
+            for(let i=0;i<n;i++){
+                for(let j=i+1;j<n;j++){
+                    if((j-i)%3!==0)continue;
+                    const p1=pts[i], p2=pts[j];
+                    const d=dist(p1.x,p1.y,p2.x,p2.y);
+                    ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);
+                    ctx.strokeStyle=`hsla(${(i+j)*2+t*20},70%,60%,${0.3-d/1000})`; ctx.lineWidth=0.5; ctx.stroke();
+                }
+            }
+            pts.forEach(p=>{
+                ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2);
+                ctx.fillStyle='#fff'; ctx.fill();
+            });
+            stringsAnim=requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // 9. REACTION DIFFUSION
+    let reactionAnim;
+    function initReaction() {
+        cancelAnimationFrame(reactionAnim);
+        const {c, ctx, w, h} = setup('reaction');
+        const sc=4, gw=Math.floor(w/sc), gh=Math.floor(h/sc);
+        let gridA = Array(gw*gh).fill(1), gridB = Array(gw*gh).fill(0);
+        const dA=1.0, dB=0.5, feed=0.055, kill=0.062;
+        // Seed center
+        for(let y=gh/2-5;y<gh/2+5;y++) for(let x=gw/2-5;x<gw/2+5;x++) gridB[y*gw+x]=1;
+        c.onclick=e=>{const rect=c.getBoundingClientRect();const mx=Math.floor((e.clientX-rect.left)/sc),my=Math.floor((e.clientY-rect.top)/sc);
+            for(let y=my-3;y<my+3;y++) for(let x=mx-3;x<mx+3;x++) if(x>=0&&x<gw&&y>=0&&y<gh) gridB[y*gw+x]=1;};
+        function step() {
+            const newA=[...gridA], newB=[...gridB];
+            for(let y=1;y<gh-1;y++) for(let x=1;x<gw-1;x++){
+                const i=y*gw+x;
+                const a=gridA[i], b=gridB[i];
+                const lapA=gridA[i-1]+gridA[i+1]+gridA[i-gw]+gridA[i+gw]-4*a;
+                const lapB=gridB[i-1]+gridB[i+1]+gridB[i-gw]+gridB[i+gw]-4*b;
+                const abb=a*b*b;
+                newA[i]=clamp(a+dA*lapA-abb+feed*(1-a),0,1);
+                newB[i]=clamp(b+dB*lapB+abb-(kill+feed)*b,0,1);
+            }
+            gridA=newA; gridB=newB;
+        }
+        function draw() {
+            for(let i=0;i<8;i++)step();
+            const img=ctx.createImageData(gw,gh);
+            for(let i=0;i<gw*gh;i++){
+                const v=clamp((gridA[i]-gridB[i])*255,0,255);
+                const idx=i*4;
+                img.data[idx]=v*0.3; img.data[idx+1]=v*0.6; img.data[idx+2]=v; img.data[idx+3]=255;
+            }
+            ctx.putImageData(img,0,0);
+            ctx.drawImage(c,0,0,gw,gh,0,0,w,h);
+            reactionAnim=requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // 10. WAVE INTERFERENCE
+    let wavesAnim;
+    function initWaves() {
+        cancelAnimationFrame(wavesAnim);
+        const {c, ctx, w, h} = setup('waves');
+        let sources = [{x:w*0.3,y:h/2,phase:0},{x:w*0.7,y:h/2,phase:0}];
+        let t=0;
+        c.onclick=e=>{const rect=c.getBoundingClientRect();sources.push({x:e.clientX-rect.left,y:e.clientY-rect.top,phase:t});if(sources.length>6)sources.shift();};
+        const sc=3, imgW=Math.floor(w/sc), imgH=Math.floor(h/sc);
+        function draw() {
+            t+=0.15;
+            const img=ctx.createImageData(imgW,imgH);
+            for(let py=0;py<imgH;py++) for(let px=0;px<imgW;px++){
+                const x=px*sc, y=py*sc;
+                let sum=0;
+                sources.forEach(s=>{
+                    const d=Math.sqrt((x-s.x)**2+(y-s.y)**2);
+                    sum+=Math.sin(d*0.05-t+s.phase)*Math.exp(-d*0.003);
+                });
+                const v=(sum/sources.length+1)/2;
+                const idx=(py*imgW+px)*4;
+                img.data[idx]=v*100; img.data[idx+1]=v*150+50; img.data[idx+2]=v*200+55; img.data[idx+3]=255;
+            }
+            ctx.putImageData(img,0,0);
+            ctx.drawImage(c,0,0,imgW,imgH,0,0,w,h);
+            wavesAnim=requestAnimationFrame(draw);
+        }
+        draw();
+    }
+
+    // Init all
+    window.addEventListener('load', ()=>setTimeout(()=>{
+        initMembrane();initTextmorph();initSphere3d();initMetaballs();initVoronoi();
+        initCurl();initGravity();initStrings();initReaction();initWaves();
+    },100));
+    </script>
+</body>
+</html>
