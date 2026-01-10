@@ -1,10 +1,58 @@
 // ============================================
-// Terminal Animation - Clean JavaScript
+// Terminal Animation - The Definitive Guide
 // ============================================
+
+// === NAVIGATION SCROLL SPY ===
+const navLinks = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('.section, .hero');
+
+// Intersection Observer for scroll spy
+const observerOptions = {
+    root: null,
+    rootMargin: '-20% 0px -70% 0px',
+    threshold: 0
+};
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const id = entry.target.getAttribute('id');
+            if (id) {
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    if (link.getAttribute('href') === `#${id}`) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        }
+    });
+}, observerOptions);
+
+// Observe all sections
+sections.forEach(section => {
+    if (section.getAttribute('id')) {
+        observer.observe(section);
+    }
+});
+
+// Smooth scroll for navigation links
+navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = link.getAttribute('href');
+        const targetSection = document.querySelector(targetId);
+        if (targetSection) {
+            targetSection.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    });
+});
 
 // === HERO ANIMATION ===
 const heroOutput = document.getElementById('hero-output');
-const heroText = 'TERMINAL';
 let heroFrame = 0;
 
 // Create balanced ASCII art frames for TERMINAL
@@ -197,12 +245,13 @@ setInterval(animateBlink, 500);
 
 // === CONSOLE MESSAGE ===
 console.log(`
-╔════════════════════════════════════╗
-║  Terminal Animation Documentation  ║
-║                                    ║
-║  All animations render in real-    ║
-║  time using pure JavaScript        ║
-║                                    ║
-║  View source to see techniques     ║
-╚════════════════════════════════════╝
+╔═══════════════════════════════════════════╗
+║  Terminal Animation - The Definitive Guide ║
+║                                           ║
+║  All animations render in real-time       ║
+║  using pure JavaScript                    ║
+║                                           ║
+║  Open DevTools to see this message        ║
+║  View source to explore techniques        ║
+╚═══════════════════════════════════════════╝
 `);
