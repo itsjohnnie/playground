@@ -3,317 +3,1433 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Terminal animation — A guide to ASCII motion graphics</title>
+    <title>Terminal animation — The definitive guide to ASCII motion graphics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="terminal-animation.css">
 </head>
 <body>
-    <!-- Hero -->
-    <section class="hero">
-        <div class="hero-content">
-            <h1>Terminal animation</h1>
-            <p class="lead">The art and technique of creating motion graphics using only text characters in command-line interfaces.</p>
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-header">
+            <h3 class="nav-title">Terminal animation</h3>
         </div>
+        <ul class="nav-list">
+            <li><a href="#introduction" class="nav-link">Introduction</a></li>
+            <li><a href="#fundamentals" class="nav-link">Fundamentals</a></li>
+            <li><a href="#techniques" class="nav-link">Core techniques</a></li>
+            <li><a href="#advanced" class="nav-link">Advanced</a></li>
+            <li><a href="#characters" class="nav-link">Character sets</a></li>
+            <li><a href="#patterns" class="nav-link">Common patterns</a></li>
+            <li><a href="#best-practices" class="nav-link">Best practices</a></li>
+            <li><a href="#performance" class="nav-link">Performance</a></li>
+            <li><a href="#tools" class="nav-link">Tools & libraries</a></li>
+            <li><a href="#examples" class="nav-link">Notable examples</a></li>
+            <li><a href="#resources" class="nav-link">Resources</a></li>
+        </ul>
+    </nav>
 
-        <div class="hero-demo">
-            <div class="terminal-window">
-                <div class="terminal-header">
-                    <div class="dots">
-                        <span class="dot"></span>
-                        <span class="dot"></span>
-                        <span class="dot"></span>
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Hero -->
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Terminal animation</h1>
+                <p class="lead">The definitive guide to creating motion graphics using ASCII characters in command-line interfaces — from fundamental concepts to advanced optimization techniques.</p>
+            </div>
+            <div class="hero-demo">
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <div class="dots">
+                            <span class="dot red"></span>
+                            <span class="dot yellow"></span>
+                            <span class="dot green"></span>
+                        </div>
+                        <span class="terminal-title">~/demo.sh</span>
                     </div>
-                    <span class="terminal-title">demo.sh</span>
-                </div>
-                <div class="terminal-body">
-                    <pre id="hero-output" class="output"></pre>
+                    <div class="terminal-body">
+                        <pre id="hero-output" class="output"></pre>
+                    </div>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- Introduction -->
-    <section class="section">
-        <div class="container-narrow">
-            <p class="intro-text">Since the 1960s, programmers have been creating art and animation using nothing but ASCII characters. From early teleprinter games to modern CLI tools, terminal animation remains a unique intersection of programming, design, and creative constraint.</p>
-        </div>
-    </section>
+        <!-- Introduction -->
+        <section class="section" id="introduction">
+            <div class="container-narrow">
+                <h2>Introduction</h2>
+                <p class="intro-text">Terminal animation represents a unique intersection of programming, design, and creative constraint. Since the 1960s, developers have been pushing the boundaries of what's possible using nothing but text characters, creating everything from simple loading spinners to full-featured games and complex data visualizations.</p>
 
-    <!-- Core Techniques -->
-    <section class="section bg-dark">
-        <div class="container">
-            <h2>Core techniques</h2>
-            <p class="section-intro">Four fundamental approaches to creating terminal animation.</p>
+                <h3>What is terminal animation?</h3>
+                <p>Terminal animation is the art and technique of creating motion graphics within text-based interfaces. Unlike traditional animation that relies on pixels and raster graphics, terminal animation works exclusively with characters from various encoding schemes (ASCII, Unicode, etc.) and control sequences that manipulate cursor position and display attributes.</p>
 
-            <div class="technique-list">
-                <!-- Frame-based -->
-                <article class="technique">
-                    <div class="technique-text">
-                        <h3>Frame-based animation</h3>
-                        <p>Pre-render multiple frames and cycle through them. The simplest approach, used for logos, loading indicators, and character animations. Memory-intensive but smooth and predictable.</p>
-                        <div class="code-block">
-                            <code>const frames = ['⠋', '⠙', '⠹', '⠸']
-let i = 0
+                <h3>Why terminal animation?</h3>
+                <p>Despite the ubiquity of graphical interfaces, terminal animation remains relevant for several compelling reasons:</p>
+                <ul class="feature-list">
+                    <li><strong>Universal compatibility:</strong> Works on any system with a terminal emulator, from embedded systems to supercomputers</li>
+                    <li><strong>Minimal resource usage:</strong> Text rendering is orders of magnitude lighter than graphics rendering</li>
+                    <li><strong>SSH-friendly:</strong> Animations work seamlessly over remote connections with limited bandwidth</li>
+                    <li><strong>Accessibility:</strong> Screen readers can interpret text-based interfaces more effectively</li>
+                    <li><strong>Aesthetic appeal:</strong> The retro-computing aesthetic has enduring cultural cachet</li>
+                    <li><strong>Creative constraints:</strong> Limitations often breed innovation and unique artistic expression</li>
+                </ul>
+
+                <h3>Brief history</h3>
+                <p>Terminal animation evolved alongside computing itself. Early teleprinters in the 1960s could only print characters sequentially, but programmers quickly discovered they could create the illusion of motion by printing, then overwriting characters. The introduction of the DEC VT100 in 1978, with its ANSI escape sequence support, revolutionized the field by enabling precise cursor control.</p>
+                <p>The BBS era of the 1980s-90s saw an explosion of ASCII art and animation, with dedicated tools and thriving communities. Today, we're experiencing a CLI renaissance, with modern terminal emulators supporting millions of colors, ligatures, and sophisticated rendering — while maintaining backward compatibility with decades-old techniques.</p>
+            </div>
+        </section>
+
+        <!-- Fundamentals -->
+        <section class="section" id="fundamentals">
+            <div class="container-narrow">
+                <h2>Fundamentals</h2>
+                <p class="section-intro">Core concepts every terminal animator should understand.</p>
+
+                <article class="subsection">
+                    <h3>How terminals work</h3>
+                    <p>Modern terminal emulators are software programs that simulate physical hardware terminals. They maintain an internal grid of character cells (typically 80×24 or larger) and render each cell using a monospace font. Understanding this grid-based model is fundamental to terminal animation.</p>
+
+                    <div class="code-block">
+                        <code>// A terminal is essentially a 2D grid
+// Each cell contains:
+// - A character (ASCII or Unicode)
+// - Foreground color
+// - Background color
+// - Text attributes (bold, italic, underline, etc.)
+
+// Example: 80 columns × 24 rows = 1,920 cells
+const COLS = 80
+const ROWS = 24
+const grid = Array(ROWS).fill(null).map(() =>
+  Array(COLS).fill({ char: ' ', fg: 7, bg: 0 })
+)</code>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>ANSI escape sequences</h3>
+                    <p>ANSI escape sequences are special character combinations that control terminal behavior. They start with ESC (ASCII 27 or <code>\x1b</code>) followed by specific commands. These sequences are the foundation of terminal control.</p>
+
+                    <div class="code-block">
+                        <code>// Cursor positioning
+'\x1b[{row};{col}H'  // Move cursor to row, column
+'\x1b[{n}A'          // Move cursor up n lines
+'\x1b[{n}B'          // Move cursor down n lines
+'\x1b[{n}C'          // Move cursor right n columns
+'\x1b[{n}D'          // Move cursor left n columns
+
+// Screen manipulation
+'\x1b[2J'            // Clear entire screen
+'\x1b[K'             // Clear from cursor to end of line
+'\x1b[H'             // Move cursor to home (0,0)
+
+// Text attributes
+'\x1b[0m'            // Reset all attributes
+'\x1b[1m'            // Bold
+'\x1b[4m'            // Underline
+'\x1b[7m'            // Reverse video
+
+// Colors (basic 16-color)
+'\x1b[30-37m'        // Foreground colors
+'\x1b[40-47m'        // Background colors
+'\x1b[90-97m'        // Bright foreground colors</code>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Frame rate and timing</h3>
+                    <p>Terminal animation isn't constrained by display refresh rates like traditional animation. Frame rate is entirely under your control, typically ranging from 10-60 FPS depending on complexity and desired smoothness.</p>
+
+                    <div class="code-block">
+                        <code>// Calculate frame delay for target FPS
+const FPS = 30
+const FRAME_TIME = 1000 / FPS  // ~33ms per frame
+
+// Animation loop
 setInterval(() => {
-  process.stdout.write('\r' + frames[i++ % 4])
-}, 80)</code>
-                        </div>
-                    </div>
-                    <div class="technique-demo">
-                        <div class="demo-window">
-                            <pre id="frame-demo" class="output"></pre>
-                        </div>
-                    </div>
-                </article>
+  updateAnimation()
+  render()
+}, FRAME_TIME)
 
-                <!-- Procedural -->
-                <article class="technique">
-                    <div class="technique-text">
-                        <h3>Procedural generation</h3>
-                        <p>Calculate each frame mathematically using functions like sine waves, noise, or physics simulations. Enables effects like plasma, fire, and particle systems with minimal memory.</p>
-                        <div class="code-block">
-                            <code>for (let y = 0; y < height; y++) {
-  for (let x = 0; x < width; x++) {
-    const v = Math.sin(x * 0.2 + time)
-    const char = v > 0 ? '█' : '░'
-    output += char
+// For more precise timing, use performance.now()
+let lastFrame = performance.now()
+function gameLoop(currentTime) {
+  const delta = currentTime - lastFrame
+
+  if (delta >= FRAME_TIME) {
+    update(delta)
+    render()
+    lastFrame = currentTime
   }
+
+  requestAnimationFrame(gameLoop)
 }</code>
-                        </div>
-                    </div>
-                    <div class="technique-demo">
-                        <div class="demo-window">
-                            <pre id="procedural-demo" class="output"></pre>
-                        </div>
                     </div>
                 </article>
 
-                <!-- Buffer-based -->
-                <article class="technique">
-                    <div class="technique-text">
-                        <h3>Buffer manipulation</h3>
-                        <p>Maintain a 2D array representing the screen, update specific cells, then render the entire buffer. Allows for complex multi-element scenes like games and interactive UIs.</p>
-                        <div class="code-block">
-                            <code>const buffer = Array(rows).fill(null)
+                <article class="subsection">
+                    <h3>Rendering strategies</h3>
+                    <p>There are three primary approaches to rendering terminal animation, each with distinct tradeoffs:</p>
+
+                    <div class="technique-comparison">
+                        <div class="comparison-item">
+                            <h4>Full redraw</h4>
+                            <p>Clear the screen and redraw everything each frame. Simple but can cause flicker.</p>
+                            <div class="pros-cons">
+                                <div class="pros">
+                                    <strong>Pros:</strong> Simple, no state tracking needed
+                                </div>
+                                <div class="cons">
+                                    <strong>Cons:</strong> Flickering, high terminal overhead
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="comparison-item">
+                            <h4>Differential updates</h4>
+                            <p>Track changes and only update modified cells. Smooth but requires state management.</p>
+                            <div class="pros-cons">
+                                <div class="pros">
+                                    <strong>Pros:</strong> No flicker, efficient
+                                </div>
+                                <div class="cons">
+                                    <strong>Cons:</strong> Complex state tracking
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="comparison-item">
+                            <h4>Double buffering</h4>
+                            <p>Maintain two buffers, swap between them. Professional-grade smoothness.</p>
+                            <div class="pros-cons">
+                                <div class="pros">
+                                    <strong>Pros:</strong> Perfectly smooth, atomic updates
+                                </div>
+                                <div class="cons">
+                                    <strong>Cons:</strong> 2× memory usage
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Core Techniques -->
+        <section class="section" id="techniques">
+            <div class="container">
+                <h2>Core techniques</h2>
+                <p class="section-intro">Four fundamental approaches to creating terminal animation.</p>
+
+                <div class="technique-list">
+                    <!-- Frame-based -->
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>Frame-based animation</h3>
+                            <p>Pre-render multiple frames as strings and cycle through them. This is the simplest approach and works well for logos, loading indicators, and character animations. Memory-intensive but extremely predictable and smooth.</p>
+
+                            <h4>When to use</h4>
+                            <ul>
+                                <li>Loading spinners and progress indicators</li>
+                                <li>Logo animations and splash screens</li>
+                                <li>Character sprites in games</li>
+                                <li>Animations with hand-crafted artistic content</li>
+                            </ul>
+
+                            <h4>Implementation</h4>
+                            <div class="code-block">
+                                <code>const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+let frameIndex = 0
+
+setInterval(() => {
+  process.stdout.write('\r' + frames[frameIndex])
+  frameIndex = (frameIndex + 1) % frames.length
+}, 80)</code>
+                            </div>
+                        </div>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <pre id="frame-demo" class="output"></pre>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Procedural -->
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>Procedural generation</h3>
+                            <p>Calculate each frame mathematically using functions like sine waves, Perlin noise, or physics simulations. Enables complex effects like plasma, fire, water ripples, and particle systems with minimal memory overhead.</p>
+
+                            <h4>When to use</h4>
+                            <ul>
+                                <li>Algorithmic visual effects (plasma, fire, waves)</li>
+                                <li>Particle systems and simulations</li>
+                                <li>Data visualizations and graphs</li>
+                                <li>Generative art and infinite loops</li>
+                            </ul>
+
+                            <h4>Implementation</h4>
+                            <div class="code-block">
+                                <code>let time = 0
+const chars = ' .:-=+*#%@'
+
+function render() {
+  let output = ''
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      // Sine wave function
+      const value = Math.sin(x * 0.2 + time) *
+                    Math.sin(y * 0.2 + time * 0.8)
+      const index = Math.floor((value + 1) * 0.5 * (chars.length - 1))
+      output += chars[index]
+    }
+    output += '\n'
+  }
+  console.clear()
+  console.log(output)
+  time += 0.1
+}
+
+setInterval(render, 50)</code>
+                            </div>
+                        </div>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <pre id="procedural-demo" class="output"></pre>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Buffer-based -->
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>Buffer manipulation</h3>
+                            <p>Maintain a 2D array representing the screen, update specific cells, then render the entire buffer. This approach allows for complex multi-element scenes like games, dashboards, and interactive UIs where many independent objects move simultaneously.</p>
+
+                            <h4>When to use</h4>
+                            <ul>
+                                <li>Terminal games (Snake, Tetris, roguelikes)</li>
+                                <li>Complex dashboards with multiple updating regions</li>
+                                <li>Scenes with many independent moving objects</li>
+                                <li>Applications requiring collision detection</li>
+                            </ul>
+
+                            <h4>Implementation</h4>
+                            <div class="code-block">
+                                <code>const buffer = Array(rows).fill(null)
   .map(() => Array(cols).fill(' '))
 
-// Update specific cells
-buffer[y][x] = '█'
+// Update game objects
+function update() {
+  // Clear previous positions
+  buffer[oldY][oldX] = ' '
+
+  // Update position
+  x += vx
+  y += vy
+
+  // Draw at new position
+  buffer[y][x] = '█'
+}
 
 // Render entire buffer
-console.log(buffer.map(row => row.join('')).join('\n'))</code>
+function render() {
+  const frame = buffer.map(row => row.join('')).join('\n')
+  process.stdout.write('\x1b[H' + frame)
+}</code>
+                            </div>
                         </div>
-                    </div>
-                    <div class="technique-demo">
-                        <div class="demo-window">
-                            <pre id="buffer-demo" class="output"></pre>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <pre id="buffer-demo" class="output"></pre>
+                            </div>
                         </div>
+                    </article>
+
+                    <!-- Character replacement -->
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>Character replacement</h3>
+                            <p>Use ANSI escape codes to reposition the cursor and overwrite specific characters without redrawing the entire screen. This is the most efficient approach for updating small portions of large displays, essential for dashboards and status monitors.</p>
+
+                            <h4>When to use</h4>
+                            <ul>
+                                <li>Status monitors with mostly static content</li>
+                                <li>Progress bars and live counters</li>
+                                <li>Large displays where only small regions change</li>
+                                <li>Performance-critical applications</li>
+                            </ul>
+
+                            <h4>Implementation</h4>
+                            <div class="code-block">
+                                <code>// Move cursor to specific position
+function moveTo(row, col) {
+  process.stdout.write(`\x1b[${row};${col}H`)
+}
+
+// Update single character
+function drawAt(row, col, char) {
+  moveTo(row, col)
+  process.stdout.write(char)
+}
+
+// Update a region efficiently
+function updateRegion(row, col, text) {
+  moveTo(row, col)
+  process.stdout.write(text)
+}
+
+// Example: Live counter
+let count = 0
+setInterval(() => {
+  drawAt(5, 10, count.toString())
+  count++
+}, 100)</code>
+                            </div>
+                        </div>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <pre id="cursor-demo" class="output"></pre>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- Advanced Techniques -->
+        <section class="section" id="advanced">
+            <div class="container-narrow">
+                <h2>Advanced techniques</h2>
+                <p class="section-intro">Sophisticated methods for professional-grade terminal animation.</p>
+
+                <article class="subsection">
+                    <h3>Double buffering</h3>
+                    <p>Double buffering eliminates flicker by preparing the next frame in a hidden buffer, then swapping it atomically with the visible buffer. This is essential for smooth animation in complex scenes.</p>
+
+                    <div class="code-block">
+                        <code>class DoubleBuffer {
+  constructor(rows, cols) {
+    this.rows = rows
+    this.cols = cols
+    // Create two identical buffers
+    this.buffers = [
+      this.createBuffer(),
+      this.createBuffer()
+    ]
+    this.currentBuffer = 0
+  }
+
+  createBuffer() {
+    return Array(this.rows).fill(null)
+      .map(() => Array(this.cols).fill(' '))
+  }
+
+  get active() {
+    return this.buffers[this.currentBuffer]
+  }
+
+  get hidden() {
+    return this.buffers[1 - this.currentBuffer]
+  }
+
+  swap() {
+    this.currentBuffer = 1 - this.currentBuffer
+  }
+
+  render() {
+    const frame = this.active.map(row => row.join('')).join('\n')
+    process.stdout.write('\x1b[H' + frame)
+  }
+}
+
+// Usage
+const buffer = new DoubleBuffer(24, 80)
+
+function animate() {
+  // Draw to hidden buffer
+  updateScene(buffer.hidden)
+
+  // Atomic swap and render
+  buffer.swap()
+  buffer.render()
+}</code>
                     </div>
                 </article>
 
-                <!-- Character replacement -->
-                <article class="technique">
-                    <div class="technique-text">
-                        <h3>Character replacement</h3>
-                        <p>Use ANSI escape codes to reposition the cursor and overwrite specific characters without redrawing the entire screen. Essential for efficient updates in large displays.</p>
+                <article class="subsection">
+                    <h3>Color and styling</h3>
+                    <p>Modern terminals support 256 colors or even true color (16.7 million colors). Strategic use of color enhances readability and aesthetics.</p>
+
+                    <div class="code-block">
+                        <code>// 256-color mode
+function color256(fg, bg = null) {
+  let code = `\x1b[38;5;${fg}m`
+  if (bg !== null) code += `\x1b[48;5;${bg}m`
+  return code
+}
+
+// True color (RGB)
+function colorRGB(r, g, b, bg = false) {
+  const type = bg ? 48 : 38
+  return `\x1b[${type};2;${r};${g};${b}m`
+}
+
+// Gradient example
+for (let i = 0; i < 100; i++) {
+  const intensity = Math.floor(i * 2.55)
+  process.stdout.write(
+    colorRGB(intensity, 0, 255 - intensity) + '█'
+  )
+}
+process.stdout.write('\x1b[0m\n')</code>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Sub-character resolution</h3>
+                    <p>Unicode block elements allow rendering at 2× vertical resolution. Braille patterns enable up to 4× horizontal and 2× vertical resolution, effectively creating pixel-perfect graphics.</p>
+
+                    <div class="code-block">
+                        <code>// Half-block technique (2x vertical resolution)
+const halfBlocks = ['▀', '▄', '█', ' ']
+
+function drawPixel(x, y, value) {
+  const charX = Math.floor(x)
+  const charY = Math.floor(y / 2)
+  const subY = y % 2
+
+  // Map two vertical pixels to one character
+  const topPixel = getPixel(charX, charY * 2)
+  const bottomPixel = getPixel(charX, charY * 2 + 1)
+
+  if (topPixel && bottomPixel) return '█'
+  if (topPixel) return '▀'
+  if (bottomPixel) return '▄'
+  return ' '
+}
+
+// Braille patterns for even higher resolution
+const brailleBase = 0x2800
+function brailleChar(dots) {
+  // dots is 8-bit number representing which dots are filled
+  return String.fromCharCode(brailleBase + dots)
+}
+
+// Example: plot a circle with sub-character precision
+for (let angle = 0; angle < Math.PI * 2; angle += 0.1) {
+  const x = Math.cos(angle) * radius
+  const y = Math.sin(angle) * radius
+  setPixel(x, y)  // Uses braille for precision
+}</code>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Easing and interpolation</h3>
+                    <p>Smooth motion requires easing functions that control acceleration and deceleration. These mathematical functions transform linear time into natural-feeling movement.</p>
+
+                    <div class="code-block">
+                        <code>// Common easing functions
+const easing = {
+  linear: t => t,
+  easeInQuad: t => t * t,
+  easeOutQuad: t => t * (2 - t),
+  easeInOutQuad: t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+  easeInCubic: t => t * t * t,
+  easeOutCubic: t => (--t) * t * t + 1,
+  easeInOutCubic: t => t < 0.5
+    ? 4 * t * t * t
+    : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1
+}
+
+// Interpolate between two values
+function lerp(start, end, t, easeFn = easing.linear) {
+  return start + (end - start) * easeFn(t)
+}
+
+// Animate object position
+const duration = 1000  // milliseconds
+const startPos = 0
+const endPos = 80
+let startTime = Date.now()
+
+function animate() {
+  const elapsed = Date.now() - startTime
+  const t = Math.min(elapsed / duration, 1)
+
+  const pos = lerp(startPos, endPos, t, easing.easeInOutQuad)
+  drawAt(pos, '█')
+
+  if (t < 1) requestAnimationFrame(animate)
+}</code>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Sprite systems</h3>
+                    <p>For complex animations with many moving objects, a sprite system organizes rendering and updates efficiently.</p>
+
+                    <div class="code-block">
+                        <code>class Sprite {
+  constructor(x, y, frames) {
+    this.x = x
+    this.y = y
+    this.frames = frames
+    this.frameIndex = 0
+    this.vx = 0
+    this.vy = 0
+  }
+
+  update(deltaTime) {
+    this.x += this.vx * deltaTime
+    this.y += this.vy * deltaTime
+    this.frameIndex = (this.frameIndex + 1) % this.frames.length
+  }
+
+  render(buffer) {
+    const frame = this.frames[this.frameIndex]
+    const lines = frame.split('\n')
+
+    for (let dy = 0; dy < lines.length; dy++) {
+      for (let dx = 0; dx < lines[dy].length; dx++) {
+        const bx = Math.floor(this.x + dx)
+        const by = Math.floor(this.y + dy)
+        if (bx >= 0 && bx < buffer[0].length &&
+            by >= 0 && by < buffer.length) {
+          buffer[by][bx] = lines[dy][dx]
+        }
+      }
+    }
+  }
+}
+
+// Sprite manager
+class SpriteManager {
+  constructor() {
+    this.sprites = []
+  }
+
+  add(sprite) {
+    this.sprites.push(sprite)
+  }
+
+  update(deltaTime) {
+    this.sprites.forEach(s => s.update(deltaTime))
+  }
+
+  render(buffer) {
+    this.sprites.forEach(s => s.render(buffer))
+  }
+}</code>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Character Sets -->
+        <section class="section" id="characters">
+            <div class="container-narrow">
+                <h2>Character sets</h2>
+                <p class="section-intro">Understanding which characters to use for different visual effects.</p>
+
+                <div class="charset-grid">
+                    <article class="charset-item">
+                        <h4>Block elements</h4>
+                        <div class="char-display">█ ▓ ▒ ░ ▄ ▀ ▌ ▐ ▖ ▗ ▘ ▙ ▚ ▛ ▜ ▝ ▞ ▟</div>
+                        <p>Used for solid shapes, gradients, progress bars, and pixel-style graphics. Unicode range U+2580–U+259F. Half-blocks (▀ ▄) enable 2× vertical resolution. Quarter-blocks enable 2×2 sub-character precision.</p>
                         <div class="code-block">
-                            <code>// Move cursor to row 5, column 10
-process.stdout.write('\x1b[5;10H')
+                            <code>// Common block characters
+'█'  // Full block (U+2588)
+'▓'  // Dark shade (U+2593)
+'▒'  // Medium shade (U+2592)
+'░'  // Light shade (U+2591)
+'▀'  // Upper half block (U+2580)
+'▄'  // Lower half block (U+2584)</code>
+                        </div>
+                    </article>
 
-// Write character at that position
-process.stdout.write('█')
+                    <article class="charset-item">
+                        <h4>Box drawing</h4>
+                        <div class="char-display">─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ ═ ║ ╔ ╗ ╚ ╝</div>
+                        <p>Essential for frames, borders, tables, diagrams, and UI elements. Unicode U+2500–U+257F. Comes in light, heavy, and double-line variants.</p>
+                        <div class="code-block">
+                            <code>// Box drawing components
+'─' '━'  // Horizontal lines (light/heavy)
+'│' '┃'  // Vertical lines (light/heavy)
+'┌' '┐'  // Top corners
+'└' '┘'  // Bottom corners
+'├' '┤'  // T-junctions
+'┼'      // Cross junction
 
-// Move cursor up 2 lines
-process.stdout.write('\x1b[2A')</code>
+// Double lines
+'═' '║' '╔' '╗' '╚' '╝'</code>
+                        </div>
+                    </article>
+
+                    <article class="charset-item">
+                        <h4>Braille patterns</h4>
+                        <div class="char-display">⠀ ⠁ ⠂ ⠃ ⠄ ⠅ ⠆ ⠇ ⠈ ⠉ ⠊ ⠋ ⠌ ⠍ ⠎ ⠏ ⣿</div>
+                        <p>Each braille character represents a 2×4 grid of dots, enabling smooth curves and high-resolution graphics. Unicode U+2800–U+28FF. All 256 combinations available.</p>
+                        <div class="code-block">
+                            <code>// Braille patterns for graphics
+const brailleBase = 0x2800
+
+// Dot positions:
+// 1 4
+// 2 5
+// 3 6
+// 7 8
+
+// Create braille character from dot pattern
+function braille(dots) {
+  let value = 0
+  for (let i = 0; i < 8; i++) {
+    if (dots & (1 << i)) value |= (1 << i)
+  }
+  return String.fromCharCode(brailleBase + value)
+}
+
+// Set pixel in 4×2 grid
+function setPixel(x, y) {
+  const dotIndex = (x % 2) * 4 + (y % 4)
+  return 1 << dotIndex
+}</code>
+                        </div>
+                    </article>
+
+                    <article class="charset-item">
+                        <h4>Geometric shapes</h4>
+                        <div class="char-display">■ □ ▪ ▫ ● ○ ◆ ◇ ◈ ◉ ◊ ○ ◐ ◑ ◒ ◓</div>
+                        <p>Icons, bullets, decorative elements, and status indicators. Various Unicode ranges including U+25A0–U+25FF (geometric shapes) and U+2600–U+26FF (misc symbols).</p>
+                    </article>
+
+                    <article class="charset-item">
+                        <h4>Line drawing</h4>
+                        <div class="char-display">╱ ╲ ╳ ⁄ ∕ ∖ ∕ ⧵ ⧸ ⧹ ╱ ╲</div>
+                        <p>Diagonal lines for graphs, charts, and geometric patterns. Limited options compared to horizontal/vertical lines.</p>
+                    </article>
+
+                    <article class="charset-item">
+                        <h4>Special symbols</h4>
+                        <div class="char-display">░ ▒ ▓ █ ▀ ▁ ▂ ▃ ▄ ▅ ▆ ▇</div>
+                        <p>Vertical bars for bar charts, audio visualizers, and progress indicators. Unicode includes 8 different heights for smooth vertical gradients.</p>
+                        <div class="code-block">
+                            <code>// Vertical bar heights (eighths)
+const bars = ' ▁▂▃▄▅▆▇█'
+
+// Create bar chart
+function barChart(values) {
+  return values.map(v => {
+    const index = Math.floor(v * 8)
+    return bars[index]
+  }).join('')
+}</code>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- Common Patterns -->
+        <section class="section" id="patterns">
+            <div class="container">
+                <h2>Common patterns</h2>
+                <p class="section-intro">Practical examples you'll encounter in real terminal applications.</p>
+
+                <div class="pattern-grid">
+                    <div class="pattern-item">
+                        <h4>Progress indicator</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <pre id="progress-pattern" class="output"></pre>
+                            </div>
                         </div>
                     </div>
-                    <div class="technique-demo">
-                        <div class="demo-window">
-                            <pre id="cursor-demo" class="output"></pre>
+
+                    <div class="pattern-item">
+                        <h4>Loading spinner</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <pre id="spinner-pattern" class="output"></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pattern-item">
+                        <h4>Live counter</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <pre id="counter-pattern" class="output"></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pattern-item">
+                        <h4>Text reveal</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <pre id="reveal-pattern" class="output"></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pattern-item">
+                        <h4>Marquee scroll</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <pre id="marquee-pattern" class="output"></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pattern-item">
+                        <h4>Blink effect</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <pre id="blink-pattern" class="output"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Best Practices -->
+        <section class="section" id="best-practices">
+            <div class="container-narrow">
+                <h2>Best practices</h2>
+                <p class="section-intro">Guidelines for creating professional, maintainable terminal animations.</p>
+
+                <article class="subsection">
+                    <h3>Terminal detection and fallbacks</h3>
+                    <p>Not all terminals support the same features. Always detect capabilities and provide graceful degradation.</p>
+
+                    <div class="code-block">
+                        <code>// Detect terminal capabilities
+const hasColors = process.stdout.isTTY &&
+                  process.stdout.hasColors()
+
+const supports256 = process.env.TERM &&
+                    process.env.TERM.includes('256')
+
+const supportsTrueColor = process.env.COLORTERM === 'truecolor'
+
+// Check terminal dimensions
+const { columns, rows } = process.stdout
+if (columns < 80) {
+  // Use compact layout
+}
+
+// Graceful degradation
+function drawSpinner(frame) {
+  if (hasColors) {
+    return `\x1b[32m${spinnerFrames[frame]}\x1b[0m`
+  }
+  return spinnerFrames[frame]
+}</code>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Signal handling and cleanup</h3>
+                    <p>Always restore terminal state when your program exits, even on interruption.</p>
+
+                    <div class="code-block">
+                        <code>// Save initial terminal state
+const readline = require('readline')
+
+function setupTerminal() {
+  // Hide cursor
+  process.stdout.write('\x1b[?25l')
+  // Enter alternate screen buffer
+  process.stdout.write('\x1b[?1049h')
+  // Disable line buffering
+  readline.emitKeypressEvents(process.stdin)
+  process.stdin.setRawMode(true)
+}
+
+function restoreTerminal() {
+  // Show cursor
+  process.stdout.write('\x1b[?25h')
+  // Exit alternate screen buffer
+  process.stdout.write('\x1b[?1049l')
+  // Reset attributes
+  process.stdout.write('\x1b[0m')
+}
+
+// Handle all exit scenarios
+process.on('exit', restoreTerminal)
+process.on('SIGINT', () => {
+  restoreTerminal()
+  process.exit(0)
+})
+process.on('SIGTERM', () => {
+  restoreTerminal()
+  process.exit(0)
+})
+
+setupTerminal()</code>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Performance considerations</h3>
+                    <p>Terminal rendering can be surprisingly expensive. Follow these guidelines for optimal performance.</p>
+
+                    <ul class="feature-list">
+                        <li><strong>Minimize writes:</strong> Batch multiple updates into a single stdout write</li>
+                        <li><strong>Avoid unnecessary clears:</strong> Only redraw changed regions</li>
+                        <li><strong>Cache strings:</strong> Pre-compute static elements outside the animation loop</li>
+                        <li><strong>Profile carefully:</strong> Terminal I/O is often the bottleneck, not computation</li>
+                        <li><strong>Use alternate screen:</strong> Prevents scrollback pollution and enables full-screen apps</li>
+                        <li><strong>Limit frame rate:</strong> 30-60 FPS is usually sufficient; higher rates waste resources</li>
+                    </ul>
+                </article>
+
+                <article class="subsection">
+                    <h3>Accessibility</h3>
+                    <p>Terminal animation should be accessible to all users, including those using screen readers or with motion sensitivity.</p>
+
+                    <div class="code-block">
+                        <code>// Respect NO_COLOR environment variable
+const shouldUseColor = !process.env.NO_COLOR &&
+                       process.stdout.isTTY
+
+// Provide --no-animation flag
+const program = require('commander')
+program.option('--no-animation', 'Disable animations')
+program.parse()
+
+if (program.opts().animation === false) {
+  // Show static output instead
+  console.log('Processing... Done!')
+} else {
+  // Show animated progress
+  animateProgress()
+}
+
+// Add descriptive labels
+process.stdout.write('Loading dependencies: ')
+showSpinner()
+
+// Announce state changes for screen readers
+process.stdout.write('\nInstallation complete\n')</code>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Performance -->
+        <section class="section" id="performance">
+            <div class="container-narrow">
+                <h2>Performance optimization</h2>
+                <p class="section-intro">Techniques for maximizing smoothness and minimizing resource usage.</p>
+
+                <article class="subsection">
+                    <h3>Measuring performance</h3>
+                    <p>Before optimizing, measure. Terminal animation performance has unique characteristics.</p>
+
+                    <div class="code-block">
+                        <code>class PerformanceMonitor {
+  constructor() {
+    this.frameTimes = []
+    this.maxSamples = 60
+  }
+
+  recordFrame(deltaTime) {
+    this.frameTimes.push(deltaTime)
+    if (this.frameTimes.length > this.maxSamples) {
+      this.frameTimes.shift()
+    }
+  }
+
+  getStats() {
+    const avg = this.frameTimes.reduce((a, b) => a + b, 0) /
+                this.frameTimes.length
+    const fps = 1000 / avg
+    const min = Math.min(...this.frameTimes)
+    const max = Math.max(...this.frameTimes)
+
+    return { avg, fps, min, max }
+  }
+}
+
+// Usage
+const monitor = new PerformanceMonitor()
+let lastTime = performance.now()
+
+function gameLoop() {
+  const now = performance.now()
+  const delta = now - lastTime
+
+  update(delta)
+  render()
+
+  monitor.recordFrame(delta)
+  lastTime = now
+
+  requestAnimationFrame(gameLoop)
+}</code>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Dirty rectangle optimization</h3>
+                    <p>Only redraw regions of the screen that have changed. Essential for large displays.</p>
+
+                    <div class="code-block">
+                        <code>class DirtyRectTracker {
+  constructor(rows, cols) {
+    this.rows = rows
+    this.cols = cols
+    this.reset()
+  }
+
+  reset() {
+    this.minRow = Infinity
+    this.maxRow = -Infinity
+    this.minCol = Infinity
+    this.maxCol = -Infinity
+  }
+
+  markDirty(row, col) {
+    this.minRow = Math.min(this.minRow, row)
+    this.maxRow = Math.max(this.maxRow, row)
+    this.minCol = Math.min(this.minCol, col)
+    this.maxCol = Math.max(this.maxCol, col)
+  }
+
+  getDirtyRect() {
+    if (this.minRow === Infinity) return null
+    return {
+      row: this.minRow,
+      col: this.minCol,
+      width: this.maxCol - this.minCol + 1,
+      height: this.maxRow - this.minRow + 1
+    }
+  }
+}
+
+// Render only dirty region
+function renderOptimized(buffer, dirtyTracker) {
+  const rect = dirtyTracker.getDirtyRect()
+  if (!rect) return
+
+  for (let r = rect.row; r < rect.row + rect.height; r++) {
+    moveTo(r, rect.col)
+    const line = buffer[r].slice(rect.col, rect.col + rect.width).join('')
+    process.stdout.write(line)
+  }
+
+  dirtyTracker.reset()
+}</code>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>String building optimization</h3>
+                    <p>String concatenation in tight loops can be expensive. Use arrays or buffers for better performance.</p>
+
+                    <div class="code-block">
+                        <code>// Slow: repeated string concatenation
+function renderSlow(buffer) {
+  let output = ''
+  for (let row of buffer) {
+    for (let char of row) {
+      output += char  // Creates new string each time
+    }
+    output += '\n'
+  }
+  return output
+}
+
+// Fast: array join
+function renderFast(buffer) {
+  return buffer.map(row => row.join('')).join('\n')
+}
+
+// Even faster: pre-allocate and reuse
+class StringBuffer {
+  constructor(size) {
+    this.buffer = new Array(size)
+    this.index = 0
+  }
+
+  append(str) {
+    this.buffer[this.index++] = str
+  }
+
+  toString() {
+    const result = this.buffer.slice(0, this.index).join('')
+    this.index = 0
+    return result
+  }
+}</code>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Frame rate adaptation</h3>
+                    <p>Automatically adjust frame rate based on performance to maintain smoothness.</p>
+
+                    <div class="code-block">
+                        <code>class AdaptiveFrameRate {
+  constructor(targetFPS = 30, minFPS = 15) {
+    this.targetFrameTime = 1000 / targetFPS
+    this.minFrameTime = 1000 / minFPS
+    this.currentFrameTime = this.targetFrameTime
+    this.frameTimes = []
+  }
+
+  update(actualFrameTime) {
+    this.frameTimes.push(actualFrameTime)
+    if (this.frameTimes.length > 10) {
+      this.frameTimes.shift()
+    }
+
+    const avgTime = this.frameTimes.reduce((a, b) => a + b) /
+                    this.frameTimes.length
+
+    // Adjust target based on actual performance
+    if (avgTime > this.currentFrameTime * 1.2) {
+      // Running slow, reduce frame rate
+      this.currentFrameTime = Math.min(
+        this.currentFrameTime * 1.1,
+        this.minFrameTime
+      )
+    } else if (avgTime < this.currentFrameTime * 0.8) {
+      // Running fast, increase frame rate
+      this.currentFrameTime = Math.max(
+        this.currentFrameTime * 0.9,
+        this.targetFrameTime
+      )
+    }
+  }
+
+  shouldRender(elapsed) {
+    return elapsed >= this.currentFrameTime
+  }
+}</code>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Tools & Libraries -->
+        <section class="section" id="tools">
+            <div class="container-narrow">
+                <h2>Tools & libraries</h2>
+                <p class="section-intro">Ecosystem of libraries and tools for terminal animation.</p>
+
+                <article class="subsection">
+                    <h3>JavaScript/Node.js</h3>
+                    <div class="tool-list">
+                        <div class="tool-item">
+                            <h4>blessed</h4>
+                            <p>High-level terminal UI library with widgets, layouts, and event handling. Ideal for complex dashboards and TUIs.</p>
+                            <div class="code-block">
+                                <code>const blessed = require('blessed')
+const screen = blessed.screen()
+
+const box = blessed.box({
+  top: 'center',
+  left: 'center',
+  width: '50%',
+  height: '50%',
+  content: 'Hello!',
+  border: { type: 'line' }
+})
+
+screen.append(box)
+screen.render()</code>
+                            </div>
+                        </div>
+
+                        <div class="tool-item">
+                            <h4>chalk</h4>
+                            <p>Terminal string styling with color support. Simple API for adding color and style to text.</p>
+                            <div class="code-block">
+                                <code>const chalk = require('chalk')
+
+console.log(chalk.blue('Hello') + ' World!')
+console.log(chalk.rgb(123, 45, 67).bold('Custom color'))
+console.log(chalk.bgGreen.black(' Success '))</code>
+                            </div>
+                        </div>
+
+                        <div class="tool-item">
+                            <h4>ink</h4>
+                            <p>React-based framework for terminal UIs. Build complex interfaces using React components.</p>
+                            <div class="code-block">
+                                <code>const { render, Text } = require('ink')
+
+const App = () => (
+  <Text color="green">Hello from Ink!</Text>
+)
+
+render(<App />)</code>
+                            </div>
+                        </div>
+
+                        <div class="tool-item">
+                            <h4>cli-spinners</h4>
+                            <p>Collection of 80+ animated spinners for CLIs. Ready-to-use loading indicators.</p>
+                        </div>
+
+                        <div class="tool-item">
+                            <h4>ora</h4>
+                            <p>Elegant terminal spinner with promise support. Great for showing async operation progress.</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Python</h3>
+                    <div class="tool-list">
+                        <div class="tool-item">
+                            <h4>Rich</h4>
+                            <p>Modern Python library for rich text and beautiful formatting in the terminal. Includes tables, syntax highlighting, progress bars, and more.</p>
+                            <div class="code-block">
+                                <code>from rich.console import Console
+from rich.table import Table
+
+console = Console()
+table = Table(title="Star Wars Movies")
+table.add_column("Released", style="cyan")
+table.add_column("Title", style="magenta")
+console.print(table)</code>
+                            </div>
+                        </div>
+
+                        <div class="tool-item">
+                            <h4>asciimatics</h4>
+                            <p>Package to create full-screen text UIs and ASCII art animations. Comprehensive framework for complex terminal applications.</p>
+                        </div>
+
+                        <div class="tool-item">
+                            <h4>blessed</h4>
+                            <p>Terminal formatting and cursor positioning. Python equivalent of the Node.js library.</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Rust</h3>
+                    <div class="tool-list">
+                        <div class="tool-item">
+                            <h4>crossterm</h4>
+                            <p>Pure Rust library for terminal manipulation. Cross-platform, efficient, and type-safe.</p>
+                            <div class="code-block">
+                                <code>use crossterm::{cursor, execute};
+
+execute!(
+    stdout(),
+    cursor::MoveTo(5, 5),
+    style::Print("Hello!")
+)?;</code>
+                            </div>
+                        </div>
+
+                        <div class="tool-item">
+                            <h4>tui-rs</h4>
+                            <p>Terminal UI library with immediate-mode rendering. Build complex layouts with widgets.</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Go</h3>
+                    <div class="tool-list">
+                        <div class="tool-item">
+                            <h4>termbox-go</h4>
+                            <p>Minimalist library for creating text-based UIs. Low-level control with simple API.</p>
+                        </div>
+
+                        <div class="tool-item">
+                            <h4>bubbletea</h4>
+                            <p>Elm-inspired framework for terminal applications. Based on The Elm Architecture pattern.</p>
                         </div>
                     </div>
                 </article>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- Common Patterns -->
-    <section class="section">
-        <div class="container">
-            <h2>Common patterns</h2>
-            <p class="section-intro">Practical examples you'll see in real terminal applications.</p>
+        <!-- Notable Examples -->
+        <section class="section" id="examples">
+            <div class="container">
+                <h2>Notable examples</h2>
+                <p class="section-intro">Influential works that pushed the boundaries of terminal animation.</p>
 
-            <div class="pattern-grid">
-                <div class="pattern-item">
-                    <h4>Progress indicator</h4>
-                    <div class="terminal-window small">
-                        <div class="terminal-body">
-                            <pre id="progress-pattern" class="output"></pre>
-                        </div>
-                    </div>
-                </div>
+                <div class="examples-grid">
+                    <article class="example-card">
+                        <h4>Star Wars ASCIImation</h4>
+                        <p class="example-meta">Simon Jansen • 1997 • telnet</p>
+                        <p>The entire Star Wars Episode IV recreated in ASCII art, playable via telnet. Originally 16,000+ hand-crafted frames of animation synchronized with audio cues. A legendary achievement in ASCII animation that's still accessible today.</p>
+                        <code class="example-code">telnet towel.blinkenlights.nl</code>
+                    </article>
 
-                <div class="pattern-item">
-                    <h4>Loading spinner</h4>
-                    <div class="terminal-window small">
-                        <div class="terminal-body">
-                            <pre id="spinner-pattern" class="output"></pre>
-                        </div>
-                    </div>
-                </div>
+                    <article class="example-card">
+                        <h4>ASCII Quake</h4>
+                        <p class="example-meta">AAlib project • 1999 • C</p>
+                        <p>Real-time 3D game rendering in ASCII using sophisticated dithering algorithms. Demonstrated that even complex graphics could be represented in text, converting Quake's 3D engine output to ASCII in real-time at playable frame rates.</p>
+                    </article>
 
-                <div class="pattern-item">
-                    <h4>Live counter</h4>
-                    <div class="terminal-window small">
-                        <div class="terminal-body">
-                            <pre id="counter-pattern" class="output"></pre>
-                        </div>
-                    </div>
-                </div>
+                    <article class="example-card">
+                        <h4>sl (Steam Locomotive)</h4>
+                        <p class="example-meta">Toyoda Masashi • 1993 • C</p>
+                        <p>A playful ASCII animation that runs when you mistype 'ls'. Became a beloved Unix easter egg demonstrating smooth multi-sprite animation with a steam locomotive crossing the terminal. A masterclass in frame-based animation.</p>
+                        <code class="example-code">brew install sl && sl</code>
+                    </article>
 
-                <div class="pattern-item">
-                    <h4>Text reveal</h4>
-                    <div class="terminal-window small">
-                        <div class="terminal-body">
-                            <pre id="reveal-pattern" class="output"></pre>
-                        </div>
-                    </div>
-                </div>
+                    <article class="example-card">
+                        <h4>asciinema</h4>
+                        <p class="example-meta">Marcin Kulik • 2011 • Python</p>
+                        <p>Record and share terminal sessions as lightweight, text-based "videos." Revolutionized technical documentation and demonstrations by creating perfectly reproducible terminal recordings.</p>
+                        <code class="example-code">asciinema rec demo.cast</code>
+                    </article>
 
-                <div class="pattern-item">
-                    <h4>Marquee scroll</h4>
-                    <div class="terminal-window small">
-                        <div class="terminal-body">
-                            <pre id="marquee-pattern" class="output"></pre>
-                        </div>
-                    </div>
-                </div>
+                    <article class="example-card">
+                        <h4>cmatrix</h4>
+                        <p class="example-meta">Chris Allegretta • 1999 • C</p>
+                        <p>The iconic "Matrix" digital rain effect for terminals. Showcases procedural generation and efficient character updates. A perfect example of atmospheric terminal animation.</p>
+                        <code class="example-code">brew install cmatrix && cmatrix</code>
+                    </article>
 
-                <div class="pattern-item">
-                    <h4>Blink effect</h4>
-                    <div class="terminal-window small">
-                        <div class="terminal-body">
-                            <pre id="blink-pattern" class="output"></pre>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+                    <article class="example-card">
+                        <h4>htop</h4>
+                        <p class="example-meta">Hisham Muhammad • 2004 • C</p>
+                        <p>Interactive process viewer with real-time updates, color coding, and responsive UI. Demonstrates production-quality terminal UX with complex data visualization updating at high frequency.</p>
+                        <code class="example-code">brew install htop && htop</code>
+                    </article>
 
-    <!-- Character Sets -->
-    <section class="section bg-light">
-        <div class="container-narrow">
-            <h2>Character sets</h2>
-            <p class="section-intro">Understanding which characters to use for different effects.</p>
+                    <article class="example-card">
+                        <h4>blessed-contrib</h4>
+                        <p class="example-meta">Yaron Naveh • 2014 • JavaScript</p>
+                        <p>Dashboard framework with live charts, graphs, and widgets. Showcases advanced buffer manipulation and complex layouts for data visualization in terminals.</p>
+                    </article>
 
-            <div class="charset-grid">
-                <div class="charset-item">
-                    <h4>Block elements</h4>
-                    <div class="char-display">█ ▓ ▒ ░ ▄ ▀ ▌ ▐</div>
-                    <p>For solid shapes, gradients, and pixel-style graphics. Unicode U+2580–U+259F.</p>
-                </div>
-
-                <div class="charset-item">
-                    <h4>Box drawing</h4>
-                    <div class="char-display">─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼</div>
-                    <p>For frames, borders, and diagrams. Unicode U+2500–U+257F.</p>
-                </div>
-
-                <div class="charset-item">
-                    <h4>Braille patterns</h4>
-                    <div class="char-display">⠀ ⠁ ⠂ ⠃ ⠄ ⠅ ⠆ ⠇ ⠈ ⠉</div>
-                    <p>For smooth curves and high-resolution graphics. Unicode U+2800–U+28FF.</p>
-                </div>
-
-                <div class="charset-item">
-                    <h4>Geometric shapes</h4>
-                    <div class="char-display">■ □ ▪ ▫ ● ○ ◆ ◇ ★ ☆</div>
-                    <p>For icons, bullets, and decorative elements. Various Unicode ranges.</p>
+                    <article class="example-card">
+                        <h4>Dwarf Fortress</h4>
+                        <p class="example-meta">Tarn Adams • 2006 • C++</p>
+                        <p>Complex simulation game rendered entirely in ASCII. Demonstrates that deep, engaging experiences don't require graphics — procedural generation creates entire worlds using text characters.</p>
+                    </article>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- Historical Context -->
-    <section class="section">
-        <div class="container-narrow">
-            <h2>Historical context</h2>
+        <!-- Resources -->
+        <section class="section" id="resources">
+            <div class="container-narrow">
+                <h2>Resources</h2>
+                <p class="section-intro">Curated learning materials and references for going deeper.</p>
 
-            <div class="timeline-simple">
-                <div class="timeline-entry">
-                    <span class="timeline-year">1963</span>
-                    <p>ASCII standard published, establishing the 7-bit character encoding that would become the foundation for all terminal text.</p>
-                </div>
+                <article class="subsection">
+                    <h3>Documentation</h3>
+                    <ul class="resource-list">
+                        <li>
+                            <strong>ANSI Escape Sequences</strong>
+                            <p>Complete reference for terminal control codes, cursor movement, and styling.</p>
+                        </li>
+                        <li>
+                            <strong>VT100 User Guide</strong>
+                            <p>Original DEC VT100 documentation. Historical reference for understanding terminal capabilities.</p>
+                        </li>
+                        <li>
+                            <strong>xterm Control Sequences</strong>
+                            <p>Comprehensive list of escape sequences supported by xterm, the de facto standard.</p>
+                        </li>
+                        <li>
+                            <strong>Unicode Character Database</strong>
+                            <p>Official Unicode documentation for box drawing, blocks, and special characters.</p>
+                        </li>
+                    </ul>
+                </article>
 
-                <div class="timeline-entry">
-                    <span class="timeline-year">1978</span>
-                    <p>DEC VT100 terminal released, introducing ANSI escape sequences for cursor control and making sophisticated terminal animation possible.</p>
-                </div>
+                <article class="subsection">
+                    <h3>Articles & tutorials</h3>
+                    <ul class="resource-list">
+                        <li>
+                            <strong>"Build Your Own Text Editor"</strong>
+                            <p>Step-by-step tutorial covering raw mode, ANSI codes, and screen manipulation.</p>
+                        </li>
+                        <li>
+                            <strong>"The TTY Demystified"</strong>
+                            <p>Deep dive into terminal and TTY architecture from kernel to user space.</p>
+                        </li>
+                        <li>
+                            <strong>"Terminal Colors"</strong>
+                            <p>Comprehensive guide to 16-color, 256-color, and true color support.</p>
+                        </li>
+                    </ul>
+                </article>
 
-                <div class="timeline-entry">
-                    <span class="timeline-year">1985</span>
-                    <p>Bulletin board systems (BBS) popularize ANSI art, creating a thriving community of ASCII artists using tools like TheDraw.</p>
-                </div>
+                <article class="subsection">
+                    <h3>Communities</h3>
+                    <ul class="resource-list">
+                        <li>
+                            <strong>r/ascii_art</strong>
+                            <p>Reddit community for ASCII and ANSI art. Share work and get feedback.</p>
+                        </li>
+                        <li>
+                            <strong>ASCII Art Academy</strong>
+                            <p>Tutorials, tools, and galleries dedicated to text art.</p>
+                        </li>
+                        <li>
+                            <strong>16colo.rs</strong>
+                            <p>Archive of ANSI art from BBS era to present. Historical reference and inspiration.</p>
+                        </li>
+                    </ul>
+                </article>
 
-                <div class="timeline-entry">
-                    <span class="timeline-year">1997</span>
-                    <p>AAlib released, enabling real-time conversion of graphics and video to ASCII art, powering projects like ASCII Quake.</p>
-                </div>
+                <article class="subsection">
+                    <h3>Tools</h3>
+                    <ul class="resource-list">
+                        <li>
+                            <strong>asciinema</strong>
+                            <p>Record, share, and embed terminal sessions. Essential for documentation.</p>
+                        </li>
+                        <li>
+                            <strong>jp2a</strong>
+                            <p>Convert images to ASCII art. Great for creating static assets.</p>
+                        </li>
+                        <li>
+                            <strong>figlet</strong>
+                            <p>Generate ASCII text banners in various fonts. Perfect for splash screens.</p>
+                        </li>
+                        <li>
+                            <strong>boxes</strong>
+                            <p>Draw boxes around text. Useful for creating framed content.</p>
+                        </li>
+                    </ul>
+                </article>
 
-                <div class="timeline-entry">
-                    <span class="timeline-year">2010s</span>
-                    <p>Modern CLI renaissance brings terminal animation back to prominence through tools like npm progress bars, Docker, and asciinema.</p>
-                </div>
+                <article class="subsection">
+                    <h3>Fonts</h3>
+                    <ul class="resource-list">
+                        <li>
+                            <strong>Fira Code, JetBrains Mono, Cascadia Code</strong>
+                            <p>Modern monospace fonts optimized for programming and terminal use. Include ligatures and excellent Unicode support.</p>
+                        </li>
+                        <li>
+                            <strong>Terminus, Tamsyn</strong>
+                            <p>Bitmap fonts designed for maximum readability at small sizes.</p>
+                        </li>
+                    </ul>
+                </article>
             </div>
-        </div>
-    </section>
+        </section>
 
-    <!-- Notable Examples -->
-    <section class="section bg-dark">
-        <div class="container">
-            <h2>Notable examples</h2>
-            <p class="section-intro">Influential works that pushed the boundaries of terminal animation.</p>
-
-            <div class="examples-grid">
-                <article class="example-card">
-                    <h4>Star Wars ASCIImation</h4>
-                    <p class="example-meta">Simon Jansen, 1997</p>
-                    <p>The entire Star Wars Episode IV recreated in ASCII art, playable via telnet. Originally 16,000+ frames of hand-crafted animation.</p>
-                    <code class="example-code">telnet towel.blinkenlights.nl</code>
-                </article>
-
-                <article class="example-card">
-                    <h4>ASCII Quake</h4>
-                    <p class="example-meta">AAlib project, 1999</p>
-                    <p>Real-time 3D game rendering in ASCII using dithering algorithms. Demonstrated that even complex graphics could be represented in text.</p>
-                </article>
-
-                <article class="example-card">
-                    <h4>Zork</h4>
-                    <p class="example-meta">Infocom, 1980</p>
-                    <p>While primarily text-based, Zork's interface animations and status line updates influenced generations of terminal UI design.</p>
-                </article>
-
-                <article class="example-card">
-                    <h4>sl (Steam Locomotive)</h4>
-                    <p class="example-meta">Toyoda Masashi, 1993</p>
-                    <p>A playful ASCII animation that runs when you mistype 'ls'. Became a beloved Unix easter egg demonstrating smooth terminal animation.</p>
-                    <code class="example-code">brew install sl && sl</code>
-                </article>
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container-narrow">
+                <p>The definitive guide to terminal animation and ASCII motion graphics.</p>
+                <p class="footer-note">All animations on this page are rendered in real-time using JavaScript.<br>View source to see the implementation.</p>
             </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container-narrow">
-            <p>A guide to creating motion graphics in command-line interfaces.</p>
-            <p class="footer-note">All animations on this page are rendered in real-time using JavaScript — no images, no videos, just text.</p>
-        </div>
-    </footer>
+        </footer>
+    </main>
 
     <script src="terminal-animation.js"></script>
 </body>
