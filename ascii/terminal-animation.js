@@ -1,19 +1,67 @@
 // ============================================
-// Terminal Animation - The Definitive Guide
+// Terminal Animation - Apple-Level Polish
 // ============================================
+
+// === MOBILE MENU ===
+const menuToggle = document.getElementById('menuToggle');
+const nav = document.getElementById('nav');
+let menuOpen = false;
+
+menuToggle?.addEventListener('click', () => {
+    menuOpen = !menuOpen;
+    document.body.classList.toggle('menu-open', menuOpen);
+    nav.classList.toggle('open', menuOpen);
+    menuToggle.setAttribute('aria-expanded', menuOpen);
+});
+
+// Close menu when clicking a link
+document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => {
+        if (menuOpen) {
+            menuOpen = false;
+            document.body.classList.remove('menu-open');
+            nav.classList.remove('open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+        }
+    });
+});
+
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (menuOpen && !nav.contains(e.target) && !menuToggle.contains(e.target)) {
+        menuOpen = false;
+        document.body.classList.remove('menu-open');
+        nav.classList.remove('open');
+        menuToggle.setAttribute('aria-expanded', 'false');
+    }
+});
+
+// === SCROLL-TRIGGERED ANIMATIONS ===
+const animateOnScroll = () => {
+    const elements = document.querySelectorAll('.section, .pattern-item, .charset-item, .example-card');
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, {
+        threshold: 0.1,
+        rootMargin: '0px 0px -100px 0px'
+    });
+
+    elements.forEach(el => observer.observe(el));
+};
+
+// Initialize scroll animations
+animateOnScroll();
 
 // === NAVIGATION SCROLL SPY ===
 const navLinks = document.querySelectorAll('.nav-link');
 const sections = document.querySelectorAll('.section, .hero');
 
-// Intersection Observer for scroll spy
-const observerOptions = {
-    root: null,
-    rootMargin: '-20% 0px -70% 0px',
-    threshold: 0
-};
-
-const observer = new IntersectionObserver((entries) => {
+const scrollSpyObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
             const id = entry.target.getAttribute('id');
@@ -27,12 +75,14 @@ const observer = new IntersectionObserver((entries) => {
             }
         }
     });
-}, observerOptions);
+}, {
+    threshold: 0.2,
+    rootMargin: '-20% 0px -70% 0px'
+});
 
-// Observe all sections
 sections.forEach(section => {
     if (section.getAttribute('id')) {
-        observer.observe(section);
+        scrollSpyObserver.observe(section);
     }
 });
 
@@ -51,11 +101,17 @@ navLinks.forEach(link => {
     });
 });
 
+// Scroll indicator
+const scrollIndicator = document.querySelector('.scroll-indicator');
+scrollIndicator?.addEventListener('click', () => {
+    const firstSection = document.querySelector('.section');
+    firstSection?.scrollIntoView({ behavior: 'smooth' });
+});
+
 // === HERO ANIMATION ===
 const heroOutput = document.getElementById('hero-output');
 let heroFrame = 0;
 
-// Create balanced ASCII art frames for TERMINAL
 const heroFrames = [
 `
   ████████╗███████╗██████╗ ███╗   ███╗██╗███╗   ██╗ █████╗ ██╗
@@ -243,6 +299,20 @@ function animateBlink() {
 }
 setInterval(animateBlink, 500);
 
+// === PERFORMANCE MONITORING ===
+let lastFrameTime = performance.now();
+let fps = 0;
+
+function measurePerformance() {
+    const now = performance.now();
+    const delta = now - lastFrameTime;
+    fps = Math.round(1000 / delta);
+    lastFrameTime = now;
+    requestAnimationFrame(measurePerformance);
+}
+
+measurePerformance();
+
 // === CONSOLE MESSAGE ===
 console.log(`
 ╔═══════════════════════════════════════════╗
@@ -251,7 +321,12 @@ console.log(`
 ║  All animations render in real-time       ║
 ║  using pure JavaScript                    ║
 ║                                           ║
-║  Open DevTools to see this message        ║
+║  Performance: ~${fps} FPS                      ║
 ║  View source to explore techniques        ║
 ╚═══════════════════════════════════════════╝
 `);
+
+// Log after a delay to show actual FPS
+setTimeout(() => {
+    console.log(`%c⚡ Performance: ${fps} FPS`, 'color: #00ff41; font-weight: bold; font-size: 14px;');
+}, 1000);
