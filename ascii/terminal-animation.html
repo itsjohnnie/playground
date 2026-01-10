@@ -3,376 +3,315 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Terminal Animation - The Art of ASCII</title>
+    <title>Terminal animation — A guide to ASCII motion graphics</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="terminal-animation.css">
 </head>
 <body>
-    <!-- Hero Section -->
+    <!-- Hero -->
     <section class="hero">
-        <div class="terminal-window hero-terminal">
-            <div class="terminal-header">
-                <div class="terminal-controls">
-                    <span class="dot red"></span>
-                    <span class="dot yellow"></span>
-                    <span class="dot green"></span>
-                </div>
-                <div class="terminal-title">ascii-art.sh</div>
-                <div class="terminal-spacer"></div>
-            </div>
-            <div class="terminal-body">
-                <pre id="hero-ascii" class="ascii-art"></pre>
-            </div>
-        </div>
         <div class="hero-content">
-            <h1 class="title">Terminal Animation</h1>
-            <p class="subtitle">The Lost Art of ASCII Motion Graphics</p>
-            <p class="description">From teleprinters to modern terminals, explore the evolution and techniques of text-based animation</p>
+            <h1>Terminal animation</h1>
+            <p class="lead">The art and technique of creating motion graphics using only text characters in command-line interfaces.</p>
+        </div>
+
+        <div class="hero-demo">
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <div class="dots">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </div>
+                    <span class="terminal-title">demo.sh</span>
+                </div>
+                <div class="terminal-body">
+                    <pre id="hero-output" class="output"></pre>
+                </div>
+            </div>
         </div>
     </section>
 
     <!-- Introduction -->
-    <section class="intro">
-        <div class="content-wrapper">
-            <div class="intro-grid">
-                <div class="intro-card">
-                    <div class="card-header">
-                        <span class="card-number">01</span>
-                        <h3>ASCII Standard</h3>
+    <section class="section">
+        <div class="container-narrow">
+            <p class="intro-text">Since the 1960s, programmers have been creating art and animation using nothing but ASCII characters. From early teleprinter games to modern CLI tools, terminal animation remains a unique intersection of programming, design, and creative constraint.</p>
+        </div>
+    </section>
+
+    <!-- Core Techniques -->
+    <section class="section bg-dark">
+        <div class="container">
+            <h2>Core techniques</h2>
+            <p class="section-intro">Four fundamental approaches to creating terminal animation.</p>
+
+            <div class="technique-list">
+                <!-- Frame-based -->
+                <article class="technique">
+                    <div class="technique-text">
+                        <h3>Frame-based animation</h3>
+                        <p>Pre-render multiple frames and cycle through them. The simplest approach, used for logos, loading indicators, and character animations. Memory-intensive but smooth and predictable.</p>
+                        <div class="code-block">
+                            <code>const frames = ['⠋', '⠙', '⠹', '⠸']
+let i = 0
+setInterval(() => {
+  process.stdout.write('\r' + frames[i++ % 4])
+}, 80)</code>
+                        </div>
                     </div>
-                    <p>The American Standard Code for Information Interchange (ASCII) is a 7-bit character encoding standard. Developed in 1963, it defines 128 characters including letters, numbers, and symbols - the building blocks of terminal art.</p>
-                    <div class="code-sample">
-                        <pre>Dec  Hex  Char
- 33  21   !
- 64  40   @
- 35  23   #</pre>
+                    <div class="technique-demo">
+                        <div class="demo-window">
+                            <pre id="frame-demo" class="output"></pre>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Procedural -->
+                <article class="technique">
+                    <div class="technique-text">
+                        <h3>Procedural generation</h3>
+                        <p>Calculate each frame mathematically using functions like sine waves, noise, or physics simulations. Enables effects like plasma, fire, and particle systems with minimal memory.</p>
+                        <div class="code-block">
+                            <code>for (let y = 0; y < height; y++) {
+  for (let x = 0; x < width; x++) {
+    const v = Math.sin(x * 0.2 + time)
+    const char = v > 0 ? '█' : '░'
+    output += char
+  }
+}</code>
+                        </div>
+                    </div>
+                    <div class="technique-demo">
+                        <div class="demo-window">
+                            <pre id="procedural-demo" class="output"></pre>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Buffer-based -->
+                <article class="technique">
+                    <div class="technique-text">
+                        <h3>Buffer manipulation</h3>
+                        <p>Maintain a 2D array representing the screen, update specific cells, then render the entire buffer. Allows for complex multi-element scenes like games and interactive UIs.</p>
+                        <div class="code-block">
+                            <code>const buffer = Array(rows).fill(null)
+  .map(() => Array(cols).fill(' '))
+
+// Update specific cells
+buffer[y][x] = '█'
+
+// Render entire buffer
+console.log(buffer.map(row => row.join('')).join('\n'))</code>
+                        </div>
+                    </div>
+                    <div class="technique-demo">
+                        <div class="demo-window">
+                            <pre id="buffer-demo" class="output"></pre>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Character replacement -->
+                <article class="technique">
+                    <div class="technique-text">
+                        <h3>Character replacement</h3>
+                        <p>Use ANSI escape codes to reposition the cursor and overwrite specific characters without redrawing the entire screen. Essential for efficient updates in large displays.</p>
+                        <div class="code-block">
+                            <code>// Move cursor to row 5, column 10
+process.stdout.write('\x1b[5;10H')
+
+// Write character at that position
+process.stdout.write('█')
+
+// Move cursor up 2 lines
+process.stdout.write('\x1b[2A')</code>
+                        </div>
+                    </div>
+                    <div class="technique-demo">
+                        <div class="demo-window">
+                            <pre id="cursor-demo" class="output"></pre>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- Common Patterns -->
+    <section class="section">
+        <div class="container">
+            <h2>Common patterns</h2>
+            <p class="section-intro">Practical examples you'll see in real terminal applications.</p>
+
+            <div class="pattern-grid">
+                <div class="pattern-item">
+                    <h4>Progress indicator</h4>
+                    <div class="terminal-window small">
+                        <div class="terminal-body">
+                            <pre id="progress-pattern" class="output"></pre>
+                        </div>
                     </div>
                 </div>
-                <div class="intro-card">
-                    <div class="card-header">
-                        <span class="card-number">02</span>
-                        <h3>Box Drawing</h3>
-                    </div>
-                    <p>Extended ASCII and Unicode provide box-drawing characters (U+2500–U+257F), enabling complex diagrams, borders, and UI elements in pure text - essential for terminal UIs and visual effects.</p>
-                    <div class="code-sample">
-                        <pre>╔═══╗ ┌───┐ ╭───╮
-║   ║ │   │ │   │
-╚═══╝ └───┘ ╰───╯</pre>
+
+                <div class="pattern-item">
+                    <h4>Loading spinner</h4>
+                    <div class="terminal-window small">
+                        <div class="terminal-body">
+                            <pre id="spinner-pattern" class="output"></pre>
+                        </div>
                     </div>
                 </div>
-                <div class="intro-card">
-                    <div class="card-header">
-                        <span class="card-number">03</span>
-                        <h3>Block Elements</h3>
-                    </div>
-                    <p>Unicode block elements (U+2580–U+259F) provide precise control over pixel-level density, enabling grayscale shading and detailed imagery using only text characters.</p>
-                    <div class="code-sample">
-                        <pre>█ ▓ ▒ ░ ▄ ▀
-▌ ▐ ▆ ▇ ■ □</pre>
+
+                <div class="pattern-item">
+                    <h4>Live counter</h4>
+                    <div class="terminal-window small">
+                        <div class="terminal-body">
+                            <pre id="counter-pattern" class="output"></pre>
+                        </div>
                     </div>
                 </div>
-                <div class="intro-card">
-                    <div class="card-header">
-                        <span class="card-number">04</span>
-                        <h3>ANSI Escape</h3>
+
+                <div class="pattern-item">
+                    <h4>Text reveal</h4>
+                    <div class="terminal-window small">
+                        <div class="terminal-body">
+                            <pre id="reveal-pattern" class="output"></pre>
+                        </div>
                     </div>
-                    <p>ANSI escape sequences (ESC[...m) control terminal colors, cursor positioning, and text styling. These codes enable dynamic, colorful terminal applications and animations.</p>
-                    <div class="code-sample">
-                        <pre>\\033[31m Red
-\\033[1;32m Bold Green
-\\033[7m Inverse</pre>
+                </div>
+
+                <div class="pattern-item">
+                    <h4>Marquee scroll</h4>
+                    <div class="terminal-window small">
+                        <div class="terminal-body">
+                            <pre id="marquee-pattern" class="output"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pattern-item">
+                    <h4>Blink effect</h4>
+                    <div class="terminal-window small">
+                        <div class="terminal-body">
+                            <pre id="blink-pattern" class="output"></pre>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Live Techniques -->
-    <section class="techniques">
-        <div class="content-wrapper">
-            <h2 class="section-title">Animation Techniques</h2>
-            <p class="section-subtitle">Core methods for bringing ASCII to life</p>
+    <!-- Character Sets -->
+    <section class="section bg-light">
+        <div class="container-narrow">
+            <h2>Character sets</h2>
+            <p class="section-intro">Understanding which characters to use for different effects.</p>
 
-            <div class="technique-grid">
-                <div class="technique-demo">
-                    <div class="terminal-window">
-                        <div class="terminal-header">
-                            <div class="terminal-controls">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
-                            </div>
-                            <div class="terminal-title">frame-buffer.c</div>
-                        </div>
-                        <div class="terminal-body">
-                            <pre id="frame-buffer" class="ascii-art"></pre>
-                        </div>
-                    </div>
-                    <div class="technique-info">
-                        <h3>Frame Buffering</h3>
-                        <p>Pre-render all frames and cycle through them. Classic technique used in early terminal games and demos. Smooth but memory-intensive.</p>
-                    </div>
+            <div class="charset-grid">
+                <div class="charset-item">
+                    <h4>Block elements</h4>
+                    <div class="char-display">█ ▓ ▒ ░ ▄ ▀ ▌ ▐</div>
+                    <p>For solid shapes, gradients, and pixel-style graphics. Unicode U+2580–U+259F.</p>
                 </div>
 
-                <div class="technique-demo">
-                    <div class="terminal-window">
-                        <div class="terminal-header">
-                            <div class="terminal-controls">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
-                            </div>
-                            <div class="terminal-title">procedural.js</div>
-                        </div>
-                        <div class="terminal-body">
-                            <pre id="procedural-gen" class="ascii-art"></pre>
-                        </div>
-                    </div>
-                    <div class="technique-info">
-                        <h3>Procedural Generation</h3>
-                        <p>Calculate each frame mathematically using sine waves, noise functions, or physics. Used in particle systems and effects.</p>
-                    </div>
+                <div class="charset-item">
+                    <h4>Box drawing</h4>
+                    <div class="char-display">─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼</div>
+                    <p>For frames, borders, and diagrams. Unicode U+2500–U+257F.</p>
                 </div>
 
-                <div class="technique-demo">
-                    <div class="terminal-window">
-                        <div class="terminal-header">
-                            <div class="terminal-controls">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
-                            </div>
-                            <div class="terminal-title">sprite-sheet.py</div>
-                        </div>
-                        <div class="terminal-body">
-                            <pre id="sprite-animation" class="ascii-art"></pre>
-                        </div>
-                    </div>
-                    <div class="technique-info">
-                        <h3>Sprite Animation</h3>
-                        <p>Move ASCII sprites across the screen. Foundation of early terminal games and character-based animations.</p>
-                    </div>
+                <div class="charset-item">
+                    <h4>Braille patterns</h4>
+                    <div class="char-display">⠀ ⠁ ⠂ ⠃ ⠄ ⠅ ⠆ ⠇ ⠈ ⠉</div>
+                    <p>For smooth curves and high-resolution graphics. Unicode U+2800–U+28FF.</p>
                 </div>
 
-                <div class="technique-demo">
-                    <div class="terminal-window">
-                        <div class="terminal-header">
-                            <div class="terminal-controls">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
-                            </div>
-                            <div class="terminal-title">cellular.rs</div>
-                        </div>
-                        <div class="terminal-body">
-                            <pre id="cellular-automata" class="ascii-art"></pre>
-                        </div>
-                    </div>
-                    <div class="technique-info">
-                        <h3>Cellular Automata</h3>
-                        <p>Each cell's state depends on neighbors. Conway's Life, fire simulations, and organic patterns emerge from simple rules.</p>
-                    </div>
+                <div class="charset-item">
+                    <h4>Geometric shapes</h4>
+                    <div class="char-display">■ □ ▪ ▫ ● ○ ◆ ◇ ★ ☆</div>
+                    <p>For icons, bullets, and decorative elements. Various Unicode ranges.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Interactive Playground -->
-    <section class="playground">
-        <div class="content-wrapper">
-            <h2 class="section-title">Interactive Playground</h2>
-            <p class="section-subtitle">Experiment with classic terminal animations</p>
+    <!-- Historical Context -->
+    <section class="section">
+        <div class="container-narrow">
+            <h2>Historical context</h2>
 
-            <div class="playground-grid">
-                <div class="playground-terminal">
-                    <div class="terminal-window">
-                        <div class="terminal-header">
-                            <div class="terminal-controls">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
-                            </div>
-                            <div class="terminal-title">demo.sh</div>
-                        </div>
-                        <div class="terminal-body">
-                            <pre id="playground-output" class="ascii-art"></pre>
-                        </div>
-                    </div>
+            <div class="timeline-simple">
+                <div class="timeline-entry">
+                    <span class="timeline-year">1963</span>
+                    <p>ASCII standard published, establishing the 7-bit character encoding that would become the foundation for all terminal text.</p>
                 </div>
-                <div class="playground-controls">
-                    <h3>Select Animation</h3>
-                    <div class="control-group">
-                        <button class="control-btn active" data-animation="starfield">
-                            <span class="btn-icon">✦</span>
-                            <span class="btn-label">Starfield</span>
-                        </button>
-                        <button class="control-btn" data-animation="plasma">
-                            <span class="btn-icon">◉</span>
-                            <span class="btn-label">Plasma</span>
-                        </button>
-                        <button class="control-btn" data-animation="tunnel">
-                            <span class="btn-icon">◎</span>
-                            <span class="btn-label">Tunnel</span>
-                        </button>
-                        <button class="control-btn" data-animation="rain">
-                            <span class="btn-icon">∴</span>
-                            <span class="btn-label">Rain</span>
-                        </button>
-                        <button class="control-btn" data-animation="fire">
-                            <span class="btn-icon">▲</span>
-                            <span class="btn-label">Fire</span>
-                        </button>
-                        <button class="control-btn" data-animation="dna">
-                            <span class="btn-icon">∞</span>
-                            <span class="btn-label">DNA Helix</span>
-                        </button>
-                    </div>
+
+                <div class="timeline-entry">
+                    <span class="timeline-year">1978</span>
+                    <p>DEC VT100 terminal released, introducing ANSI escape sequences for cursor control and making sophisticated terminal animation possible.</p>
+                </div>
+
+                <div class="timeline-entry">
+                    <span class="timeline-year">1985</span>
+                    <p>Bulletin board systems (BBS) popularize ANSI art, creating a thriving community of ASCII artists using tools like TheDraw.</p>
+                </div>
+
+                <div class="timeline-entry">
+                    <span class="timeline-year">1997</span>
+                    <p>AAlib released, enabling real-time conversion of graphics and video to ASCII art, powering projects like ASCII Quake.</p>
+                </div>
+
+                <div class="timeline-entry">
+                    <span class="timeline-year">2010s</span>
+                    <p>Modern CLI renaissance brings terminal animation back to prominence through tools like npm progress bars, Docker, and asciinema.</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Historical Timeline -->
-    <section class="history">
-        <div class="content-wrapper">
-            <h2 class="section-title">Evolution of Terminal Graphics</h2>
-            <p class="section-subtitle">From teleprinters to modern terminals</p>
+    <!-- Notable Examples -->
+    <section class="section bg-dark">
+        <div class="container">
+            <h2>Notable examples</h2>
+            <p class="section-intro">Influential works that pushed the boundaries of terminal animation.</p>
 
-            <div class="timeline">
-                <div class="timeline-item">
-                    <div class="timeline-marker">1963</div>
-                    <div class="timeline-content">
-                        <h3>ASCII Standard Published</h3>
-                        <p>American Standard Code for Information Interchange becomes the foundation for all text-based computing. Bell Labs and the American Standards Association define the 7-bit character set.</p>
-                        <div class="timeline-tech">ASR-33 Teletype, Mainframes</div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-marker">1978</div>
-                    <div class="timeline-content">
-                        <h3>VT100 Terminal Released</h3>
-                        <p>DEC's VT100 introduces ANSI escape sequences, enabling cursor control and styling. Becomes the de facto standard for terminal emulation, still emulated today.</p>
-                        <div class="timeline-tech">ANSI X3.64, Escape Sequences</div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-marker">1983</div>
-                    <div class="timeline-content">
-                        <h3>BBS Culture & ANSI Art</h3>
-                        <p>Bulletin Board Systems flourish. Artists create elaborate ANSI art using TheDraw and ACiDDraw. File_id.diz culture emerges in the warez scene.</p>
-                        <div class="timeline-tech">CP437, ANSI.SYS, BBS</div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-marker">1987</div>
-                    <div class="timeline-content">
-                        <h3>PC Demoscene Begins</h3>
-                        <p>Demo groups like Future Crew push ASCII animation to extremes. Text-mode demos feature 3D effects, plasma, and complex animations at 70 Hz.</p>
-                        <div class="timeline-tech">Mode 13h, VGA, Trackers</div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-marker">1997</div>
-                    <div class="timeline-content">
-                        <h3>AAlib Released</h3>
-                        <p>Jan Hubička creates AA-lib, the first library for converting graphics to ASCII art in real-time. Enables ASCII video playback and 3D rendering.</p>
-                        <div class="timeline-tech">Dithering, Real-time Conversion</div>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <div class="timeline-marker">2010s</div>
-                    <div class="timeline-content">
-                        <h3>Terminal Renaissance</h3>
-                        <p>Modern CLI tools embrace ASCII art. Projects like asciinema, blessed, and ncurses bring sophisticated UIs back to the terminal. Retro aesthetics resurge.</p>
-                        <div class="timeline-tech">UTF-8, True Color, ligatures</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
+            <div class="examples-grid">
+                <article class="example-card">
+                    <h4>Star Wars ASCIImation</h4>
+                    <p class="example-meta">Simon Jansen, 1997</p>
+                    <p>The entire Star Wars Episode IV recreated in ASCII art, playable via telnet. Originally 16,000+ frames of hand-crafted animation.</p>
+                    <code class="example-code">telnet towel.blinkenlights.nl</code>
+                </article>
 
-    <!-- Classic Examples -->
-    <section class="gallery">
-        <div class="content-wrapper">
-            <h2 class="section-title">Hall of Fame</h2>
-            <p class="section-subtitle">Iconic ASCII creations that defined the medium</p>
+                <article class="example-card">
+                    <h4>ASCII Quake</h4>
+                    <p class="example-meta">AAlib project, 1999</p>
+                    <p>Real-time 3D game rendering in ASCII using dithering algorithms. Demonstrated that even complex graphics could be represented in text.</p>
+                </article>
 
-            <div class="gallery-grid">
-                <div class="gallery-item">
-                    <div class="terminal-window">
-                        <div class="terminal-header">
-                            <div class="terminal-controls">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
-                            </div>
-                            <div class="terminal-title">starwars-asciimation.txt</div>
-                        </div>
-                        <div class="terminal-body">
-                            <pre id="starwars-art" class="ascii-art"></pre>
-                        </div>
-                    </div>
-                    <div class="gallery-caption">
-                        <h4>Star Wars ASCIImation</h4>
-                        <p>Simon Jansen's 1997 masterpiece: the entire Star Wars Episode IV recreated in ASCII. Stream via telnet towel.blinkenlights.nl</p>
-                    </div>
-                </div>
+                <article class="example-card">
+                    <h4>Zork</h4>
+                    <p class="example-meta">Infocom, 1980</p>
+                    <p>While primarily text-based, Zork's interface animations and status line updates influenced generations of terminal UI design.</p>
+                </article>
 
-                <div class="gallery-item">
-                    <div class="terminal-window">
-                        <div class="terminal-header">
-                            <div class="terminal-controls">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
-                            </div>
-                            <div class="terminal-title">bad-apple.txt</div>
-                        </div>
-                        <div class="terminal-body">
-                            <pre id="bad-apple-art" class="ascii-art"></pre>
-                        </div>
-                    </div>
-                    <div class="gallery-caption">
-                        <h4>Bad Apple!! ASCII</h4>
-                        <p>Touhou's "Bad Apple!!" music video converted to ASCII art became an internet phenomenon, showcasing real-time video-to-ASCII conversion.</p>
-                    </div>
-                </div>
-
-                <div class="gallery-item">
-                    <div class="terminal-window">
-                        <div class="terminal-header">
-                            <div class="terminal-controls">
-                                <span class="dot red"></span>
-                                <span class="dot yellow"></span>
-                                <span class="dot green"></span>
-                            </div>
-                            <div class="terminal-title">doom-ascii.txt</div>
-                        </div>
-                        <div class="terminal-body">
-                            <pre id="doom-art" class="ascii-art"></pre>
-                        </div>
-                    </div>
-                    <div class="gallery-caption">
-                        <h4>ASCII Doom</h4>
-                        <p>Running Doom in text mode using libcaca. Real-time 3D rendering converted to colored ASCII characters at playable framerates.</p>
-                    </div>
-                </div>
+                <article class="example-card">
+                    <h4>sl (Steam Locomotive)</h4>
+                    <p class="example-meta">Toyoda Masashi, 1993</p>
+                    <p>A playful ASCII animation that runs when you mistype 'ls'. Became a beloved Unix easter egg demonstrating smooth terminal animation.</p>
+                    <code class="example-code">brew install sl && sl</code>
+                </article>
             </div>
         </div>
     </section>
 
     <!-- Footer -->
-    <footer>
-        <div class="content-wrapper">
-            <div class="footer-art">
-                <pre id="footer-ascii" class="ascii-art"></pre>
-            </div>
-            <div class="footer-links">
-                <p>Built with monospaced love</p>
-                <p class="footer-note">All animations render client-side • Zero images • Pure text</p>
-            </div>
+    <footer class="footer">
+        <div class="container-narrow">
+            <p>A guide to creating motion graphics in command-line interfaces.</p>
+            <p class="footer-note">All animations on this page are rendered in real-time using JavaScript — no images, no videos, just text.</p>
         </div>
     </footer>
 
