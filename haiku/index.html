@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Haiku</title>
+  <meta name="description" content="Meditative haikus inspired by Rick Rubin, Frank Ocean, A Tribe Called Quest, Vinicius de Moraes, Gilberto Gil, and the creative spirit.">
+  <meta property="og:title" content="Haiku">
+  <meta property="og:description" content="100 meditative haikus on creativity, culture, and craft.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #050505;
+      --text: #f5f2ed;
+      --text-dim: rgba(245, 242, 237, 0.2);
+      --text-soft: rgba(245, 242, 237, 0.6);
+      --glow: rgba(245, 242, 237, 0.03);
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: 'Cormorant', Georgia, 'Times New Roman', serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      min-height: 100dvh;
+      padding: 2rem;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      position: relative;
+    }
+
+    /* Subtle gradient orb */
+    .orb {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60vmax;
+      height: 60vmax;
+      background: radial-gradient(circle, var(--glow) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+
+    .orb.visible {
+      opacity: 1;
+    }
+
+    .haiku-container {
+      text-align: center;
+      max-width: 700px;
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
+
+    .haiku {
+      font-size: clamp(1.6rem, 6vw, 2.8rem);
+      font-weight: 300;
+      line-height: 2.4;
+      letter-spacing: 0.12em;
+      min-height: 14rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0;
+    }
+
+    .line {
+      display: block;
+      opacity: 0;
+      transition: opacity 1.2s ease;
+      position: relative;
+    }
+
+    .line.visible {
+      opacity: 1;
+    }
+
+    .char {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(30px);
+      filter: blur(8px);
+      transition:
+        opacity 0.6s cubic-bezier(0.23, 1, 0.32, 1),
+        transform 0.8s cubic-bezier(0.23, 1, 0.32, 1),
+        filter 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .char.visible {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+
+    .char.space {
+      width: 0.35em;
+    }
+
+    /* Line decoration */
+    .line-mark {
+      position: absolute;
+      left: -3rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1.5rem;
+      height: 1px;
+      background: var(--text-dim);
+      opacity: 0;
+      transition: opacity 0.8s ease 0.3s;
+    }
+
+    .line.visible .line-mark {
+      opacity: 1;
+    }
+
+    .hint {
+      position: fixed;
+      bottom: 2.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      opacity: 0;
+      transition: opacity 1.5s ease;
+      font-weight: 400;
+    }
+
+    .hint.visible {
+      opacity: 1;
+    }
+
+    .number {
+      position: fixed;
+      top: 2.5rem;
+      right: 2.5rem;
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+      font-weight: 400;
+    }
+
+    .wordmark {
+      position: fixed;
+      top: 2.5rem;
+      left: 2.5rem;
+      font-size: 0.65rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      font-weight: 400;
+    }
+
+    /* Progress bar */
+    .progress {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      height: 1px;
+      background: var(--text-dim);
+      width: 0;
+      transition: width 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    @media (max-width: 600px) {
+      .haiku {
+        line-height: 2.2;
+        font-size: clamp(1.4rem, 5.5vw, 2rem);
+      }
+
+      .line-mark {
+        display: none;
+      }
+
+      .wordmark, .number {
+        font-size: 0.6rem;
+      }
+
+      body {
+        padding: 1.5rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .char {
+        transition: opacity 0.3s ease;
+        transform: none;
+        filter: none;
+      }
+
+      .char.visible {
+        transform: none;
+        filter: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="orb" id="orb"></div>
+  <div class="wordmark">Haiku</div>
+  <div class="haiku-container">
+    <div class="haiku" id="haiku" aria-live="polite"></div>
+  </div>
+  <div class="hint" id="hint">anywhere to continue</div>
+  <div class="number" id="number"></div>
+  <div class="progress" id="progress"></div>
+
+  <script>
+    const haikus = [
+      // Rick Rubin's philosophy - reduction, presence, essence
+      ["Strip away the noise", "until only truth remains", "silence speaks the most"],
+      ["Before the first note", "infinite possibility", "breathes in empty space"],
+      ["Less becomes the whole", "each removed layer reveals", "what was always there"],
+      ["Listen past the sound", "to where the music begins", "in the space between"],
+      ["Trust what wants to come", "your hands are just the vessel", "art moves through, not from"],
+      ["The work knows its shape", "our task is only to clear", "the path to the light"],
+      ["Presence is the gift", "we bring to every moment", "creation follows"],
+      ["Reduce to the bone", "the marrow holds the meaning", "excess clouds the truth"],
+      ["Begin with nothing", "and let something want to be", "then simply allow"],
+      ["Quality is depth", "not the count of how many", "but the weight of one"],
+
+      // Frank Ocean - nostalgia, longing, introspection
+      ["Blonde hair in summer", "memories of what could be", "nostalgia drips slow"],
+      ["Swimming in the deep", "where feelings have no edges", "I become the blue"],
+      ["Night drives alone", "your song plays on the radio", "I feel you still here"],
+      ["Sweet life unravels", "thread by golden thread it goes", "still I hold the end"],
+      ["Pyramids of time", "we built so high together", "now sand in my palms"],
+      ["Ivy on the walls", "grows around the space you left", "green takes over gray"],
+      ["Channel orange light", "through the blinds at golden hour", "I remember you"],
+      ["White Ferrari dreams", "speed through nights that never end", "headlights find the way"],
+      ["Self control means wait", "for the love that's meant to stay", "patience is the proof"],
+      ["Bad religion is", "loving what cannot love back", "still I pray for us"],
+
+      // A Tribe Called Quest - rhythm, consciousness, flow
+      ["Beats like heartbeats pulse", "Q-Tip flows like liquid jazz", "consciousness expands"],
+      ["We got it from here", "thank you for your service, Phife", "legends never fade"],
+      ["Low end theory speaks", "bass lines teach philosophy", "rhythm holds the truth"],
+      ["Award tour begins", "around the world ideas flow", "music has no walls"],
+      ["Jazz and hip-hop merge", "what happens when art forms kiss", "new worlds start to form"],
+      ["Electric relax", "let the vibe wash over you", "stress melts into groove"],
+      ["Scenario plays", "words stack like building blocks high", "verse constructs the world"],
+      ["Check the rhyme pattern", "syllables find their own way", "language dances free"],
+      ["Industry rules state", "we don't love you, but we do", "love the people more"],
+      ["Bonita Applebum", "memories of first true loves", "innocence persists"],
+
+      // Vinicius de Moraes - love, saudade, Rio, poetry
+      ["Garota passa", "and the whole world stops to watch", "beauty in motion"],
+      ["Saudade is home", "for missing what the heart holds", "present absence grows"],
+      ["Amor que partiu", "ainda mora aqui dentro", "love that left still lives"],
+      ["Tarde em Copacabana", "waves write poems on the sand", "the sea remembers"],
+      ["A rose is a rose", "but your name blooms different", "petals of pure gold"],
+      ["If you must be sad", "be sad in Bahia where", "sadness finds its song"],
+      ["Bossa nova plays", "soft as whispered confessions", "night holds its secrets"],
+      ["Eu sei que vou", "te amar for all my life", "this is my one truth"],
+      ["Tom plays piano", "Vinicius writes the words", "Brazil sings along"],
+      ["Life is the art of", "meeting, though so much of it", "is saying goodbye"],
+
+      // Gilberto Gil - tropicália, nature, technology, spirit
+      ["Aquele abraço", "for the city that raised me", "Rio, I am yours"],
+      ["Palm trees and pixels", "blend in tropicália dreams", "future meets the past"],
+      ["Refavela rising", "music from the margins speaks", "truth in every note"],
+      ["Back in Bahia", "where the orixás still dance", "sacred in the street"],
+      ["Toda menina", "baiana has a grace that's", "handed down through time"],
+      ["Electric guitar", "meets berimbau in the mix", "sounds of the new world"],
+      ["Expresso to the", "future takes us there right now", "tomorrow is here"],
+      ["The world shrinks to screens", "parabolicamará", "yet the soul expands"],
+      ["Andar com fé", "I will walk with faith because", "faith moves where it must"],
+      ["Maracatu beats", "atomic pulse of the heart", "ancestral power"],
+
+      // Brazilian culture - carnival, nature, warmth
+      ["Carnival erupts", "sequins catch the morning light", "joy as resistance"],
+      ["Açaí bowls melt", "under Rio's summer sun", "purple on my lips"],
+      ["Futebol na praia", "bare feet on the burning sand", "goals scored by the waves"],
+      ["Pão de queijo warm", "cheese stretches like memories", "of grandmother's hands"],
+      ["Amazon breathes deep", "lungs of the whole world exhale", "green is a prayer"],
+      ["Feijoada simmers", "black beans cook the family", "together we feast"],
+      ["Samba de roda", "the circle holds the rhythm", "everybody moves"],
+      ["Caipirinha ice", "lime and cachaça blend", "summer in a glass"],
+      ["Arms open to sky", "Cristo Redentor watches", "embracing the world"],
+      ["Bossa on the beach", "guitar strings catch ocean breeze", "music floats away"],
+
+      // Argentinian culture - tango, passion, mate
+      ["Tango in the street", "two bodies become one breath", "passion has no words"],
+      ["Mate circles passed", "hand to hand the gourd travels", "sharing bitter warmth"],
+      ["Buenos Aires dreams", "while the milongas wake up", "night people emerge"],
+      ["Asado smoke lifts", "Sunday ritual begins", "family gathers"],
+      ["Gardel sings still now", "his voice frozen in the grooves", "eternal lament"],
+      ["Patagonia wind", "carries stories of the south", "ancient glaciers hear"],
+      ["La Boca colors", "paint the immigrant's dreams bright", "yellow, blue, and red"],
+      ["Bandoneon breathes out", "accordion of the soul", "melancholy sighs"],
+      ["Obelisco stands tall", "nueve de julio stretches", "the city's heartbeat"],
+      ["Dulce de leche", "caramel memories of", "childhood afternoons"],
+
+      // Webflow & design tools - visual creation
+      ["No code, all vision", "designers build their own dreams", "the canvas obeys"],
+      ["Flexbox flows just right", "elements find their own space", "layout breathes easy"],
+      ["Interactions play", "scroll triggers the magic now", "motion tells stories"],
+      ["CMS feeds the site", "content flows through the design", "structure meets beauty"],
+      ["Symbols replicate", "consistency at full scale", "one change, everywhere"],
+      ["Publishing now live", "the world sees what you have made", "creation goes live"],
+      ["Variables hold", "the tokens of your system", "design speaks in code"],
+      ["Grid lines guide the way", "twelve columns hold the truth", "alignment is peace"],
+      ["Breakpoints respond", "mobile, tablet, desktop sing", "in harmony now"],
+      ["Style panel waits there", "for decisions to be made", "pixels await you"],
+
+      // Design philosophy
+      ["Whitespace is not", "empty—it is breathing room", "for the eye to rest"],
+      ["Grids are not cages", "they're scaffolds for the wild", "freedom within form"],
+      ["Kerning matters most", "when nobody notices", "invisible care"],
+      ["Hierarchy speaks", "before a single word reads", "scale shows the way in"],
+      ["Color tells the mood", "before the mind can process", "feeling arrives first"],
+      ["The fold is a myth", "good content earns the scroll", "trust your visitors"],
+      ["Prototype fast now", "fail faster, then learn faster", "iteration wins"],
+      ["Design systems scale", "consistency compounds growth", "the future is built"],
+      ["User first, always", "ego second to service", "solve real problems now"],
+      ["Simple is harder", "than complex, but worth more", "restraint equals power"],
+
+      // Typography
+      ["Sans or serif—", "the choice reveals everything", "about who you are"],
+      ["Leading creates space", "for the words to breathe softly", "between every line"],
+      ["Tracking wide open", "letters need room to exist", "crowded type can't breathe"],
+      ["Body text works hard", "display type gets the glory", "both deserve respect"],
+      ["Ligatures connect", "fi and fl find their bond", "letterforms in love"],
+      ["x-height determines", "how readable text becomes", "small heights, big impact"],
+      ["Baseline anchors all", "the letters in a neat row", "invisible guide"],
+      ["Orphans and widows", "lonely words at edges hurt", "design with kindness"],
+      ["Type on a path curves", "following invisible", "lines drawn by the mind"],
+      ["Good type disappears", "until you feel its absence", "presence through restraint"],
+
+      // Creative process & synthesis
+      ["The work is the work", "showing up is most of it", "the rest is surrender"],
+      ["Between two cultures", "I find a third that's my own", "synthesis is home"],
+      ["Music taught me this", "silence between all the notes", "holds all the meaning"],
+      ["From São Paulo streets", "to screens across the whole world", "design connects us"],
+      ["Inspiration flows", "from those who came before us", "we are the channel"],
+      ["Make it for yourself", "the audience will find it", "truth attracts its tribe"],
+      ["Constraints are freedom", "boundaries push creation", "limits birth new forms"],
+      ["Every day, begin", "as if you've never yet made", "anything before"],
+      ["The pixel and word", "the beat and the blank canvas", "all speak one language"],
+      ["This haiku forms now", "characters finding their place", "art from the void comes"]
+    ];
+
+    let currentIndex = -1;
+    let isAnimating = false;
+    let seenIndices = new Set();
+
+    function getRandomHaiku() {
+      // Reset if we've seen all
+      if (seenIndices.size >= haikus.length) {
+        seenIndices.clear();
+      }
+
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * haikus.length);
+      } while (seenIndices.has(newIndex) && seenIndices.size < haikus.length);
+
+      seenIndices.add(newIndex);
+      currentIndex = newIndex;
+      return haikus[currentIndex];
+    }
+
+    function displayHaiku(haiku) {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      const container = document.getElementById('haiku');
+      const hint = document.getElementById('hint');
+      const number = document.getElementById('number');
+      const progress = document.getElementById('progress');
+      const orb = document.getElementById('orb');
+
+      hint.classList.remove('visible');
+      orb.classList.remove('visible');
+      container.innerHTML = '';
+
+      number.textContent = `${String(currentIndex + 1).padStart(3, '0')} / ${haikus.length}`;
+      progress.style.width = `${((seenIndices.size) / haikus.length) * 100}%`;
+
+      haiku.forEach((line, lineIndex) => {
+        const lineEl = document.createElement('span');
+        lineEl.className = 'line';
+
+        const mark = document.createElement('span');
+        mark.className = 'line-mark';
+        lineEl.appendChild(mark);
+
+        [...line].forEach((char, charIndex) => {
+          const charEl = document.createElement('span');
+          charEl.className = char === ' ' ? 'char space' : 'char';
+          charEl.textContent = char === ' ' ? '\u00A0' : char;
+          lineEl.appendChild(charEl);
+        });
+
+        container.appendChild(lineEl);
+      });
+
+      // Slight delay before animation begins
+      setTimeout(() => {
+        orb.classList.add('visible');
+      }, 100);
+
+      const lines = container.querySelectorAll('.line');
+      let totalDelay = 200;
+
+      lines.forEach((line, lineIndex) => {
+        const chars = line.querySelectorAll('.char');
+
+        setTimeout(() => {
+          line.classList.add('visible');
+        }, totalDelay);
+
+        chars.forEach((char, charIndex) => {
+          const baseDelay = totalDelay + (charIndex * 35);
+          const randomOffset = Math.random() * 20;
+          const delay = baseDelay + randomOffset;
+
+          setTimeout(() => {
+            char.classList.add('visible');
+          }, delay);
+        });
+
+        totalDelay += chars.length * 35 + 500;
+      });
+
+      setTimeout(() => {
+        isAnimating = false;
+        hint.classList.add('visible');
+      }, totalDelay + 600);
+    }
+
+    function next() {
+      if (isAnimating) return;
+      const haiku = getRandomHaiku();
+      displayHaiku(haiku);
+    }
+
+    // Event listeners
+    document.addEventListener('click', next);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'ArrowRight' || e.code === 'ArrowDown') {
+        e.preventDefault();
+        next();
+      }
+    });
+
+    // Touch support
+    let touchStartY = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+      const touchEndY = e.changedTouches[0].clientY;
+      const diff = touchStartY - touchEndY;
+      if (Math.abs(diff) < 50) {
+        next();
+      }
+    }, { passive: true });
+
+    // Initialize
+    next();
+  </script>
+</body>
+</html>
