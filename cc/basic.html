@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code - Internal Overview</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #fafafa;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #666;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            color: #1a1a1a;
+            margin: 2.5rem 0 1rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            color: #333;
+            margin: 1.5rem 0 0.75rem 0;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: #444;
+        }
+
+        ul, ol {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+            color: #444;
+        }
+
+        .definition-box {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-left: 4px solid #d97706;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .definition-box strong {
+            color: #1a1a1a;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: #fff;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .check {
+            color: #16a34a;
+            font-weight: bold;
+        }
+
+        .cross {
+            color: #dc2626;
+        }
+
+        code {
+            background: #f0f0f0;
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .code-block {
+            background: #1a1a1a;
+            color: #f0f0f0;
+            padding: 1rem 1.25rem;
+            border-radius: 6px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .code-block .prompt {
+            color: #d97706;
+        }
+
+        .code-block .output {
+            color: #9ca3af;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 1.25rem;
+            border-radius: 6px;
+        }
+
+        .feature-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card-icon {
+            width: 32px;
+            height: 32px;
+            background: #fef3c7;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #d97706;
+            font-size: 1.1rem;
+        }
+
+        .feature-card-icon i {
+            display: flex;
+        }
+
+        .feature-card h4 {
+            font-size: 1rem;
+            color: #1a1a1a;
+            margin: 0;
+        }
+
+        .feature-card p {
+            font-size: 0.9rem;
+            color: #666;
+            margin: 0;
+        }
+
+        .highlight {
+            background: #fef3c7;
+            padding: 1rem 1.25rem;
+            border-radius: 6px;
+            margin: 1.5rem 0;
+        }
+
+        .highlight strong {
+            color: #92400e;
+        }
+
+        footer {
+            margin-top: 4rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e0e0e0;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            table {
+                font-size: 0.85rem;
+            }
+
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Claude Code</h1>
+        <p class="subtitle">Anthropic's Official Agentic CLI for Developers</p>
+    </header>
+
+    <main>
+        <section>
+            <h2>What is Claude Code?</h2>
+
+            <div class="definition-box">
+                <strong>Claude Code</strong> is Anthropic's official command-line interface (CLI) that brings Claude's AI capabilities directly into your terminal. Unlike the web-based Claude assistant, Claude Code operates as an <em>agentic tool</em> — it can autonomously read files, execute commands, make edits, and interact with your entire development environment.
+            </div>
+
+            <p>Think of Claude Code as an AI pair programmer that lives in your terminal. It doesn't just answer questions about code — it can actually write, modify, and execute code on your behalf while understanding the full context of your project.</p>
+
+            <div class="code-block">
+<span class="prompt">$</span> claude
+<span class="output">╭─────────────────────────────────────╮
+│  Claude Code v1.0                   │
+│  Agentic coding in your terminal    │
+╰─────────────────────────────────────╯</span>
+
+<span class="prompt">claude></span> fix the null pointer exception in user-service.ts
+
+<span class="output">● Reading src/services/user-service.ts...
+● Identified issue at line 47: missing null check
+● Applying fix...
+✓ Fixed. Running tests...
+✓ All tests passing</span>
+            </div>
+        </section>
+
+        <section>
+            <h2>Key Features</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-card-header">
+                        <div class="feature-card-icon"><i class="ph ph-wrench"></i></div>
+                        <h4>Tool Use</h4>
+                    </div>
+                    <p>Execute bash commands, read/write files, search codebases, and interact with git — all autonomously.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-header">
+                        <div class="feature-card-icon"><i class="ph ph-robot"></i></div>
+                        <h4>Agentic Execution</h4>
+                    </div>
+                    <p>Plans multi-step tasks, executes iteratively, and course-corrects based on results.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-header">
+                        <div class="feature-card-icon"><i class="ph ph-tree-structure"></i></div>
+                        <h4>Full Context Awareness</h4>
+                    </div>
+                    <p>Understands your project structure, dependencies, and coding patterns.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-header">
+                        <div class="feature-card-icon"><i class="ph ph-files"></i></div>
+                        <h4>Multi-File Editing</h4>
+                    </div>
+                    <p>Make coordinated changes across multiple files while maintaining consistency.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-header">
+                        <div class="feature-card-icon"><i class="ph ph-git-branch"></i></div>
+                        <h4>Git Integration</h4>
+                    </div>
+                    <p>Create commits, manage branches, review diffs, and generate pull requests.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-card-header">
+                        <div class="feature-card-icon"><i class="ph ph-globe"></i></div>
+                        <h4>Web Search</h4>
+                    </div>
+                    <p>Fetch documentation and search the web when solving complex problems.</p>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Claude vs Claude Code: Key Differences</h2>
+
+            <p>While both products are powered by Claude's underlying intelligence, they serve fundamentally different purposes:</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Capability</th>
+                        <th>Claude (Web/API)</th>
+                        <th>Claude Code (CLI)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Execute terminal commands</td>
+                        <td class="cross">No</td>
+                        <td class="check">Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Read & write local files</td>
+                        <td class="cross">No</td>
+                        <td class="check">Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Understand full codebase context</td>
+                        <td class="cross">No</td>
+                        <td class="check">Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Multi-step autonomous tasks</td>
+                        <td>Limited</td>
+                        <td class="check">Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Git operations</td>
+                        <td class="cross">No</td>
+                        <td class="check">Yes</td>
+                    </tr>
+                    <tr>
+                        <td>General Q&A and writing</td>
+                        <td class="check">Yes</td>
+                        <td class="check">Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Web interface available</td>
+                        <td class="check">Yes</td>
+                        <td class="cross">No</td>
+                    </tr>
+                    <tr>
+                        <td>Requires local installation</td>
+                        <td class="cross">No</td>
+                        <td class="check">Yes</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="highlight">
+                <strong>Key Insight:</strong> Claude is a conversational AI assistant accessed via web or API. Claude Code is an agentic development tool that can take actions in your local environment. Use Claude for general assistance and Claude Code for hands-on coding work.
+            </div>
+        </section>
+
+        <section>
+            <h2>Use Cases</h2>
+
+            <h3>Bug Fixing & Debugging</h3>
+            <p>Describe a bug in natural language. Claude Code searches your codebase, identifies the root cause, implements a fix, and verifies it works through testing.</p>
+
+            <h3>Feature Implementation</h3>
+            <p>Request new features conversationally. Claude Code plans the implementation, creates necessary files, and integrates with your existing code patterns and conventions.</p>
+
+            <h3>Code Refactoring</h3>
+            <p>Modernize legacy code, improve architecture, or adopt new patterns. Claude Code makes coordinated changes across your entire codebase while maintaining consistency.</p>
+
+            <h3>Codebase Understanding</h3>
+            <p>Quickly onboard to unfamiliar codebases. Ask questions about architecture, find where functionality lives, and understand complex systems without manual searching.</p>
+
+            <h3>Test Generation</h3>
+            <p>Generate comprehensive test suites with proper edge case coverage using your project's testing frameworks and conventions.</p>
+
+            <h3>Git & Documentation</h3>
+            <p>Create meaningful commits and pull requests with contextually appropriate messages. Keep documentation in sync with code changes.</p>
+        </section>
+
+        <section>
+            <h2>Benefits for Development Teams</h2>
+
+            <ul>
+                <li><strong>Faster iteration cycles</strong> — Reduce time from idea to implementation with autonomous task execution</li>
+                <li><strong>Lower context-switching</strong> — Stay in your terminal without jumping between browser, IDE, and documentation</li>
+                <li><strong>Consistent code quality</strong> — Claude Code follows your existing patterns and conventions automatically</li>
+                <li><strong>Reduced cognitive load</strong> — Offload routine tasks and focus on high-impact architectural decisions</li>
+                <li><strong>Improved onboarding</strong> — New team members can explore and understand codebases faster</li>
+                <li><strong>24/7 availability</strong> — An always-available pair programmer for any coding task</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>How It Works</h2>
+
+            <p>Claude Code operates through a set of specialized tools:</p>
+
+            <ol>
+                <li><strong>Read</strong> — Reads files from your local filesystem to understand code</li>
+                <li><strong>Write/Edit</strong> — Creates new files or modifies existing ones</li>
+                <li><strong>Bash</strong> — Executes terminal commands (git, npm, build tools, etc.)</li>
+                <li><strong>Glob/Grep</strong> — Searches for files and content across your codebase</li>
+                <li><strong>WebFetch/WebSearch</strong> — Retrieves documentation and searches the web</li>
+                <li><strong>Task</strong> — Launches specialized sub-agents for complex operations</li>
+            </ol>
+
+            <p>When you make a request, Claude Code analyzes what's needed, selects appropriate tools, and executes a plan — often involving multiple steps and iterations until the task is complete.</p>
+        </section>
+
+        <section>
+            <h2>Summary</h2>
+
+            <div class="definition-box">
+                <p><strong>Claude</strong> = Conversational AI assistant (web/API) for general questions, writing, and analysis</p>
+                <p style="margin-bottom: 0;"><strong>Claude Code</strong> = Agentic CLI tool that can take real actions in your development environment — reading, writing, executing, and iterating autonomously</p>
+            </div>
+
+            <p>Claude Code represents a shift from AI as a "question answerer" to AI as an "autonomous collaborator" in the software development process. It's designed for developers who want Claude's intelligence integrated directly into their workflow with the ability to take action, not just provide advice.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>Internal Stakeholder Document | Anthropic | 2025</p>
+    </footer>
+</body>
+</html>
