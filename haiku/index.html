@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Johnnie’s Haiku</title>
+  <title>Johnnie's Haiku</title>
   <meta name="description" content="Meditative haikus inspired by Rick Rubin, Frank Ocean, A Tribe Called Quest, Vinicius de Moraes, Gilberto Gil, and the creative spirit.">
-  <meta property="og:title" content="Johnnie’s Haiku">
+  <meta property="og:title" content="Johnnie's Haiku">
   <meta property="og:description" content="100 meditative haikus on creativity, culture, and craft.">
   <meta property="og:type" content="website">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,7 +32,7 @@
     }
 
     body {
-      font-family: ’Newsreader’, Georgia, ’Times New Roman’, serif;
+      font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
       font-style: italic;
       background: var(--bg);
       color: var(--text);
@@ -134,7 +134,7 @@
       bottom: 2.5rem;
       left: 50%;
       transform: translateX(-50%);
-      font-family: ’Instrument Sans’, sans-serif;
+      font-family: 'Instrument Sans', sans-serif;
       font-style: normal;
       font-size: 0.7rem;
       letter-spacing: 0.1em;
@@ -165,7 +165,7 @@
       top: 2.5rem;
       left: 50%;
       transform: translateX(-50%);
-      font-family: ’Instrument Sans’, sans-serif;
+      font-family: 'Instrument Sans', sans-serif;
       font-style: normal;
       font-size: 0.65rem;
       letter-spacing: 0.05em;
@@ -216,7 +216,7 @@
 </head>
 <body>
   <div class="orb" id="orb"></div>
-  <div class="wordmark">Johnnie’s Haiku</div>
+  <div class="wordmark">Johnnie's Haiku</div>
   <div class="haiku-container">
     <div class="haiku" id="haiku" aria-live="polite"></div>
   </div>
@@ -365,13 +365,13 @@
 
     // Color pairs: [background, text]
     const colorPairs = [
-      [’#722F37’, ’#FF6B35’],  // burgundy / bright red-orange
-      [’#0a1628’, ’#2EC4B6’],  // dark navy / teal
-      [’#050505’, ’#00F5D4’],  // black / bright teal
-      [’#7FDBDA’, ’#FF5733’],  // light teal / bright orange-red
-      [’#FFCAB1’, ’#006D77’],  // light pink-salmon / dark teal
-      [’#FF5733’, ’#0a0a0a’],  // red-orange / black
-      [’#0072BB’, ’#FFB6C1’],  // french blue / light pink
+      ['#722F37', '#FF6B35'],  // burgundy / bright red-orange
+      ['#0a1628', '#2EC4B6'],  // dark navy / teal
+      ['#050505', '#00F5D4'],  // black / bright teal
+      ['#7FDBDA', '#FF5733'],  // light teal / bright orange-red
+      ['#FFCAB1', '#006D77'],  // light pink-salmon / dark teal
+      ['#FF5733', '#0a0a0a'],  // red-orange / black
+      ['#0072BB', '#FFB6C1'],  // french blue / light pink
     ];
 
     function hexToRgba(hex, alpha) {
@@ -385,14 +385,14 @@
     function setInitialColor() {
       const colorIndex = Math.floor(Math.random() * colorPairs.length);
       const [bg, text] = colorPairs[colorIndex];
-      document.documentElement.style.setProperty(’--bg’, bg);
-      document.documentElement.style.setProperty(’--text’, text);
-      document.documentElement.style.setProperty(’--text-dim’, hexToRgba(text, 0.2));
-      document.documentElement.style.setProperty(’--glow’, hexToRgba(text, 0.03));
+      document.documentElement.style.setProperty('--bg', bg);
+      document.documentElement.style.setProperty('--text', text);
+      document.documentElement.style.setProperty('--text-dim', hexToRgba(text, 0.2));
+      document.documentElement.style.setProperty('--glow', hexToRgba(text, 0.03));
     }
 
     function getRandomHaiku() {
-      // Reset if we’ve seen all
+      // Reset if we've seen all
       if (seenIndices.size >= haikus.length) {
         seenIndices.clear();
       }
@@ -408,29 +408,29 @@
     }
 
     function hideCurrentHaiku(callback) {
-      const container = document.getElementById(’haiku’);
-      const chars = container.querySelectorAll(’.char’);
-      const orb = document.getElementById(’orb’);
-      const hint = document.getElementById(’hint’);
+      const container = document.getElementById('haiku');
+      const chars = container.querySelectorAll('.char');
+      const orb = document.getElementById('orb');
+      const hint = document.getElementById('hint');
 
       if (chars.length === 0) {
         callback();
         return;
       }
 
-      hint.classList.remove(’visible’);
-      orb.classList.remove(’visible’);
+      hint.classList.remove('visible');
+      orb.classList.remove('visible');
 
       // Add hiding class to all characters with staggered timing
       chars.forEach((char, index) => {
         setTimeout(() => {
-          char.classList.add(’hiding’);
+          char.classList.add('hiding');
         }, index * 15);
       });
 
       // Wait for animation to complete, then clear and callback
       setTimeout(() => {
-        container.innerHTML = ’’;
+        container.innerHTML = '';
         callback();
       }, chars.length * 15 + 400);
     }
@@ -439,26 +439,26 @@
       if (isAnimating) return;
       isAnimating = true;
 
-      const container = document.getElementById(’haiku’);
-      const hint = document.getElementById(’hint’);
-      const number = document.getElementById(’number’);
-      const progress = document.getElementById(’progress’);
-      const orb = document.getElementById(’orb’);
+      const container = document.getElementById('haiku');
+      const hint = document.getElementById('hint');
+      const number = document.getElementById('number');
+      const progress = document.getElementById('progress');
+      const orb = document.getElementById('orb');
 
       // Hide current haiku first, then show new one
       hideCurrentHaiku(() => {
 
-      number.textContent = `${String(currentIndex + 1).padStart(3, ’0’)} / ${haikus.length}`;
+      number.textContent = `${String(currentIndex + 1).padStart(3, '0')} / ${haikus.length}`;
       progress.style.width = `${((seenIndices.size) / haikus.length) * 100}%`;
 
       haiku.forEach((line, lineIndex) => {
-        const lineEl = document.createElement(’span’);
-        lineEl.className = ’line’;
+        const lineEl = document.createElement('span');
+        lineEl.className = 'line';
 
         [...line].forEach((char, charIndex) => {
-          const charEl = document.createElement(’span’);
-          charEl.className = char === ’ ’ ? ’char space’ : ’char’;
-          charEl.textContent = char === ’ ’ ? ’\u00A0’ : char;
+          const charEl = document.createElement('span');
+          charEl.className = char === ' ' ? 'char space' : 'char';
+          charEl.textContent = char === ' ' ? '\u00A0' : char;
           lineEl.appendChild(charEl);
         });
 
@@ -467,17 +467,17 @@
 
       // Slight delay before animation begins
       setTimeout(() => {
-        orb.classList.add(’visible’);
+        orb.classList.add('visible');
       }, 100);
 
-      const lines = container.querySelectorAll(’.line’);
+      const lines = container.querySelectorAll('.line');
       let totalDelay = 200;
 
       lines.forEach((line, lineIndex) => {
-        const chars = line.querySelectorAll(’.char’);
+        const chars = line.querySelectorAll('.char');
 
         setTimeout(() => {
-          line.classList.add(’visible’);
+          line.classList.add('visible');
         }, totalDelay);
 
         chars.forEach((char, charIndex) => {
@@ -486,7 +486,7 @@
           const delay = baseDelay + randomOffset;
 
           setTimeout(() => {
-            char.classList.add(’visible’);
+            char.classList.add('visible');
           }, delay);
         });
 
@@ -495,7 +495,7 @@
 
       setTimeout(() => {
         isAnimating = false;
-        hint.classList.add(’visible’);
+        hint.classList.add('visible');
       }, totalDelay + 600);
       });
     }
@@ -507,10 +507,10 @@
     }
 
     // Event listeners
-    document.addEventListener(’click’, next);
+    document.addEventListener('click', next);
 
-    document.addEventListener(’keydown’, (e) => {
-      if (e.code === ’Space’ || e.code === ’Enter’ || e.code === ’ArrowRight’ || e.code === ’ArrowDown’) {
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'ArrowRight' || e.code === 'ArrowDown') {
         e.preventDefault();
         next();
       }
@@ -518,11 +518,11 @@
 
     // Touch support
     let touchStartY = 0;
-    document.addEventListener(’touchstart’, (e) => {
+    document.addEventListener('touchstart', (e) => {
       touchStartY = e.touches[0].clientY;
     }, { passive: true });
 
-    document.addEventListener(’touchend’, (e) => {
+    document.addEventListener('touchend', (e) => {
       const touchEndY = e.changedTouches[0].clientY;
       const diff = touchStartY - touchEndY;
       if (Math.abs(diff) < 50) {
