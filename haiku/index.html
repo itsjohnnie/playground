@@ -119,6 +119,12 @@
       filter: blur(0);
     }
 
+    .char.hiding {
+      opacity: 0;
+      transform: translateY(-20px);
+      filter: blur(12px);
+    }
+
     .char.space {
       width: 0.35em;
     }
@@ -401,6 +407,34 @@
       return haikus[currentIndex];
     }
 
+    function hideCurrentHaiku(callback) {
+      const container = document.getElementById('haiku');
+      const chars = container.querySelectorAll('.char');
+      const orb = document.getElementById('orb');
+      const hint = document.getElementById('hint');
+
+      if (chars.length === 0) {
+        callback();
+        return;
+      }
+
+      hint.classList.remove('visible');
+      orb.classList.remove('visible');
+
+      // Add hiding class to all characters with staggered timing
+      chars.forEach((char, index) => {
+        setTimeout(() => {
+          char.classList.add('hiding');
+        }, index * 15);
+      });
+
+      // Wait for animation to complete, then clear and callback
+      setTimeout(() => {
+        container.innerHTML = '';
+        callback();
+      }, chars.length * 15 + 400);
+    }
+
     function displayHaiku(haiku) {
       if (isAnimating) return;
       isAnimating = true;
@@ -411,9 +445,8 @@
       const progress = document.getElementById('progress');
       const orb = document.getElementById('orb');
 
-      hint.classList.remove('visible');
-      orb.classList.remove('visible');
-      container.innerHTML = '';
+      // Hide current haiku first, then show new one
+      hideCurrentHaiku(() => {
 
       number.textContent = `${String(currentIndex + 1).padStart(3, '0')} / ${haikus.length}`;
       progress.style.width = `${((seenIndices.size) / haikus.length) * 100}%`;
@@ -464,6 +497,7 @@
         isAnimating = false;
         hint.classList.add('visible');
       }, totalDelay + 600);
+      });
     }
 
     function next() {
