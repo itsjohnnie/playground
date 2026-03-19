@@ -170,25 +170,6 @@
             bottom: 0;
         }
 
-        .terminal-input-wrapper::before {
-            content: '';
-            position: absolute;
-            top: -3rem;
-            left: -1.5rem;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(to bottom,
-                transparent 0%,
-                color-mix(in srgb, var(--terminal-bg) 30%, transparent) 30%,
-                color-mix(in srgb, var(--terminal-bg) 70%, transparent) 50%,
-                color-mix(in srgb, var(--terminal-bg) 95%, transparent) 70%,
-                var(--terminal-bg) 100%
-            );
-            pointer-events: none;
-            z-index: 0;
-            transition: opacity 0.3s ease;
-        }
-
         .progressive-blur {
             position: absolute;
             top: -3rem;
@@ -197,12 +178,64 @@
             bottom: 0;
             pointer-events: none;
             z-index: 0;
+            will-change: opacity;
+        }
+
+        .progressive-blur > div {
+            position: absolute;
+            inset: 0;
+        }
+
+        .progressive-blur > div:nth-child(1) {
+            backdrop-filter: blur(1px);
+            -webkit-backdrop-filter: blur(1px);
+            mask: linear-gradient(to bottom, transparent 0%, black 10%, black 30%, transparent 40%);
+            -webkit-mask: linear-gradient(to bottom, transparent 0%, black 10%, black 30%, transparent 40%);
+        }
+
+        .progressive-blur > div:nth-child(2) {
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            mask: linear-gradient(to bottom, transparent 10%, black 25%, black 45%, transparent 55%);
+            -webkit-mask: linear-gradient(to bottom, transparent 10%, black 25%, black 45%, transparent 55%);
+        }
+
+        .progressive-blur > div:nth-child(3) {
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            mask: linear-gradient(to bottom, transparent 20%, black 40%, black 55%, transparent 65%);
+            -webkit-mask: linear-gradient(to bottom, transparent 20%, black 40%, black 55%, transparent 65%);
+        }
+
+        .progressive-blur > div:nth-child(4) {
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 100%);
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 100%);
-            transition: opacity 0.3s ease;
-            will-change: opacity;
+            mask: linear-gradient(to bottom, transparent 35%, black 50%, black 70%, transparent 80%);
+            -webkit-mask: linear-gradient(to bottom, transparent 35%, black 50%, black 70%, transparent 80%);
+        }
+
+        .progressive-blur > div:nth-child(5) {
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            mask: linear-gradient(to bottom, transparent 50%, black 65%, black 80%, transparent 90%);
+            -webkit-mask: linear-gradient(to bottom, transparent 50%, black 65%, black 80%, transparent 90%);
+        }
+
+        .progressive-blur > div:nth-child(6) {
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            mask: linear-gradient(to bottom, transparent 65%, black 85%);
+            -webkit-mask: linear-gradient(to bottom, transparent 65%, black 85%);
+        }
+
+        .progressive-blur > .blur-gradient {
+            background: linear-gradient(to bottom,
+                transparent 0%,
+                color-mix(in srgb, var(--terminal-bg) 30%, transparent) 30%,
+                color-mix(in srgb, var(--terminal-bg) 70%, transparent) 50%,
+                color-mix(in srgb, var(--terminal-bg) 95%, transparent) 70%,
+                var(--terminal-bg) 100%
+            );
         }
 
         .prompt-line {
@@ -515,10 +548,6 @@
                 margin-bottom: 0;
             }
 
-            .terminal-input-wrapper::before {
-                top: -3rem;
-            }
-
             .project-list {
                 grid-template-columns: 1fr;
             }
@@ -659,7 +688,7 @@
             </div>
 
             <div class="terminal-input-wrapper">
-                <div class="progressive-blur"></div>
+                <div class="progressive-blur" aria-hidden="true"><div></div><div></div><div></div><div></div><div></div><div></div><div class="blur-gradient"></div></div>
                 <div class="prompt-line" style="padding-top: 2rem; margin-bottom: 0;">
                     <span class="user">johnnie</span><span class="prompt">@</span><span class="user">local</span><span class="prompt">:</span><span class="path">~/playground</span><span class="prompt">$</span> <span id="terminal-input" contenteditable="true" spellcheck="false"></span><span class="cursor">_</span>
                 </div>
@@ -1068,15 +1097,16 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
                 const scrollPercentage = terminalBody.scrollTop / (scrollHeight - clientHeight);
 
                 if (scrollPercentage > 0.9) {
-                    const opacity = 1 - (scrollPercentage - 0.9) / 0.1;
-                    progressiveBlur.style.opacity = opacity;
+                    progressiveBlur.style.transition = 'none';
+                    progressiveBlur.style.opacity = 1 - (scrollPercentage - 0.9) / 0.1;
                     blurFadedOut = true;
                 } else if (blurFadedOut) {
+                    progressiveBlur.style.transition = 'opacity 0.3s ease';
                     progressiveBlur.style.opacity = 1;
                     blurFadedOut = false;
                 }
             });
-        });
+        }, { passive: true });
 
         // Draggable terminal window
         let isDragging = false;
