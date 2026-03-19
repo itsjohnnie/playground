@@ -189,31 +189,21 @@
             transition: opacity 0.3s ease;
         }
 
-        .blur-layer {
+        .progressive-blur {
             position: absolute;
+            top: -3rem;
             left: -1.5rem;
             right: 0;
+            bottom: 0;
             pointer-events: none;
             z-index: 0;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 100%);
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 100%);
             transition: opacity 0.3s ease;
+            will-change: opacity;
         }
-
-        .blur-layer-1 { top: -3rem; height: 0.2rem; backdrop-filter: blur(0.5px); -webkit-backdrop-filter: blur(0.5px); }
-        .blur-layer-2 { top: -2.8rem; height: 0.2rem; backdrop-filter: blur(1px); -webkit-backdrop-filter: blur(1px); }
-        .blur-layer-3 { top: -2.6rem; height: 0.2rem; backdrop-filter: blur(1.3px); -webkit-backdrop-filter: blur(1.3px); }
-        .blur-layer-4 { top: -2.4rem; height: 0.2rem; backdrop-filter: blur(1.6px); -webkit-backdrop-filter: blur(1.6px); }
-        .blur-layer-5 { top: -2.2rem; height: 0.2rem; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
-        .blur-layer-6 { top: -2rem; height: 0.2rem; backdrop-filter: blur(2.4px); -webkit-backdrop-filter: blur(2.4px); }
-        .blur-layer-7 { top: -1.8rem; height: 0.2rem; backdrop-filter: blur(2.8px); -webkit-backdrop-filter: blur(2.8px); }
-        .blur-layer-8 { top: -1.6rem; height: 0.2rem; backdrop-filter: blur(3.2px); -webkit-backdrop-filter: blur(3.2px); }
-        .blur-layer-9 { top: -1.4rem; height: 0.2rem; backdrop-filter: blur(3.6px); -webkit-backdrop-filter: blur(3.6px); }
-        .blur-layer-10 { top: -1.2rem; height: 0.2rem; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
-        .blur-layer-11 { top: -1rem; height: 0.2rem; backdrop-filter: blur(4.5px); -webkit-backdrop-filter: blur(4.5px); }
-        .blur-layer-12 { top: -0.8rem; height: 0.2rem; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
-        .blur-layer-13 { top: -0.6rem; height: 0.2rem; backdrop-filter: blur(5.5px); -webkit-backdrop-filter: blur(5.5px); }
-        .blur-layer-14 { top: -0.4rem; height: 0.2rem; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-        .blur-layer-15 { top: -0.2rem; height: 0.2rem; backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
-        .blur-layer-16 { top: 0; bottom: 0; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 
         .prompt-line {
             position: relative;
@@ -529,23 +519,6 @@
                 top: -3rem;
             }
 
-            .blur-layer-1 { top: -3rem; }
-            .blur-layer-2 { top: -2.8rem; }
-            .blur-layer-3 { top: -2.6rem; }
-            .blur-layer-4 { top: -2.4rem; }
-            .blur-layer-5 { top: -2.2rem; }
-            .blur-layer-6 { top: -2rem; }
-            .blur-layer-7 { top: -1.8rem; }
-            .blur-layer-8 { top: -1.6rem; }
-            .blur-layer-9 { top: -1.4rem; }
-            .blur-layer-10 { top: -1.2rem; }
-            .blur-layer-11 { top: -1rem; }
-            .blur-layer-12 { top: -0.8rem; }
-            .blur-layer-13 { top: -0.6rem; }
-            .blur-layer-14 { top: -0.4rem; }
-            .blur-layer-15 { top: -0.2rem; }
-            .blur-layer-16 { top: 0; }
-
             .project-list {
                 grid-template-columns: 1fr;
             }
@@ -686,22 +659,7 @@
             </div>
 
             <div class="terminal-input-wrapper">
-                <div class="blur-layer blur-layer-1"></div>
-                <div class="blur-layer blur-layer-2"></div>
-                <div class="blur-layer blur-layer-3"></div>
-                <div class="blur-layer blur-layer-4"></div>
-                <div class="blur-layer blur-layer-5"></div>
-                <div class="blur-layer blur-layer-6"></div>
-                <div class="blur-layer blur-layer-7"></div>
-                <div class="blur-layer blur-layer-8"></div>
-                <div class="blur-layer blur-layer-9"></div>
-                <div class="blur-layer blur-layer-10"></div>
-                <div class="blur-layer blur-layer-11"></div>
-                <div class="blur-layer blur-layer-12"></div>
-                <div class="blur-layer blur-layer-13"></div>
-                <div class="blur-layer blur-layer-14"></div>
-                <div class="blur-layer blur-layer-15"></div>
-                <div class="blur-layer blur-layer-16"></div>
+                <div class="progressive-blur"></div>
                 <div class="prompt-line" style="padding-top: 2rem; margin-bottom: 0;">
                     <span class="user">johnnie</span><span class="prompt">@</span><span class="user">local</span><span class="prompt">:</span><span class="path">~/playground</span><span class="prompt">$</span> <span id="terminal-input" contenteditable="true" spellcheck="false"></span><span class="cursor">_</span>
                 </div>
@@ -1092,43 +1050,32 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
             terminalInput.focus();
         });
 
-        // Fade out blur layers when scrolled to bottom
+        // Fade out blur layer when scrolled to bottom
         const terminalBody = document.querySelector('.terminal-body');
-        const inputWrapper = document.querySelector('.terminal-input-wrapper');
-        const blurLayers = document.querySelectorAll('.blur-layer');
-        const gradientLayer = inputWrapper.querySelector('::before');
+        const progressiveBlur = document.querySelector('.progressive-blur');
+        let blurFadedOut = false;
+        let ticking = false;
 
         terminalBody.addEventListener('scroll', () => {
-            const scrollTop = terminalBody.scrollTop;
-            const scrollHeight = terminalBody.scrollHeight;
-            const clientHeight = terminalBody.clientHeight;
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(() => {
+                ticking = false;
+                const scrollHeight = terminalBody.scrollHeight;
+                const clientHeight = terminalBody.clientHeight;
+                if (scrollHeight <= clientHeight) return;
 
-            // Calculate how close to bottom (0 = at top, 1 = at bottom)
-            const scrollPercentage = scrollTop / (scrollHeight - clientHeight);
+                const scrollPercentage = terminalBody.scrollTop / (scrollHeight - clientHeight);
 
-            // Start fading out when 90% scrolled
-            if (scrollPercentage > 0.9) {
-                const fadeAmount = (scrollPercentage - 0.9) / 0.1; // 0 to 1 in last 10%
-                const opacity = 1 - fadeAmount;
-
-                // Fade out all blur layers and gradient
-                blurLayers.forEach(layer => {
-                    layer.style.opacity = opacity;
-                });
-
-                // Fade out gradient background
-                const beforeElement = inputWrapper.querySelector('::before');
-                if (beforeElement) {
-                    beforeElement.style.opacity = opacity;
+                if (scrollPercentage > 0.9) {
+                    const opacity = 1 - (scrollPercentage - 0.9) / 0.1;
+                    progressiveBlur.style.opacity = opacity;
+                    blurFadedOut = true;
+                } else if (blurFadedOut) {
+                    progressiveBlur.style.opacity = 1;
+                    blurFadedOut = false;
                 }
-                inputWrapper.style.setProperty('--gradient-opacity', opacity);
-            } else {
-                // Reset to full opacity
-                blurLayers.forEach(layer => {
-                    layer.style.opacity = 1;
-                });
-                inputWrapper.style.setProperty('--gradient-opacity', 1);
-            }
+            });
         });
 
         // Draggable terminal window
