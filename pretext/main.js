@@ -5,7 +5,7 @@ import { prepareWithSegments, layoutNextLine } from './lib/layout.js'
 const STAGE_W = 720
 const STAGE_H = 640
 const FONT = '18px Georgia, serif'
-const MIN_LINE_W = 40 // below this, skip the line entirely (orb fully blocks it)
+const MIN_LINE_W = 40
 
 const TEXT = `The orb moves through the paragraph the way a stone moves through water. \
 Each line measures the distance to its surface and retreats exactly that far — no more, no less. \
@@ -31,12 +31,12 @@ const state = {
     radius: 90,
     padding: 16,
     lineHeight: 26,
-    // spring physics for the orb (adds a bit of life)
     velX: 0,
     velY: 0,
     targetX: 160,
     targetY: 200,
     dragging: false,
+    dirty: true,
 }
 
 // ─── DOM refs & setup ───────────────────────────────────────────────────────
@@ -47,23 +47,54 @@ const orbEl = document.getElementById('orb')
 const perfEl = document.getElementById('perf')
 const lineCountEl = document.getElementById('line-count')
 
-// Prepare text ONCE. This is the "expensive" ~ms-scale call that segments
-// the text, measures each word on canvas, and caches everything.
 const prepared = prepareWithSegments(TEXT, FONT)
 
-// Pool of line divs — reuse DOM nodes across frames instead of recreating.
+// Pooled line nodes. We track last-written values to skip redundant DOM writes
+// (textContent assignment forces a text-node replacement even when unchanged).
 const linePool = []
 function getLine(i) {
-    if (!linePool[i]) {
+    let slot = linePool[i]
+    if (!slot) {
         const el = document.createElement('div')
         el.className = 'line'
         textLayer.appendChild(el)
-        linePool[i] = el
+        slot = linePool[i] = { el, text: '', x: 0, y: 0, heat: -1 }
     }
-    return linePool[i]
+    return slot
 }
 
-// ─── Core: variable-width text flow ─────────────────────────────────────────
+function writeLine(slot, text, x, y, heat) {
+    if (slot.text !== text) {
+        slot.el.textContent = text
+        slot.text = text
+    }
+    if (slot.x !== x || slot.y !== y) {
+        slot.el.style.transform = `translate(${x}px, ${y}px)`
+        slot.x = x
+        slot.y = y
+    }
+    if (slot.heat !== heat) {
+        slot.el.style.color = heat > 0.05
+            ? `rgb(${196 + heat * 59}, ${200 + heat * 40}, ${212 + heat * 43})`
+            : '#c4c8d4'
+        slot.heat = heat
+    }
+}
+
+function hideLine(slot) {
+    if (slot.y !== -9999) {
+        slot.el.style.transform = 'translate(-9999px, -9999px)'
+        slot.x = -9999
+        slot.y = -9999
+    }
+}
+
+// ─── Core: two-sided text flow around the orb ───────────────────────────────
+//
+// layoutNextLine() is just an iterator over the word stream — it doesn't know
+// or care where the line will be drawn. That means we can call it twice on the
+// same row: once for the gap left of the orb, once for the gap right of it.
+// Reading order stays correct (left fragment → right fragment → next row).
 
 function render() {
     const t0 = performance.now()
@@ -73,79 +104,52 @@ function render() {
     const cy = state.orbY
 
     let cursor = { segmentIndex: 0, graphemeIndex: 0 }
-    let y = 0
     let lineIndex = 0
+    let done = false
 
-    while (y < STAGE_H) {
-        // Find the intersection of the orb's circle with this row's vertical band.
-        // We check the line's mid-point for a clean reading.
-        const dy = y + state.lineHeight / 2 - cy
-        let leftEdge = 0
-        let available = STAGE_W
+    // Closure so emit() doesn't need 9 positional args.
+    function emit(x, width, y, midY) {
+        const line = layoutNextLine(prepared, cursor, width)
+        if (line === null) { done = true; return }
+        const dist = Math.hypot(x + line.width / 2 - cx, midY - cy)
+        const heat = Math.max(0, 1 - dist / (r * 2.2))
+        writeLine(getLine(lineIndex++), line.text, x, y, heat)
+        cursor = line.end
+    }
 
-        if (Math.abs(dy) < r) {
-            // Half-chord of the circle at this y. Basic Pythagoras.
-            const halfChord = Math.sqrt(r * r - dy * dy)
-            const orbLeft = cx - halfChord
-            const orbRight = cx + halfChord
+    for (let y = 0; y < STAGE_H && !done; y += state.lineHeight) {
+        const midY = y + state.lineHeight / 2
+        const dy = midY - cy
 
-            if (orbLeft <= 0) {
-                // Orb spills past the left edge → text starts after the orb.
-                leftEdge = Math.min(STAGE_W, orbRight)
-                available = STAGE_W - leftEdge
-            } else if (orbRight >= STAGE_W) {
-                // Orb spills past the right edge → text ends before the orb.
-                available = Math.max(0, orbLeft)
-            } else {
-                // Orb is mid-column. Pick the wider side so reading order
-                // stays sane (no mid-line jumps across the sphere).
-                const leftGap = orbLeft
-                const rightGap = STAGE_W - orbRight
-                if (rightGap > leftGap) {
-                    leftEdge = orbRight
-                    available = rightGap
-                } else {
-                    available = leftGap
-                }
-            }
-        }
-
-        // Row is too cramped — leave it blank and move down.
-        // The orb fully occupies this band.
-        if (available < MIN_LINE_W) {
-            y += state.lineHeight
+        if (Math.abs(dy) >= r) {
+            emit(0, STAGE_W, y, midY)
             continue
         }
 
-        const line = layoutNextLine(prepared, cursor, available)
-        if (line === null) break // text exhausted
+        const halfChord = Math.sqrt(r * r - dy * dy)
+        const orbLeft = cx - halfChord
+        const orbRight = cx + halfChord
 
-        const el = getLine(lineIndex++)
-        el.textContent = line.text
-        el.style.transform = `translate(${leftEdge}px, ${y}px)`
-
-        // Proximity glow: lines near the orb warm up.
-        const dist = Math.hypot(leftEdge + line.width / 2 - cx, y - cy)
-        const heat = Math.max(0, 1 - dist / (r * 2.2))
-        el.style.color = heat > 0.05
-            ? `rgb(${196 + heat * 59}, ${200 + heat * 40}, ${212 + heat * 43})`
-            : '#c4c8d4'
-
-        cursor = line.end
-        y += state.lineHeight
+        if (orbLeft >= MIN_LINE_W) emit(0, orbLeft, y, midY)
+        if (!done && STAGE_W - orbRight >= MIN_LINE_W) emit(Math.max(0, orbRight), STAGE_W - orbRight, y, midY)
+        // If neither gap is wide enough, the row stays empty — orb fully blocks it.
     }
 
-    // Hide unused pooled lines from previous frames.
-    for (let i = lineIndex; i < linePool.length; i++) {
-        linePool[i].style.transform = 'translate(-9999px, -9999px)'
-    }
+    for (let i = lineIndex; i < linePool.length; i++) hideLine(linePool[i])
 
     const elapsed = performance.now() - t0
     perfEl.textContent = `${elapsed.toFixed(3)} ms`
     lineCountEl.textContent = lineIndex
 }
 
-// ─── Orb: spring-follow the pointer ─────────────────────────────────────────
+// ─── Orb: frame-rate-independent spring ─────────────────────────────────────
+
+// Per-second stiffness/damping so 60Hz and 120Hz feel identical. The classic
+// velocity-verlet-ish spring, scaled by dt. damp is applied as a per-second
+// decay via Math.pow so it's stable across refresh rates.
+const SPRING_K = 220    // stiffness (higher = snappier)
+const SPRING_D = 18     // damping (per second, as half-life-ish factor)
+const SETTLE_EPS = 0.05 // px of combined vel+offset below which we stop
 
 function updateOrbSize() {
     const d = state.radius * 2
@@ -157,17 +161,31 @@ function updateOrbPosition() {
     orbEl.style.transform = `translate(${state.orbX - state.radius}px, ${state.orbY - state.radius}px)`
 }
 
-function tick() {
-    // Critically-damped-ish spring so the orb feels alive but settles fast.
-    const k = 0.18
-    const damp = 0.72
-    state.velX = (state.velX + (state.targetX - state.orbX) * k) * damp
-    state.velY = (state.velY + (state.targetY - state.orbY) * k) * damp
-    state.orbX += state.velX
-    state.orbY += state.velY
+let lastT = performance.now()
 
-    updateOrbPosition()
-    render()
+function tick(now) {
+    const dt = Math.min((now - lastT) / 1000, 1 / 30) // clamp for tab-switch stalls
+    lastT = now
+
+    const dx = state.targetX - state.orbX
+    const dy = state.targetY - state.orbY
+    const decay = Math.exp(-SPRING_D * dt)
+
+    state.velX = (state.velX + dx * SPRING_K * dt) * decay
+    state.velY = (state.velY + dy * SPRING_K * dt) * decay
+    state.orbX += state.velX * dt
+    state.orbY += state.velY * dt
+
+    const moving =
+        Math.abs(state.velX) + Math.abs(state.velY) +
+        Math.abs(dx) + Math.abs(dy) > SETTLE_EPS
+
+    if (moving || state.dirty) {
+        updateOrbPosition()
+        render()
+        state.dirty = false
+    }
+
     requestAnimationFrame(tick)
 }
 
@@ -175,10 +193,7 @@ function tick() {
 
 function pointerPos(e) {
     const rect = stage.getBoundingClientRect()
-    return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
 }
 
 orbEl.addEventListener('pointerdown', e => {
@@ -199,13 +214,13 @@ window.addEventListener('pointerup', () => {
     orbEl.classList.remove('dragging')
 })
 
-// Controls
 function bindSlider(id, key) {
     const el = document.getElementById(id)
     const label = document.getElementById(`${id}-val`)
     el.addEventListener('input', () => {
         state[key] = Number(el.value)
         label.textContent = el.value
+        state.dirty = true
     })
 }
 
@@ -217,9 +232,8 @@ document.getElementById('radius').addEventListener('input', updateOrbSize)
 
 // ─── Boot ───────────────────────────────────────────────────────────────────
 
-// Ensure the font is loaded before measuring, otherwise prepare() measures
-// the fallback font and line breaks will be subtly wrong.
 document.fonts.ready.then(() => {
     updateOrbSize()
-    tick()
+    lastT = performance.now()
+    requestAnimationFrame(tick)
 })
