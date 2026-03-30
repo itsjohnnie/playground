@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pretext — Text Orb</title>
+    <title>Pretext — Variable-Width Text Layout</title>
     <style>
         * {
             margin: 0;
@@ -14,7 +14,6 @@
         body {
             background: #0a0a0f;
             overflow: hidden;
-            font-family: Georgia, 'Times New Roman', serif;
             width: 100vw;
             height: 100vh;
             display: flex;
@@ -22,6 +21,7 @@
             justify-content: center;
             user-select: none;
             -webkit-user-select: none;
+            font-family: system-ui, -apple-system, sans-serif;
         }
 
         #stage {
@@ -42,30 +42,21 @@
             color: #c4c8d4;
             font: 18px Georgia, serif;
             will-change: transform;
-            transition: color 0.15s linear;
         }
 
-        #orb {
+        #orb-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+        }
+
+        .orb {
             position: absolute;
             border-radius: 50%;
-            cursor: grab;
-            background: radial-gradient(circle at 35% 35%,
-                rgba(140, 200, 255, 0.9),
-                rgba(80, 120, 255, 0.6) 40%,
-                rgba(60, 40, 180, 0.3) 70%,
-                transparent);
-            box-shadow:
-                0 0 40px 10px rgba(100, 150, 255, 0.4),
-                0 0 80px 20px rgba(80, 100, 255, 0.2),
-                inset -20px -20px 40px rgba(20, 0, 80, 0.4);
             will-change: transform;
         }
 
-        #orb.dragging {
-            cursor: grabbing;
-        }
-
-        #orb::after {
+        .orb::after {
             content: '';
             position: absolute;
             top: 18%;
@@ -77,29 +68,66 @@
             filter: blur(8px);
         }
 
+        #ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(140, 200, 255, 0.3);
+            box-shadow:
+                0 0 60px rgba(100, 150, 255, 0.15),
+                inset 0 0 60px rgba(100, 150, 255, 0.1);
+            pointer-events: none;
+            display: none;
+        }
+
+        /* ─── Controls ─────────────────────────────────────────── */
+
         #controls {
             position: fixed;
             top: 20px;
             right: 20px;
             background: rgba(20, 20, 25, 0.92);
-            padding: 20px;
+            padding: 18px;
             border-radius: 8px;
             min-width: 220px;
             color: #fff;
-            font-family: system-ui, -apple-system, sans-serif;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        #controls h3 {
-            font-size: 13px;
+        #mode-tabs {
+            display: flex;
+            gap: 4px;
             margin-bottom: 16px;
-            opacity: 0.9;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        #mode-tabs button {
+            flex: 1;
+            padding: 8px 4px;
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+            font-weight: 600;
             letter-spacing: 0.5px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        #mode-tabs button:hover {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        #mode-tabs button.active {
+            background: rgba(100, 150, 255, 0.25);
+            color: #fff;
         }
 
         .control-group {
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
 
         .control-group label {
@@ -116,57 +144,109 @@
             accent-color: #6080ff;
         }
 
+        .control-group button {
+            width: 100%;
+            padding: 8px;
+            background: rgba(100, 150, 255, 0.2);
+            border: 1px solid rgba(100, 150, 255, 0.3);
+            border-radius: 4px;
+            color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .control-group button:hover {
+            background: rgba(100, 150, 255, 0.35);
+        }
+
         .val {
             float: right;
             opacity: 0.8;
             font-variant-numeric: tabular-nums;
         }
 
+        .mode-hint {
+            font-size: 11px;
+            opacity: 0.5;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
         #stats {
-            margin-top: 16px;
-            padding-top: 12px;
+            margin-top: 14px;
+            padding-top: 10px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             font-size: 11px;
             opacity: 0.7;
             font-variant-numeric: tabular-nums;
         }
 
-        #hint {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255, 255, 255, 0.4);
-            font: 12px system-ui, sans-serif;
-            letter-spacing: 0.5px;
-            pointer-events: none;
-        }
-
-        a {
+        #stats a {
             color: #8aa5ff;
         }
+
+        #controls [data-mode] { display: none; }
+        body[data-mode="orb"]    #controls [data-mode="orb"]    { display: block; }
+        body[data-mode="vessel"] #controls [data-mode="vessel"] { display: block; }
+        body[data-mode="swarm"]  #controls [data-mode="swarm"]  { display: block; }
+        body[data-mode="vessel"] #ring { display: block; }
     </style>
 </head>
-<body>
+<body data-mode="orb">
     <div id="stage">
         <div id="text-layer"></div>
-        <div id="orb"></div>
+        <div id="ring"></div>
+        <div id="orb-layer"></div>
     </div>
 
     <div id="controls">
-        <h3>TEXT ORB</h3>
-        <div class="control-group">
-            <label>Orb radius <span class="val" id="radius-val">90</span></label>
-            <input type="range" id="radius" min="30" max="180" value="90">
+        <div id="mode-tabs">
+            <button data-set-mode="orb" class="active">ORB</button>
+            <button data-set-mode="vessel">VESSEL</button>
+            <button data-set-mode="swarm">SWARM</button>
         </div>
-        <div class="control-group">
-            <label>Padding <span class="val" id="padding-val">16</span></label>
-            <input type="range" id="padding" min="0" max="60" value="16">
+
+        <div class="mode-hint" data-mode="orb">
+            Move your mouse. Text parts around the sphere on both sides.
         </div>
+        <div class="mode-hint" data-mode="vessel">
+            Text lives inside a breathing circle. Each line's width is the chord at that y.
+        </div>
+        <div class="mode-hint" data-mode="swarm">
+            Physics orbs bounce and collide. Text flows around all of them at once.
+        </div>
+
+        <div class="control-group" data-mode="orb">
+            <label>Radius <span class="val" id="orb-radius-val">90</span></label>
+            <input type="range" id="orb-radius" min="30" max="180" value="90">
+        </div>
+
+        <div class="control-group" data-mode="vessel">
+            <label>Breath depth <span class="val" id="vessel-depth-val">40</span></label>
+            <input type="range" id="vessel-depth" min="0" max="120" value="40">
+        </div>
+        <div class="control-group" data-mode="vessel">
+            <label>Breath speed <span class="val" id="vessel-speed-val">0.6</span></label>
+            <input type="range" id="vessel-speed" min="0" max="2" step="0.1" value="0.6">
+        </div>
+
+        <div class="control-group" data-mode="swarm">
+            <label>Orb count <span class="val" id="swarm-count-val">3</span></label>
+            <input type="range" id="swarm-count" min="1" max="8" value="3">
+        </div>
+        <div class="control-group" data-mode="swarm">
+            <label>Speed <span class="val" id="swarm-speed-val">1.0</span></label>
+            <input type="range" id="swarm-speed" min="0.2" max="3" step="0.1" value="1.0">
+        </div>
+        <div class="control-group" data-mode="swarm">
+            <button id="swarm-kick">Kick</button>
+        </div>
+
         <div class="control-group">
             <label>Line height <span class="val" id="lh-val">26</span></label>
             <input type="range" id="lh" min="20" max="40" value="26">
         </div>
+
         <div id="stats">
             <div>layout: <span id="perf">—</span></div>
             <div>lines: <span id="line-count">—</span></div>
@@ -175,8 +255,6 @@
             </div>
         </div>
     </div>
-
-    <div id="hint">drag the orb · text reflows at 60fps via pure math</div>
 
     <script type="module" src="./main.js"></script>
 </body>

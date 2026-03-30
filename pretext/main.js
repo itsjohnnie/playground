@@ -6,6 +6,7 @@ const STAGE_W = 720
 const STAGE_H = 640
 const FONT = '18px Georgia, serif'
 const MIN_LINE_W = 40
+const PADDING = 14
 
 const TEXT = `The orb moves through the paragraph the way a stone moves through water. \
 Each line measures the distance to its surface and retreats exactly that far — no more, no less. \
@@ -23,34 +24,34 @@ The shape of the void is a circle, but it could be anything — a blob, a spline
 All the line-breaker needs is a number: how wide is this row allowed to be? \
 You provide the number. Pretext provides the line.`
 
-// ─── State ──────────────────────────────────────────────────────────────────
+const ORB_PALETTE = [
+    { base: '80, 120, 255', glow: '100, 150, 255' },
+    { base: '255, 100, 180', glow: '255, 140, 200' },
+    { base: '100, 220, 160', glow: '140, 255, 200' },
+    { base: '255, 180, 80', glow: '255, 210, 130' },
+    { base: '180, 120, 255', glow: '200, 160, 255' },
+]
 
-const state = {
-    orbX: 160,
-    orbY: 200,
-    radius: 90,
-    padding: 16,
-    lineHeight: 26,
-    velX: 0,
-    velY: 0,
-    targetX: 160,
-    targetY: 200,
-    dragging: false,
-    dirty: true,
-}
-
-// ─── DOM refs & setup ───────────────────────────────────────────────────────
-
-const stage = document.getElementById('stage')
-const textLayer = document.getElementById('text-layer')
-const orbEl = document.getElementById('orb')
-const perfEl = document.getElementById('perf')
-const lineCountEl = document.getElementById('line-count')
+// ─── Shared state & DOM ─────────────────────────────────────────────────────
 
 const prepared = prepareWithSegments(TEXT, FONT)
 
-// Pooled line nodes. We track last-written values to skip redundant DOM writes
-// (textContent assignment forces a text-node replacement even when unchanged).
+const stage = document.getElementById('stage')
+const textLayer = document.getElementById('text-layer')
+const orbLayer = document.getElementById('orb-layer')
+const ringEl = document.getElementById('ring')
+const perfEl = document.getElementById('perf')
+const lineCountEl = document.getElementById('line-count')
+
+const state = {
+    mode: 'orb',
+    lineHeight: 26,
+    mouseX: STAGE_W / 2,
+    mouseY: STAGE_H / 2,
+}
+
+// ─── Line pool with diffed writes ───────────────────────────────────────────
+
 const linePool = []
 function getLine(i) {
     let slot = linePool[i]
@@ -64,17 +65,13 @@ function getLine(i) {
 }
 
 function writeLine(slot, text, x, y, heat) {
-    if (slot.text !== text) {
-        slot.el.textContent = text
-        slot.text = text
-    }
+    if (slot.text !== text) { slot.el.textContent = text; slot.text = text }
     if (slot.x !== x || slot.y !== y) {
         slot.el.style.transform = `translate(${x}px, ${y}px)`
-        slot.x = x
-        slot.y = y
+        slot.x = x; slot.y = y
     }
     if (slot.heat !== heat) {
-        slot.el.style.color = heat > 0.05
+        slot.el.style.color = heat > 0.02
             ? `rgb(${196 + heat * 59}, ${200 + heat * 40}, ${212 + heat * 43})`
             : '#c4c8d4'
         slot.heat = heat
@@ -84,156 +81,332 @@ function writeLine(slot, text, x, y, heat) {
 function hideLine(slot) {
     if (slot.y !== -9999) {
         slot.el.style.transform = 'translate(-9999px, -9999px)'
-        slot.x = -9999
-        slot.y = -9999
+        slot.x = slot.y = -9999
     }
 }
 
-// ─── Core: two-sided text flow around the orb ───────────────────────────────
-//
-// layoutNextLine() is just an iterator over the word stream — it doesn't know
-// or care where the line will be drawn. That means we can call it twice on the
-// same row: once for the gap left of the orb, once for the gap right of it.
-// Reading order stays correct (left fragment → right fragment → next row).
+// ─── Orb pool ───────────────────────────────────────────────────────────────
 
-function render() {
+const orbPool = []
+function getOrb(i) {
+    let slot = orbPool[i]
+    if (!slot) {
+        const el = document.createElement('div')
+        el.className = 'orb'
+        orbLayer.appendChild(el)
+        slot = orbPool[i] = { el, r: -1, color: -1, hidden: false }
+    }
+    return slot
+}
+
+function paintOrb(slot, x, y, r, colorIdx) {
+    // Size & color rarely change — diff them to avoid reparsing gradient
+    // strings every frame.
+    if (slot.r !== r || slot.color !== colorIdx) {
+        const c = ORB_PALETTE[colorIdx % ORB_PALETTE.length]
+        const d = r * 2
+        slot.el.style.width = `${d}px`
+        slot.el.style.height = `${d}px`
+        slot.el.style.background = `radial-gradient(circle at 35% 35%, rgba(${c.glow}, 0.9), rgba(${c.base}, 0.55) 40%, rgba(${c.base}, 0.2) 70%, transparent)`
+        slot.el.style.boxShadow = `0 0 40px 10px rgba(${c.glow}, 0.35), 0 0 80px 20px rgba(${c.base}, 0.18), inset -20px -20px 40px rgba(0, 0, 20, 0.4)`
+        slot.r = r
+        slot.color = colorIdx
+    }
+    if (slot.hidden) { slot.el.style.display = ''; slot.hidden = false }
+    slot.el.style.transform = `translate(${x - r}px, ${y - r}px)`
+}
+
+function hideOrbsFrom(i) {
+    for (; i < orbPool.length; i++) {
+        const slot = orbPool[i]
+        if (!slot.hidden) { slot.el.style.display = 'none'; slot.hidden = true }
+    }
+}
+
+// ─── Geometry helpers ───────────────────────────────────────────────────────
+
+// Half-chord of a circle at vertical offset dy from center. Zero if outside.
+function halfChord(r, dy) {
+    const d2 = r * r - dy * dy
+    return d2 > 0 ? Math.sqrt(d2) : 0
+}
+
+// Given blocked intervals on [0, STAGE_W], return the open gaps ≥ MIN_LINE_W.
+// Intervals may overlap; we merge them first.
+function freeSegments(blocked) {
+    if (blocked.length === 0) return [{ x: 0, w: STAGE_W }]
+
+    blocked.sort((a, b) => a.lo - b.lo)
+    const merged = [{ lo: blocked[0].lo, hi: blocked[0].hi }]
+    for (let i = 1; i < blocked.length; i++) {
+        const prev = merged[merged.length - 1]
+        const cur = blocked[i]
+        if (cur.lo <= prev.hi) prev.hi = Math.max(prev.hi, cur.hi)
+        else merged.push({ lo: cur.lo, hi: cur.hi })
+    }
+
+    const gaps = []
+    let cursor = 0
+    for (const { lo, hi } of merged) {
+        const w = lo - cursor
+        if (w >= MIN_LINE_W) gaps.push({ x: cursor, w })
+        cursor = hi
+    }
+    const tail = STAGE_W - cursor
+    if (tail >= MIN_LINE_W) gaps.push({ x: cursor, w: tail })
+    return gaps
+}
+
+// ═══ MODE: Orb ══════════════════════════════════════════════════════════════
+// Single sphere follows the mouse with a spring. Text parts around it on both
+// sides — two layoutNextLine() calls per intersecting row.
+
+const orbMode = {
+    x: 160, y: 200, vx: 0, vy: 0,
+    radius: 90,
+
+    update(dt) {
+        const k = 220, d = 18
+        const decay = Math.exp(-d * dt)
+        this.vx = (this.vx + (state.mouseX - this.x) * k * dt) * decay
+        this.vy = (this.vy + (state.mouseY - this.y) * k * dt) * decay
+        this.x += this.vx * dt
+        this.y += this.vy * dt
+    },
+
+    segments(midY) {
+        const r = this.radius + PADDING
+        const hc = halfChord(r, midY - this.y)
+        if (hc === 0) return [{ x: 0, w: STAGE_W }]
+        return freeSegments([{ lo: this.x - hc, hi: this.x + hc }])
+    },
+
+    heat(x, w, midY) {
+        const dist = Math.hypot(x + w / 2 - this.x, midY - this.y)
+        return Math.max(0, 1 - dist / ((this.radius + PADDING) * 2.2))
+    },
+
+    paint() {
+        paintOrb(getOrb(0), this.x, this.y, this.radius, 0)
+        hideOrbsFrom(1)
+    },
+}
+
+// ═══ MODE: Vessel ═══════════════════════════════════════════════════════════
+// Text fills the INSIDE of a circle. Each line's width is the chord at that y.
+// The circle breathes — its radius oscillates on a sine wave.
+
+const vesselMode = {
+    depth: 40,   // amplitude of the breathing oscillation, in px
+    speed: 0.6,  // cycles per second
+    t: 0,
+    r: 0,        // current radius, set in update()
+
+    update(dt) {
+        this.t += dt * this.speed
+        this.r = Math.min(STAGE_W, STAGE_H) / 2 - 10 + Math.sin(this.t * Math.PI * 2) * this.depth
+    },
+
+    segments(midY) {
+        const hc = halfChord(this.r, midY - STAGE_H / 2)
+        if (hc < MIN_LINE_W / 2) return []
+        return [{ x: STAGE_W / 2 - hc, w: hc * 2 }]
+    },
+
+    heat(x, w, midY) {
+        // Edge lines (short chords near poles) glow brighter.
+        return Math.max(0, 1 - w / STAGE_W)
+    },
+
+    paint() {
+        const d = this.r * 2
+        ringEl.style.width = `${d}px`
+        ringEl.style.height = `${d}px`
+        ringEl.style.transform = `translate(${STAGE_W / 2 - this.r}px, ${STAGE_H / 2 - this.r}px)`
+        hideOrbsFrom(0)
+    },
+}
+
+// ═══ MODE: Swarm ════════════════════════════════════════════════════════════
+// N orbs bounce around with simple physics and collide. Each row computes ALL
+// orb chords, merges the blocked intervals, and flows text through every gap.
+// This is where it gets wild — one row might have 4 text fragments threading
+// between 3 orbs.
+
+const swarmMode = {
+    orbs: [],
+    count: 3,
+    speed: 1.0,
+
+    init() {
+        this.orbs = []
+        for (let i = 0; i < this.count; i++) {
+            const r = 45 + Math.random() * 35
+            this.orbs.push({
+                x: r + Math.random() * (STAGE_W - r * 2),
+                y: r + Math.random() * (STAGE_H - r * 2),
+                vx: (Math.random() - 0.5) * 200,
+                vy: (Math.random() - 0.5) * 200,
+                r,
+                color: i,
+            })
+        }
+    },
+
+    kick() {
+        for (const o of this.orbs) {
+            o.vx += (Math.random() - 0.5) * 400
+            o.vy += (Math.random() - 0.5) * 400
+        }
+    },
+
+    update(dt) {
+        const s = this.speed
+        for (const o of this.orbs) {
+            o.x += o.vx * dt * s
+            o.y += o.vy * dt * s
+            // Walls
+            if (o.x - o.r < 0)       { o.x = o.r;           o.vx = Math.abs(o.vx) }
+            if (o.x + o.r > STAGE_W) { o.x = STAGE_W - o.r; o.vx = -Math.abs(o.vx) }
+            if (o.y - o.r < 0)       { o.y = o.r;           o.vy = Math.abs(o.vy) }
+            if (o.y + o.r > STAGE_H) { o.y = STAGE_H - o.r; o.vy = -Math.abs(o.vy) }
+        }
+        // O(n²) elastic-ish collisions — fine for ≤8 orbs.
+        for (let i = 0; i < this.orbs.length; i++) {
+            for (let j = i + 1; j < this.orbs.length; j++) {
+                const a = this.orbs[i], b = this.orbs[j]
+                const dx = b.x - a.x, dy = b.y - a.y
+                const dist = Math.hypot(dx, dy)
+                const minDist = a.r + b.r
+                if (dist < minDist && dist > 0) {
+                    const nx = dx / dist, ny = dy / dist
+                    const overlap = (minDist - dist) / 2
+                    a.x -= nx * overlap; a.y -= ny * overlap
+                    b.x += nx * overlap; b.y += ny * overlap
+                    // Swap velocity components along the collision normal.
+                    const avn = a.vx * nx + a.vy * ny
+                    const bvn = b.vx * nx + b.vy * ny
+                    a.vx += (bvn - avn) * nx; a.vy += (bvn - avn) * ny
+                    b.vx += (avn - bvn) * nx; b.vy += (avn - bvn) * ny
+                }
+            }
+        }
+    },
+
+    segments(midY) {
+        const blocked = []
+        for (const o of this.orbs) {
+            const hc = halfChord(o.r + PADDING, midY - o.y)
+            if (hc > 0) blocked.push({ lo: o.x - hc, hi: o.x + hc })
+        }
+        return freeSegments(blocked)
+    },
+
+    heat(x, w, midY) {
+        let h = 0
+        for (const o of this.orbs) {
+            const dist = Math.hypot(x + w / 2 - o.x, midY - o.y)
+            h = Math.max(h, 1 - dist / ((o.r + PADDING) * 2))
+        }
+        return Math.max(0, h)
+    },
+
+    paint() {
+        let i = 0
+        for (const o of this.orbs) paintOrb(getOrb(i++), o.x, o.y, o.r, o.color)
+        hideOrbsFrom(i)
+    },
+}
+
+swarmMode.init()
+
+const modes = { orb: orbMode, vessel: vesselMode, swarm: swarmMode }
+
+// ─── Generic render loop ────────────────────────────────────────────────────
+// All three modes funnel through the same pipeline: ask the mode for the open
+// segments at each row, then call layoutNextLine() once per segment. The mode
+// handles geometry; this function only handles text.
+
+function render(mode) {
     const t0 = performance.now()
-
-    const r = state.radius + state.padding
-    const cx = state.orbX
-    const cy = state.orbY
 
     let cursor = { segmentIndex: 0, graphemeIndex: 0 }
     let lineIndex = 0
     let done = false
 
-    // Closure so emit() doesn't need 9 positional args.
-    function emit(x, width, y, midY) {
-        const line = layoutNextLine(prepared, cursor, width)
-        if (line === null) { done = true; return }
-        const dist = Math.hypot(x + line.width / 2 - cx, midY - cy)
-        const heat = Math.max(0, 1 - dist / (r * 2.2))
-        writeLine(getLine(lineIndex++), line.text, x, y, heat)
-        cursor = line.end
-    }
-
     for (let y = 0; y < STAGE_H && !done; y += state.lineHeight) {
         const midY = y + state.lineHeight / 2
-        const dy = midY - cy
+        const segs = mode.segments(midY)
 
-        if (Math.abs(dy) >= r) {
-            emit(0, STAGE_W, y, midY)
-            continue
+        for (const seg of segs) {
+            if (done) break
+            const line = layoutNextLine(prepared, cursor, seg.w)
+            if (line === null) { done = true; break }
+
+            const heat = mode.heat(seg.x, line.width, midY)
+            writeLine(getLine(lineIndex++), line.text, seg.x, y, heat)
+            cursor = line.end
         }
-
-        const halfChord = Math.sqrt(r * r - dy * dy)
-        const orbLeft = cx - halfChord
-        const orbRight = cx + halfChord
-
-        if (orbLeft >= MIN_LINE_W) emit(0, orbLeft, y, midY)
-        if (!done && STAGE_W - orbRight >= MIN_LINE_W) emit(Math.max(0, orbRight), STAGE_W - orbRight, y, midY)
-        // If neither gap is wide enough, the row stays empty — orb fully blocks it.
     }
 
     for (let i = lineIndex; i < linePool.length; i++) hideLine(linePool[i])
 
-    const elapsed = performance.now() - t0
-    perfEl.textContent = `${elapsed.toFixed(3)} ms`
+    perfEl.textContent = `${(performance.now() - t0).toFixed(3)} ms`
     lineCountEl.textContent = lineIndex
 }
 
-// ─── Orb: frame-rate-independent spring ─────────────────────────────────────
-
-// Per-second stiffness/damping so 60Hz and 120Hz feel identical. The classic
-// velocity-verlet-ish spring, scaled by dt. damp is applied as a per-second
-// decay via Math.pow so it's stable across refresh rates.
-const SPRING_K = 220    // stiffness (higher = snappier)
-const SPRING_D = 18     // damping (per second, as half-life-ish factor)
-const SETTLE_EPS = 0.05 // px of combined vel+offset below which we stop
-
-function updateOrbSize() {
-    const d = state.radius * 2
-    orbEl.style.width = `${d}px`
-    orbEl.style.height = `${d}px`
-}
-
-function updateOrbPosition() {
-    orbEl.style.transform = `translate(${state.orbX - state.radius}px, ${state.orbY - state.radius}px)`
-}
-
 let lastT = performance.now()
-
 function tick(now) {
-    const dt = Math.min((now - lastT) / 1000, 1 / 30) // clamp for tab-switch stalls
+    const dt = Math.min((now - lastT) / 1000, 1 / 30)
     lastT = now
 
-    const dx = state.targetX - state.orbX
-    const dy = state.targetY - state.orbY
-    const decay = Math.exp(-SPRING_D * dt)
-
-    state.velX = (state.velX + dx * SPRING_K * dt) * decay
-    state.velY = (state.velY + dy * SPRING_K * dt) * decay
-    state.orbX += state.velX * dt
-    state.orbY += state.velY * dt
-
-    const moving =
-        Math.abs(state.velX) + Math.abs(state.velY) +
-        Math.abs(dx) + Math.abs(dy) > SETTLE_EPS
-
-    if (moving || state.dirty) {
-        updateOrbPosition()
-        render()
-        state.dirty = false
-    }
+    const mode = modes[state.mode]
+    mode.update(dt)
+    mode.paint()
+    render(mode)
 
     requestAnimationFrame(tick)
 }
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
-function pointerPos(e) {
+stage.addEventListener('pointermove', e => {
     const rect = stage.getBoundingClientRect()
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
-}
-
-orbEl.addEventListener('pointerdown', e => {
-    state.dragging = true
-    orbEl.classList.add('dragging')
-    orbEl.setPointerCapture(e.pointerId)
+    state.mouseX = e.clientX - rect.left
+    state.mouseY = e.clientY - rect.top
 })
 
-window.addEventListener('pointermove', e => {
-    if (!state.dragging) return
-    const { x, y } = pointerPos(e)
-    state.targetX = x
-    state.targetY = y
+document.querySelectorAll('[data-set-mode]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        state.mode = btn.dataset.setMode
+        document.body.dataset.mode = state.mode
+        document.querySelectorAll('[data-set-mode]').forEach(b => b.classList.toggle('active', b === btn))
+        if (state.mode === 'swarm') swarmMode.init()
+    })
 })
 
-window.addEventListener('pointerup', () => {
-    state.dragging = false
-    orbEl.classList.remove('dragging')
-})
-
-function bindSlider(id, key) {
+function bindSlider(id, obj, key, onChange) {
     const el = document.getElementById(id)
     const label = document.getElementById(`${id}-val`)
     el.addEventListener('input', () => {
-        state[key] = Number(el.value)
+        obj[key] = Number(el.value)
         label.textContent = el.value
-        state.dirty = true
+        onChange?.()
     })
 }
 
-bindSlider('radius', 'radius')
-bindSlider('padding', 'padding')
-bindSlider('lh', 'lineHeight')
+bindSlider('lh', state, 'lineHeight')
+bindSlider('orb-radius', orbMode, 'radius')
+bindSlider('vessel-depth', vesselMode, 'depth')
+bindSlider('vessel-speed', vesselMode, 'speed')
+bindSlider('swarm-count', swarmMode, 'count', () => swarmMode.init())
+bindSlider('swarm-speed', swarmMode, 'speed')
 
-document.getElementById('radius').addEventListener('input', updateOrbSize)
+document.getElementById('swarm-kick').addEventListener('click', () => swarmMode.kick())
 
 // ─── Boot ───────────────────────────────────────────────────────────────────
 
 document.fonts.ready.then(() => {
-    updateOrbSize()
     lastT = performance.now()
     requestAnimationFrame(tick)
 })
