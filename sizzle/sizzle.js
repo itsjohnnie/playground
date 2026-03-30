@@ -424,8 +424,14 @@ $('claude-btn').addEventListener('click', () => {
   $('claude-panel').classList.toggle('open');
 });
 
+const apiKeyInput = $('api-key');
+apiKeyInput.value = localStorage.getItem('sizzle-api-key') || '';
+apiKeyInput.addEventListener('change', () => {
+  localStorage.setItem('sizzle-api-key', apiKeyInput.value.trim());
+});
+
 $('analyze-btn').addEventListener('click', async () => {
-  const key = $('api-key').value.trim();
+  const key = apiKeyInput.value.trim();
   if (!key) return alert('Enter your Anthropic API key');
 
   const results = $('claude-results');
