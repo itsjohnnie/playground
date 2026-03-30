@@ -10,6 +10,7 @@ const state = {
   videoURL: null,
   ffmpeg: null,
   inputWritten: false,
+  previewIdx: -1,
 };
 
 // ─── DOM ───────────────────────────────────────────────────────────
@@ -81,8 +82,26 @@ video.addEventListener('timeupdate', () => {
   $('time-display').textContent = `${fmt(video.currentTime)} / ${fmt(state.duration)}`;
   playhead.style.left = `${(video.currentTime / state.duration) * 100}%`;
 
-  // loop playback within selection when playing
-  if (!video.paused && video.currentTime >= state.outPoint) {
+  if (video.paused) return;
+
+  // reel preview: chain through clips in sequence
+  if (state.previewIdx >= 0) {
+    const clip = state.clips[state.previewIdx];
+    if (!clip || video.currentTime >= clip.end) {
+      state.previewIdx++;
+      const next = state.clips[state.previewIdx];
+      if (next) {
+        video.currentTime = next.start;
+        highlightPreviewClip();
+      } else {
+        stopPreview();
+      }
+    }
+    return;
+  }
+
+  // loop playback within selection (only if selection is a meaningful range)
+  if (state.outPoint - state.inPoint >= 0.2 && video.currentTime >= state.outPoint) {
     video.currentTime = state.inPoint;
   }
 });
@@ -138,9 +157,14 @@ async function generateThumbstrip() {
 }
 
 // ─── Timeline interaction ──────────────────────────────────────────
-let dragging = false;
-let dragStart = 0;
+// Click → seek. Drag on empty → new selection.
+// Drag selection middle → move. Drag handle → resize edge.
+let tlMode = null;     // 'seek' | 'select' | 'move' | 'resize-l' | 'resize-r'
+let downX = 0;
+let anchorT = 0;
+let anchorIn = 0, anchorOut = 0;
 let tlRect = null;
+const DRAG_THRESHOLD = 4;
 
 function timeAt(clientX) {
   const pct = Math.max(0, Math.min(1, (clientX - tlRect.left) / tlRect.width));
@@ -149,25 +173,65 @@ function timeAt(clientX) {
 
 timeline.addEventListener('mousedown', (e) => {
   if (e.target.closest('.suggestion')) return;
-  dragging = true;
   tlRect = timeline.getBoundingClientRect();
-  dragStart = timeAt(e.clientX);
-  state.inPoint = dragStart;
-  state.outPoint = dragStart;
-  video.currentTime = dragStart;
-  syncInputs();
+  downX = e.clientX;
+  anchorT = timeAt(e.clientX);
+  anchorIn = state.inPoint;
+  anchorOut = state.outPoint;
+
+  if (e.target.id === 'sel-handle-l') {
+    tlMode = 'resize-l';
+    video.currentTime = state.inPoint;
+  } else if (e.target.id === 'sel-handle-r') {
+    tlMode = 'resize-r';
+    video.currentTime = state.outPoint;
+  } else if (e.target.closest('#selection')) {
+    tlMode = 'move';
+  } else {
+    tlMode = 'seek';
+    video.currentTime = anchorT;
+  }
+  e.preventDefault();
 });
 
 window.addEventListener('mousemove', (e) => {
-  if (!dragging) return;
+  if (!tlMode) return;
   const t = timeAt(e.clientX);
-  state.inPoint = Math.min(dragStart, t);
-  state.outPoint = Math.max(dragStart, t);
-  video.currentTime = t;
+
+  switch (tlMode) {
+    case 'seek': {
+      video.currentTime = t;
+      if (Math.abs(e.clientX - downX) < DRAG_THRESHOLD) return;
+      tlMode = 'select';
+      // fallthrough
+    }
+    case 'select':
+      state.inPoint = Math.min(anchorT, t);
+      state.outPoint = Math.max(anchorT, t);
+      video.currentTime = t;
+      break;
+    case 'move': {
+      const span = anchorOut - anchorIn;
+      let newIn = anchorIn + (t - anchorT);
+      newIn = Math.max(0, Math.min(state.duration - span, newIn));
+      state.inPoint = newIn;
+      state.outPoint = newIn + span;
+      video.currentTime = newIn;
+      break;
+    }
+    case 'resize-l':
+      state.inPoint = Math.max(0, Math.min(t, anchorOut - 0.1));
+      video.currentTime = state.inPoint;
+      break;
+    case 'resize-r':
+      state.outPoint = Math.min(state.duration, Math.max(t, anchorIn + 0.1));
+      video.currentTime = state.outPoint;
+      break;
+  }
   syncInputs();
 });
 
-window.addEventListener('mouseup', () => { dragging = false; });
+window.addEventListener('mouseup', () => { tlMode = null; });
 
 function renderSelection() {
   if (state.outPoint - state.inPoint < 0.01) {
@@ -191,27 +255,36 @@ function renderTimeline() {
   });
 }
 
-// ─── In/Out controls ───────────────────────────────────────────────
+// ─── In/Out/Duration controls ──────────────────────────────────────
+const inInput = $('in-time');
+const outInput = $('out-time');
+const durInput = $('dur-time');
+
 function syncInputs() {
-  $('in-time').value = fmt(state.inPoint);
-  $('out-time').value = fmt(state.outPoint);
+  inInput.value = fmt(state.inPoint);
+  outInput.value = fmt(state.outPoint);
+  durInput.value = fmt(state.outPoint - state.inPoint);
   renderSelection();
 }
 
-$('in-time').addEventListener('change', (e) => {
+inInput.addEventListener('change', (e) => {
   const v = parseFloat(e.target.value);
-  if (!isNaN(v)) {
-    state.inPoint = Math.max(0, Math.min(v, state.duration));
-    video.currentTime = state.inPoint;
-    syncInputs();
-  }
+  if (isNaN(v)) return syncInputs();
+  state.inPoint = Math.max(0, Math.min(v, state.outPoint));
+  video.currentTime = state.inPoint;
+  syncInputs();
 });
-$('out-time').addEventListener('change', (e) => {
+outInput.addEventListener('change', (e) => {
   const v = parseFloat(e.target.value);
-  if (!isNaN(v)) {
-    state.outPoint = Math.max(0, Math.min(v, state.duration));
-    syncInputs();
-  }
+  if (isNaN(v)) return syncInputs();
+  state.outPoint = Math.max(state.inPoint, Math.min(v, state.duration));
+  syncInputs();
+});
+durInput.addEventListener('change', (e) => {
+  const v = parseFloat(e.target.value);
+  if (isNaN(v) || v < 0) return syncInputs();
+  state.outPoint = Math.min(state.inPoint + v, state.duration);
+  syncInputs();
 });
 
 $('set-in').addEventListener('click', () => {
@@ -236,6 +309,12 @@ playBtn.addEventListener('click', () => {
 });
 video.addEventListener('pause', () => playBtn.textContent = '▶');
 video.addEventListener('play', () => playBtn.textContent = '⏸');
+
+const muteBtn = $('mute-btn');
+muteBtn.addEventListener('click', () => {
+  video.muted = !video.muted;
+  muteBtn.textContent = video.muted ? '🔇' : '🔊';
+});
 
 // keyboard
 window.addEventListener('keydown', (e) => {
@@ -310,18 +389,32 @@ function renderClips() {
     el.addEventListener('dragstart', (e) => {
       el.classList.add('dragging');
       e.dataTransfer.setData('text/plain', i);
+      e.dataTransfer.effectAllowed = 'move';
     });
     el.addEventListener('dragend', () => {
-      el.classList.remove('dragging');
+      clipsEl.querySelectorAll('.clip').forEach(c =>
+        c.classList.remove('dragging', 'drop-before', 'drop-after'));
       renderClips();
     });
-    el.addEventListener('dragover', (e) => e.preventDefault());
+    el.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (el.classList.contains('dragging')) return;
+      const rect = el.getBoundingClientRect();
+      const after = e.clientY > rect.top + rect.height / 2;
+      clipsEl.querySelectorAll('.clip').forEach(c =>
+        c.classList.remove('drop-before', 'drop-after'));
+      el.classList.add(after ? 'drop-after' : 'drop-before');
+    });
     el.addEventListener('drop', (e) => {
       e.preventDefault();
       const from = +e.dataTransfer.getData('text/plain');
       if (from === i) return;
+      const rect = el.getBoundingClientRect();
+      const after = e.clientY > rect.top + rect.height / 2;
       const [moved] = state.clips.splice(from, 1);
-      state.clips.splice(i, 0, moved);
+      let to = i > from ? i - 1 : i;
+      if (after) to++;
+      state.clips.splice(to, 0, moved);
     });
     clipsEl.appendChild(el);
   });
@@ -331,7 +424,37 @@ function renderClips() {
 
 function updateExportBtn() {
   $('export-btn').disabled = !(state.ffmpeg && state.clips.length > 0);
+  $('preview-btn').disabled = state.clips.length === 0;
 }
+
+// ─── Reel preview ──────────────────────────────────────────────────
+const previewBtn = $('preview-btn');
+
+function highlightPreviewClip() {
+  clipsEl.querySelectorAll('.clip').forEach((el, i) =>
+    el.classList.toggle('previewing', i === state.previewIdx));
+}
+
+function stopPreview() {
+  state.previewIdx = -1;
+  video.pause();
+  previewBtn.textContent = '▶ Preview Reel';
+  highlightPreviewClip();
+}
+
+previewBtn.addEventListener('click', () => {
+  if (state.previewIdx >= 0) return stopPreview();
+  if (state.clips.length === 0) return;
+  state.previewIdx = 0;
+  previewBtn.textContent = '⏹ Stop';
+  video.currentTime = state.clips[0].start;
+  highlightPreviewClip();
+  video.play();
+});
+
+// stop preview on any manual seek/interaction
+timeline.addEventListener('mousedown', () => { if (state.previewIdx >= 0) stopPreview(); });
+playBtn.addEventListener('click', () => { if (state.previewIdx >= 0) stopPreview(); }, true);
 
 // ─── Export presets ────────────────────────────────────────────────
 $('size-presets').addEventListener('click', (e) => {

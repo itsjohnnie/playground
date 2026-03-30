@@ -180,7 +180,17 @@
       border-color: var(--border-strong);
       background: rgba(0,0,0,0.4);
     }
-    .clip.dragging { opacity: 0.4; }
+    .clip.dragging { opacity: 0.3; }
+    .clip.drop-before {
+      box-shadow: 0 -2px 0 var(--accent), 0 -6px 12px var(--accent-glow);
+    }
+    .clip.drop-after {
+      box-shadow: 0 2px 0 var(--accent), 0 6px 12px var(--accent-glow);
+    }
+    .clip.previewing {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+    }
 
     .clip-thumb {
       width: 48px;
@@ -396,11 +406,31 @@
       top: 0;
       bottom: 0;
       background: rgba(255,255,255,0.15);
-      border-left: 2px solid #fff;
-      border-right: 2px solid #fff;
       display: none;
-      pointer-events: none;
+      cursor: grab;
     }
+    #selection:active { cursor: grabbing; }
+    .sel-handle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 10px;
+      background: #fff;
+      cursor: ew-resize;
+    }
+    .sel-handle::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 2px;
+      height: 20px;
+      background: #000;
+      border-radius: 1px;
+    }
+    #sel-handle-l { left: -5px; border-radius: 3px 0 0 3px; }
+    #sel-handle-r { right: -5px; border-radius: 0 3px 3px 0; }
 
     #playhead {
       position: absolute;
@@ -527,7 +557,7 @@
 
   <!-- Video stage -->
   <div id="stage">
-    <video id="video" playsinline></video>
+    <video id="video" playsinline muted></video>
     <div id="stage-overlay">
       <span id="time-display">0.00 / 0.00</span>
     </div>
@@ -564,11 +594,15 @@
   <div id="timeline-panel">
     <div id="timeline-controls">
       <button id="play-btn" class="tl-btn">▶</button>
+      <button id="mute-btn" class="tl-btn" title="Toggle audio">🔇</button>
 
       <div class="time-inputs">
         <input type="text" id="in-time" placeholder="in" value="0.00">
         <span>→</span>
         <input type="text" id="out-time" placeholder="out" value="0.00">
+        <span style="color:var(--text-dim);margin-left:4px">=</span>
+        <input type="text" id="dur-time" placeholder="dur" value="0.00">
+        <span style="color:var(--text-dim)">s</span>
       </div>
 
       <button id="set-in" class="tl-btn">Set In [I]</button>
@@ -577,13 +611,18 @@
 
       <div class="spacer"></div>
 
+      <button id="preview-btn" class="tl-btn" disabled>▶ Preview Reel</button>
+
       <button id="claude-btn" class="tl-btn">✨ Ask Claude</button>
       <button id="reset-btn" class="tl-btn">New Video</button>
     </div>
 
     <div id="timeline">
       <div id="thumbstrip"></div>
-      <div id="selection"></div>
+      <div id="selection">
+        <div class="sel-handle" id="sel-handle-l"></div>
+        <div class="sel-handle" id="sel-handle-r"></div>
+      </div>
       <div id="playhead"></div>
     </div>
   </div>
