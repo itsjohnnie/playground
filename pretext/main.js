@@ -39,15 +39,20 @@ const prepared = prepareWithSegments(TEXT, FONT)
 const stage = document.getElementById('stage')
 const textLayer = document.getElementById('text-layer')
 const orbLayer = document.getElementById('orb-layer')
-const ringEl = document.getElementById('ring')
+const liquidCanvas = document.getElementById('liquid-canvas')
 const perfEl = document.getElementById('perf')
 const lineCountEl = document.getElementById('line-count')
 
+liquidCanvas.width = STAGE_W
+liquidCanvas.height = STAGE_H
+const liquidCtx = liquidCanvas.getContext('2d')
+
 const state = {
-    mode: 'orb',
+    mode: 'static',
     lineHeight: 26,
     mouseX: STAGE_W / 2,
     mouseY: STAGE_H / 2,
+    mouseIn: false,
 }
 
 // ─── Line pool with diffed writes ───────────────────────────────────────────
@@ -100,8 +105,6 @@ function getOrb(i) {
 }
 
 function paintOrb(slot, x, y, r, colorIdx) {
-    // Size & color rarely change — diff them to avoid reparsing gradient
-    // strings every frame.
     if (slot.r !== r || slot.color !== colorIdx) {
         const c = ORB_PALETTE[colorIdx % ORB_PALETTE.length]
         const d = r * 2
@@ -125,14 +128,12 @@ function hideOrbsFrom(i) {
 
 // ─── Geometry helpers ───────────────────────────────────────────────────────
 
-// Half-chord of a circle at vertical offset dy from center. Zero if outside.
 function halfChord(r, dy) {
     const d2 = r * r - dy * dy
     return d2 > 0 ? Math.sqrt(d2) : 0
 }
 
 // Given blocked intervals on [0, STAGE_W], return the open gaps ≥ MIN_LINE_W.
-// Intervals may overlap; we merge them first.
 function freeSegments(blocked) {
     if (blocked.length === 0) return [{ x: 0, w: STAGE_W }]
 
@@ -157,16 +158,53 @@ function freeSegments(blocked) {
     return gaps
 }
 
-// ═══ MODE: Orb ══════════════════════════════════════════════════════════════
-// Single sphere follows the mouse with a spring. Text parts around it on both
-// sides — two layoutNextLine() calls per intersecting row.
+// Shared: single-orb segment calculation (used by static + follow).
+function orbSegments(x, y, r, midY) {
+    const hc = halfChord(r + PADDING, midY - y)
+    if (hc === 0) return [{ x: 0, w: STAGE_W }]
+    return freeSegments([{ lo: x - hc, hi: x + hc }])
+}
 
-const orbMode = {
-    x: 160, y: 200, vx: 0, vy: 0,
+function orbHeat(ox, oy, r, x, w, midY) {
+    const dist = Math.hypot(x + w / 2 - ox, midY - oy)
+    return Math.max(0, 1 - dist / ((r + PADDING) * 2.2))
+}
+
+// ═══ MODE: Static ═══════════════════════════════════════════════════════════
+// Orb stays where you put it. Drag to move. No springs, no physics — just the
+// geometry on display.
+
+const staticMode = {
+    x: STAGE_W / 2, y: STAGE_H / 2,
+    radius: 90,
+    dragging: false,
+    dragDX: 0, dragDY: 0,
+    dirty: true,
+
+    update() {}, // nothing moves on its own
+
+    segments(midY) { return orbSegments(this.x, this.y, this.radius, midY) },
+    heat(x, w, midY) { return orbHeat(this.x, this.y, this.radius, x, w, midY) },
+
+    paint() {
+        paintOrb(getOrb(0), this.x, this.y, this.radius, 0)
+        hideOrbsFrom(1)
+    },
+
+    get animated() { return false },
+}
+
+// ═══ MODE: Follow ═══════════════════════════════════════════════════════════
+// Orb drifts toward the cursor on a soft spring. The whole point here is how
+// unhurried it feels — low stiffness, heavy damping.
+
+const followMode = {
+    x: STAGE_W / 2, y: STAGE_H / 2, vx: 0, vy: 0,
     radius: 90,
 
+    // Very low stiffness and near-critical damping for a slow, dreamy drift.
     update(dt) {
-        const k = 220, d = 18
+        const k = 18, d = 6
         const decay = Math.exp(-d * dt)
         this.vx = (this.vx + (state.mouseX - this.x) * k * dt) * decay
         this.vy = (this.vy + (state.mouseY - this.y) * k * dt) * decay
@@ -174,64 +212,20 @@ const orbMode = {
         this.y += this.vy * dt
     },
 
-    segments(midY) {
-        const r = this.radius + PADDING
-        const hc = halfChord(r, midY - this.y)
-        if (hc === 0) return [{ x: 0, w: STAGE_W }]
-        return freeSegments([{ lo: this.x - hc, hi: this.x + hc }])
-    },
-
-    heat(x, w, midY) {
-        const dist = Math.hypot(x + w / 2 - this.x, midY - this.y)
-        return Math.max(0, 1 - dist / ((this.radius + PADDING) * 2.2))
-    },
+    segments(midY) { return orbSegments(this.x, this.y, this.radius, midY) },
+    heat(x, w, midY) { return orbHeat(this.x, this.y, this.radius, x, w, midY) },
 
     paint() {
-        paintOrb(getOrb(0), this.x, this.y, this.radius, 0)
+        paintOrb(getOrb(0), this.x, this.y, this.radius, 4)
         hideOrbsFrom(1)
     },
-}
 
-// ═══ MODE: Vessel ═══════════════════════════════════════════════════════════
-// Text fills the INSIDE of a circle. Each line's width is the chord at that y.
-// The circle breathes — its radius oscillates on a sine wave.
-
-const vesselMode = {
-    depth: 40,   // amplitude of the breathing oscillation, in px
-    speed: 0.6,  // cycles per second
-    t: 0,
-    r: 0,        // current radius, set in update()
-
-    update(dt) {
-        this.t += dt * this.speed
-        this.r = Math.min(STAGE_W, STAGE_H) / 2 - 10 + Math.sin(this.t * Math.PI * 2) * this.depth
-    },
-
-    segments(midY) {
-        const hc = halfChord(this.r, midY - STAGE_H / 2)
-        if (hc < MIN_LINE_W / 2) return []
-        return [{ x: STAGE_W / 2 - hc, w: hc * 2 }]
-    },
-
-    heat(x, w, midY) {
-        // Edge lines (short chords near poles) glow brighter.
-        return Math.max(0, 1 - w / STAGE_W)
-    },
-
-    paint() {
-        const d = this.r * 2
-        ringEl.style.width = `${d}px`
-        ringEl.style.height = `${d}px`
-        ringEl.style.transform = `translate(${STAGE_W / 2 - this.r}px, ${STAGE_H / 2 - this.r}px)`
-        hideOrbsFrom(0)
-    },
+    get animated() { return true },
 }
 
 // ═══ MODE: Swarm ════════════════════════════════════════════════════════════
-// N orbs bounce around with simple physics and collide. Each row computes ALL
-// orb chords, merges the blocked intervals, and flows text through every gap.
-// This is where it gets wild — one row might have 4 text fragments threading
-// between 3 orbs.
+// N orbs bounce and collide. Each row merges all orb chords into blocked
+// intervals, then threads text through the gaps.
 
 const swarmMode = {
     orbs: [],
@@ -247,8 +241,7 @@ const swarmMode = {
                 y: r + Math.random() * (STAGE_H - r * 2),
                 vx: (Math.random() - 0.5) * 200,
                 vy: (Math.random() - 0.5) * 200,
-                r,
-                color: i,
+                r, color: i,
             })
         }
     },
@@ -265,13 +258,11 @@ const swarmMode = {
         for (const o of this.orbs) {
             o.x += o.vx * dt * s
             o.y += o.vy * dt * s
-            // Walls
             if (o.x - o.r < 0)       { o.x = o.r;           o.vx = Math.abs(o.vx) }
             if (o.x + o.r > STAGE_W) { o.x = STAGE_W - o.r; o.vx = -Math.abs(o.vx) }
             if (o.y - o.r < 0)       { o.y = o.r;           o.vy = Math.abs(o.vy) }
             if (o.y + o.r > STAGE_H) { o.y = STAGE_H - o.r; o.vy = -Math.abs(o.vy) }
         }
-        // O(n²) elastic-ish collisions — fine for ≤8 orbs.
         for (let i = 0; i < this.orbs.length; i++) {
             for (let j = i + 1; j < this.orbs.length; j++) {
                 const a = this.orbs[i], b = this.orbs[j]
@@ -283,7 +274,6 @@ const swarmMode = {
                     const overlap = (minDist - dist) / 2
                     a.x -= nx * overlap; a.y -= ny * overlap
                     b.x += nx * overlap; b.y += ny * overlap
-                    // Swap velocity components along the collision normal.
                     const avn = a.vx * nx + a.vy * ny
                     const bvn = b.vx * nx + b.vy * ny
                     a.vx += (bvn - avn) * nx; a.vy += (bvn - avn) * ny
@@ -316,16 +306,177 @@ const swarmMode = {
         for (const o of this.orbs) paintOrb(getOrb(i++), o.x, o.y, o.r, o.color)
         hideOrbsFrom(i)
     },
+
+    get animated() { return true },
 }
 
 swarmMode.init()
 
-const modes = { orb: orbMode, vessel: vesselMode, swarm: swarmMode }
+// ═══ MODE: Liquid ═══════════════════════════════════════════════════════════
+// SPH fluid simulation — ~150 particles with density pressure and near-
+// pressure forces, adapted from the /liquid demo. Gravity pulls toward the
+// cursor. Each particle blocks text as a small circle; freeSegments() merges
+// them into one organic mass so the text flows around the whole blob, not
+// individual droplets.
+
+const SPH = {
+    COUNT: 150,
+    INTERACT_R: 22,
+    INTERACT_R2: 22 * 22,
+    REST_DENSITY: 3,
+    K: 0.08,       // pressure stiffness
+    K_NEAR: 0.12,  // near-pressure (keeps particles from stacking)
+    GRAVITY: 900,
+    DAMP: 3.5,     // velocity decay /s
+    BLOCK_R: 20,   // radius each particle blocks text with (> visual r so the cloud reads as one mass)
+}
+
+const liquidMode = {
+    particles: [],
+    gx: 0, gy: SPH.GRAVITY, // smoothed gravity vector
+
+    init() {
+        this.particles = []
+        const cx = STAGE_W / 2, cy = STAGE_H / 2
+        for (let i = 0; i < SPH.COUNT; i++) {
+            const a = Math.random() * Math.PI * 2
+            const r = Math.sqrt(Math.random()) * 80
+            this.particles.push({
+                x: cx + Math.cos(a) * r,
+                y: cy + Math.sin(a) * r,
+                vx: 0, vy: 0,
+                px: 0, py: 0, // previous position, for Verlet-ish velocity derivation
+            })
+        }
+        this.gx = 0
+        this.gy = SPH.GRAVITY
+    },
+
+    update(dt) {
+        dt = Math.min(dt, 1 / 60) // fluid sims hate big steps
+        const P = this.particles
+
+        // Gravity direction eases toward the cursor when the mouse is inside.
+        let tgx = 0, tgy = SPH.GRAVITY
+        if (state.mouseIn) {
+            const dx = state.mouseX - STAGE_W / 2
+            const dy = state.mouseY - STAGE_H / 2
+            const len = Math.hypot(dx, dy) || 1
+            tgx = (dx / len) * SPH.GRAVITY
+            tgy = (dy / len) * SPH.GRAVITY
+        }
+        // Very slow easing so tilt changes feel heavy.
+        const ease = 1 - Math.exp(-2 * dt)
+        this.gx += (tgx - this.gx) * ease
+        this.gy += (tgy - this.gy) * ease
+
+        // 1. Apply gravity + damping, save old position, integrate.
+        const decay = Math.exp(-SPH.DAMP * dt)
+        for (const p of P) {
+            p.vx = (p.vx + this.gx * dt) * decay
+            p.vy = (p.vy + this.gy * dt) * decay
+            p.px = p.x; p.py = p.y
+            p.x += p.vx * dt
+            p.y += p.vy * dt
+        }
+
+        // 2. Double-density relaxation (Clavet et al. 2005). O(n²) — fine at 150.
+        for (let i = 0; i < P.length; i++) {
+            const a = P[i]
+            let density = 0, nearDensity = 0
+            // neighbours + their kernel weights, collected once
+            const nbs = []
+            for (let j = 0; j < P.length; j++) {
+                if (i === j) continue
+                const b = P[j]
+                const dx = b.x - a.x, dy = b.y - a.y
+                const d2 = dx * dx + dy * dy
+                if (d2 >= SPH.INTERACT_R2) continue
+                const d = Math.sqrt(d2)
+                const q = 1 - d / SPH.INTERACT_R
+                density += q * q
+                nearDensity += q * q * q
+                nbs.push({ b, dx, dy, d, q })
+            }
+            const pressure = SPH.K * (density - SPH.REST_DENSITY)
+            const nearPressure = SPH.K_NEAR * nearDensity
+            for (const { b, dx, dy, d, q } of nbs) {
+                if (d === 0) continue
+                const disp = (pressure * q + nearPressure * q * q) * 0.5
+                const nx = dx / d, ny = dy / d
+                a.x -= nx * disp; a.y -= ny * disp
+                b.x += nx * disp; b.y += ny * disp
+            }
+        }
+
+        // 3. Walls + derive velocity from position delta.
+        const wall = 4
+        for (const p of P) {
+            if (p.x < wall) p.x = wall
+            else if (p.x > STAGE_W - wall) p.x = STAGE_W - wall
+            if (p.y < wall) p.y = wall
+            else if (p.y > STAGE_H - wall) p.y = STAGE_H - wall
+            p.vx = (p.x - p.px) / dt
+            p.vy = (p.y - p.py) / dt
+        }
+    },
+
+    segments(midY) {
+        const blocked = []
+        for (const p of this.particles) {
+            const hc = halfChord(SPH.BLOCK_R, midY - p.y)
+            if (hc > 0) blocked.push({ lo: p.x - hc, hi: p.x + hc })
+        }
+        return freeSegments(blocked)
+    },
+
+    heat(x, w, midY) {
+        let minD2 = Infinity
+        const cx = x + w / 2
+        for (const p of this.particles) {
+            const dx = cx - p.x, dy = midY - p.y
+            const d2 = dx * dx + dy * dy
+            if (d2 < minD2) minD2 = d2
+        }
+        return Math.max(0, 1 - Math.sqrt(minD2) / 80)
+    },
+
+    paint() {
+        hideOrbsFrom(0)
+        const ctx = liquidCtx
+        ctx.clearRect(0, 0, STAGE_W, STAGE_H)
+
+        // Soft blobs: overdrawn radial gradients on a lighter blend give
+        // a cheap metaball look without a WebGL pass.
+        ctx.globalCompositeOperation = 'lighter'
+        for (const p of this.particles) {
+            const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 16)
+            g.addColorStop(0, 'rgba(120, 200, 255, 0.25)')
+            g.addColorStop(1, 'rgba(120, 200, 255, 0)')
+            ctx.fillStyle = g
+            ctx.beginPath()
+            ctx.arc(p.x, p.y, 16, 0, Math.PI * 2)
+            ctx.fill()
+        }
+        ctx.globalCompositeOperation = 'source-over'
+        ctx.fillStyle = 'rgba(200, 240, 255, 0.9)'
+        for (const p of this.particles) {
+            ctx.beginPath()
+            ctx.arc(p.x, p.y, 2, 0, Math.PI * 2)
+            ctx.fill()
+        }
+    },
+
+    get animated() { return true },
+}
+
+liquidMode.init()
+
+const modes = { static: staticMode, follow: followMode, swarm: swarmMode, liquid: liquidMode }
 
 // ─── Generic render loop ────────────────────────────────────────────────────
-// All three modes funnel through the same pipeline: ask the mode for the open
-// segments at each row, then call layoutNextLine() once per segment. The mode
-// handles geometry; this function only handles text.
+// Every mode answers the same question: "what segments are open at this y?"
+// render() walks rows, asks, and feeds each segment to layoutNextLine().
 
 function render(mode) {
     const t0 = performance.now()
@@ -362,28 +513,71 @@ function tick(now) {
 
     const mode = modes[state.mode]
     mode.update(dt)
-    mode.paint()
-    render(mode)
+
+    // Static mode only repaints when dragged; others animate continuously.
+    if (mode.animated || staticMode.dirty) {
+        mode.paint()
+        render(mode)
+        staticMode.dirty = false
+    }
 
     requestAnimationFrame(tick)
 }
 
 // ─── Input ──────────────────────────────────────────────────────────────────
 
+function stagePos(e) {
+    const r = stage.getBoundingClientRect()
+    return { x: e.clientX - r.left, y: e.clientY - r.top }
+}
+
 stage.addEventListener('pointermove', e => {
-    const rect = stage.getBoundingClientRect()
-    state.mouseX = e.clientX - rect.left
-    state.mouseY = e.clientY - rect.top
+    const { x, y } = stagePos(e)
+    state.mouseX = x
+    state.mouseY = y
+
+    if (staticMode.dragging) {
+        staticMode.x = x + staticMode.dragDX
+        staticMode.y = y + staticMode.dragDY
+        staticMode.dirty = true
+    }
 })
 
-document.querySelectorAll('[data-set-mode]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        state.mode = btn.dataset.setMode
-        document.body.dataset.mode = state.mode
-        document.querySelectorAll('[data-set-mode]').forEach(b => b.classList.toggle('active', b === btn))
-        if (state.mode === 'swarm') swarmMode.init()
-    })
+stage.addEventListener('pointerenter', () => { state.mouseIn = true })
+stage.addEventListener('pointerleave', () => { state.mouseIn = false })
+
+stage.addEventListener('pointerdown', e => {
+    if (state.mode !== 'static') return
+    const { x, y } = stagePos(e)
+    const dist = Math.hypot(x - staticMode.x, y - staticMode.y)
+    if (dist <= staticMode.radius) {
+        staticMode.dragging = true
+        staticMode.dragDX = staticMode.x - x
+        staticMode.dragDY = staticMode.y - y
+        stage.setPointerCapture(e.pointerId)
+        stage.classList.add('grabbing')
+    }
 })
+
+window.addEventListener('pointerup', () => {
+    staticMode.dragging = false
+    stage.classList.remove('grabbing')
+})
+
+function setMode(m) {
+    state.mode = m
+    document.body.dataset.mode = m
+    document.querySelectorAll('[data-set-mode]').forEach(b =>
+        b.classList.toggle('active', b.dataset.setMode === m))
+    liquidCanvas.style.display = m === 'liquid' ? 'block' : 'none'
+    if (m === 'liquid') liquidMode.init()
+    else liquidCtx.clearRect(0, 0, STAGE_W, STAGE_H)
+    if (m === 'swarm') swarmMode.init()
+    staticMode.dirty = true
+}
+
+document.querySelectorAll('[data-set-mode]').forEach(btn =>
+    btn.addEventListener('click', () => setMode(btn.dataset.setMode)))
 
 function bindSlider(id, obj, key, onChange) {
     const el = document.getElementById(id)
@@ -395,18 +589,19 @@ function bindSlider(id, obj, key, onChange) {
     })
 }
 
-bindSlider('lh', state, 'lineHeight')
-bindSlider('orb-radius', orbMode, 'radius')
-bindSlider('vessel-depth', vesselMode, 'depth')
-bindSlider('vessel-speed', vesselMode, 'speed')
+bindSlider('lh', state, 'lineHeight', () => { staticMode.dirty = true })
+bindSlider('static-radius', staticMode, 'radius', () => { staticMode.dirty = true })
+bindSlider('follow-radius', followMode, 'radius')
 bindSlider('swarm-count', swarmMode, 'count', () => swarmMode.init())
 bindSlider('swarm-speed', swarmMode, 'speed')
 
 document.getElementById('swarm-kick').addEventListener('click', () => swarmMode.kick())
+document.getElementById('liquid-reset').addEventListener('click', () => liquidMode.init())
 
 // ─── Boot ───────────────────────────────────────────────────────────────────
 
 document.fonts.ready.then(() => {
+    setMode('static')
     lastT = performance.now()
     requestAnimationFrame(tick)
 })
