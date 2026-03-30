@@ -28,12 +28,17 @@
             position: relative;
             width: 720px;
             height: 640px;
+            touch-action: none;
         }
+
+        body[data-mode="static"] #stage { cursor: grab; }
+        #stage.grabbing { cursor: grabbing !important; }
 
         #text-layer {
             position: absolute;
             inset: 0;
             overflow: hidden;
+            z-index: 2;
         }
 
         .line {
@@ -44,9 +49,18 @@
             will-change: transform;
         }
 
+        #liquid-canvas {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            display: none;
+            pointer-events: none;
+        }
+
         #orb-layer {
             position: absolute;
             inset: 0;
+            z-index: 1;
             pointer-events: none;
         }
 
@@ -68,17 +82,6 @@
             filter: blur(8px);
         }
 
-        #ring {
-            position: absolute;
-            border-radius: 50%;
-            border: 1px solid rgba(140, 200, 255, 0.3);
-            box-shadow:
-                0 0 60px rgba(100, 150, 255, 0.15),
-                inset 0 0 60px rgba(100, 150, 255, 0.1);
-            pointer-events: none;
-            display: none;
-        }
-
         /* ─── Controls ─────────────────────────────────────────── */
 
         #controls {
@@ -88,14 +91,15 @@
             background: rgba(20, 20, 25, 0.92);
             padding: 18px;
             border-radius: 8px;
-            min-width: 220px;
+            min-width: 240px;
             color: #fff;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         #mode-tabs {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
             gap: 4px;
             margin-bottom: 16px;
             background: rgba(0, 0, 0, 0.3);
@@ -104,12 +108,11 @@
         }
 
         #mode-tabs button {
-            flex: 1;
             padding: 8px 4px;
             background: transparent;
             border: none;
             color: rgba(255, 255, 255, 0.5);
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
             letter-spacing: 0.5px;
             border-radius: 4px;
@@ -186,48 +189,48 @@
         }
 
         #controls [data-mode] { display: none; }
-        body[data-mode="orb"]    #controls [data-mode="orb"]    { display: block; }
-        body[data-mode="vessel"] #controls [data-mode="vessel"] { display: block; }
+        body[data-mode="static"] #controls [data-mode="static"] { display: block; }
+        body[data-mode="follow"] #controls [data-mode="follow"] { display: block; }
         body[data-mode="swarm"]  #controls [data-mode="swarm"]  { display: block; }
-        body[data-mode="vessel"] #ring { display: block; }
+        body[data-mode="liquid"] #controls [data-mode="liquid"] { display: block; }
     </style>
 </head>
-<body data-mode="orb">
+<body data-mode="static">
     <div id="stage">
-        <div id="text-layer"></div>
-        <div id="ring"></div>
+        <canvas id="liquid-canvas"></canvas>
         <div id="orb-layer"></div>
+        <div id="text-layer"></div>
     </div>
 
     <div id="controls">
         <div id="mode-tabs">
-            <button data-set-mode="orb" class="active">ORB</button>
-            <button data-set-mode="vessel">VESSEL</button>
+            <button data-set-mode="static" class="active">STATIC</button>
+            <button data-set-mode="follow">FOLLOW</button>
             <button data-set-mode="swarm">SWARM</button>
+            <button data-set-mode="liquid">LIQUID</button>
         </div>
 
-        <div class="mode-hint" data-mode="orb">
-            Move your mouse. Text parts around the sphere on both sides.
+        <div class="mode-hint" data-mode="static">
+            Drag the orb. Nothing moves on its own — just the geometry on display.
         </div>
-        <div class="mode-hint" data-mode="vessel">
-            Text lives inside a breathing circle. Each line's width is the chord at that y.
+        <div class="mode-hint" data-mode="follow">
+            Move your cursor. The orb drifts toward it on a soft, slow spring.
         </div>
         <div class="mode-hint" data-mode="swarm">
             Physics orbs bounce and collide. Text flows around all of them at once.
         </div>
-
-        <div class="control-group" data-mode="orb">
-            <label>Radius <span class="val" id="orb-radius-val">90</span></label>
-            <input type="range" id="orb-radius" min="30" max="180" value="90">
+        <div class="mode-hint" data-mode="liquid">
+            SPH fluid sim. Gravity pulls toward your cursor. Text flows around the blob.
         </div>
 
-        <div class="control-group" data-mode="vessel">
-            <label>Breath depth <span class="val" id="vessel-depth-val">40</span></label>
-            <input type="range" id="vessel-depth" min="0" max="120" value="40">
+        <div class="control-group" data-mode="static">
+            <label>Radius <span class="val" id="static-radius-val">90</span></label>
+            <input type="range" id="static-radius" min="30" max="180" value="90">
         </div>
-        <div class="control-group" data-mode="vessel">
-            <label>Breath speed <span class="val" id="vessel-speed-val">0.6</span></label>
-            <input type="range" id="vessel-speed" min="0" max="2" step="0.1" value="0.6">
+
+        <div class="control-group" data-mode="follow">
+            <label>Radius <span class="val" id="follow-radius-val">90</span></label>
+            <input type="range" id="follow-radius" min="30" max="180" value="90">
         </div>
 
         <div class="control-group" data-mode="swarm">
@@ -240,6 +243,10 @@
         </div>
         <div class="control-group" data-mode="swarm">
             <button id="swarm-kick">Kick</button>
+        </div>
+
+        <div class="control-group" data-mode="liquid">
+            <button id="liquid-reset">Reset fluid</button>
         </div>
 
         <div class="control-group">
