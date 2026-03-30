@@ -407,9 +407,8 @@
       bottom: 0;
       background: rgba(255,255,255,0.15);
       display: none;
-      cursor: grab;
+      pointer-events: none;
     }
-    #selection:active { cursor: grabbing; }
     .sel-handle {
       position: absolute;
       top: 0;
@@ -417,6 +416,7 @@
       width: 10px;
       background: #fff;
       cursor: ew-resize;
+      pointer-events: auto;
     }
     .sel-handle::after {
       content: '';

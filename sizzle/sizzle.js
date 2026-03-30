@@ -99,11 +99,6 @@ video.addEventListener('timeupdate', () => {
     }
     return;
   }
-
-  // loop playback within selection (only if selection is a meaningful range)
-  if (state.outPoint - state.inPoint >= 0.2 && video.currentTime >= state.outPoint) {
-    video.currentTime = state.inPoint;
-  }
 });
 
 $('file-input').addEventListener('change', (e) => {
@@ -185,8 +180,6 @@ timeline.addEventListener('mousedown', (e) => {
   } else if (e.target.id === 'sel-handle-r') {
     tlMode = 'resize-r';
     video.currentTime = state.outPoint;
-  } else if (e.target.closest('#selection')) {
-    tlMode = 'move';
   } else {
     tlMode = 'seek';
     video.currentTime = anchorT;
@@ -210,15 +203,6 @@ window.addEventListener('mousemove', (e) => {
       state.outPoint = Math.max(anchorT, t);
       video.currentTime = t;
       break;
-    case 'move': {
-      const span = anchorOut - anchorIn;
-      let newIn = anchorIn + (t - anchorT);
-      newIn = Math.max(0, Math.min(state.duration - span, newIn));
-      state.inPoint = newIn;
-      state.outPoint = newIn + span;
-      video.currentTime = newIn;
-      break;
-    }
     case 'resize-l':
       state.inPoint = Math.max(0, Math.min(t, anchorOut - 0.1));
       video.currentTime = state.inPoint;
@@ -300,12 +284,7 @@ $('set-out').addEventListener('click', () => {
 
 const playBtn = $('play-btn');
 playBtn.addEventListener('click', () => {
-  if (video.paused) {
-    video.currentTime = state.inPoint;
-    video.play();
-  } else {
-    video.pause();
-  }
+  video.paused ? video.play() : video.pause();
 });
 video.addEventListener('pause', () => playBtn.textContent = '▶');
 video.addEventListener('play', () => playBtn.textContent = '⏸');
