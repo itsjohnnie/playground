@@ -5,10 +5,29 @@
     <link rel="icon" type="image/png" sizes="64x64" href="/playground/truco/favicon-64.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/playground/truco/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#13261C" />
+    <meta name="theme-color" content="#16221d" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Mondays" />
+    <script>
+      // FOUC guard — set data-theme + theme-color before React mounts.
+      (function () {
+        var COLORS = { dark: '#16221d', light: '#f6f3ee' };
+        var resolved;
+        try {
+          var stored = localStorage.getItem('truco.theme.v1');
+          resolved =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        } catch (e) {
+          resolved = 'dark';
+        }
+        document.documentElement.dataset.theme = resolved;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', COLORS[resolved]);
+      })();
+    </script>
     <meta name="description" content="Marcador de Truco Argentino para la mesa de los lunes." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -22,8 +41,8 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..600,30,0&family=Geist:wght@400..600&display=swap"
     />
     <title>Truco</title>
-    <script type="module" crossorigin src="/playground/truco/assets/index-CZ0Xyd8e.js"></script>
-    <link rel="stylesheet" crossorigin href="/playground/truco/assets/index-Julyu0RB.css">
+    <script type="module" crossorigin src="/playground/truco/assets/index-9rpEoZl7.js"></script>
+    <link rel="stylesheet" crossorigin href="/playground/truco/assets/index-Bqik8mPD.css">
   <link rel="manifest" href="/playground/truco/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/playground/truco/registerSW.js"></script></head>
   <body>
     <div id="root"></div>
