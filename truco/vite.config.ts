@@ -8,13 +8,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon-64.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Truco Argentino',
+        name: 'Sacred Mondays — Truco',
         short_name: 'Truco',
-        description: 'Marcador de Truco Argentino — 15 malas, 15 buenas',
-        theme_color: '#0d2b1a',
-        background_color: '#0d2b1a',
+        description: 'Marcador de Truco para la mesa de los lunes.',
+        theme_color: '#13261C',
+        background_color: '#13261C',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/playground/truco/',
