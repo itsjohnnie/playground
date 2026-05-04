@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { SuitMark } from '@/components/ui/SuitMark'
+import { AppIcon } from '@/components/ui/AppIcon'
 import { Screen } from '@/components/ui/Screen'
 
 interface HomeScreenProps {
@@ -31,9 +31,9 @@ export function HomeScreen({
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-        className="flex flex-col items-center pt-20 pb-12 gap-3"
+        className="flex flex-col items-center pt-20 pb-12 gap-4"
       >
-        <SuitMark className="mb-1 opacity-90" />
+        <AppIcon size={112} className="mb-1" />
         <h1
           className="font-display font-normal leading-none text-ink"
           style={{ fontSize: 'var(--fs-display-xl)' }}
