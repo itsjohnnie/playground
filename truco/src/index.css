@@ -8,36 +8,7 @@
  * ────────────────────────────────────────────────────────── */
 
 :root {
-  /* Surface */
-  --bg:         155 30% 10%;
-  --surface:    155 26% 14%;
-  --surface-hi: 155 22% 18%;
-  --line:       155 20% 22%;
-
-  /* Ink */
-  --ink:        38 28% 92%;
-  --ink-muted:  38 14% 70%;
-  --ink-soft:   38 10% 52%;
-
-  /* Accent */
-  --accent:     38 60% 60%;
-  --accent-hi:  38 72% 70%;
-  --accent-ink: 155 30% 10%;
-
-  /* Suits */
-  --suit-red:   354 62% 54%;
-  --suit-black: 38 10% 18%;
-
-  /* Status */
-  --danger:     8 55% 50%;
-  --win:        140 38% 55%;
-
-  /* Shadows */
-  --shadow-1: 0 1px 0 hsl(155 30% 6% / 0.4);
-  --shadow-2: 0 8px 24px hsl(155 30% 4% / 0.45),
-              0 1px 0 hsl(155 30% 6% / 0.5);
-  --shadow-3: 0 24px 60px hsl(155 30% 4% / 0.55),
-              0 2px 0 hsl(155 30% 6% / 0.6);
+  color-scheme: dark light;
 
   /* Easings (Emil) */
   --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
@@ -79,8 +50,78 @@
 
   --safe-top:    env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
 
+/* ── Theme: dark (default) ─────────────────────────────────── */
+[data-theme='dark'] {
   color-scheme: dark;
+
+  --bg:         155 20% 11%;
+  --surface:    155 18% 15%;
+  --surface-hi: 155 16% 19%;
+  --line:       155 14% 23%;
+
+  --ink:        38 28% 92%;
+  --ink-muted:  38 14% 70%;
+  --ink-soft:   38 10% 52%;
+
+  --accent:     38 60% 60%;
+  --accent-hi:  38 72% 70%;
+  --accent-ink: 155 22% 10%;
+
+  --suit-red:   354 62% 54%;
+  --suit-black: 38 10% 18%;
+
+  --danger:     8 55% 50%;
+  --win:        140 38% 55%;
+
+  --shadow-1: 0 1px 0 hsl(155 22% 6% / 0.4);
+  --shadow-2: 0 8px 24px hsl(155 22% 4% / 0.45),
+              0 1px 0 hsl(155 22% 6% / 0.5);
+  --shadow-3: 0 24px 60px hsl(155 22% 4% / 0.55),
+              0 2px 0 hsl(155 22% 6% / 0.6);
+
+  --grain-noise:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.92  0 0 0 0 0.85  0 0 0 0 0.7  0 0 0 0.03 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+
+  /* Hex twin of --bg, used for the iOS status-bar / Safari chrome. */
+  --meta-bg: #16221d;
+}
+
+/* ── Theme: light (parchment) ──────────────────────────────── */
+[data-theme='light'] {
+  color-scheme: light;
+
+  /* Warm parchment, gold accent, deep-green ink. */
+  --bg:         38 32% 95%;
+  --surface:    38 30% 92%;
+  --surface-hi: 38 26% 87%;
+  --line:       38 18% 78%;
+
+  --ink:        155 30% 14%;
+  --ink-muted:  155 14% 32%;
+  --ink-soft:   155 10% 50%;
+
+  --accent:     38 70% 42%;
+  --accent-hi:  38 78% 36%;
+  --accent-ink: 38 32% 96%;
+
+  --suit-red:   354 62% 42%;
+  --suit-black: 155 18% 14%;
+
+  --danger:     8 65% 42%;
+  --win:        140 38% 32%;
+
+  --shadow-1: 0 1px 0 hsl(38 14% 60% / 0.25);
+  --shadow-2: 0 6px 18px hsl(38 14% 30% / 0.16),
+              0 1px 0 hsl(38 14% 60% / 0.3);
+  --shadow-3: 0 18px 44px hsl(38 14% 25% / 0.2),
+              0 2px 0 hsl(38 14% 60% / 0.35);
+
+  --grain-noise:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.4  0 0 0 0 0.32  0 0 0 0 0.22  0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+
+  --meta-bg: #f6f3ee;
 }
 
 /* ── Reset ── */
@@ -107,13 +148,16 @@ body {
   height: 100dvh;
   overflow: hidden;
 
-  /* Subtle felt grain — radial vignette + noise */
-  background-image:
-    radial-gradient(ellipse 80% 60% at 18% 14%, hsl(155 30% 14% / 0.55) 0%, transparent 60%),
-    radial-gradient(ellipse 70% 60% at 84% 92%, hsl(155 30% 4% / 0.5) 0%, transparent 55%),
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.92  0 0 0 0 0.85  0 0 0 0 0.7  0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  background-attachment: fixed, fixed, fixed;
-  background-size: auto, auto, 160px 160px;
+  /* Uniform felt — no vignette so the color is edge-to-edge consistent
+     with the iOS status bar / Safari chrome. Just a subtle noise grain. */
+  background-image: var(--grain-noise);
+  background-attachment: fixed;
+  background-size: 160px 160px;
+}
+
+html {
+  /* Match body bg exactly so any 1px gap doesn't show a lighter strip. */
+  background: hsl(var(--bg));
 }
 
 #root {

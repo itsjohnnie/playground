@@ -1,7 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, Plus, Trash2, RotateCcw, AlertTriangle, KeyRound } from 'lucide-react'
+import { ChevronLeft, Plus, Trash2, RotateCcw, AlertTriangle, KeyRound, Sun, Moon, Smartphone } from 'lucide-react'
 import { normalizeMesaCode, MESA_DEFAULT } from '@/lib/mesa'
+import {
+  type ThemeChoice,
+  getThemeChoice,
+  setThemeChoice,
+  subscribeTheme,
+} from '@/lib/theme'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet } from '@/components/ui/Sheet'
@@ -31,6 +37,8 @@ export function MesaScreen({ active, retired, mesa, onSwitchMesa, onBack, onAdd,
   const [mesaSheet, setMesaSheet] = useState(false)
   const [mesaInput, setMesaInput] = useState(mesa === MESA_DEFAULT ? '' : mesa)
   const [mesaError, setMesaError] = useState<string | null>(null)
+  const [theme, setTheme] = useState<ThemeChoice>(() => getThemeChoice())
+  useEffect(() => subscribeTheme((c) => setTheme(c)), [])
 
   function handleAdd() {
     const trimmed = newName.trim()
@@ -101,6 +109,8 @@ export function MesaScreen({ active, retired, mesa, onSwitchMesa, onBack, onAdd,
           {mesa === MESA_DEFAULT ? '—' : mesa}
         </span>
       </button>
+
+      <ThemeToggle theme={theme} onChange={setThemeChoice} />
 
       <section className="flex flex-col gap-2">
         <AnimatePresence initial={false}>
@@ -256,5 +266,43 @@ export function MesaScreen({ active, retired, mesa, onSwitchMesa, onBack, onAdd,
         </div>
       </Sheet>
     </Screen>
+  )
+}
+
+// ─── Theme segmented control ─────────────────────────────────
+
+const THEME_OPTIONS: Array<{ value: ThemeChoice; label: string; icon: typeof Sun }> = [
+  { value: 'auto',  label: 'Auto',   icon: Smartphone },
+  { value: 'light', label: 'Claro',  icon: Sun },
+  { value: 'dark',  label: 'Oscuro', icon: Moon },
+]
+
+function ThemeToggle({ theme, onChange }: { theme: ThemeChoice; onChange: (c: ThemeChoice) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-md border border-line/70 bg-surface-hi/70 px-3.5 py-2 pl-3.5 pr-1.5">
+      <span className="text-xs text-ink-soft">Tema</span>
+      <div role="tablist" aria-label="Tema" className="flex gap-0.5 rounded-sm bg-surface/80 p-0.5">
+        {THEME_OPTIONS.map((o) => {
+          const selected = theme === o.value
+          const Icon = o.icon
+          return (
+            <button
+              key={o.value}
+              role="tab"
+              aria-selected={selected}
+              onClick={() => onChange(o.value)}
+              className={`pressable inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs transition-colors ${
+                selected
+                  ? 'bg-accent/15 text-ink ring-1 ring-accent/40'
+                  : 'text-ink-muted hover:text-ink'
+              }`}
+            >
+              <Icon className="size-3.5" />
+              <span>{o.label}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
