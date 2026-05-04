@@ -141,7 +141,7 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
       <div className="flex items-center justify-between">
         <Button
           variant="link" size="sm" onClick={() => (step === 'pick' ? onBack() : setStep('pick'))}
-          className="-ml-2 gap-1 text-ink-muted"
+          className="px-0 -ml-1 gap-1 text-ink-muted"
         >
           <ChevronLeft className="size-4" /> Volver
         </Button>
