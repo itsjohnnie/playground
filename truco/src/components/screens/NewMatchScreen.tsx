@@ -141,7 +141,7 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
       <div className="flex items-center justify-between">
         <Button
           variant="link" size="sm" onClick={() => (step === 'pick' ? onBack() : setStep('pick'))}
-          className="-ml-1 gap-1 text-ink-muted"
+          className="-ml-2 gap-1 text-ink-muted"
         >
           <ChevronLeft className="size-4" /> Volver
         </Button>
@@ -230,7 +230,7 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
             transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
             className="flex flex-col gap-5 flex-1"
           >
-            <p className="text-center text-sm text-ink-muted">
+            <p className="text-left text-sm text-ink-muted text-balance">
               Arrastrá un nombre al otro lado, o tocalo para mandarlo enfrente.
             </p>
 
