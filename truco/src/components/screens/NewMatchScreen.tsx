@@ -345,7 +345,7 @@ const TeamColumn = function TeamColumn({
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 content-start min-h-[64px]">
+      <div className="flex flex-col gap-1.5 min-h-[64px]">
         {ids.length === 0 ? (
           <p className="text-[11px] text-ink-soft self-center w-full text-center py-3">
             Soltá un nombre acá
