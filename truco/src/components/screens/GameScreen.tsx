@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { MoreVertical, Undo2, Clock, X } from 'lucide-react'
+import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from 'framer-motion'
+import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
@@ -81,7 +81,9 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
           players={teamPlayers('A')}
           score={match.scoreA}
           highlight={match.scoreA > match.scoreB}
-          onScore={() => setScoringFor('A')}
+          onOpenSheet={() => setScoringFor('A')}
+          onQuickAdd={() => onScore('A', 1, 'manual')}
+          onQuickSub={() => onScore('A', -1, 'manual')}
           right={false}
         />
         <TeamPanel
@@ -89,7 +91,9 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
           players={teamPlayers('B')}
           score={match.scoreB}
           highlight={match.scoreB > match.scoreA}
-          onScore={() => setScoringFor('B')}
+          onOpenSheet={() => setScoringFor('B')}
+          onQuickAdd={() => onScore('B', 1, 'manual')}
+          onQuickSub={() => onScore('B', -1, 'manual')}
           right={true}
         />
       </div>
@@ -195,24 +199,74 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
 
 // ─── Team panel ──────────────────────────────────────────────
 
+const SWIPE_PX = 56
+const SWIPE_VEL = 380
+
 function TeamPanel({
-  name, players, score, highlight, onScore, right,
+  name, players, score, highlight, onOpenSheet, onQuickAdd, onQuickSub, right,
 }: {
   name: string
   players: Player[]
   score: number
   highlight: boolean
-  onScore: () => void
+  onOpenSheet: () => void
+  onQuickAdd: () => void
+  onQuickSub: () => void
   right: boolean
 }) {
   const inBuenas = isInBuenas(score)
   const { malas, buenas } = splitScore(score)
+  const y = useMotionValue(0)
+  // Hint chevrons fade in as the user drags toward the threshold.
+  const upHint   = useTransform(y, [-SWIPE_PX, 0],          [1, 0])
+  const downHint = useTransform(y, [0,         SWIPE_PX],   [0, 1])
+  const [pulse, setPulse] = useState<null | 'up' | 'down'>(null)
+
+  function handleDragEnd(_: unknown, info: PanInfo) {
+    const dy = info.offset.y
+    const vy = info.velocity.y
+    if (dy < -SWIPE_PX || vy < -SWIPE_VEL) {
+      onQuickAdd()
+      flash('up')
+    } else if (dy > SWIPE_PX || vy > SWIPE_VEL) {
+      onQuickSub()
+      flash('down')
+    }
+  }
+
+  function flash(kind: 'up' | 'down') {
+    if (navigator.vibrate) navigator.vibrate(8)
+    setPulse(kind)
+    window.setTimeout(() => setPulse(null), 260)
+  }
+
   return (
-    <button
-      onClick={onScore}
-      className={`pressable group relative flex flex-col gap-3 px-4 py-5 text-left ${right ? '' : 'border-r border-line/70'} hover-elevate`}
-      aria-label={`Sumar puntos a ${name}`}
+    <motion.button
+      onTap={onOpenSheet}
+      drag="y"
+      dragConstraints={{ top: -120, bottom: 120 }}
+      dragElastic={0.35}
+      dragMomentum={false}
+      dragSnapToOrigin
+      onDragEnd={handleDragEnd}
+      style={{ y, touchAction: 'none' }}
+      className={`pressable group relative flex flex-col gap-3 px-4 py-5 text-left ${right ? '' : 'border-r border-line/70'} hover-elevate select-none`}
+      aria-label={`Sumar puntos a ${name}. Arrastrá hacia arriba para sumar, hacia abajo para restar.`}
     >
+      {/* Swipe hint arrows — only visible while dragging */}
+      <motion.div
+        style={{ opacity: upHint }}
+        className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 text-accent"
+      >
+        <ChevronUp className="size-5" strokeWidth={2.5} />
+      </motion.div>
+      <motion.div
+        style={{ opacity: downHint }}
+        className="pointer-events-none absolute left-1/2 bottom-14 -translate-x-1/2 text-danger"
+      >
+        <ChevronDown className="size-5" strokeWidth={2.5} />
+      </motion.div>
+
       <div className="flex flex-col gap-1">
         <span className="eyebrow">{name}</span>
         {players.length > 0 && (
@@ -244,10 +298,24 @@ function TeamPanel({
         {score >= BUENAS_THRESHOLD && <Palitos count={buenas} accent={true} />}
       </div>
 
-      <div className="absolute right-3 bottom-3 text-[11px] text-ink-soft opacity-0 group-hover:opacity-100 transition-opacity">
-        + sumar
+      {/* Pulse ring on successful gesture */}
+      <AnimatePresence>
+        {pulse && (
+          <motion.div
+            key={pulse + score}
+            initial={{ opacity: 0.55, scale: 0.94 }}
+            animate={{ opacity: 0, scale: 1.04 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.26, ease: [0.23, 1, 0.32, 1] }}
+            className={`pointer-events-none absolute inset-2 rounded-md ${pulse === 'up' ? 'ring-2 ring-accent/60' : 'ring-2 ring-danger/55'}`}
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="absolute right-3 bottom-3 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
+        ↕ deslizá
       </div>
-    </button>
+    </motion.button>
   )
 }
 

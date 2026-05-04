@@ -94,6 +94,9 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
@@ -101,7 +104,8 @@ body {
   font-size: var(--fs-body);
   line-height: var(--lh-body);
   font-feature-settings: 'ss01', 'ss02';
-  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
 
   /* Subtle felt grain — radial vignette + noise */
   background-image:
@@ -113,7 +117,7 @@ body {
 }
 
 #root {
-  min-height: 100dvh;
+  height: 100dvh;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
@@ -121,6 +125,7 @@ body {
   flex-direction: column;
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
+  overflow: hidden;
 }
 
 /* ── Type ── */

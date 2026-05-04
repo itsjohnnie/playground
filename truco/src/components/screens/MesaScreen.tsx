@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, Plus, Trash2, RotateCcw } from 'lucide-react'
+import { ChevronLeft, Plus, Trash2, RotateCcw, AlertTriangle, KeyRound } from 'lucide-react'
+import { normalizeMesaCode, MESA_DEFAULT } from '@/lib/mesa'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet } from '@/components/ui/Sheet'
@@ -10,19 +11,26 @@ import type { Player } from '@/types/game'
 interface MesaScreenProps {
   active: Player[]
   retired: Player[]
+  mesa: string
+  onSwitchMesa: (code: string) => void
   onBack: () => void
   onAdd: (name: string) => void
   onRename: (id: string, name: string) => void
   onRetire: (id: string) => void
   onRestore: (id: string) => void
   onDelete: (id: string) => void
+  onWipe: () => void
 }
 
-export function MesaScreen({ active, retired, onBack, onAdd, onRename, onRetire, onRestore, onDelete }: MesaScreenProps) {
+export function MesaScreen({ active, retired, mesa, onSwitchMesa, onBack, onAdd, onRename, onRetire, onRestore, onDelete, onWipe }: MesaScreenProps) {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [editing, setEditing] = useState<Player | null>(null)
   const [editName, setEditName] = useState('')
+  const [confirmWipe, setConfirmWipe] = useState(false)
+  const [mesaSheet, setMesaSheet] = useState(false)
+  const [mesaInput, setMesaInput] = useState(mesa === MESA_DEFAULT ? '' : mesa)
+  const [mesaError, setMesaError] = useState<string | null>(null)
 
   function handleAdd() {
     const trimmed = newName.trim()
@@ -48,6 +56,24 @@ export function MesaScreen({ active, retired, onBack, onAdd, onRename, onRetire,
     setEditing(null)
   }
 
+  function commitMesa() {
+    const trimmed = mesaInput.trim()
+    if (!trimmed) {
+      onSwitchMesa(MESA_DEFAULT)
+      return
+    }
+    const norm = normalizeMesaCode(trimmed)
+    if (!norm) {
+      setMesaError('Usá 2–16 letras, números o guiones.')
+      return
+    }
+    if (norm === mesa) {
+      setMesaSheet(false)
+      return
+    }
+    onSwitchMesa(norm)
+  }
+
   return (
     <Screen className="px-5 py-5 gap-5">
       <div className="flex items-center justify-between">
@@ -63,6 +89,18 @@ export function MesaScreen({ active, retired, onBack, onAdd, onRename, onRetire,
         </div>
         <span className="tabular text-ink-muted text-sm pb-1">{active.length}</span>
       </header>
+
+      <button
+        onClick={() => { setMesaInput(mesa === MESA_DEFAULT ? '' : mesa); setMesaError(null); setMesaSheet(true) }}
+        className="pressable flex items-center justify-between rounded-md border border-line/70 bg-surface-hi/70 px-3.5 py-2.5 text-left hover-elevate"
+      >
+        <span className="inline-flex items-center gap-2 text-xs text-ink-soft">
+          <KeyRound className="size-3.5" /> Código de mesa
+        </span>
+        <span className="font-display text-ink tabular text-sm">
+          {mesa === MESA_DEFAULT ? '—' : mesa}
+        </span>
+      </button>
 
       <section className="flex flex-col gap-2">
         <AnimatePresence initial={false}>
@@ -144,6 +182,56 @@ export function MesaScreen({ active, retired, onBack, onAdd, onRename, onRetire,
           Todavía no hay nadie en la mesa. Sumá a quienes juegan los lunes.
         </p>
       )}
+
+      <div className="mt-auto pt-6">
+        <button
+          onClick={() => setConfirmWipe(true)}
+          className="pressable w-full inline-flex items-center justify-center gap-2 rounded-sm border border-line/60 px-4 py-2.5 text-xs text-ink-soft hover:text-danger hover:border-danger/50"
+        >
+          <AlertTriangle className="size-3.5" /> Reiniciar mesa y borrar todo
+        </button>
+      </div>
+
+      <Sheet open={mesaSheet} onClose={() => setMesaSheet(false)} title="Código de mesa">
+        <div className="flex flex-col gap-3 pb-2">
+          <p className="text-ink-muted text-sm">
+            Ingresá un código para separar los datos de tu grupo. Cada código es una mesa distinta. Dejalo vacío para usar la mesa pública.
+          </p>
+          <Input
+            autoFocus
+            value={mesaInput}
+            onChange={(e) => { setMesaInput(e.target.value); setMesaError(null) }}
+            onKeyDown={(e) => { if (e.key === 'Enter') commitMesa() }}
+            placeholder="por ej. tincholos"
+            maxLength={16}
+          />
+          {mesaError && <p className="text-danger text-xs">{mesaError}</p>}
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="ghost" onClick={() => setMesaSheet(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={commitMesa}>Cambiar mesa</Button>
+          </div>
+          {mesa !== MESA_DEFAULT && (
+            <button
+              onClick={() => { onSwitchMesa(MESA_DEFAULT); setMesaSheet(false) }}
+              className="pressable text-xs text-ink-muted hover:text-ink underline underline-offset-4 mt-1 self-start"
+            >
+              Volver a la mesa pública
+            </button>
+          )}
+        </div>
+      </Sheet>
+
+      <Sheet open={confirmWipe} onClose={() => setConfirmWipe(false)} title="¿Borrar todo?">
+        <p className="text-ink-muted text-sm pb-3">
+          Esto borra jugadores, partidas e historial. No se puede deshacer.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="ghost" onClick={() => setConfirmWipe(false)}>Cancelar</Button>
+          <Button variant="danger" onClick={() => { onWipe(); setConfirmWipe(false) }}>
+            Borrar todo
+          </Button>
+        </div>
+      </Sheet>
 
       {/* Edit sheet */}
       <Sheet open={!!editing} onClose={() => setEditing(null)} title="Editar jugador">

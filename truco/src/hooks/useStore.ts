@@ -15,6 +15,8 @@ import {
   type EventRow,
   type AppStateRow,
 } from '@/lib/supabase'
+import { execOp } from '@/lib/writeQueue'
+import { getMesa, setMesa as persistMesa, makeMesaId, idBelongsToMesa } from '@/lib/mesa'
 
 // ─── Row → model converters ─────────────────────────────────────
 
@@ -52,9 +54,12 @@ function rowToMatch(m: MatchRow, events: EventRow[]): Match {
 }
 
 // ─── ID helper ─────────────────────────────────────────────────
+// All client-generated ids are namespaced with the active mesa code so
+// reads can filter to a single group without a schema migration.
 
 function makeId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+  const uuid = Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+  return makeMesaId(uuid)
 }
 
 // ─── Hook ──────────────────────────────────────────────────────
@@ -92,12 +97,20 @@ export function useStore() {
         const eventRows = (eRes.data ?? []) as EventRow[]
         const appRow = aRes.data as AppStateRow | null
 
-        eventsRef.current = eventRows
+        // Filter to current mesa (id-prefix scoped).
+        const myMatches = matchRows.filter((m) => idBelongsToMesa(m.id))
+        const myMatchIds = new Set(myMatches.map((m) => m.id))
+        const myEvents = eventRows.filter((e) => myMatchIds.has(e.match_id))
+        const myPlayers = playerRows.filter((p) => idBelongsToMesa(p.id))
+        const activeId = appRow?.active_match_id ?? null
+        const scopedActive = activeId && idBelongsToMesa(activeId) ? activeId : null
+
+        eventsRef.current = myEvents
         setState({
           schemaVersion: 2,
-          roster: playerRows.map(rowToPlayer),
-          matches: matchRows.map((m) => rowToMatch(m, eventRows)),
-          activeMatchId: appRow?.active_match_id ?? null,
+          roster: myPlayers.map(rowToPlayer),
+          matches: myMatches.map((m) => rowToMatch(m, myEvents)),
+          activeMatchId: scopedActive,
         })
         setLoading(false)
       } catch (e) {
@@ -114,7 +127,9 @@ export function useStore() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, (payload) => {
         setState((s) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const p = rowToPlayer(payload.new as PlayerRow)
+            const row = payload.new as PlayerRow
+            if (!idBelongsToMesa(row.id)) return s
+            const p = rowToPlayer(row)
             const exists = s.roster.some((x) => x.id === p.id)
             return {
               ...s,
@@ -132,12 +147,12 @@ export function useStore() {
         setState((s) => {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const row = payload.new as MatchRow
+            if (!idBelongsToMesa(row.id)) return s
             const m = rowToMatch(row, eventsRef.current)
             const exists = s.matches.some((x) => x.id === m.id)
             const next = exists
               ? s.matches.map((x) => (x.id === m.id ? m : x))
               : [m, ...s.matches]
-            // Keep newest first
             return { ...s, matches: next.sort((a, b) => b.startedAt - a.startedAt) }
           }
           if (payload.eventType === 'DELETE') {
@@ -150,7 +165,7 @@ export function useStore() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, (payload) => {
         if (payload.eventType === 'INSERT') {
           const row = payload.new as EventRow
-          // Dedupe in case of optimistic + echo
+          if (!idBelongsToMesa(row.match_id)) return
           if (!eventsRef.current.some((e) => e.id === row.id)) {
             eventsRef.current = [...eventsRef.current, row]
           }
@@ -163,6 +178,7 @@ export function useStore() {
         } else if (payload.eventType === 'DELETE') {
           const old = payload.old as EventRow
           eventsRef.current = eventsRef.current.filter((e) => e.id !== old.id)
+          if (!idBelongsToMesa(old.match_id)) return
           setState((s) => ({
             ...s,
             matches: s.matches.map((m) =>
@@ -173,7 +189,9 @@ export function useStore() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'app_state' }, (payload) => {
         const row = payload.new as AppStateRow
-        setState((s) => ({ ...s, activeMatchId: row.active_match_id ?? null }))
+        const next = row.active_match_id ?? null
+        const scoped = next && idBelongsToMesa(next) ? next : null
+        setState((s) => ({ ...s, activeMatchId: scoped }))
       })
       .subscribe()
 
@@ -192,15 +210,11 @@ export function useStore() {
       name: trimmed,
       joinedAt: Date.now(),
     }
-    // Optimistic local update
     setState((s) => ({ ...s, roster: [...s.roster, player] }))
-    // Server write
-    supabase
-      .from('players')
-      .insert({ id: player.id, name: trimmed })
-      .then(({ error: e }) => {
-        if (e) console.error('addPlayer', e)
-      })
+    execOp(
+      { kind: 'insert', table: 'players', payload: { id: player.id, name: trimmed } },
+      'agregar jugador',
+    )
     return player
   }, [])
 
@@ -210,11 +224,10 @@ export function useStore() {
       ...s,
       roster: s.roster.map((p) => (p.id === id ? { ...p, name: trimmed } : p)),
     }))
-    supabase
-      .from('players')
-      .update({ name: trimmed })
-      .eq('id', id)
-      .then(({ error: e }) => { if (e) console.error('renamePlayer', e) })
+    execOp(
+      { kind: 'update', table: 'players', patch: { name: trimmed }, eq: [['id', id]] },
+      'renombrar jugador',
+    )
   }, [])
 
   const retirePlayer = useCallback((id: string) => {
@@ -223,11 +236,15 @@ export function useStore() {
       ...s,
       roster: s.roster.map((p) => (p.id === id ? { ...p, retiredAt: now } : p)),
     }))
-    supabase
-      .from('players')
-      .update({ retired_at: new Date(now).toISOString() })
-      .eq('id', id)
-      .then(({ error: e }) => { if (e) console.error('retirePlayer', e) })
+    execOp(
+      {
+        kind: 'update',
+        table: 'players',
+        patch: { retired_at: new Date(now).toISOString() },
+        eq: [['id', id]],
+      },
+      'retirar jugador',
+    )
   }, [])
 
   const restorePlayer = useCallback((id: string) => {
@@ -240,11 +257,10 @@ export function useStore() {
         return rest
       }),
     }))
-    supabase
-      .from('players')
-      .update({ retired_at: null })
-      .eq('id', id)
-      .then(({ error: e }) => { if (e) console.error('restorePlayer', e) })
+    execOp(
+      { kind: 'update', table: 'players', patch: { retired_at: null }, eq: [['id', id]] },
+      'restaurar jugador',
+    )
   }, [])
 
   const removePlayer = useCallback((id: string) => {
@@ -253,20 +269,22 @@ export function useStore() {
         (m) => m.teamA.playerIds.includes(id) || m.teamB.playerIds.includes(id),
       )
       if (used) {
-        // Soft-delete: keep history intact
         const now = Date.now()
-        supabase
-          .from('players')
-          .update({ retired_at: new Date(now).toISOString() })
-          .eq('id', id)
-          .then(({ error: e }) => { if (e) console.error('removePlayer/retire', e) })
+        execOp(
+          {
+            kind: 'update',
+            table: 'players',
+            patch: { retired_at: new Date(now).toISOString() },
+            eq: [['id', id]],
+          },
+          'retirar jugador',
+        )
         return { ...s, roster: s.roster.map((p) => (p.id === id ? { ...p, retiredAt: now } : p)) }
       }
-      supabase
-        .from('players')
-        .delete()
-        .eq('id', id)
-        .then(({ error: e }) => { if (e) console.error('removePlayer', e) })
+      execOp(
+        { kind: 'delete', table: 'players', eq: [['id', id]] },
+        'eliminar jugador',
+      )
       return { ...s, roster: s.roster.filter((p) => p.id !== id) }
     })
   }, [])
@@ -294,21 +312,29 @@ export function useStore() {
         matches: [m, ...s.matches],
         activeMatchId: m.id,
       }))
-      ;(async () => {
-        const { error: e1 } = await supabase.from('matches').insert({
-          id: m.id,
-          team_a_name: teamA.name,
-          team_a_player_ids: teamA.playerIds,
-          team_b_name: teamB.name,
-          team_b_player_ids: teamB.playerIds,
-        })
-        if (e1) { console.error('startMatch/insert', e1); return }
-        const { error: e2 } = await supabase
-          .from('app_state')
-          .update({ active_match_id: m.id })
-          .eq('id', 'singleton')
-        if (e2) console.error('startMatch/active', e2)
-      })()
+      execOp(
+        {
+          kind: 'insert',
+          table: 'matches',
+          payload: {
+            id: m.id,
+            team_a_name: teamA.name,
+            team_a_player_ids: teamA.playerIds,
+            team_b_name: teamB.name,
+            team_b_player_ids: teamB.playerIds,
+          },
+        },
+        'iniciar partida',
+      )
+      execOp(
+        {
+          kind: 'update',
+          table: 'app_state',
+          patch: { active_match_id: m.id },
+          eq: [['id', 'singleton']],
+        },
+        'iniciar partida',
+      )
       return m
     },
     [],
@@ -318,46 +344,56 @@ export function useStore() {
     setState((s) => {
       if (!s.activeMatchId) return s
       const matchId = s.activeMatchId
-      const updated = s.matches.map((m) => {
-        if (m.id !== matchId) return m
-        const newA = ev.team === 'A' ? Math.min(m.scoreA + ev.points, MAX_SCORE) : m.scoreA
-        const newB = ev.team === 'B' ? Math.min(m.scoreB + ev.points, MAX_SCORE) : m.scoreB
-        const finished = newA >= MAX_SCORE || newB >= MAX_SCORE
-        const winner: 'A' | 'B' | null = finished
-          ? newA >= MAX_SCORE ? 'A' : 'B'
-          : null
-        return {
-          ...m,
-          scoreA: newA,
-          scoreB: newB,
-          winner,
-          finishedAt: finished ? Date.now() : null,
-          events: [...m.events, { ...ev, at: Date.now() }],
-        }
-      })
-      const m = updated.find((x) => x.id === matchId)!
-      // Persist
-      ;(async () => {
-        const { error: e1 } = await supabase.from('events').insert({
-          match_id: matchId,
-          team: ev.team,
-          points: ev.points,
-          reason: ev.reason,
-          round_mode: ev.roundMode,
-        })
-        if (e1) { console.error('score/event', e1); return }
-        const { error: e2 } = await supabase
-          .from('matches')
-          .update({
+      const current = s.matches.find((x) => x.id === matchId)
+      if (!current) return s
+      const clamp = (n: number) => Math.max(0, Math.min(n, MAX_SCORE))
+      const newA = ev.team === 'A' ? clamp(current.scoreA + ev.points) : current.scoreA
+      const newB = ev.team === 'B' ? clamp(current.scoreB + ev.points) : current.scoreB
+      // No-op if clamping zeroed the delta (e.g. swipe-down at 0)
+      if (newA === current.scoreA && newB === current.scoreB) return s
+      const finished = newA >= MAX_SCORE || newB >= MAX_SCORE
+      const winner: 'A' | 'B' | null = finished
+        ? newA >= MAX_SCORE ? 'A' : 'B'
+        : null
+      const at = Date.now()
+      const m: Match = {
+        ...current,
+        scoreA: newA,
+        scoreB: newB,
+        winner,
+        finishedAt: finished ? at : null,
+        events: [...current.events, { ...ev, at }],
+      }
+      execOp(
+        {
+          kind: 'insert',
+          table: 'events',
+          payload: {
+            match_id: matchId,
+            team: ev.team,
+            points: ev.points,
+            reason: ev.reason,
+            round_mode: ev.roundMode,
+            at: new Date(at).toISOString(),
+          },
+        },
+        'sumar punto',
+      )
+      execOp(
+        {
+          kind: 'update',
+          table: 'matches',
+          patch: {
             score_a: m.scoreA,
             score_b: m.scoreB,
             winner: m.winner,
             finished_at: m.finishedAt ? new Date(m.finishedAt).toISOString() : null,
-          })
-          .eq('id', matchId)
-        if (e2) console.error('score/match', e2)
-      })()
-      return { ...s, matches: updated }
+          },
+          eq: [['id', matchId]],
+        },
+        'sumar punto',
+      )
+      return { ...s, matches: s.matches.map((x) => (x.id === matchId ? m : x)) }
     })
   }, [])
 
@@ -378,28 +414,29 @@ export function useStore() {
         finishedAt: null,
         events: m.events.slice(0, -1),
       }
-      // Persist: delete the latest event row, then update match
-      ;(async () => {
-        const { data, error: e1 } = await supabase
-          .from('events')
-          .select('id')
-          .eq('match_id', matchId)
-          .order('at', { ascending: false })
-          .limit(1)
-        if (e1) { console.error('undo/find', e1); return }
-        const lastId = data?.[0]?.id
-        if (lastId !== undefined) {
-          const { error: eDel } = await supabase.from('events').delete().eq('id', lastId)
-          if (eDel) { console.error('undo/delete', eDel); return }
-        }
-        const { error: e2 } = await supabase
-          .from('matches')
-          .update({
-            score_a: newA, score_b: newB, winner: null, finished_at: null,
-          })
-          .eq('id', matchId)
-        if (e2) console.error('undo/match', e2)
-      })()
+      // Delete the event row by (match_id, at) — `at` is ms-precise so this
+      // is effectively unique. We pass `at` explicitly when inserting so
+      // client + server agree on the value.
+      execOp(
+        {
+          kind: 'delete',
+          table: 'events',
+          eq: [
+            ['match_id', matchId],
+            ['at', new Date(last.at).toISOString()],
+          ],
+        },
+        'deshacer',
+      )
+      execOp(
+        {
+          kind: 'update',
+          table: 'matches',
+          patch: { score_a: newA, score_b: newB, winner: null, finished_at: null },
+          eq: [['id', matchId]],
+        },
+        'deshacer',
+      )
       return {
         ...s,
         matches: s.matches.map((x) => (x.id === matchId ? updatedMatch : x)),
@@ -409,29 +446,39 @@ export function useStore() {
 
   const finishMatch = useCallback(() => {
     setState((s) => ({ ...s, activeMatchId: null }))
-    supabase
-      .from('app_state')
-      .update({ active_match_id: null })
-      .eq('id', 'singleton')
-      .then(({ error: e }) => { if (e) console.error('finishMatch', e) })
+    execOp(
+      {
+        kind: 'update',
+        table: 'app_state',
+        patch: { active_match_id: null },
+        eq: [['id', 'singleton']],
+      },
+      'terminar partida',
+    )
   }, [])
 
   const abandonMatch = useCallback(() => {
     setState((s) => {
       if (!s.activeMatchId) return s
       const matchId = s.activeMatchId
-      ;(async () => {
-        const { error: e1 } = await supabase
-          .from('matches')
-          .update({ abandoned: true, finished_at: new Date().toISOString() })
-          .eq('id', matchId)
-        if (e1) console.error('abandonMatch/match', e1)
-        const { error: e2 } = await supabase
-          .from('app_state')
-          .update({ active_match_id: null })
-          .eq('id', 'singleton')
-        if (e2) console.error('abandonMatch/active', e2)
-      })()
+      execOp(
+        {
+          kind: 'update',
+          table: 'matches',
+          patch: { abandoned: true, finished_at: new Date().toISOString() },
+          eq: [['id', matchId]],
+        },
+        'abandonar partida',
+      )
+      execOp(
+        {
+          kind: 'update',
+          table: 'app_state',
+          patch: { active_match_id: null },
+          eq: [['id', 'singleton']],
+        },
+        'abandonar partida',
+      )
       return {
         ...s,
         activeMatchId: null,
@@ -448,22 +495,40 @@ export function useStore() {
       matches: s.matches.filter((m) => m.id !== id),
       activeMatchId: s.activeMatchId === id ? null : s.activeMatchId,
     }))
-    supabase
-      .from('matches')
-      .delete()
-      .eq('id', id)
-      .then(({ error: e }) => { if (e) console.error('deleteMatch', e) })
+    execOp(
+      { kind: 'delete', table: 'matches', eq: [['id', id]] },
+      'eliminar partida',
+    )
   }, [])
 
   const clearAll = useCallback(async () => {
-    await Promise.all([
-      supabase.from('events').delete().neq('id', 0),
-      supabase.from('matches').delete().neq('id', ''),
-      supabase.from('players').delete().neq('id', ''),
-      supabase.from('app_state').update({ active_match_id: null }).eq('id', 'singleton'),
-    ])
+    // Wipe only this mesa's data — never cross-mesa.
+    const prefix = `m:${getMesa()}:%`
     eventsRef.current = []
     setState(INITIAL_STATE)
+    const { data } = await supabase
+      .from('app_state')
+      .select('active_match_id')
+      .eq('id', 'singleton')
+      .maybeSingle()
+    const cur = (data as AppStateRow | null)?.active_match_id
+    const ops: Array<Promise<unknown>> = [
+      supabase.from('events').delete().like('match_id', prefix),
+      supabase.from('matches').delete().like('id', prefix),
+      supabase.from('players').delete().like('id', prefix),
+    ]
+    if (cur && idBelongsToMesa(cur)) {
+      ops.push(
+        supabase.from('app_state').update({ active_match_id: null }).eq('id', 'singleton'),
+      )
+    }
+    await Promise.allSettled(ops)
+  }, [])
+
+  const switchMesa = useCallback((code: string) => {
+    persistMesa(code)
+    // Reload to re-fetch state under the new mesa scope.
+    window.location.reload()
   }, [])
 
   // ── Selectors ────────────────────────────────────────────────
@@ -506,6 +571,8 @@ export function useStore() {
     abandonMatch,
     deleteMatch,
     clearAll,
+    mesa: getMesa(),
+    switchMesa,
   }
 }
 

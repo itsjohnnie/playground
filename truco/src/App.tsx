@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useStore } from '@/hooks/useStore'
 import { HomeScreen } from '@/components/screens/HomeScreen'
@@ -6,8 +6,12 @@ import { MesaScreen } from '@/components/screens/MesaScreen'
 import { NewMatchScreen } from '@/components/screens/NewMatchScreen'
 import { GameScreen } from '@/components/screens/GameScreen'
 import { WinScreen } from '@/components/screens/WinScreen'
-import { HistorialScreen } from '@/components/screens/HistorialScreen'
+import { ToastHost } from '@/components/ui/ToastHost'
 import { detectRoundMode } from '@/utils/scoring'
+
+const HistorialScreen = lazy(() =>
+  import('@/components/screens/HistorialScreen').then((m) => ({ default: m.HistorialScreen })),
+)
 
 type Route = 'home' | 'mesa' | 'new' | 'game' | 'win' | 'historial'
 
@@ -59,6 +63,7 @@ export default function App() {
   }
 
   return (
+    <>
     <AnimatePresence mode="wait">
       {route === 'home' && (
         <HomeScreen
@@ -78,12 +83,15 @@ export default function App() {
           key="mesa"
           active={store.activeRoster}
           retired={store.retiredRoster}
+          mesa={store.mesa}
+          onSwitchMesa={store.switchMesa}
           onBack={() => setRoute('home')}
           onAdd={(name) => { store.addPlayer(name) }}
           onRename={store.renamePlayer}
           onRetire={store.retirePlayer}
           onRestore={store.restorePlayer}
           onDelete={store.removePlayer}
+          onWipe={store.clearAll}
         />
       )}
 
@@ -141,15 +149,25 @@ export default function App() {
       )}
 
       {route === 'historial' && (
-        <HistorialScreen
+        <Suspense
           key="historial"
-          matches={store.state.matches}
-          roster={store.state.roster}
-          playerById={store.playerById}
-          onBack={() => setRoute('home')}
-          onDeleteMatch={store.deleteMatch}
-        />
+          fallback={
+            <div className="flex-1 flex items-center justify-center">
+              <div className="size-1.5 rounded-full bg-accent animate-pulse" />
+            </div>
+          }
+        >
+          <HistorialScreen
+            matches={store.state.matches}
+            roster={store.state.roster}
+            playerById={store.playerById}
+            onBack={() => setRoute('home')}
+            onDeleteMatch={store.deleteMatch}
+          />
+        </Suspense>
       )}
     </AnimatePresence>
+    <ToastHost />
+    </>
   )
 }

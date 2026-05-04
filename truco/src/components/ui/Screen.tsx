@@ -15,7 +15,7 @@ export function Screen({ children, className = '' }: { children: React.ReactNode
       animate="animate"
       exit="exit"
       transition={transition}
-      className={`flex-1 flex flex-col ${className}`}
+      className={`flex-1 flex flex-col min-h-0 overflow-y-auto overscroll-contain ${className}`}
     >
       {children}
     </motion.div>
