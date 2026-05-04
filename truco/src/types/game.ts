@@ -32,9 +32,18 @@ export const SCORE_REASON_LABEL: Record<ScoreReason, string> = {
 
 export interface Player {
   id: string
-  name: string
+  name: string                // displayed nickname
   joinedAt: number
   retiredAt?: number
+  // ── Profile fields (all optional) ──
+  firstName?: string
+  lastName?: string
+  phone?: string
+  photoUrl?: string
+  venmo?: string
+  zelle?: string
+  // Supabase auth user that has claimed this player. Null = unclaimed.
+  authUserId?: string
 }
 
 export interface Team {

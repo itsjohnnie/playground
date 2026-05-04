@@ -17,6 +17,13 @@ export interface PlayerRow {
   name: string
   joined_at: string
   retired_at: string | null
+  first_name?: string | null
+  last_name?: string | null
+  phone?: string | null
+  photo_url?: string | null
+  venmo?: string | null
+  zelle?: string | null
+  auth_user_id?: string | null
 }
 
 export interface MatchRow {
