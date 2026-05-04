@@ -10,8 +10,8 @@ export function SuitMark({ className = '' }: { className?: string }) {
     >
       <Oro    className="text-accent" />
       <Copa   className="text-suit-red/90" />
-      <Espada className="text-ink/65" />
-      <Basto  className="text-ink/65" />
+      <Espada className="text-suit-blue/90" />
+      <Basto  className="text-suit-green/90" />
     </div>
   )
 }
