@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon-64.png', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Sacred Mondays — Truco',
+        name: 'Mondays — Truco',
         short_name: 'Truco',
         description: 'Marcador de Truco para la mesa de los lunes.',
         theme_color: '#13261C',
