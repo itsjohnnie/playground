@@ -1,146 +1,132 @@
+import { useRef } from 'react'
 import { motion } from 'framer-motion'
-import type { GameState } from '../../types/game'
-import { SuitsRow } from '../ui/SuitIcon'
+import { Button } from '@/components/ui/button'
+import type { GameState } from '@/types/game'
 
-interface WinScreenProps {
-  game: GameState
-  onFinish: () => void
-}
+const SUITS = ['♠', '♣', '♥', '♦']
+const SUIT_COLORS = ['#e8f0fe', '#c8e6c9', '#ffcdd2', '#fff9c4']
 
-const SUIT_SYMBOLS = ['♠', '♣', '♥', '♦']
+function ConfettiPiece({ delay }: { delay: number }) {
+  const suit = SUITS[Math.floor(Math.random() * 4)]
+  const suitIdx = SUITS.indexOf(suit)
+  const left = `${Math.random() * 100}%`
+  const size = 16 + Math.random() * 12
 
-function Confetti() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {Array.from({ length: 20 }).map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute text-2xl"
-          initial={{
-            x: `${Math.random() * 100}vw`,
-            y: -40,
-            rotate: 0,
-            opacity: 1,
-          }}
-          animate={{
-            y: '110vh',
-            rotate: (Math.random() - 0.5) * 720,
-            opacity: [1, 1, 0],
-          }}
-          transition={{
-            duration: 2 + Math.random() * 2,
-            delay: Math.random() * 1.5,
-            ease: 'easeIn',
-          }}
-        >
-          {SUIT_SYMBOLS[i % 4]}
-        </motion.div>
-      ))}
-    </div>
+    <motion.div
+      className="fixed pointer-events-none select-none font-display"
+      style={{ left, top: -30, fontSize: size, color: SUIT_COLORS[suitIdx], zIndex: 60 }}
+      initial={{ y: 0, rotate: 0, opacity: 1 }}
+      animate={{ y: '110vh', rotate: (Math.random() - 0.5) * 540, opacity: [1, 1, 0] }}
+      transition={{ duration: 2.2 + Math.random() * 1.5, delay, ease: 'easeIn' }}
+    >
+      {suit}
+    </motion.div>
   )
 }
 
-export function WinScreen({ game, onFinish }: WinScreenProps) {
+export function WinScreen({ game, onFinish }: { game: GameState; onFinish: () => void }) {
   const winnerIdx = game.teams[0].id === game.winnerId ? 0 : 1
   const winner = game.teams[winnerIdx]
   const loser = game.teams[winnerIdx === 0 ? 1 : 0]
   const winnerScore = game.scores[winnerIdx]
   const loserScore = game.scores[winnerIdx === 0 ? 1 : 0]
-
   const winnerPlayers = game.players.filter((p) => p.teamId === winner.id)
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative">
-      <Confetti />
+  // 18 confetti pieces with staggered delays
+  const pieces = useRef(Array.from({ length: 18 }, (_, i) => i * 0.08))
 
-      <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 20 }}
-        className="flex flex-col items-center gap-6 z-10 max-w-sm w-full"
-      >
+  return (
+    <div className="fixed inset-0 flex flex-col items-center justify-center px-5 overflow-hidden"
+      style={{ background: 'linear-gradient(180deg, #0a2015 0%, #0d2b1a 100%)' }}>
+
+      {/* Confetti */}
+      {pieces.current.map((delay, i) => <ConfettiPiece key={i} delay={delay} />)}
+
+      <div className="flex flex-col items-center gap-6 z-10 max-w-sm w-full">
         {/* Trophy */}
         <motion.div
-          animate={{ y: [0, -10, 0] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          className="text-8xl"
+          initial={{ scale: 0.3, opacity: 0, rotate: -15 }}
+          animate={{ scale: 1, opacity: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
+          className="text-7xl"
         >
           🏆
         </motion.div>
 
         {/* Winner name */}
-        <div className="text-center">
-          <SuitsRow className="justify-center mb-2" />
-          <h1 className="font-display text-5xl font-bold text-gold-400 leading-tight">
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1], delay: 0.25 }}
+          className="text-center"
+        >
+          <div className="flex justify-center gap-2 text-gold/40 text-base mb-2">
+            <span>♠</span><span>♣</span><span>♥</span><span>♦</span>
+          </div>
+          <h1 className="font-display text-5xl font-black text-foreground leading-tight">
             {winner.name}
           </h1>
-          <p className="font-display text-cream/60 text-xl mt-1">¡Ganaron el truco!</p>
-        </div>
+          <p className="font-display text-muted-foreground text-lg mt-1">¡Ganaron!</p>
+        </motion.div>
 
         {/* Players */}
         {winnerPlayers.length > 0 && (
-          <div className="flex gap-2 flex-wrap justify-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="flex flex-wrap justify-center gap-2"
+          >
             {winnerPlayers.map((p) => (
-              <span
-                key={p.id}
-                className="px-3 py-1 rounded-full text-sm font-display text-wood-900 font-semibold"
-                style={{ background: 'linear-gradient(to bottom, #D4AF37, #b8962e)' }}
-              >
+              <span key={p.id} className="px-3 py-1 rounded-full text-sm font-display text-[#2c1a0a] font-semibold"
+                style={{ background: 'linear-gradient(to bottom, #D4AF37, #b8962e)' }}>
                 {p.name}
               </span>
             ))}
-          </div>
+          </motion.div>
         )}
 
-        {/* Score summary */}
-        <div
-          className="w-full rounded-2xl p-5 flex flex-col gap-3"
-          style={{
-            background: 'rgba(26,74,46,0.7)',
-            border: '2px solid rgba(212,175,55,0.4)',
-          }}
+        {/* Score card */}
+        <motion.div
+          initial={{ opacity: 0, y: 12, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1], delay: 0.35 }}
+          className="w-full rounded-2xl p-5"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(212,175,55,0.3)' }}
         >
-          <p className="text-xs font-display tracking-widest uppercase text-parchment/40 text-center">
-            Puntaje final
-          </p>
           <div className="flex items-center justify-around">
             <div className="text-center">
-              <p className="font-display font-bold text-cream text-lg">{winner.name}</p>
-              <motion.p
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.5, type: 'spring' }}
-                className="font-display font-bold text-5xl text-gold-400"
-              >
-                {winnerScore}
-              </motion.p>
+              <p className="text-xs font-display text-muted-foreground uppercase tracking-widest mb-1">
+                {winner.name}
+              </p>
+              <p className="font-display font-black text-5xl text-[#D4AF37]">{winnerScore}</p>
             </div>
-            <div className="text-parchment/30 font-display text-2xl font-bold">—</div>
+            <p className="text-2xl text-foreground/20 font-display">—</p>
             <div className="text-center">
-              <p className="font-display font-bold text-cream/60 text-lg">{loser.name}</p>
-              <p className="font-display font-bold text-4xl text-parchment/40">{loserScore}</p>
+              <p className="text-xs font-display text-muted-foreground uppercase tracking-widest mb-1">
+                {loser.name}
+              </p>
+              <p className="font-display font-black text-4xl text-foreground/40">{loserScore}</p>
             </div>
           </div>
-        </div>
-
-        {/* History summary */}
-        <div className="text-center text-xs text-parchment/40 font-body">
-          {game.history.length} jugadas en esta partida
-        </div>
+          <p className="text-center text-xs text-muted-foreground mt-3">
+            {game.history.length} jugadas registradas
+          </p>
+        </motion.div>
 
         {/* CTA */}
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          onClick={onFinish}
-          className="w-full py-4 rounded-2xl font-display font-bold text-lg
-            bg-gradient-to-b from-gold-400 to-gold-600 text-wood-900
-            shadow-xl active:scale-95 transition-all"
+          transition={{ delay: 0.6, ease: [0.23, 1, 0.32, 1] }}
+          className="w-full"
         >
-          Nueva partida
-        </motion.button>
-      </motion.div>
+          <Button variant="gold" size="xl" className="w-full font-display font-bold text-lg" onClick={onFinish}>
+            Nueva partida
+          </Button>
+        </motion.div>
+      </div>
     </div>
   )
 }

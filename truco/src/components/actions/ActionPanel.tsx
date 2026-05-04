@@ -1,338 +1,251 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { calcFaltaEnvido, TRUCO_POINTS, ENVIDO_POINTS } from '../../utils/scoring'
-import type { GameState, RoundMode } from '../../types/game'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import { calcFaltaEnvido, TRUCO_POINTS, ENVIDO_POINTS } from '@/utils/scoring'
+import type { GameState, RoundMode } from '@/types/game'
 
 interface ActionPanelProps {
   game: GameState
   onScore: (teamIndex: 0 | 1, points: number, reason: string) => void
 }
 
-type TabType = 'truco' | 'envido' | 'manual'
-
-interface ScoreButtonProps {
-  label: string
-  sublabel?: string
-  onClick: () => void
-  color?: 'gold' | 'red' | 'green' | 'blue'
-}
-
-function ScoreButton({ label, sublabel, onClick, color = 'gold' }: ScoreButtonProps) {
-  const colors = {
-    gold: 'from-gold-600 to-gold-700 hover:from-gold-500 hover:to-gold-600 text-wood-900',
-    red: 'from-red-800 to-red-900 hover:from-red-700 hover:to-red-800 text-cream',
-    green: 'from-green-800 to-green-900 hover:from-green-700 hover:to-green-800 text-cream',
-    blue: 'from-blue-800 to-blue-900 hover:from-blue-700 hover:to-blue-800 text-cream',
-  }
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        w-full py-3 px-3 rounded-xl font-display font-semibold text-sm
-        bg-gradient-to-b ${colors[color]}
-        transition-all active:scale-95 shadow-lg
-        border border-white/10
-      `}
-    >
-      <div>{label}</div>
-      {sublabel && <div className="text-xs opacity-70 font-body font-normal">{sublabel}</div>}
-    </button>
-  )
-}
-
-function TeamSelector({
-  teams,
-  onSelect,
-  points,
-  onCancel,
+// A row: label on left, [refuse button] [won button] on right
+function BetRow({
+  label,
+  refusePoints,
+  wonPoints,
+  onRefuse,
+  onWon,
+  isVariable = false,
 }: {
-  teams: [string, string]
-  onSelect: (idx: 0 | 1) => void
-  points: number
-  onCancel: () => void
+  label: string
+  refusePoints: number
+  wonPoints: number
+  onRefuse: () => void
+  onWon: () => void
+  isVariable?: boolean
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 10 }}
-      className="absolute inset-0 rounded-2xl flex flex-col items-center justify-center gap-4 p-4 z-20"
-      style={{ background: 'rgba(13,43,26,0.97)', backdropFilter: 'blur(8px)' }}
-    >
-      <p className="text-cream font-display text-lg text-center">
-        ¿Quién suma{' '}
-        <span className="text-gold-400 font-bold">+{points} pts</span>?
-      </p>
-      <div className="flex gap-3 w-full">
-        {teams.map((name, i) => (
-          <button
-            key={i}
-            onClick={() => onSelect(i as 0 | 1)}
-            className="flex-1 py-3 rounded-xl font-display font-bold text-base
-              bg-gradient-to-b from-gold-500 to-gold-700 text-wood-900
-              active:scale-95 transition-all shadow-lg"
-          >
-            {name}
-          </button>
-        ))}
-      </div>
-      <button
-        onClick={onCancel}
-        className="text-parchment/50 text-sm underline underline-offset-2 hover:text-parchment/80"
+    <div className="flex items-center gap-2">
+      <span className="flex-1 text-sm font-display text-foreground/70 font-medium">{label}</span>
+      <Button
+        variant="refuse"
+        size="sm"
+        onClick={onRefuse}
+        className="w-16 flex-col h-auto py-1.5 gap-0"
       >
-        Cancelar
-      </button>
-    </motion.div>
+        <span className="text-[9px] leading-tight opacity-70">no quiso</span>
+        <span className="text-sm font-bold">+{refusePoints}</span>
+      </Button>
+      <Button
+        variant="gold"
+        size="sm"
+        onClick={onWon}
+        className="w-16 flex-col h-auto py-1.5 gap-0"
+      >
+        <span className="text-[9px] leading-tight opacity-70">{isVariable ? 'variable' : 'ganó'}</span>
+        <span className="text-sm font-bold">+{wonPoints}</span>
+      </Button>
+    </div>
   )
 }
 
+type PendingAction = { points: number; reason: string }
+
 export function ActionPanel({ game, onScore }: ActionPanelProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('truco')
-  const [pending, setPending] = useState<{ points: number; reason: string } | null>(null)
-
-
-  const teamNames: [string, string] = [game.teams[0].name, game.teams[1].name]
+  const [pending, setPending] = useState<PendingAction | null>(null)
   const roundMode: RoundMode = game.currentRoundMode
+  const teamNames: [string, string] = [game.teams[0].name, game.teams[1].name]
 
-  function handleAction(points: number, reason: string) {
+  function ask(points: number, reason: string) {
     setPending({ points, reason })
   }
 
-  function handleSelectTeam(idx: 0 | 1) {
+  function confirm(idx: 0 | 1) {
     if (!pending) return
     onScore(idx, pending.points, pending.reason)
     setPending(null)
   }
 
-  const tabs: { id: TabType; label: string }[] = [
-    { id: 'truco', label: 'Truco' },
-    { id: 'envido', label: 'Envido' },
-    { id: 'manual', label: 'Manual' },
-  ]
+  const falta = (winnerIdx: 0 | 1) => {
+    const loserIdx: 0 | 1 = winnerIdx === 0 ? 1 : 0
+    return calcFaltaEnvido(game.scores[loserIdx], game.scores[winnerIdx], roundMode)
+  }
 
-  // Falta Envido: we need to show dynamic points
-  const faltaEnvidoFor = (teamIdx: 0 | 1) => {
-    const loserIdx = teamIdx === 0 ? 1 : 0
-    return calcFaltaEnvido(game.scores[loserIdx], game.scores[teamIdx], roundMode)
+  const slideVariants = {
+    enter: { opacity: 0, x: -8 },
+    center: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: 8 },
   }
 
   return (
-    <div
-      className="relative rounded-2xl overflow-hidden"
-      style={{
-        background: 'linear-gradient(180deg, rgba(26,74,46,0.5) 0%, rgba(13,43,26,0.8) 100%)',
-        border: '1px solid rgba(212,175,55,0.2)',
-      }}
-    >
-      {/* Tabs */}
-      <div
-        className="flex"
-        style={{ borderBottom: '1px solid rgba(212,175,55,0.2)' }}
-      >
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-3 text-sm font-display font-semibold transition-all
-              ${
-                activeTab === tab.id
-                  ? 'text-gold-400 border-b-2 border-gold-500'
-                  : 'text-parchment/50 hover:text-parchment/80'
-              }
-            `}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+    <>
+      {/* Team selector dialog */}
+      <Dialog open={!!pending} onOpenChange={(o) => { if (!o) setPending(null) }}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>
+              ¿Quién sumó{' '}
+              <span className="text-[#D4AF37]">+{pending?.points}</span>?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 mt-4">
+            {teamNames.map((name, i) => (
+              <Button
+                key={i}
+                variant="gold"
+                size="lg"
+                className="w-full justify-center text-base font-display font-bold"
+                onClick={() => confirm(i as 0 | 1)}
+              >
+                {name}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      <div className="p-4 relative min-h-[220px]">
-        {/* Round mode badge */}
+      <div className="border-t border-border">
+        {/* Pica-pica mode indicator for 6p */}
         {game.mode === '6players' && (
-          <div className="flex justify-center mb-3">
-            <span
-              className={`text-xs px-3 py-1 rounded-full font-display font-bold tracking-widest uppercase
-                ${roundMode === 'picapica'
-                  ? 'bg-gold-700/40 text-gold-300 border border-gold-600/50'
-                  : 'bg-felt-700/40 text-cream/60 border border-cream/20'
-                }
-              `}
-            >
+          <div className="flex justify-center py-2">
+            <span className={`text-[10px] font-display tracking-widest uppercase font-bold px-2.5 py-1 rounded-full ${
+              roundMode === 'picapica'
+                ? 'text-[#D4AF37] bg-[rgba(212,175,55,0.1)] border border-[rgba(212,175,55,0.3)]'
+                : 'text-foreground/35 bg-white/[0.03] border border-white/8'
+            }`}>
               {roundMode === 'picapica' ? '⚔ Pica-Pica' : '◈ Redondo'}
             </span>
           </div>
         )}
 
-        <AnimatePresence mode="wait">
-          {activeTab === 'truco' && (
-            <motion.div
-              key="truco"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              className="grid grid-cols-2 gap-2"
-            >
-              <ScoreButton
-                label="Truco rechazado"
-                sublabel="+1 pto"
-                onClick={() => handleAction(TRUCO_POINTS.truco.refused, 'Truco (rechazado)')}
-                color="red"
-              />
-              <ScoreButton
-                label="Truco ganado"
-                sublabel="+2 pts"
-                onClick={() => handleAction(TRUCO_POINTS.truco.won, 'Truco')}
-                color="gold"
-              />
-              <ScoreButton
-                label="Retruco rechazado"
-                sublabel="+2 pts"
-                onClick={() => handleAction(TRUCO_POINTS.retruco.refused, 'Retruco (rechazado)')}
-                color="red"
-              />
-              <ScoreButton
-                label="Retruco ganado"
-                sublabel="+3 pts"
-                onClick={() => handleAction(TRUCO_POINTS.retruco.won, 'Retruco')}
-                color="gold"
-              />
-              <ScoreButton
-                label="Vale 4 rechazado"
-                sublabel="+3 pts"
-                onClick={() => handleAction(TRUCO_POINTS.vale4.refused, 'Vale cuatro (rechazado)')}
-                color="red"
-              />
-              <ScoreButton
-                label="Vale cuatro ganado"
-                sublabel="+4 pts"
-                onClick={() => handleAction(TRUCO_POINTS.vale4.won, 'Vale cuatro')}
-                color="gold"
-              />
-            </motion.div>
-          )}
+        <Tabs defaultValue="truco">
+          <TabsList className="w-full bg-transparent px-4 pt-1">
+            <TabsTrigger value="truco">Truco</TabsTrigger>
+            <TabsTrigger value="envido">Envido</TabsTrigger>
+            <TabsTrigger value="manual">Manual</TabsTrigger>
+          </TabsList>
 
-          {activeTab === 'envido' && (
-            <motion.div
-              key="envido"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              className="flex flex-col gap-2"
-            >
-              <div className="grid grid-cols-2 gap-2">
-                <ScoreButton
-                  label="Envido rechazado"
-                  sublabel="+1 pto"
-                  onClick={() => handleAction(ENVIDO_POINTS.envido.refused, 'Envido (rechazado)')}
-                  color="red"
-                />
-                <ScoreButton
-                  label="Envido ganado"
-                  sublabel="+2 pts"
-                  onClick={() => handleAction(ENVIDO_POINTS.envido.won, 'Envido')}
-                  color="green"
-                />
-                <ScoreButton
-                  label="Real Envido rechazado"
-                  sublabel="+2 pts"
-                  onClick={() => handleAction(ENVIDO_POINTS.realenvido.refused, 'Real Envido (rechazado)')}
-                  color="red"
-                />
-                <ScoreButton
-                  label="Real Envido ganado"
-                  sublabel="+3 pts"
-                  onClick={() => handleAction(ENVIDO_POINTS.realenvido.won, 'Real Envido')}
-                  color="green"
-                />
-              </div>
-
-              {/* Falta Envido - needs team selection upfront to calculate */}
-              <div
-                className="rounded-xl p-3 mt-1"
-                style={{ background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.25)' }}
+          <AnimatePresence mode="wait">
+            <TabsContent value="truco" className="px-4 py-4">
+              <motion.div
+                variants={slideVariants}
+                initial="enter" animate="center" exit="exit"
+                transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+                className="flex flex-col gap-3"
               >
-                <p className="text-gold-400 text-xs font-display text-center mb-2 uppercase tracking-wider">
-                  Falta Envido{roundMode === 'picapica' ? ' (Pica-Pica: siempre 6 pts)' : ''}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {teamNames.map((name, i) => {
-                    const pts = faltaEnvidoFor(i as 0 | 1)
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => onScore(i as 0 | 1, pts, 'Falta Envido')}
-                        className="py-2 px-2 rounded-lg font-display font-bold text-sm
-                          bg-gradient-to-b from-gold-600 to-gold-700 text-wood-900
-                          active:scale-95 transition-all"
-                      >
-                        <div className="truncate text-xs">{name}</div>
-                        <div className="text-lg">+{pts}</div>
-                      </button>
-                    )
-                  })}
+                <BetRow
+                  label="Truco"
+                  refusePoints={TRUCO_POINTS.truco.refused}
+                  wonPoints={TRUCO_POINTS.truco.won}
+                  onRefuse={() => ask(TRUCO_POINTS.truco.refused, 'Truco (rechazado)')}
+                  onWon={() => ask(TRUCO_POINTS.truco.won, 'Truco')}
+                />
+                <BetRow
+                  label="Retruco"
+                  refusePoints={TRUCO_POINTS.retruco.refused}
+                  wonPoints={TRUCO_POINTS.retruco.won}
+                  onRefuse={() => ask(TRUCO_POINTS.retruco.refused, 'Retruco (rechazado)')}
+                  onWon={() => ask(TRUCO_POINTS.retruco.won, 'Retruco')}
+                />
+                <BetRow
+                  label="Vale Cuatro"
+                  refusePoints={TRUCO_POINTS.vale4.refused}
+                  wonPoints={TRUCO_POINTS.vale4.won}
+                  onRefuse={() => ask(TRUCO_POINTS.vale4.refused, 'Vale 4 (rechazado)')}
+                  onWon={() => ask(TRUCO_POINTS.vale4.won, 'Vale cuatro')}
+                />
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="envido" className="px-4 py-4">
+              <motion.div
+                variants={slideVariants}
+                initial="enter" animate="center" exit="exit"
+                transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+                className="flex flex-col gap-3"
+              >
+                <BetRow
+                  label="Envido"
+                  refusePoints={ENVIDO_POINTS.envido.refused}
+                  wonPoints={ENVIDO_POINTS.envido.won}
+                  onRefuse={() => ask(ENVIDO_POINTS.envido.refused, 'Envido (rechazado)')}
+                  onWon={() => ask(ENVIDO_POINTS.envido.won, 'Envido')}
+                />
+                <BetRow
+                  label="Real Envido"
+                  refusePoints={ENVIDO_POINTS.realenvido.refused}
+                  wonPoints={ENVIDO_POINTS.realenvido.won}
+                  onRefuse={() => ask(ENVIDO_POINTS.realenvido.refused, 'Real Envido (rechazado)')}
+                  onWon={() => ask(ENVIDO_POINTS.realenvido.won, 'Real Envido')}
+                />
+
+                {/* Falta Envido — direct per-team buttons, no dialog needed */}
+                <div className="flex flex-col gap-2 pt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 text-sm font-display text-foreground/70 font-medium">
+                      Falta Envido{roundMode === 'picapica' ? ' (= 6)' : ''}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {teamNames.map((name, i) => {
+                      const pts = falta(i as 0 | 1)
+                      return (
+                        <Button
+                          key={i}
+                          variant="gold"
+                          size="sm"
+                          onClick={() => onScore(i as 0 | 1, pts, 'Falta Envido')}
+                          className="flex-col h-auto py-2 gap-0"
+                        >
+                          <span className="text-[10px] opacity-70 truncate max-w-full">{name}</span>
+                          <span className="text-base font-bold">+{pts}</span>
+                        </Button>
+                      )
+                    })}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Falta rechazada → mitad de estos puntos
+                  </p>
                 </div>
-                <p className="text-parchment/40 text-xs text-center mt-2">
-                  Falta rechazada: la mitad de los pts de Falta ganada
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="manual" className="px-4 py-4">
+              <motion.div
+                variants={slideVariants}
+                initial="enter" animate="center" exit="exit"
+                transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+                className="flex flex-col gap-3"
+              >
+                <p className="text-xs text-muted-foreground text-center font-body">
+                  Sumá puntos directamente
                 </p>
-              </div>
-            </motion.div>
-          )}
-
-          {activeTab === 'manual' && (
-            <motion.div
-              key="manual"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              className="flex flex-col gap-3"
-            >
-              <p className="text-parchment/60 text-sm text-center font-body">
-                Sumar un punto directamente a un equipo
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                {teamNames.map((name, i) => (
-                  <button
-                    key={i}
-                    onClick={() => onScore(i as 0 | 1, 1, 'Punto manual')}
-                    className="py-4 rounded-xl font-display font-bold
-                      bg-gradient-to-b from-gold-600 to-gold-700 text-wood-900
-                      active:scale-95 transition-all shadow-lg"
-                  >
-                    <div className="text-sm truncate px-1">{name}</div>
-                    <div className="text-2xl">+1</div>
-                  </button>
+                {([1, 2, 3, 4] as const).map((pts) => (
+                  <div key={pts} className="flex items-center gap-2">
+                    <span className="flex-1 text-sm font-display text-foreground/70">+{pts} {pts === 1 ? 'punto' : 'puntos'}</span>
+                    {teamNames.map((name, i) => (
+                      <Button
+                        key={i}
+                        variant={pts <= 2 ? 'gold' : 'outline'}
+                        size="sm"
+                        onClick={() => onScore(i as 0 | 1, pts, 'Manual')}
+                        className="w-24 truncate font-display"
+                      >
+                        {name}
+                      </Button>
+                    ))}
+                  </div>
                 ))}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {teamNames.map((name, i) => (
-                  <button
-                    key={i}
-                    onClick={() => onScore(i as 0 | 1, 2, 'Punto manual')}
-                    className="py-3 rounded-xl font-display font-semibold text-sm
-                      bg-gradient-to-b from-felt-700 to-felt-800 text-cream/80
-                      active:scale-95 transition-all border border-cream/10"
-                  >
-                    <div className="text-xs truncate px-1">{name}</div>
-                    <div className="text-xl">+2</div>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Team selector overlay */}
-        <AnimatePresence>
-          {pending && (
-            <TeamSelector
-              teams={teamNames}
-              points={pending.points}
-              onSelect={handleSelectTeam}
-              onCancel={() => setPending(null)}
-            />
-          )}
-        </AnimatePresence>
+              </motion.div>
+            </TabsContent>
+          </AnimatePresence>
+        </Tabs>
       </div>
-    </div>
+    </>
   )
 }

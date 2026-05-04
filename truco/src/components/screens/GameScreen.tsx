@@ -1,9 +1,15 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { GameState } from '../../types/game'
-import { TeamPanel } from '../score/TeamPanel'
-import { ActionPanel } from '../actions/ActionPanel'
-
+import { MoreVertical, RotateCcw, X, ClockIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import { TeamPanel } from '@/components/score/TeamPanel'
+import { ActionPanel } from '@/components/actions/ActionPanel'
+import type { GameState } from '@/types/game'
 
 interface GameScreenProps {
   game: GameState
@@ -14,245 +20,203 @@ interface GameScreenProps {
 
 export function GameScreen({ game, onScore, onUndo, onAbandon }: GameScreenProps) {
   const [lastScoredTeam, setLastScoredTeam] = useState<0 | 1 | null>(null)
-  const [showMenu, setShowMenu] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [confirmAbandon, setConfirmAbandon] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function handleScore(teamIndex: 0 | 1, points: number, reason: string) {
-    onScore(teamIndex, points, reason)
-    setLastScoredTeam(teamIndex)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => setLastScoredTeam(null), 1500)
+  function handleScore(idx: 0 | 1, pts: number, reason: string) {
+    onScore(idx, pts, reason)
+    setLastScoredTeam(idx)
+    if (clearTimer.current) clearTimeout(clearTimer.current)
+    clearTimer.current = setTimeout(() => setLastScoredTeam(null), 2000)
   }
 
-  const modeLabel = game.mode === '4players' ? '2 vs 2' : '3 vs 3'
-  const roundModeLabel =
-    game.mode === '6players'
-      ? game.currentRoundMode === 'picapica'
-        ? '⚔ Pica-Pica'
-        : '◈ Redondo'
-      : null
-
-  const lastEntry = game.history[game.history.length - 1]
+  const isLeading0 = game.scores[0] > game.scores[1]
+  const isLeading1 = game.scores[1] > game.scores[0]
+  const lastEntry = game.history.at(-1)
 
   return (
-    <div className="min-h-screen flex flex-col max-w-md mx-auto">
+    <div className="flex flex-col min-h-dvh">
       {/* Top bar */}
-      <div
-        className="flex items-center justify-between px-4 py-3 sticky top-0 z-10"
-        style={{
-          background: 'rgba(13,43,26,0.95)',
-          backdropFilter: 'blur(8px)',
-          borderBottom: '1px solid rgba(212,175,55,0.15)',
-        }}
-      >
+      <header className="flex items-center justify-between px-4 py-3 shrink-0"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="flex items-center gap-2">
-          <span className="font-display font-bold text-gold-500 text-lg">Truco</span>
-          <span className="text-parchment/40 text-xs">{modeLabel}</span>
-          {roundModeLabel && (
-            <span
-              className={`text-xs px-2 py-0.5 rounded-full font-display font-bold
-                ${game.currentRoundMode === 'picapica'
-                  ? 'bg-gold-700/30 text-gold-400 border border-gold-600/40'
-                  : 'bg-felt-700/30 text-cream/50 border border-cream/15'
-                }
-              `}
-            >
-              {roundModeLabel}
-            </span>
-          )}
+          <span className="font-display font-bold text-[#D4AF37] text-base">Truco</span>
+          <span className="text-muted-foreground text-xs">
+            {game.mode === '4players' ? '2 vs 2' : '3 vs 3'}
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowHistory(true)}
-            className="text-parchment/50 text-xs px-2 py-1 rounded-lg hover:text-parchment/80
-              border border-cream/10 hover:border-cream/20 transition-all"
+            onClick={() => setHistoryOpen(true)}
+            className="text-muted-foreground hover:text-foreground text-xs px-2 py-1 rounded-lg transition-colors"
+            style={{ border: '1px solid rgba(255,255,255,0.08)' }}
           >
-            Historial
+            <ClockIcon className="size-3.5 inline mr-1 -mt-0.5" />
+            Jugadas
           </button>
           <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="text-parchment/50 hover:text-parchment/80 text-xl leading-none px-1"
+            onClick={() => setMenuOpen(true)}
+            className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-lg"
           >
-            ⋮
+            <MoreVertical className="size-4" />
           </button>
+        </div>
+      </header>
+
+      {/* Score area — two columns, no heavy surfaces */}
+      <div className="flex flex-1 min-h-0">
+        <div className="flex-1 min-w-0" style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}>
+          <TeamPanel
+            team={game.teams[0]}
+            players={game.players.filter((p) => p.teamId === game.teams[0].id)}
+            score={game.scores[0]}
+            isLeading={isLeading0}
+            lastScored={lastScoredTeam === 0}
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <TeamPanel
+            team={game.teams[1]}
+            players={game.players.filter((p) => p.teamId === game.teams[1].id)}
+            score={game.scores[1]}
+            isLeading={isLeading1}
+            lastScored={lastScoredTeam === 1}
+          />
         </div>
       </div>
 
-      {/* Menu dropdown */}
+      {/* Last action */}
       <AnimatePresence>
-        {showMenu && (
+        {lastEntry && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
+            key={lastEntry.timestamp}
+            initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="absolute top-14 right-4 z-20 rounded-xl overflow-hidden shadow-2xl"
-            style={{
-              background: 'rgba(26,74,46,0.98)',
-              border: '1px solid rgba(212,175,55,0.25)',
-              backdropFilter: 'blur(12px)',
-              minWidth: 180,
-            }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+            className="px-4 py-2 flex items-center justify-center"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
           >
-            <button
-              onClick={() => { onUndo(); setShowMenu(false) }}
-              disabled={game.history.length === 0}
-              className="w-full px-4 py-3 text-left text-sm font-body text-cream/80
-                hover:bg-white/5 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-            >
-              ↩ Deshacer último punto
-            </button>
-            <div className="h-px bg-cream/10" />
-            <button
-              onClick={() => { setConfirmAbandon(true); setShowMenu(false) }}
-              className="w-full px-4 py-3 text-left text-sm font-body text-red-400 hover:bg-white/5 transition-all"
-            >
-              ✕ Abandonar partida
-            </button>
+            <span className="text-[11px] text-muted-foreground font-body">
+              <span className="text-[#D4AF37] font-semibold">
+                {game.teams.find((t) => t.id === lastEntry.teamId)?.name}
+              </span>
+              {' '}— {lastEntry.reason}{' '}
+              <span className="text-[#70c080]">+{lastEntry.points}</span>
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Backdrop for menu */}
-      {showMenu && (
-        <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-      )}
-
-      <div className="flex-1 flex flex-col gap-4 px-4 py-4">
-        {/* Score boards */}
-        <div className="grid grid-cols-2 gap-3">
-          {game.teams.map((team, i) => (
-            <TeamPanel
-              key={team.id}
-              team={team}
-              players={game.players.filter((p) => p.teamId === team.id)}
-              score={game.scores[i]}
-              justScored={lastScoredTeam === i}
-              side={i === 0 ? 'left' : 'right'}
-            />
-          ))}
-        </div>
-
-        {/* Last action badge */}
-        <AnimatePresence>
-          {lastEntry && (
-            <motion.div
-              key={lastEntry.timestamp}
-              initial={{ opacity: 0, y: 4, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0 }}
-              className="text-center"
-            >
-              <span
-                className="text-xs px-3 py-1 rounded-full text-parchment/60 font-body"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                {game.teams.find((t) => t.id === lastEntry.teamId)?.name} — {lastEntry.reason} (+{lastEntry.points})
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Action panel */}
+      {/* Action panel */}
+      <div className="shrink-0">
         <ActionPanel game={game} onScore={handleScore} />
       </div>
 
-      {/* Confirm abandon modal */}
-      <AnimatePresence>
-        {confirmAbandon && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-30 flex items-center justify-center p-4"
-            style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="rounded-2xl p-6 flex flex-col gap-4 max-w-xs w-full"
-              style={{
-                background: 'rgba(26,74,46,0.98)',
-                border: '1px solid rgba(212,175,55,0.3)',
-              }}
+      {/* ── Menu dialog ── */}
+      <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Opciones</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2 mt-3">
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2"
+              disabled={game.history.length === 0}
+              onClick={() => { onUndo(); setMenuOpen(false) }}
             >
-              <h2 className="font-display text-xl font-bold text-cream text-center">
-                ¿Abandonar partida?
-              </h2>
-              <p className="text-parchment/60 text-sm text-center font-body">
-                Se perderán los puntos actuales. La partida no se guardará en el historial.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmAbandon(false)}
-                  className="flex-1 py-3 rounded-xl font-display font-semibold text-sm
-                    bg-felt-800/80 text-cream/70 border border-cream/20 active:scale-95 transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => { onAbandon(); setConfirmAbandon(false) }}
-                  className="flex-1 py-3 rounded-xl font-display font-semibold text-sm
-                    bg-gradient-to-b from-red-800 to-red-900 text-cream active:scale-95 transition-all"
-                >
-                  Abandonar
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              <RotateCcw className="size-4" />
+              Deshacer último punto
+            </Button>
+            <Separator />
+            <Button
+              variant="destructive"
+              className="w-full justify-start gap-2"
+              onClick={() => { setMenuOpen(false); setConfirmAbandon(true) }}
+            >
+              <X className="size-4" />
+              Abandonar partida
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* History modal */}
+      {/* ── Confirm abandon dialog ── */}
+      <Dialog open={confirmAbandon} onOpenChange={setConfirmAbandon}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Abandonar la partida?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground text-center mt-1">
+            Los puntos actuales no se guardarán en el historial.
+          </p>
+          <div className="flex gap-3 mt-5">
+            <Button variant="outline" className="flex-1" onClick={() => setConfirmAbandon(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" className="flex-1" onClick={() => { onAbandon(); setConfirmAbandon(false) }}>
+              Abandonar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── History bottom sheet ── */}
       <AnimatePresence>
-        {showHistory && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-30 flex items-end justify-center"
-            style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-            onClick={() => setShowHistory(false)}
-          >
+        {historyOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+              onClick={() => setHistoryOpen(false)}
+            />
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="w-full max-w-md rounded-t-2xl p-4 max-h-[70vh] overflow-y-auto"
-              style={{
-                background: 'rgba(13,43,26,0.98)',
-                border: '1px solid rgba(212,175,55,0.2)',
-              }}
-              onClick={(e) => e.stopPropagation()}
+              transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+              className="fixed inset-x-0 bottom-0 z-50 max-w-md mx-auto rounded-t-2xl overflow-hidden"
+              style={{ background: 'hsl(155,50%,12%)', border: '1px solid rgba(255,255,255,0.1)' }}
             >
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-display font-bold text-gold-400">Jugadas de esta partida</h3>
-                <button onClick={() => setShowHistory(false)} className="text-parchment/50 text-xl">✕</button>
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-white/20" />
               </div>
-              {game.history.length === 0 ? (
-                <p className="text-parchment/40 text-sm text-center py-4">Sin jugadas aún</p>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {[...game.history].reverse().map((entry, i) => (
+              <div className="flex items-center justify-between px-5 py-3">
+                <h3 className="font-display font-bold text-foreground">Jugadas</h3>
+                <button onClick={() => setHistoryOpen(false)} className="text-muted-foreground hover:text-foreground">
+                  <X className="size-4" />
+                </button>
+              </div>
+              <Separator />
+              <div className="overflow-y-auto max-h-[55vh] px-4 py-3 flex flex-col gap-1">
+                {game.history.length === 0 ? (
+                  <p className="text-center text-muted-foreground text-sm py-6">Sin jugadas aún</p>
+                ) : (
+                  [...game.history].reverse().map((entry, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between px-3 py-2 rounded-lg text-sm"
+                      className="flex items-center justify-between px-3 py-2 rounded-lg"
                       style={{ background: 'rgba(255,255,255,0.04)' }}
                     >
-                      <span className="text-parchment/70">
+                      <span className="text-sm text-foreground/80 font-display">
                         {game.teams.find((t) => t.id === entry.teamId)?.name}
                       </span>
-                      <span className="text-parchment/50 text-xs">{entry.reason}</span>
-                      <span className="text-gold-400 font-bold">+{entry.points}</span>
+                      <span className="text-xs text-muted-foreground">{entry.reason}</span>
+                      <Badge variant="gold">+{entry.points}</Badge>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
+              <div className="h-safe-bottom" />
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

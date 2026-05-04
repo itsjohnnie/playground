@@ -1,72 +1,73 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { GameMode } from '../../types/game'
+import { ChevronLeft } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import type { GameMode } from '@/types/game'
 
 interface SetupScreenProps {
   onStart: (mode: GameMode, teamNames: [string, string], playerNames: string[]) => void
   onBack: () => void
 }
 
-const PLACEHOLDER_NAMES_4 = ['Rulo', 'Coco', 'Titi', 'Nacho']
-const PLACEHOLDER_NAMES_6 = ['Rulo', 'Coco', 'Titi', 'Nacho', 'Luli', 'Seba']
+const PLACEHOLDERS: Record<GameMode, string[]> = {
+  '4players': ['Rulo', 'Nacho', 'Coco', 'Titi'],
+  '6players': ['Rulo', 'Nacho', 'Coco', 'Titi', 'Luli', 'Seba'],
+}
 
 export function SetupScreen({ onStart, onBack }: SetupScreenProps) {
   const [mode, setMode] = useState<GameMode>('4players')
   const [teamNames, setTeamNames] = useState<[string, string]>(['Nosotros', 'Ellos'])
-  const [playerNames, setPlayerNames] = useState<string[]>(['', '', '', ''])
+  const [playerNames, setPlayerNames] = useState<string[]>(Array(4).fill(''))
 
   const playersPerTeam = mode === '4players' ? 2 : 3
   const totalPlayers = playersPerTeam * 2
-  const placeholders = mode === '4players' ? PLACEHOLDER_NAMES_4 : PLACEHOLDER_NAMES_6
+  const placeholders = PLACEHOLDERS[mode]
 
   function handleModeChange(m: GameMode) {
     setMode(m)
     setPlayerNames(Array(m === '4players' ? 4 : 6).fill(''))
   }
 
-  function updatePlayer(idx: number, value: string) {
-    const updated = [...playerNames]
-    updated[idx] = value
-    setPlayerNames(updated)
-  }
-
   function handleStart() {
-    // Filter out blank names
     const names = playerNames.map((n, i) => n.trim() || placeholders[i])
     onStart(mode, teamNames, names)
   }
 
-  const canStart =
-    teamNames[0].trim().length > 0 && teamNames[1].trim().length > 0
+  const canStart = teamNames[0].trim().length > 0 && teamNames[1].trim().length > 0
 
   return (
-    <div className="min-h-screen flex flex-col px-4 py-6 gap-5 max-w-md mx-auto">
+    <div className="flex flex-col min-h-dvh px-5 py-6 gap-6 max-w-md mx-auto">
       {/* Back */}
-      <motion.button
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        onClick={onBack}
-        className="self-start text-parchment/50 text-sm flex items-center gap-1 hover:text-parchment/80"
+        transition={{ duration: 0.2 }}
       >
-        ← Volver
-      </motion.button>
+        <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
+          <ChevronLeft className="size-4" />
+          Volver
+        </Button>
+      </motion.div>
 
       <motion.h1
-        initial={{ opacity: 0, y: -10 }}
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="font-display text-3xl font-bold text-gold-400"
+        transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+        className="font-display text-3xl font-bold text-foreground"
       >
         Nueva Partida
       </motion.h1>
 
       {/* Mode selector */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+        transition={{ delay: 0.08, duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
         className="flex flex-col gap-2"
       >
-        <label className="text-xs font-display tracking-widest uppercase text-parchment/50">
+        <label className="text-[10px] font-display tracking-[0.2em] uppercase text-muted-foreground">
           Modalidad
         </label>
         <div className="grid grid-cols-2 gap-2">
@@ -74,116 +75,113 @@ export function SetupScreen({ onStart, onBack }: SetupScreenProps) {
             <button
               key={m}
               onClick={() => handleModeChange(m)}
-              className={`py-3 rounded-xl font-display font-bold text-sm transition-all active:scale-95
-                ${mode === m
-                  ? 'bg-gradient-to-b from-gold-500 to-gold-700 text-wood-900 shadow-lg'
-                  : 'bg-felt-800/60 text-parchment/60 border border-cream/10'
-                }
-              `}
+              className={`py-4 rounded-xl font-display font-semibold text-sm transition-all duration-150 active:scale-[0.97] ${
+                mode === m
+                  ? 'bg-gradient-to-b from-[#D4AF37] to-[#b8962e] text-[#2c1a0a] shadow-lg'
+                  : 'border border-border bg-transparent text-muted-foreground hover:text-foreground hover:border-border/80'
+              }`}
             >
-              <div className="text-lg">{m === '4players' ? '4' : '6'}</div>
+              <div className="text-2xl font-bold">{m === '4players' ? '4' : '6'}</div>
               <div className="text-xs font-body">{m === '4players' ? '2 vs 2' : '3 vs 3'}</div>
               {m === '6players' && (
-                <div className="text-xs font-body opacity-70">con Pica-Pica</div>
+                <div className="text-[10px] opacity-70">con Pica-Pica</div>
               )}
             </button>
           ))}
         </div>
-      </motion.div>
+      </motion.section>
+
+      <Separator />
 
       {/* Team names */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
+      <motion.section
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
+        transition={{ delay: 0.14, duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
         className="flex flex-col gap-3"
       >
-        <label className="text-xs font-display tracking-widest uppercase text-parchment/50">
+        <label className="text-[10px] font-display tracking-[0.2em] uppercase text-muted-foreground">
           Equipos
         </label>
         <div className="grid grid-cols-2 gap-3">
           {([0, 1] as const).map((i) => (
             <div key={i} className="flex flex-col gap-1">
-              <label className="text-xs text-parchment/40 font-body">
-                Equipo {i + 1}
-              </label>
-              <input
-                type="text"
+              <label className="text-xs text-muted-foreground font-body">Equipo {i + 1}</label>
+              <Input
                 value={teamNames[i]}
                 onChange={(e) => {
-                  const updated: [string, string] = [...teamNames] as [string, string]
-                  updated[i] = e.target.value
-                  setTeamNames(updated)
+                  const u = [...teamNames] as [string, string]
+                  u[i] = e.target.value
+                  setTeamNames(u)
                 }}
                 maxLength={20}
-                className="w-full px-3 py-2 rounded-xl font-display font-semibold
-                  bg-felt-800/80 text-cream border border-cream/20
-                  focus:border-gold-500/60 focus:outline-none transition-colors"
                 placeholder={i === 0 ? 'Nosotros' : 'Ellos'}
+                className="font-display font-semibold"
               />
             </div>
           ))}
         </div>
-      </motion.div>
+      </motion.section>
 
       {/* Players */}
       <AnimatePresence mode="wait">
-        <motion.div
+        <motion.section
           key={mode}
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ delay: 0.2 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ delay: 0.18, duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
           className="flex flex-col gap-3"
         >
-          <label className="text-xs font-display tracking-widest uppercase text-parchment/50">
-            Jugadores (opcional)
+          <label className="text-[10px] font-display tracking-[0.2em] uppercase text-muted-foreground">
+            Jugadores <span className="normal-case tracking-normal opacity-60">(opcional)</span>
           </label>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+          <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: totalPlayers }).map((_, i) => {
-              const teamIdx = i < playersPerTeam ? 0 : 1
-              const posInTeam = i < playersPerTeam ? i : i - playersPerTeam
+              const isTeamB = i >= playersPerTeam
+              const isFirstInTeam = i === 0 || i === playersPerTeam
               return (
                 <div key={i} className="flex flex-col gap-1">
-                  {posInTeam === 0 && (
-                    <p className="text-xs text-parchment/40 font-display col-span-1">
-                      {teamNames[teamIdx] || `Equipo ${teamIdx + 1}`}
+                  {isFirstInTeam && (
+                    <p className="text-[10px] text-muted-foreground font-display truncate">
+                      {teamNames[isTeamB ? 1 : 0] || `Equipo ${isTeamB ? 2 : 1}`}
                     </p>
                   )}
-                  <input
-                    type="text"
-                    value={playerNames[i] || ''}
-                    onChange={(e) => updatePlayer(i, e.target.value)}
+                  <Input
+                    value={playerNames[i] ?? ''}
+                    onChange={(e) => {
+                      const u = [...playerNames]
+                      u[i] = e.target.value
+                      setPlayerNames(u)
+                    }}
                     maxLength={15}
-                    className="w-full px-3 py-2 rounded-xl text-sm
-                      bg-felt-800/60 text-cream/80 border border-cream/15
-                      focus:border-gold-500/40 focus:outline-none transition-colors"
                     placeholder={placeholders[i]}
+                    className="text-sm"
                   />
                 </div>
               )
             })}
           </div>
-        </motion.div>
+        </motion.section>
       </AnimatePresence>
 
-      {/* Start button */}
-      <motion.button
+      {/* Start */}
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-        onClick={handleStart}
-        disabled={!canStart}
-        className={`mt-auto py-4 rounded-2xl font-display font-bold text-lg
-          transition-all active:scale-95 shadow-xl
-          ${canStart
-            ? 'bg-gradient-to-b from-gold-400 to-gold-600 text-wood-900'
-            : 'bg-felt-800/60 text-parchment/30 cursor-not-allowed'
-          }
-        `}
+        transition={{ delay: 0.25 }}
+        className="mt-auto"
       >
-        ¡A jugar!
-      </motion.button>
+        <Button
+          variant="gold"
+          size="xl"
+          className="w-full font-display font-bold text-lg"
+          onClick={handleStart}
+          disabled={!canStart}
+        >
+          ¡A jugar!
+        </Button>
+      </motion.div>
     </div>
   )
 }

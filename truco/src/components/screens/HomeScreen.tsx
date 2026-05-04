@@ -1,6 +1,8 @@
 import { motion } from 'framer-motion'
-import type { SavedMatch } from '../../types/game'
-import { SuitsRow } from '../ui/SuitIcon'
+import { Trophy, Clock, Users } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import type { SavedMatch } from '@/types/game'
 
 interface HomeScreenProps {
   history: SavedMatch[]
@@ -10,129 +12,149 @@ interface HomeScreenProps {
   onClearHistory: () => void
 }
 
-function formatDate(ts: number) {
-  return new Date(ts).toLocaleDateString('es-AR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+function formatRelativeDate(ts: number) {
+  const now = Date.now()
+  const diff = now - ts
+  const mins = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (mins < 2) return 'Hace un momento'
+  if (mins < 60) return `Hace ${mins} min`
+  if (hours < 24) return `Hace ${hours}h`
+  if (days === 1) return 'Ayer'
+  if (days < 7) return `Hace ${days} días`
+  return new Date(ts).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
 }
 
-export function HomeScreen({
-  history,
-  hasActiveGame,
-  onNewGame,
-  onContinue,
-  onClearHistory,
-}: HomeScreenProps) {
+function formatDuration(start: number, end: number) {
+  const mins = Math.round((end - start) / 60000)
+  if (mins < 60) return `${mins} min`
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`
+}
+
+export function HomeScreen({ history, hasActiveGame, onNewGame, onContinue, onClearHistory }: HomeScreenProps) {
+  // Stagger delay for history items (Emil: 30–80ms between items)
+  const itemDelay = (i: number) => 0.3 + i * 0.05
+
   return (
-    <div className="min-h-screen flex flex-col items-center px-4 py-8 gap-6">
-      {/* Header */}
+    <div className="flex flex-col min-h-dvh px-5 pb-8">
+      {/* Hero */}
       <motion.div
-        initial={{ y: -30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
-        className="flex flex-col items-center gap-2 pt-4"
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
+        className="flex flex-col items-center pt-16 pb-10 gap-3"
       >
-        <SuitsRow className="justify-center opacity-60" />
-        <h1 className="font-display text-5xl font-bold text-gold-400 text-center leading-tight">
+        {/* Card suits decorative */}
+        <div className="flex gap-3 text-gold/40 text-xl select-none mb-1">
+          <span>♠</span><span>♣</span><span>♥</span><span>♦</span>
+        </div>
+        <h1 className="font-display text-6xl font-black text-foreground tracking-tight leading-none">
           Truco
         </h1>
-        <p className="font-display text-cream/60 text-base tracking-widest uppercase">
+        <p className="font-display text-muted-foreground text-xs tracking-[0.3em] uppercase">
           Argentino
         </p>
-        <SuitsRow className="justify-center opacity-60" />
       </motion.div>
 
-      {/* CTA buttons */}
+      {/* CTAs */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-        className="flex flex-col gap-3 w-full max-w-sm"
+        transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1], delay: 0.1 }}
+        className="flex flex-col gap-3"
       >
         {hasActiveGame && (
-          <button
+          <Button
+            variant="gold"
+            size="xl"
+            className="w-full font-display font-bold text-lg"
             onClick={onContinue}
-            className="w-full py-4 rounded-2xl font-display font-bold text-lg
-              bg-gradient-to-b from-gold-400 to-gold-600 text-wood-900
-              shadow-xl active:scale-95 transition-all animate-pulse-gold"
           >
             Continuar partida
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant={hasActiveGame ? 'outline' : 'gold'}
+          size="xl"
+          className={`w-full font-display font-bold text-lg ${!hasActiveGame ? '' : 'border-border'}`}
           onClick={onNewGame}
-          className={`w-full py-4 rounded-2xl font-display font-bold text-lg
-            transition-all active:scale-95 shadow-lg
-            ${hasActiveGame
-              ? 'bg-gradient-to-b from-felt-700 to-felt-900 text-cream/80 border border-cream/20'
-              : 'bg-gradient-to-b from-gold-400 to-gold-600 text-wood-900 shadow-xl animate-pulse-gold'
-            }
-          `}
         >
           Nueva partida
-        </button>
+        </Button>
       </motion.div>
-
-      {/* Decorative divider */}
-      <div className="flex items-center gap-3 w-full max-w-sm">
-        <div className="flex-1 h-px bg-gold-700/30" />
-        <span className="text-gold-700/50 text-xs font-display tracking-widest uppercase">Historial</span>
-        <div className="flex-1 h-px bg-gold-700/30" />
-      </div>
 
       {/* History */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="w-full max-w-sm flex flex-col gap-2"
-      >
-        {history.length === 0 ? (
-          <p className="text-center text-parchment/30 font-body text-sm py-4">
-            Todavía no hay partidas jugadas
-          </p>
-        ) : (
-          <>
-            {history.slice(0, 10).map((match, i) => (
+      {history.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.25, duration: 0.3 }}
+          className="mt-10 flex flex-col gap-4"
+        >
+          <div className="flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-[10px] font-display tracking-[0.2em] uppercase text-muted-foreground">
+              Historial
+            </span>
+            <Separator className="flex-1" />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {history.map((match, i) => (
               <motion.div
                 key={match.id}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.05 * i }}
-                className="rounded-xl px-4 py-3 flex items-center justify-between"
-                style={{
-                  background: 'rgba(26,74,46,0.4)',
-                  border: '1px solid rgba(212,175,55,0.15)',
-                }}
+                transition={{ delay: itemDelay(i), duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                className="flex items-center justify-between rounded-xl px-4 py-3 gap-3"
+                style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.07)' }}
               >
-                <div>
-                  <p className="text-cream text-sm font-display font-semibold">
-                    🏆 <span className="text-gold-400">{match.winnerName}</span>
-                  </p>
-                  <p className="text-parchment/50 text-xs mt-0.5">
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <Trophy className="size-3 text-[#D4AF37] shrink-0" />
+                    <span className="text-sm font-display font-semibold text-[#D4AF37] truncate">
+                      {match.winnerName}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground truncate">
                     {match.teamNames[0]} {match.finalScores[0]} — {match.finalScores[1]} {match.teamNames[1]}
-                  </p>
-                  <p className="text-parchment/30 text-xs">{formatDate(match.startedAt)}</p>
+                  </span>
                 </div>
-                <span className="text-xs px-2 py-0.5 rounded-full text-parchment/50"
-                  style={{ background: 'rgba(255,255,255,0.06)' }}>
-                  {match.mode === '4players' ? '4' : '6'} jug.
-                </span>
+                <div className="flex flex-col items-end gap-0.5 shrink-0">
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Clock className="size-3" />
+                    <span className="text-[10px]">{formatRelativeDate(match.startedAt)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Users className="size-3" />
+                    <span className="text-[10px]">
+                      {match.mode === '4players' ? '4' : '6'} · {formatDuration(match.startedAt, match.finishedAt)}
+                    </span>
+                  </div>
+                </div>
               </motion.div>
             ))}
-            <button
-              onClick={onClearHistory}
-              className="text-xs text-parchment/30 underline underline-offset-2 text-center pt-1 hover:text-parchment/60"
-            >
-              Borrar historial
-            </button>
-          </>
-        )}
-      </motion.div>
+          </div>
+
+          <button
+            onClick={onClearHistory}
+            className="text-[11px] text-muted-foreground underline underline-offset-2 text-center pt-1 transition-opacity hover:opacity-80"
+          >
+            Borrar historial
+          </button>
+        </motion.div>
+      )}
+
+      {/* PWA install hint (mobile only) */}
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="mt-auto pt-8 text-center text-[11px] text-muted-foreground/50 font-body"
+      >
+        Instalá la app: compartí a tu grupo y cada uno lleva su propio marcador
+      </motion.p>
     </div>
   )
 }
