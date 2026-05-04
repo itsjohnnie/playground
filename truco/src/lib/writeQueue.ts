@@ -111,6 +111,19 @@ export async function drain(): Promise<void> {
 }
 
 export async function execOp(op: QueuedOp, label: string): Promise<void> {
+  // Serialize all writes through a single promise chain so dependent ops
+  // (e.g. events.insert that references a freshly-created match) can never
+  // hit Supabase before their parent has committed.
+  const next = writeChain.then(() => doExec(op, label))
+  // Decouple chain progression from caller-visible result — a thrown error
+  // inside doExec must not poison every subsequent op.
+  writeChain = next.catch(() => undefined)
+  return next
+}
+
+let writeChain: Promise<unknown> = Promise.resolve()
+
+async function doExec(op: QueuedOp, label: string): Promise<void> {
   try {
     const { error } = await applyOp(op)
     if (error) {
