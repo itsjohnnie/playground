@@ -9,7 +9,7 @@ export type QueuedOp =
 
 const STORAGE_KEY = 'truco.writeQueue.v1'
 
-let queue: QueuedOp[] = readQueue()
+const queue: QueuedOp[] = readQueue()
 let draining = false
 let drainTimer: number | null = null
 
