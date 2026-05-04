@@ -308,7 +308,7 @@ function TeamPanel({
   }
 
   return (
-    <motion.div
+    <div
       role="button"
       tabIndex={0}
       onPointerDown={onPointerDown}
@@ -316,11 +316,11 @@ function TeamPanel({
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenSheet() } }}
-      style={{ y, touchAction: 'none', userSelect: 'none' }}
-      className={`pressable group relative flex flex-col gap-3 px-4 py-5 text-left ${right ? '' : 'border-r border-line/70'} hover-elevate select-none cursor-pointer`}
+      style={{ touchAction: 'none' }}
+      className={`pressable group relative flex flex-col gap-3 px-4 py-5 text-left overflow-hidden ${right ? '' : 'border-r border-line/70'} hover-elevate select-none cursor-pointer`}
       aria-label={`Sumar puntos a ${name}. Tocá para abrir las opciones, arrastrá hacia arriba para sumar, hacia abajo para restar.`}
     >
-      {/* Swipe hint arrows — only visible while dragging */}
+      {/* Swipe hint arrows — only visible while dragging, stay anchored */}
       <motion.div
         style={{ opacity: upHint }}
         className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 text-accent"
@@ -334,32 +334,36 @@ function TeamPanel({
         <ChevronDown className="size-5" strokeWidth={2.5} />
       </motion.div>
 
-      <div className="flex flex-col gap-1">
-        <span className="eyebrow">{name}</span>
-        {players.length > 0 && (
-          <span className="text-xs text-ink-soft truncate">
-            {players.map((p) => p.name).join(' · ')}
-          </span>
-        )}
-      </div>
+      {/* Translating layer — name + score follow the swipe */}
+      <motion.div style={{ y }} className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="eyebrow">{name}</span>
+          {players.length > 0 && (
+            <span className="text-xs text-ink-soft truncate">
+              {players.map((p) => p.name).join(' · ')}
+            </span>
+          )}
+        </div>
 
-      <div className="flex items-baseline gap-1">
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.span
-            key={score}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-            className={`font-display tabular leading-none ${highlight ? 'text-ink' : 'text-ink/85'}`}
-            style={{ fontSize: 'clamp(56px, 18vw, 88px)' }}
-          >
-            {score}
-          </motion.span>
-        </AnimatePresence>
-        <span className="text-ink-soft text-sm">/30</span>
-      </div>
+        <div className="flex items-baseline gap-1">
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.span
+              key={score}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+              className={`font-display tabular leading-none ${highlight ? 'text-ink' : 'text-ink/85'}`}
+              style={{ fontSize: 'clamp(56px, 18vw, 88px)' }}
+            >
+              {score}
+            </motion.span>
+          </AnimatePresence>
+          <span className="text-ink-soft text-sm">/30</span>
+        </div>
+      </motion.div>
 
+      {/* Static layer — palitos stay anchored */}
       <div className="flex flex-col gap-1.5 mt-auto">
         <Palitos count={malas} accent={!inBuenas && score > 0} />
         {score >= BUENAS_THRESHOLD && <Palitos count={buenas} accent={true} />}
@@ -379,10 +383,10 @@ function TeamPanel({
         )}
       </AnimatePresence>
 
-      <div className="absolute right-3 bottom-3 inline-flex items-center gap-1 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
+      <div className="pointer-events-none absolute right-3 bottom-3 inline-flex items-center gap-1 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
         <ArrowDownUp className="size-3" aria-hidden /> deslizá
       </div>
-    </motion.div>
+    </div>
   )
 }
 
