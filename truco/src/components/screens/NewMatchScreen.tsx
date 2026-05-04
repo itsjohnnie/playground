@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence, type PanInfo } from 'framer-motion'
-import { ChevronLeft, GripVertical, Plus, Shuffle, SplitSquareVertical } from 'lucide-react'
+import { Check, ChevronLeft, GripVertical, Plus, Shuffle, SplitSquareVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Chip } from '@/components/ui/Chip'
@@ -173,8 +173,10 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
               <div className="flex flex-wrap gap-2">
                 {roster.map((p) => (
                   <Chip key={p.id} selected={selected.has(p.id)} onClick={() => toggle(p.id)}>
-                    {p.name}
-                    {selected.has(p.id) ? ' ✓' : ''}
+                    <span className="inline-flex items-center gap-1">
+                      {p.name}
+                      {selected.has(p.id) && <Check className="size-3.5" aria-hidden />}
+                    </span>
                   </Chip>
                 ))}
                 {adding ? (

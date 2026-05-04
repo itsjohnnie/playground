@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence, animate, useMotionValue, useTransform } from 'framer-motion'
-import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown, ArrowDownUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
@@ -379,8 +379,8 @@ function TeamPanel({
         )}
       </AnimatePresence>
 
-      <div className="absolute right-3 bottom-3 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
-        ↕ deslizá
+      <div className="absolute right-3 bottom-3 inline-flex items-center gap-1 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
+        <ArrowDownUp className="size-3" aria-hidden /> deslizá
       </div>
     </motion.div>
   )
