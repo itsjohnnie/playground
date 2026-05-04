@@ -37,11 +37,11 @@ export function ToastHost() {
             transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
             onClick={() => dismiss(m.id)}
             className={[
-              'pointer-events-auto inline-flex max-w-[440px] items-center gap-2 rounded-md border px-3 py-2 text-sm shadow-2',
+              'pointer-events-auto inline-flex max-w-[440px] items-center gap-2 rounded-sm border px-3 py-2 text-sm shadow-2',
               'backdrop-blur-md backdrop-saturate-150',
-              m.kind === 'error' && 'border-danger/50 bg-danger/20 text-ink',
-              m.kind === 'success' && 'border-win/50 bg-win/22 text-ink',
-              m.kind === 'info' && 'border-line bg-surface-hi/75 text-ink',
+              m.kind === 'error' && 'border-danger/25 bg-danger/20 text-ink',
+              m.kind === 'success' && 'border-win/25 bg-win/22 text-ink',
+              m.kind === 'info' && 'border-line/60 bg-surface-hi/75 text-ink',
             ].filter(Boolean).join(' ')}
           >
             {m.kind === 'error' && <AlertTriangle className="size-4 text-danger" />}
