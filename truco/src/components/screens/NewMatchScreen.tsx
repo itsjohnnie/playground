@@ -40,9 +40,13 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
   const colARef = useRef<HTMLDivElement>(null)
   const colBRef = useRef<HTMLDivElement>(null)
 
+  const sortedRoster = useMemo(
+    () => [...roster].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })),
+    [roster],
+  )
   const selectedPlayers = useMemo(
-    () => roster.filter((p) => selected.has(p.id)),
-    [roster, selected],
+    () => sortedRoster.filter((p) => selected.has(p.id)),
+    [sortedRoster, selected],
   )
   const isEven = selected.size > 0 && selected.size % 2 === 0
   const perTeam = selected.size / 2
@@ -171,7 +175,7 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
               </p>
             ) : (
               <div className="flex flex-col gap-2">
-                {roster.map((p) => (
+                {sortedRoster.map((p) => (
                   <Chip key={p.id} selected={selected.has(p.id)} onClick={() => toggle(p.id)}>
                     <span className="inline-flex items-center gap-1">
                       {p.name}
@@ -353,17 +357,19 @@ const TeamColumn = function TeamColumn({
             Soltá un nombre acá
           </p>
         ) : (
-          ids.map((id) => {
-            const p = roster.find((r) => r.id === id)
-            if (!p) return null
+          ids
+            .map((id) => roster.find((r) => r.id === id))
+            .filter((p): p is Player => !!p)
+            .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+            .map((p) => {
             return (
               <DraggableChip
-                key={id}
+                key={p.id}
                 player={p}
                 tone={tone}
-                onTap={() => onTapChip(id)}
+                onTap={() => onTapChip(p.id)}
                 onDragStart={() => onDragStart()}
-                onDragEnd={(e, info) => onDragEnd(id, e, info)}
+                onDragEnd={(e, info) => onDragEnd(p.id, e, info)}
               />
             )
           })
