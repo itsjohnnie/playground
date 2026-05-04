@@ -4,29 +4,33 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  // Base: active scale feedback (Emil Kowalski principle)
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium select-none disabled:pointer-events-none disabled:opacity-40 transition-transform duration-[160ms] [transition-timing-function:cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+  [
+    'pressable inline-flex items-center justify-center gap-2 whitespace-nowrap',
+    'font-body font-medium select-none',
+    'rounded-md',
+    'disabled:pointer-events-none disabled:opacity-40',
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+  ].join(' '),
   {
     variants: {
       variant: {
-        gold: 'bg-gradient-to-b from-[#D4AF37] to-[#b8962e] text-[#2c1a0a] font-semibold shadow-md',
-        refuse: 'border border-red-900/35 bg-red-950/25 text-[#dc7070] font-medium',
-        outline: 'border border-border bg-transparent text-foreground hover:bg-white/[0.04]',
-        ghost: 'bg-transparent text-muted-foreground hover:bg-white/[0.04] hover:text-foreground',
-        destructive: 'bg-destructive text-destructive-foreground',
-        secondary: 'bg-secondary text-secondary-foreground',
-        link: 'text-primary underline-offset-4 hover:underline p-0 h-auto',
+        primary: 'bg-accent text-accent-ink hover:bg-accent-hi shadow-1',
+        outline: 'bg-transparent text-ink border border-ink/40 hover:border-ink/70',
+        ghost:   'bg-transparent text-ink border border-line hover-elevate',
+        soft:    'bg-surface-hi text-ink border border-line hover-elevate',
+        danger:  'bg-transparent text-danger border border-danger/60 hover:border-danger',
+        link:    'text-ink-muted underline underline-offset-4 hover:text-ink p-0 h-auto',
       },
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-8 px-3 text-xs',
-        lg: 'h-12 px-6 text-base',
-        xl: 'h-14 px-8 text-lg rounded-xl',
-        icon: 'size-9',
+        sm: 'h-9 px-3 text-sm',
+        md: 'h-11 px-4 text-[0.95rem]',
+        lg: 'h-12 px-5 text-base',
+        xl: 'h-14 px-6 text-lg rounded-md',
+        icon: 'size-10',
       },
     },
-    defaultVariants: { variant: 'outline', size: 'default' },
-  }
+    defaultVariants: { variant: 'outline', size: 'md' },
+  },
 )
 
 export interface ButtonProps
@@ -35,12 +39,18 @@ export interface ButtonProps
   asChild?: boolean
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button'
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />
-  }
+    return (
+      <Comp
+        ref={ref as never}
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      />
+    )
+  },
 )
 Button.displayName = 'Button'
 
-export { Button, buttonVariants }
+export { buttonVariants }

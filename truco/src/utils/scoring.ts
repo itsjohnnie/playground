@@ -2,80 +2,164 @@ import {
   MAX_SCORE,
   BUENAS_THRESHOLD,
   FALTA_ENVIDO_PICAPICA,
+  PICAPICA_START,
   type RoundMode,
-} from '../types/game'
+  type Match,
+  type ScoreEvent,
+  type Player,
+} from '@/types/game'
 
-/** Returns true if score is in "buenas" zone (15-29) */
 export function isInBuenas(score: number): boolean {
   return score >= BUENAS_THRESHOLD
 }
 
-/** Returns the "malas" portion (0-14) and "buenas" portion (0-14) */
-export function splitScore(score: number): { malas: number; buenas: number } {
-  if (score <= BUENAS_THRESHOLD) {
-    return { malas: score, buenas: 0 }
-  }
+export function splitScore(score: number) {
+  if (score <= BUENAS_THRESHOLD) return { malas: score, buenas: 0 }
   return { malas: BUENAS_THRESHOLD, buenas: score - BUENAS_THRESHOLD }
 }
 
-/** How many points are needed for Falta Envido */
+export function detectRoundMode(scoreA: number, scoreB: number): RoundMode {
+  const max = Math.max(scoreA, scoreB)
+  const min = Math.min(scoreA, scoreB)
+  if (max >= PICAPICA_START && min < BUENAS_THRESHOLD && max < BUENAS_THRESHOLD) {
+    return 'picapica'
+  }
+  return 'redondo'
+}
+
 export function calcFaltaEnvido(
   loserScore: number,
   winnerScore: number,
-  roundMode: RoundMode
+  roundMode: RoundMode,
 ): number {
   if (roundMode === 'picapica') return FALTA_ENVIDO_PICAPICA
-
   if (!isInBuenas(loserScore)) {
-    // Loser is in malas: winner gets points to reach buenas (15)
     return Math.max(BUENAS_THRESHOLD - winnerScore, 1)
-  } else {
-    // Loser is in buenas: winner gets points to reach 30
-    return Math.max(MAX_SCORE - winnerScore, 1)
   }
+  return Math.max(MAX_SCORE - winnerScore, 1)
 }
 
-/** Points awarded when Truco bets are refused or won */
-export const TRUCO_POINTS = {
-  truco: { refused: 1, won: 2 },
-  retruco: { refused: 2, won: 3 },
-  vale4: { refused: 3, won: 4 },
-} as const
-
-/** Points awarded when Envido bets are refused or won */
-export const ENVIDO_POINTS = {
-  envido: { refused: 1, won: 2 },
-  realenvido: { refused: 2, won: 3 },
-  faltaenvido: { refused: 'falta', won: 'falta' },
-} as const
-
-/** Whether pica-pica mode should be active */
-export function shouldBePicaPica(score0: number, score1: number): boolean {
-  const maxScore = Math.max(score0, score1)
-  const minScore = Math.min(score0, score1)
-  // Active once any team reaches 5 pts, deactivated once any team hits 15 (buenas)
-  return maxScore >= 5 && minScore < BUENAS_THRESHOLD && maxScore < BUENAS_THRESHOLD
-}
-
-/** Clamp new score to max */
 export function addPoints(current: number, points: number): number {
   return Math.min(current + points, MAX_SCORE)
 }
 
-/** Format score for display: "X malas" or "X buenas" */
-export function formatScore(score: number): string {
-  if (score === 0) return '0'
-  if (score < BUENAS_THRESHOLD) return `${score} malas`
-  if (score === BUENAS_THRESHOLD) return '¡Buenas!'
-  return `${score - BUENAS_THRESHOLD} buenas`
+// ─── Stats ────────────────────────────────────────────────────
+
+export interface PlayerStats {
+  playerId: string
+  matches: number
+  wins: number
+  losses: number
+  winRate: number
+  pointsFor: number
+  pointsAgainst: number
+  longestStreak: number
+  currentStreak: { kind: 'W' | 'L'; count: number } | null
+  recentForm: ('W' | 'L')[]
 }
 
-/** Number of full groups of 5 and remainder for palito rendering */
-export function palitosLayout(count: number): { groups: number[]; remainder: number } {
-  const full = Math.floor(count / 5)
-  const remainder = count % 5
+export function computePlayerStats(playerId: string, matches: Match[]): PlayerStats {
+  const finished = matches.filter((m) => m.winner !== null && !m.abandoned)
+  // Order from oldest to newest for streak math
+  const ordered = [...finished].sort((a, b) => a.startedAt - b.startedAt)
+
+  let wins = 0
+  let losses = 0
+  let pointsFor = 0
+  let pointsAgainst = 0
+  let longestStreak = 0
+  let currentStreakKind: 'W' | 'L' | null = null
+  let currentStreakCount = 0
+  const form: ('W' | 'L')[] = []
+
+  for (const m of ordered) {
+    const onA = m.teamA.playerIds.includes(playerId)
+    const onB = m.teamB.playerIds.includes(playerId)
+    if (!onA && !onB) continue
+
+    const won = (onA && m.winner === 'A') || (onB && m.winner === 'B')
+    const my = onA ? m.scoreA : m.scoreB
+    const their = onA ? m.scoreB : m.scoreA
+    pointsFor += my
+    pointsAgainst += their
+
+    if (won) wins++
+    else losses++
+    form.push(won ? 'W' : 'L')
+
+    const kind: 'W' | 'L' = won ? 'W' : 'L'
+    if (currentStreakKind === kind) currentStreakCount++
+    else { currentStreakKind = kind; currentStreakCount = 1 }
+    if (currentStreakCount > longestStreak) longestStreak = currentStreakCount
+  }
+
+  const totalMatches = wins + losses
   return {
-    groups: Array(full).fill(5),
-    remainder,
+    playerId,
+    matches: totalMatches,
+    wins,
+    losses,
+    winRate: totalMatches > 0 ? wins / totalMatches : 0,
+    pointsFor,
+    pointsAgainst,
+    longestStreak,
+    currentStreak:
+      currentStreakKind && currentStreakCount > 0
+        ? { kind: currentStreakKind, count: currentStreakCount }
+        : null,
+    recentForm: form.slice(-5),
+  }
+}
+
+export function leaderboard(roster: Player[], matches: Match[]): PlayerStats[] {
+  return roster
+    .map((p) => computePlayerStats(p.id, matches))
+    .filter((s) => s.matches > 0)
+    .sort((a, b) => {
+      if (b.winRate !== a.winRate) return b.winRate - a.winRate
+      if (b.matches !== a.matches) return b.matches - a.matches
+      return 0
+    })
+}
+
+// ─── Reducers ─────────────────────────────────────────────────
+
+export function applyEvent(match: Match, ev: ScoreEvent): Match {
+  const newScores =
+    ev.team === 'A'
+      ? { a: addPoints(match.scoreA, ev.points), b: match.scoreB }
+      : { a: match.scoreA, b: addPoints(match.scoreB, ev.points) }
+
+  const finished = newScores.a >= MAX_SCORE || newScores.b >= MAX_SCORE
+  const winner: 'A' | 'B' | null = finished
+    ? newScores.a >= MAX_SCORE
+      ? 'A'
+      : 'B'
+    : null
+
+  return {
+    ...match,
+    scoreA: newScores.a,
+    scoreB: newScores.b,
+    events: [...match.events, ev],
+    winner,
+    finishedAt: finished ? Date.now() : null,
+  }
+}
+
+export function undoLastEvent(match: Match): Match {
+  if (match.events.length === 0) return match
+  const last = match.events[match.events.length - 1]
+  const newScores =
+    last.team === 'A'
+      ? { a: Math.max(0, match.scoreA - last.points), b: match.scoreB }
+      : { a: match.scoreA, b: Math.max(0, match.scoreB - last.points) }
+  return {
+    ...match,
+    scoreA: newScores.a,
+    scoreB: newScores.b,
+    events: match.events.slice(0, -1),
+    winner: null,
+    finishedAt: null,
   }
 }

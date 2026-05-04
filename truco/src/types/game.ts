@@ -1,71 +1,96 @@
-export type GameMode = '4players' | '6players'
+// ─────────────────────────────────────────────────────────────
+// Truco data model — v2
+// Spec: truco/DESIGN.md §5.1
+// ─────────────────────────────────────────────────────────────
+
 export type RoundMode = 'redondo' | 'picapica'
+
+export type ScoreReason =
+  | 'truco' | 'truco_rechazado'
+  | 'retruco' | 'retruco_rechazado'
+  | 'vale4' | 'vale4_rechazado'
+  | 'envido' | 'envido_rechazado'
+  | 'real_envido' | 'real_envido_rechazado'
+  | 'falta_envido' | 'falta_envido_rechazado'
+  | 'manual'
+
+export const SCORE_REASON_LABEL: Record<ScoreReason, string> = {
+  truco: 'Truco',
+  truco_rechazado: 'Truco (no quiso)',
+  retruco: 'Retruco',
+  retruco_rechazado: 'Retruco (no quiso)',
+  vale4: 'Vale Cuatro',
+  vale4_rechazado: 'Vale Cuatro (no quiso)',
+  envido: 'Envido',
+  envido_rechazado: 'Envido (no quiso)',
+  real_envido: 'Real Envido',
+  real_envido_rechazado: 'Real Envido (no quiso)',
+  falta_envido: 'Falta Envido',
+  falta_envido_rechazado: 'Falta Envido (no quiso)',
+  manual: 'Manual',
+}
 
 export interface Player {
   id: string
   name: string
-  teamId: string
+  joinedAt: number
+  retiredAt?: number
 }
 
 export interface Team {
-  id: string
   name: string
   playerIds: string[]
 }
 
-export interface ScoreEntry {
-  teamId: string
+export interface ScoreEvent {
+  team: 'A' | 'B'
   points: number
-  reason: string
+  reason: ScoreReason
   roundMode: RoundMode
-  timestamp: number
+  at: number
 }
 
-export interface GameState {
+export interface Match {
   id: string
-  mode: GameMode
-  teams: [Team, Team]
-  players: Player[]
-  scores: [number, number] // [team0, team1]
-  history: ScoreEntry[]
-  currentRoundMode: RoundMode
-  isFinished: boolean
-  winnerId: string | null
   startedAt: number
   finishedAt: number | null
+  teamA: Team
+  teamB: Team
+  scoreA: number
+  scoreB: number
+  events: ScoreEvent[]
+  winner: 'A' | 'B' | null
+  abandoned?: true
 }
 
-export interface SavedMatch {
-  id: string
-  mode: GameMode
-  teamNames: [string, string]
-  finalScores: [number, number]
-  winnerName: string
-  startedAt: number
-  finishedAt: number
+export interface AppState {
+  schemaVersion: 2
+  roster: Player[]
+  matches: Match[]      // newest first
+  activeMatchId: string | null
 }
 
-// Scoring reasons for display
-export const SCORE_REASONS = {
-  TRUCO_RECHAZADO: 'Truco (rechazado)',
-  TRUCO_GANADO: 'Truco',
-  RETRUCO_RECHAZADO: 'Retruco (rechazado)',
-  RETRUCO_GANADO: 'Retruco',
-  VALE4_RECHAZADO: 'Vale cuatro (rechazado)',
-  VALE4_GANADO: 'Vale cuatro',
-  ENVIDO_RECHAZADO: 'Envido (rechazado)',
-  ENVIDO_GANADO: 'Envido',
-  REAL_ENVIDO_RECHAZADO: 'Real Envido (rechazado)',
-  REAL_ENVIDO_GANADO: 'Real Envido',
-  FALTA_ENVIDO_RECHAZADO: 'Falta Envido (rechazado)',
-  FALTA_ENVIDO_GANADO: 'Falta Envido',
-  MANUAL: 'Punto manual',
-} as const
-
-export type ScoreReason = typeof SCORE_REASONS[keyof typeof SCORE_REASONS]
-
+// ─── Constants ────────────────────────────────────────────────
 export const MAX_SCORE = 30
 export const BUENAS_THRESHOLD = 15
 export const PICAPICA_START = 5
-export const PICAPICA_END = 15 // when either team enters buenas
 export const FALTA_ENVIDO_PICAPICA = 6
+
+export const TRUCO_POINTS = {
+  truco:   { refused: 1, won: 2 },
+  retruco: { refused: 2, won: 3 },
+  vale4:   { refused: 3, won: 4 },
+} as const
+
+export const ENVIDO_POINTS = {
+  envido:     { refused: 1, won: 2 },
+  realenvido: { refused: 2, won: 3 },
+} as const
+
+// ─── Initial state & migration ────────────────────────────────
+export const INITIAL_STATE: AppState = {
+  schemaVersion: 2,
+  roster: [],
+  matches: [],
+  activeMatchId: null,
+}
