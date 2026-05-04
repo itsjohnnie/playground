@@ -225,7 +225,7 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
               </p>
               <Button
                 variant="primary"
-                size="xl"
+                size="lg"
                 className="w-full"
                 disabled={!canProceed}
                 onClick={goSplit}
@@ -293,7 +293,7 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
                   <Shuffle className="size-4" /> Al azar
                 </button>
               </div>
-              <Button variant="primary" size="xl" className="w-full" disabled={!isReady} onClick={start}>
+              <Button variant="primary" size="lg" className="w-full" disabled={!isReady} onClick={start}>
                 ¡A jugar!
               </Button>
             </div>

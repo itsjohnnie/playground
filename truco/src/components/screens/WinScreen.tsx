@@ -88,7 +88,7 @@ export function WinScreen({ match, playerById, onHome, onRevancha }: WinScreenPr
         transition={{ duration: 0.3, delay: 0.42, ease: [0.23, 1, 0.32, 1] }}
         className="flex flex-col gap-3 w-full max-w-xs pt-4"
       >
-        <Button variant="primary" size="xl" onClick={onHome}>
+        <Button variant="primary" size="lg" onClick={onHome}>
           Guardar y volver
         </Button>
         <Button variant="ghost" size="lg" onClick={onRevancha}>
