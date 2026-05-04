@@ -202,7 +202,7 @@ export function ProfileSheet({
           <button
             onClick={claim}
             disabled={busy !== null}
-            className="pressable inline-flex items-center justify-center gap-2 rounded-md border border-accent/50 bg-accent/10 px-3 py-2.5 text-sm text-accent-ink hover:bg-accent/15"
+            className="pressable inline-flex items-center justify-center gap-2 rounded-md border border-accent/60 bg-accent/15 px-3 py-2.5 text-sm font-medium text-accent hover:bg-accent/25"
           >
             <UserCheck className="size-4" /> Soy yo — reclamar este perfil
           </button>
