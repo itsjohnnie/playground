@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, Plus, Shuffle } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence, type PanInfo } from 'framer-motion'
+import { ChevronLeft, GripVertical, Plus, Shuffle, SplitSquareVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Chip } from '@/components/ui/Chip'
 import { Screen } from '@/components/ui/Screen'
+import { cn } from '@/lib/utils'
 import type { Player } from '@/types/game'
 
 interface NewMatchScreenProps {
@@ -19,6 +20,7 @@ interface NewMatchScreenProps {
 }
 
 type Step = 'pick' | 'split'
+type Tone = 'a' | 'b'
 
 export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, onStart }: NewMatchScreenProps) {
   const [step, setStep] = useState<Step>('pick')
@@ -31,6 +33,12 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
   const [teamB, setTeamB] = useState<string[]>([])
   const [nameA, setNameA] = useState(defaultTeamNames[0])
   const [nameB, setNameB] = useState(defaultTeamNames[1])
+
+  // Which column is currently the drop target while dragging
+  const [draggingFrom, setDraggingFrom] = useState<Tone | null>(null)
+
+  const colARef = useRef<HTMLDivElement>(null)
+  const colBRef = useRef<HTMLDivElement>(null)
 
   const selectedPlayers = useMemo(
     () => roster.filter((p) => selected.has(p.id)),
@@ -62,11 +70,18 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
     setAdding(false)
   }
 
-  function goSplit() {
-    // Pre-assign half / half in selection order
+  function evenSplit() {
     const ids = selectedPlayers.map((p) => p.id)
-    setTeamA(ids.slice(0, ids.length / 2))
-    setTeamB(ids.slice(ids.length / 2))
+    const half = Math.ceil(ids.length / 2)
+    setTeamA(ids.slice(0, half))
+    setTeamB(ids.slice(half))
+  }
+
+  function goSplit() {
+    const ids = selectedPlayers.map((p) => p.id)
+    const half = Math.ceil(ids.length / 2)
+    setTeamA(ids.slice(0, half))
+    setTeamB(ids.slice(half))
     setStep('split')
   }
 
@@ -81,11 +96,37 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
 
   function autoBalance() {
     const shuffled = [...selectedPlayers].sort(() => Math.random() - 0.5)
-    setTeamA(shuffled.slice(0, perTeam).map((p) => p.id))
-    setTeamB(shuffled.slice(perTeam).map((p) => p.id))
+    const half = Math.ceil(shuffled.length / 2)
+    setTeamA(shuffled.slice(0, half).map((p) => p.id))
+    setTeamB(shuffled.slice(half).map((p) => p.id))
   }
 
-  const isReady = teamA.length === perTeam && teamB.length === perTeam && teamA.length > 0 && nameA.trim() && nameB.trim()
+  // Hit-test pointer against the *other* column's bounding rect.
+  function dropTargetForPointer(from: Tone, point: { x: number; y: number }): Tone | null {
+    const target = from === 'a' ? colBRef.current : colARef.current
+    const self = from === 'a' ? colARef.current : colBRef.current
+    const rect = (el: HTMLDivElement | null) => el?.getBoundingClientRect() ?? null
+    const inside = (r: DOMRect | null) =>
+      !!r && point.x >= r.left && point.x <= r.right && point.y >= r.top && point.y <= r.bottom
+    if (inside(rect(target))) return from === 'a' ? 'b' : 'a'
+    if (inside(rect(self))) return from
+    return null
+  }
+
+  function handleDragEnd(playerId: string, from: Tone, _e: unknown, info: PanInfo) {
+    setDraggingFrom(null)
+    const target = dropTargetForPointer(from, info.point)
+    if (!target || target === from) return
+    if (target === 'a') moveToA(playerId)
+    else moveToB(playerId)
+  }
+
+  const isReady =
+    teamA.length === perTeam &&
+    teamB.length === perTeam &&
+    teamA.length > 0 &&
+    nameA.trim().length > 0 &&
+    nameB.trim().length > 0
 
   function start() {
     if (!isReady) return
@@ -189,31 +230,55 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
             transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
             className="flex flex-col gap-5 flex-1"
           >
+            <p className="text-center text-sm text-ink-muted">
+              Arrastrá un nombre al otro lado, o tocalo para mandarlo enfrente.
+            </p>
+
             <div className="grid grid-cols-2 gap-3">
               <TeamColumn
+                ref={colARef}
                 title={nameA}
                 onTitleChange={setNameA}
                 tone="a"
                 roster={roster}
                 ids={teamA}
-                onPickFromOther={(id) => moveToA(id)}
+                isDropTarget={draggingFrom === 'b'}
+                onTapChip={(id) => moveToB(id)}
+                onDragStart={() => setDraggingFrom('a')}
+                onDragEnd={(id, e, info) => handleDragEnd(id, 'a', e, info)}
+                count={teamA.length}
+                expected={perTeam}
               />
               <TeamColumn
+                ref={colBRef}
                 title={nameB}
                 onTitleChange={setNameB}
                 tone="b"
                 roster={roster}
                 ids={teamB}
-                onPickFromOther={(id) => moveToB(id)}
+                isDropTarget={draggingFrom === 'a'}
+                onTapChip={(id) => moveToA(id)}
+                onDragStart={() => setDraggingFrom('b')}
+                onDragEnd={(id, e, info) => handleDragEnd(id, 'b', e, info)}
+                count={teamB.length}
+                expected={perTeam}
               />
             </div>
 
-            <button
-              onClick={autoBalance}
-              className="pressable inline-flex items-center justify-center gap-2 self-center rounded-sm border border-line bg-surface-hi px-4 py-2 text-sm text-ink hover-elevate"
-            >
-              <Shuffle className="size-4" /> Auto-balancear
-            </button>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={evenSplit}
+                className="pressable inline-flex items-center justify-center gap-2 rounded-sm border border-line bg-surface-hi px-3 py-2 text-sm text-ink hover-elevate"
+              >
+                <SplitSquareVertical className="size-4" /> Parejo
+              </button>
+              <button
+                onClick={autoBalance}
+                className="pressable inline-flex items-center justify-center gap-2 rounded-sm border border-line bg-surface-hi px-3 py-2 text-sm text-ink hover-elevate"
+              >
+                <Shuffle className="size-4" /> Al azar
+              </button>
+            </div>
 
             <div className="mt-auto">
               <Button variant="primary" size="xl" className="w-full" disabled={!isReady} onClick={start}>
@@ -227,38 +292,129 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
   )
 }
 
-function TeamColumn({
-  title, onTitleChange, tone, roster, ids, onPickFromOther,
-}: {
+interface TeamColumnProps {
   title: string
   onTitleChange: (v: string) => void
-  tone: 'a' | 'b'
+  tone: Tone
   roster: Player[]
   ids: string[]
-  onPickFromOther: (id: string) => void
-}) {
+  isDropTarget: boolean
+  count: number
+  expected: number
+  onTapChip: (id: string) => void
+  onDragStart: () => void
+  onDragEnd: (id: string, e: unknown, info: PanInfo) => void
+}
+
+const TeamColumn = function TeamColumn({
+  title, onTitleChange, tone, roster, ids,
+  isDropTarget, count, expected,
+  onTapChip, onDragStart, onDragEnd,
+  ref,
+}: TeamColumnProps & { ref: React.RefObject<HTMLDivElement | null> }) {
+  const balanced = count === expected
   return (
-    <div className="rounded-lg border border-line bg-surface p-3 flex flex-col gap-3 min-h-[200px]">
-      <Input
-        value={title}
-        onChange={(e) => onTitleChange(e.target.value)}
-        maxLength={18}
-        className="h-9 px-2 text-base font-display border-transparent bg-transparent focus:border-line"
-      />
-      <div className="flex flex-wrap gap-1.5">
-        {ids.map((id) => {
-          const p = roster.find((r) => r.id === id)
-          if (!p) return null
-          return (
-            <Chip key={id} selected tone={tone} onClick={() => onPickFromOther(id)}>
-              {p.name}
-            </Chip>
-          )
-        })}
+    <motion.div
+      ref={ref}
+      animate={{
+        scale: isDropTarget ? 1.015 : 1,
+      }}
+      transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
+      className={cn(
+        'rounded-lg border p-3 flex flex-col gap-3 min-h-[220px] transition-colors',
+        isDropTarget
+          ? 'border-accent bg-surface-hi'
+          : 'border-line bg-surface',
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <Input
+          value={title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          maxLength={18}
+          className="h-9 px-2 text-base font-display border-transparent bg-transparent focus:border-line min-w-0 flex-1"
+        />
+        <span
+          className={cn(
+            'tabular text-[11px] tracking-wider font-medium',
+            balanced ? 'text-ink-muted' : 'text-danger',
+          )}
+          aria-label={`${count} de ${expected}`}
+        >
+          {count}/{expected}
+        </span>
       </div>
+
+      <div className="flex flex-wrap gap-1.5 content-start min-h-[64px]">
+        {ids.length === 0 ? (
+          <p className="text-[11px] text-ink-soft self-center w-full text-center py-3">
+            Soltá un nombre acá
+          </p>
+        ) : (
+          ids.map((id) => {
+            const p = roster.find((r) => r.id === id)
+            if (!p) return null
+            return (
+              <DraggableChip
+                key={id}
+                player={p}
+                tone={tone}
+                onTap={() => onTapChip(id)}
+                onDragStart={() => onDragStart()}
+                onDragEnd={(e, info) => onDragEnd(id, e, info)}
+              />
+            )
+          })
+        )}
+      </div>
+
       <p className="text-[11px] text-ink-soft mt-auto">
-        Tocá un nombre para cambiarlo de equipo.
+        Arrastrá o tocá para cambiar de equipo.
       </p>
-    </div>
+    </motion.div>
+  )
+}
+
+function DraggableChip({
+  player, tone, onTap, onDragStart, onDragEnd,
+}: {
+  player: Player
+  tone: Tone
+  onTap: () => void
+  onDragStart: () => void
+  onDragEnd: (e: unknown, info: PanInfo) => void
+}) {
+  const draggedRef = useRef(false)
+  return (
+    <motion.button
+      type="button"
+      layout
+      drag
+      dragSnapToOrigin
+      dragMomentum={false}
+      dragElastic={0.6}
+      whileDrag={{ scale: 1.08, zIndex: 50, boxShadow: 'var(--shadow-2)' }}
+      whileTap={{ scale: 0.97 }}
+      onDragStart={() => { draggedRef.current = true; onDragStart() }}
+      onDragEnd={(e, info) => {
+        onDragEnd(e, info)
+        // Reset shortly after so the click that may follow doesn't move the chip again.
+        setTimeout(() => { draggedRef.current = false }, 0)
+      }}
+      onClick={() => { if (!draggedRef.current) onTap() }}
+      transition={{ layout: { duration: 0.22, ease: [0.23, 1, 0.32, 1] } }}
+      style={{ touchAction: 'none' }}
+      className={cn(
+        'no-select inline-flex items-center gap-1.5 rounded-sm px-3 py-2 text-sm border min-h-[44px]',
+        'cursor-grab active:cursor-grabbing',
+        tone === 'a'
+          ? 'bg-accent text-accent-ink border-accent'
+          : 'bg-ink text-bg border-ink',
+      )}
+      aria-label={`${player.name}. Arrastrá o tocá para mover al otro equipo.`}
+    >
+      <GripVertical className="size-3.5 opacity-50 shrink-0" aria-hidden />
+      {player.name}
+    </motion.button>
   )
 }
