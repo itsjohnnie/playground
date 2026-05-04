@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Chip } from '@/components/ui/Chip'
 import { Screen } from '@/components/ui/Screen'
 import { cn } from '@/lib/utils'
+import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Player } from '@/types/game'
 
 interface NewMatchScreenProps {
@@ -139,6 +140,12 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
       { name: nameB.trim() || defaultTeamNames[1], playerIds: teamB },
     )
   }
+
+  // Mirror the Volver button behaviour for edge-swipe-back.
+  useEdgeSwipeBack(() => {
+    if (step === 'pick') onBack()
+    else setStep('pick')
+  })
 
   return (
     <Screen className="px-5 py-5 gap-5">
