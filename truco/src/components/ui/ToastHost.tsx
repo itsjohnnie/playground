@@ -31,10 +31,21 @@ export function ToastHost() {
           <motion.div
             key={m.id}
             layout
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 12, transition: { duration: 0.16 } }}
-            transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
+            initial={{ opacity: 0, y: 14, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{
+              opacity: 0,
+              y: 6,
+              scale: 0.97,
+              transition: { duration: 0.14, ease: [0.4, 0, 1, 1] },
+            }}
+            transition={{
+              type: 'spring',
+              stiffness: 380,
+              damping: 32,
+              mass: 0.6,
+              opacity: { duration: 0.18, ease: [0.23, 1, 0.32, 1] },
+            }}
             onClick={() => dismiss(m.id)}
             className={[
               'pointer-events-auto inline-flex max-w-[440px] items-center gap-2 rounded-sm border px-3 py-2 text-sm shadow-2',
