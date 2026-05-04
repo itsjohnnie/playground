@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, Plus, Trash2, RotateCcw, AlertTriangle, KeyRound, Sun, Moon, Smartphone } from 'lucide-react'
+import type { User } from '@supabase/supabase-js'
+import { ChevronLeft, Plus, Trash2, RotateCcw, AlertTriangle, KeyRound, Sun, Moon, Smartphone, LogIn, LogOut } from 'lucide-react'
 import { normalizeMesaCode, MESA_DEFAULT } from '@/lib/mesa'
 import {
   type ThemeChoice,
@@ -12,33 +13,53 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
+import { Avatar } from '@/components/ui/Avatar'
+import { ProfileSheet } from '@/components/ui/ProfileSheet'
+import { SignInSheet } from '@/components/ui/SignInSheet'
 import type { Player } from '@/types/game'
+import type { PlayerProfilePatch } from '@/hooks/useStore'
 
 interface MesaScreenProps {
   active: Player[]
   retired: Player[]
   mesa: string
+  user: User | null
   onSwitchMesa: (code: string) => void
   onBack: () => void
   onAdd: (name: string) => void
-  onRename: (id: string, name: string) => void
   onRetire: (id: string) => void
   onRestore: (id: string) => void
   onDelete: (id: string) => void
   onWipe: () => void
+  onUpdatePlayer: (id: string, patch: PlayerProfilePatch) => Promise<void>
+  onSetPhoto: (id: string, file: File) => Promise<string>
+  onRemovePhoto: (id: string) => Promise<void>
+  onClaim: (id: string) => Promise<void>
+  onUnclaim: (id: string) => Promise<void>
+  onSignIn: (email: string) => Promise<void>
+  onSignOut: () => Promise<void>
 }
 
-export function MesaScreen({ active, retired, mesa, onSwitchMesa, onBack, onAdd, onRename, onRetire, onRestore, onDelete, onWipe }: MesaScreenProps) {
+export function MesaScreen({
+  active, retired, mesa, user, onSwitchMesa, onBack, onAdd, onRetire, onRestore, onDelete, onWipe,
+  onUpdatePlayer, onSetPhoto, onRemovePhoto, onClaim, onUnclaim, onSignIn, onSignOut,
+}: MesaScreenProps) {
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
-  const [editing, setEditing] = useState<Player | null>(null)
-  const [editName, setEditName] = useState('')
+  const [profileFor, setProfileFor] = useState<string | null>(null)
+  const [signInOpen, setSignInOpen] = useState(false)
   const [confirmWipe, setConfirmWipe] = useState(false)
   const [mesaSheet, setMesaSheet] = useState(false)
   const [mesaInput, setMesaInput] = useState(mesa === MESA_DEFAULT ? '' : mesa)
   const [mesaError, setMesaError] = useState<string | null>(null)
   const [theme, setTheme] = useState<ThemeChoice>(() => getThemeChoice())
   useEffect(() => subscribeTheme((c) => setTheme(c)), [])
+
+  // Re-derive the open profile from the live roster so realtime updates
+  // (photo upload, name edit, etc.) reflect immediately in the sheet.
+  const profilePlayer = profileFor
+    ? [...active, ...retired].find((p) => p.id === profileFor) ?? null
+    : null
 
   function handleAdd() {
     const trimmed = newName.trim()
@@ -50,18 +71,6 @@ export function MesaScreen({ active, retired, mesa, onSwitchMesa, onBack, onAdd,
     onAdd(trimmed)
     setNewName('')
     setAdding(false)
-  }
-
-  function startEdit(p: Player) {
-    setEditing(p)
-    setEditName(p.name)
-  }
-
-  function commitEdit() {
-    if (!editing) return
-    const trimmed = editName.trim()
-    if (trimmed && trimmed !== editing.name) onRename(editing.id, trimmed)
-    setEditing(null)
   }
 
   function commitMesa() {
@@ -112,6 +121,8 @@ export function MesaScreen({ active, retired, mesa, onSwitchMesa, onBack, onAdd,
 
       <ThemeToggle theme={theme} onChange={setThemeChoice} />
 
+      <AuthRow user={user} onSignIn={() => setSignInOpen(true)} onSignOut={onSignOut} />
+
       <section className="flex flex-col gap-2">
         <AnimatePresence initial={false}>
           {active.map((p, i) => (
@@ -122,11 +133,15 @@ export function MesaScreen({ active, retired, mesa, onSwitchMesa, onBack, onAdd,
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1], delay: Math.min(i, 5) * 0.03 }}
-              onClick={() => startEdit(p)}
-              className="pressable text-left flex items-center justify-between rounded-md border border-line bg-surface px-4 py-3 hover-elevate"
+              onClick={() => setProfileFor(p.id)}
+              className="pressable text-left flex items-center gap-3 rounded-md border border-line bg-surface px-3 py-2.5 hover-elevate"
             >
-              <span className="font-display text-ink text-h2">{p.name}</span>
-              <span className="text-xs text-ink-soft">Editar</span>
+              <Avatar player={p} size={40} />
+              <span className="font-display text-ink text-h2 truncate flex-1">{p.name}</span>
+              {!!user && p.authUserId === user.id && (
+                <span className="eyebrow text-accent shrink-0">Vos</span>
+              )}
+              <span className="text-xs text-ink-soft shrink-0">Ver</span>
             </motion.button>
           ))}
         </AnimatePresence>
@@ -243,29 +258,61 @@ export function MesaScreen({ active, retired, mesa, onSwitchMesa, onBack, onAdd,
         </div>
       </Sheet>
 
-      {/* Edit sheet */}
-      <Sheet open={!!editing} onClose={() => setEditing(null)} title="Editar jugador">
-        <div className="flex flex-col gap-3 pb-2">
-          <Input
-            autoFocus
-            value={editName}
-            onChange={(e) => setEditName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') commitEdit() }}
-            maxLength={20}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <Button variant="ghost" onClick={() => setEditing(null)}>Cancelar</Button>
-            <Button variant="primary" onClick={commitEdit}>Guardar</Button>
-          </div>
-          <button
-            onClick={() => { if (editing) { onRetire(editing.id); setEditing(null) } }}
-            className="pressable mt-1 rounded-sm border border-danger/40 px-4 py-3 text-danger hover:border-danger"
-          >
-            Retirar de la mesa
-          </button>
-        </div>
-      </Sheet>
+      <ProfileSheet
+        open={!!profilePlayer}
+        player={profilePlayer}
+        user={user}
+        onClose={() => setProfileFor(null)}
+        onUpdate={onUpdatePlayer}
+        onSetPhoto={onSetPhoto}
+        onRemovePhoto={onRemovePhoto}
+        onClaim={onClaim}
+        onUnclaim={onUnclaim}
+        onRetire={onRetire}
+        onSignInPress={() => { setProfileFor(null); setSignInOpen(true) }}
+      />
+
+      <SignInSheet
+        open={signInOpen}
+        onClose={() => setSignInOpen(false)}
+        onSignIn={onSignIn}
+      />
     </Screen>
+  )
+}
+
+// ─── Auth row ────────────────────────────────────────────────
+
+function AuthRow({
+  user, onSignIn, onSignOut,
+}: { user: User | null; onSignIn: () => void; onSignOut: () => Promise<void> }) {
+  if (!user) {
+    return (
+      <button
+        onClick={onSignIn}
+        className="pressable flex items-center justify-between rounded-md border border-line/70 bg-surface-hi/70 px-3.5 py-2.5 text-left hover-elevate"
+      >
+        <span className="inline-flex items-center gap-2 text-xs text-ink-soft">
+          <LogIn className="size-3.5" /> Iniciar sesión
+        </span>
+        <span className="text-ink-muted text-xs">para editar tu perfil</span>
+      </button>
+    )
+  }
+  return (
+    <div className="flex items-center justify-between rounded-md border border-line/70 bg-surface-hi/70 px-3.5 py-2.5">
+      <div className="flex flex-col min-w-0">
+        <span className="text-[11px] text-ink-soft">Sesión</span>
+        <span className="text-sm text-ink truncate">{user.email}</span>
+      </div>
+      <button
+        onClick={() => { onSignOut() }}
+        aria-label="Cerrar sesión"
+        className="pressable inline-flex items-center gap-1 rounded-sm px-2 py-1 text-xs text-ink-muted hover:text-ink"
+      >
+        <LogOut className="size-3.5" /> Salir
+      </button>
+    </div>
   )
 }
 

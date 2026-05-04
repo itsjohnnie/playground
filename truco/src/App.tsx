@@ -86,14 +86,21 @@ export default function App() {
           active={store.activeRoster}
           retired={store.retiredRoster}
           mesa={store.mesa}
+          user={store.user}
           onSwitchMesa={store.switchMesa}
           onBack={() => setRoute('home')}
           onAdd={(name) => { store.addPlayer(name) }}
-          onRename={store.renamePlayer}
           onRetire={store.retirePlayer}
           onRestore={store.restorePlayer}
           onDelete={store.removePlayer}
           onWipe={store.clearAll}
+          onUpdatePlayer={store.updatePlayer}
+          onSetPhoto={store.setPlayerPhoto}
+          onRemovePhoto={store.removePlayerPhoto}
+          onClaim={store.claimPlayer}
+          onUnclaim={store.unclaimPlayer}
+          onSignIn={store.signInWithEmail}
+          onSignOut={store.signOut}
         />
       )}
 

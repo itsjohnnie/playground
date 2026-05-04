@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { User } from '@supabase/supabase-js'
 import {
   type AppState,
   type Match,
@@ -17,6 +18,35 @@ import {
 } from '@/lib/supabase'
 import { execOp } from '@/lib/writeQueue'
 import { getMesa, setMesa as persistMesa, makeMesaId, idBelongsToMesa } from '@/lib/mesa'
+import { optimizeAvatar } from '@/lib/photoOptim'
+
+// ── Profile patch shape ─────────────────────────────────────────
+export interface PlayerProfilePatch {
+  name?: string
+  firstName?: string | null
+  lastName?: string | null
+  phone?: string | null
+  venmo?: string | null
+  zelle?: string | null
+}
+
+// camelCase → snake_case for Supabase update payloads.
+function profilePatchToRow(patch: PlayerProfilePatch): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  if (patch.name !== undefined)      out.name = patch.name.trim()
+  if (patch.firstName !== undefined) out.first_name = nullIfBlank(patch.firstName)
+  if (patch.lastName !== undefined)  out.last_name  = nullIfBlank(patch.lastName)
+  if (patch.phone !== undefined)     out.phone      = nullIfBlank(patch.phone)
+  if (patch.venmo !== undefined)     out.venmo      = nullIfBlank(patch.venmo)
+  if (patch.zelle !== undefined)     out.zelle      = nullIfBlank(patch.zelle)
+  return out
+}
+
+function nullIfBlank(v: string | null): string | null {
+  if (v === null) return null
+  const t = v.trim()
+  return t.length === 0 ? null : t
+}
 
 // ─── Row → model converters ─────────────────────────────────────
 
@@ -26,6 +56,13 @@ function rowToPlayer(r: PlayerRow): Player {
     name: r.name,
     joinedAt: new Date(r.joined_at).getTime(),
     retiredAt: r.retired_at ? new Date(r.retired_at).getTime() : undefined,
+    firstName: r.first_name ?? undefined,
+    lastName:  r.last_name  ?? undefined,
+    phone:     r.phone      ?? undefined,
+    photoUrl:  r.photo_url  ?? undefined,
+    venmo:     r.venmo      ?? undefined,
+    zelle:     r.zelle      ?? undefined,
+    authUserId: r.auth_user_id ?? undefined,
   }
 }
 
@@ -68,10 +105,27 @@ export function useStore() {
   const [state, setState] = useState<AppState>(INITIAL_STATE)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [user, setUser] = useState<User | null>(null)
 
   // Cache raw event rows separately so we can rebuild Match.events on
   // partial updates (e.g. when a single event arrives over realtime).
   const eventsRef = useRef<EventRow[]>([])
+
+  // ── Auth: track session + user, persists across reloads ──────
+  useEffect(() => {
+    let cancelled = false
+    supabase.auth.getSession().then(({ data }) => {
+      if (cancelled) return
+      setUser(data.session?.user ?? null)
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => {
+      cancelled = true
+      sub.subscription.unsubscribe()
+    }
+  }, [])
 
   // ── Initial load ─────────────────────────────────────────────
   useEffect(() => {
@@ -287,6 +341,123 @@ export function useStore() {
       )
       return { ...s, roster: s.roster.filter((p) => p.id !== id) }
     })
+  }, [])
+
+  // ── Auth actions ─────────────────────────────────────────────
+
+  const signInWithEmail = useCallback(async (email: string): Promise<void> => {
+    const trimmed = email.trim()
+    if (!trimmed) throw new Error('Mail vacío')
+    const { error: e } = await supabase.auth.signInWithOtp({
+      email: trimmed,
+      options: {
+        emailRedirectTo: window.location.origin + window.location.pathname,
+      },
+    })
+    if (e) throw e
+  }, [])
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut()
+  }, [])
+
+  // ── Profile / claim ──────────────────────────────────────────
+
+  const claimPlayer = useCallback(async (id: string): Promise<void> => {
+    const u = (await supabase.auth.getUser()).data.user
+    if (!u) throw new Error('Iniciá sesión primero')
+    setState((s) => ({
+      ...s,
+      roster: s.roster.map((p) => (p.id === id ? { ...p, authUserId: u.id } : p)),
+    }))
+    const { error: e } = await supabase
+      .from('players')
+      .update({ auth_user_id: u.id })
+      .eq('id', id)
+    if (e) throw e
+  }, [])
+
+  const unclaimPlayer = useCallback(async (id: string): Promise<void> => {
+    setState((s) => ({
+      ...s,
+      roster: s.roster.map((p) => {
+        if (p.id !== id) return p
+        const { authUserId, ...rest } = p
+        void authUserId
+        return rest
+      }),
+    }))
+    const { error: e } = await supabase
+      .from('players')
+      .update({ auth_user_id: null })
+      .eq('id', id)
+    if (e) throw e
+  }, [])
+
+  const updatePlayer = useCallback(
+    async (id: string, patch: PlayerProfilePatch): Promise<void> => {
+      const rowPatch = profilePatchToRow(patch)
+      // Optimistic local update
+      setState((s) => ({
+        ...s,
+        roster: s.roster.map((p) => {
+          if (p.id !== id) return p
+          return {
+            ...p,
+            ...(patch.name      !== undefined ? { name: patch.name.trim() } : {}),
+            ...(patch.firstName !== undefined ? { firstName: nullIfBlank(patch.firstName) ?? undefined } : {}),
+            ...(patch.lastName  !== undefined ? { lastName:  nullIfBlank(patch.lastName)  ?? undefined } : {}),
+            ...(patch.phone     !== undefined ? { phone:     nullIfBlank(patch.phone)     ?? undefined } : {}),
+            ...(patch.venmo     !== undefined ? { venmo:     nullIfBlank(patch.venmo)     ?? undefined } : {}),
+            ...(patch.zelle     !== undefined ? { zelle:     nullIfBlank(patch.zelle)     ?? undefined } : {}),
+          }
+        }),
+      }))
+      if (Object.keys(rowPatch).length === 0) return
+      const { error: e } = await supabase.from('players').update(rowPatch).eq('id', id)
+      if (e) throw e
+    },
+    [],
+  )
+
+  const setPlayerPhoto = useCallback(async (id: string, file: File | Blob): Promise<string> => {
+    const { blob } = await optimizeAvatar(file)
+    const path = `${id}.jpg`
+    const { error: upErr } = await supabase.storage
+      .from('avatars')
+      .upload(path, blob, { contentType: 'image/jpeg', upsert: true })
+    if (upErr) throw upErr
+    const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path)
+    // Cache-bust so the <img> reflects the new bytes immediately.
+    const url = `${pub.publicUrl}?v=${Date.now()}`
+    setState((s) => ({
+      ...s,
+      roster: s.roster.map((p) => (p.id === id ? { ...p, photoUrl: url } : p)),
+    }))
+    const { error: dbErr } = await supabase
+      .from('players')
+      .update({ photo_url: url })
+      .eq('id', id)
+    if (dbErr) throw dbErr
+    return url
+  }, [])
+
+  const removePlayerPhoto = useCallback(async (id: string): Promise<void> => {
+    setState((s) => ({
+      ...s,
+      roster: s.roster.map((p) => {
+        if (p.id !== id) return p
+        const { photoUrl, ...rest } = p
+        void photoUrl
+        return rest
+      }),
+    }))
+    await supabase.storage.from('avatars').remove([`${id}.jpg`])
+    const { error: e } = await supabase
+      .from('players')
+      .update({ photo_url: null })
+      .eq('id', id)
+    if (e) throw e
   }, [])
 
   // ── Match lifecycle ──────────────────────────────────────────
@@ -554,6 +725,7 @@ export function useStore() {
     state,
     loading,
     error,
+    user,
     activeMatch,
     activeRoster,
     retiredRoster,
@@ -564,6 +736,13 @@ export function useStore() {
     retirePlayer,
     restorePlayer,
     removePlayer,
+    updatePlayer,
+    setPlayerPhoto,
+    removePlayerPhoto,
+    claimPlayer,
+    unclaimPlayer,
+    signInWithEmail,
+    signOut,
     startMatch,
     score,
     undo,
