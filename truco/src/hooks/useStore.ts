@@ -512,7 +512,7 @@ export function useStore() {
       .eq('id', 'singleton')
       .maybeSingle()
     const cur = (data as AppStateRow | null)?.active_match_id
-    const ops: Array<Promise<unknown>> = [
+    const ops: Array<PromiseLike<unknown>> = [
       supabase.from('events').delete().like('match_id', prefix),
       supabase.from('matches').delete().like('id', prefix),
       supabase.from('players').delete().like('id', prefix),

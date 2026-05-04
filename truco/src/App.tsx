@@ -24,12 +24,14 @@ export default function App() {
   // Once loaded, jump into an active match if there is one.
   useEffect(() => {
     if (loading) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeMatch?.winner && route === 'home') setRoute('win')
     else if (activeMatch && !activeMatch.winner && route === 'home') setRoute('game')
   }, [loading, activeMatch, route])
 
   // Sync screen with match state mid-session
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeMatch?.winner && route === 'game') setRoute('win')
     if (!activeMatch && (route === 'game' || route === 'win')) setRoute('home')
   }, [activeMatch, route])
