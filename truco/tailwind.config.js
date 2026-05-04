@@ -22,6 +22,8 @@ export default {
         // Suits
         'suit-red':   'hsl(var(--suit-red) / <alpha-value>)',
         'suit-black': 'hsl(var(--suit-black) / <alpha-value>)',
+        'suit-blue':  'hsl(var(--suit-blue) / <alpha-value>)',
+        'suit-green': 'hsl(var(--suit-green) / <alpha-value>)',
         // Status
         danger: 'hsl(var(--danger) / <alpha-value>)',
         win:    'hsl(var(--win) / <alpha-value>)',

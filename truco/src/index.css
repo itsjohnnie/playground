@@ -56,10 +56,10 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --bg:         155 20% 11%;
-  --surface:    155 18% 15%;
-  --surface-hi: 155 16% 19%;
-  --line:       155 14% 23%;
+  --bg:         155 12% 11%;
+  --surface:    155 10% 15%;
+  --surface-hi: 155  9% 19%;
+  --line:       155  8% 23%;
 
   --ink:        38 28% 92%;
   --ink-muted:  38 14% 70%;
@@ -67,47 +67,51 @@
 
   --accent:     38 60% 60%;
   --accent-hi:  38 72% 70%;
-  --accent-ink: 155 22% 10%;
+  --accent-ink: 155 14% 10%;
 
   --suit-red:   354 62% 54%;
   --suit-black: 38 10% 18%;
+  --suit-blue:  205 30% 64%;
+  --suit-green: 145 22% 56%;
 
   --danger:     8 55% 50%;
   --win:        140 38% 55%;
 
-  --shadow-1: 0 1px 0 hsl(155 22% 6% / 0.4);
-  --shadow-2: 0 8px 24px hsl(155 22% 4% / 0.45),
-              0 1px 0 hsl(155 22% 6% / 0.5);
-  --shadow-3: 0 24px 60px hsl(155 22% 4% / 0.55),
-              0 2px 0 hsl(155 22% 6% / 0.6);
+  --shadow-1: 0 1px 0 hsl(155 14% 6% / 0.4);
+  --shadow-2: 0 8px 24px hsl(155 14% 4% / 0.45),
+              0 1px 0 hsl(155 14% 6% / 0.5);
+  --shadow-3: 0 24px 60px hsl(155 14% 4% / 0.55),
+              0 2px 0 hsl(155 14% 6% / 0.6);
 
   --grain-noise:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.92  0 0 0 0 0.85  0 0 0 0 0.7  0 0 0 0.03 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 
   /* Hex twin of --bg, used for the iOS status-bar / Safari chrome. */
-  --meta-bg: #16221d;
+  --meta-bg: #191F1D;
 }
 
 /* ── Theme: light (parchment) ──────────────────────────────── */
 [data-theme='light'] {
   color-scheme: light;
 
-  /* Warm parchment, gold accent, deep-green ink. */
+  /* Warm parchment, gold accent, neutral-green ink. */
   --bg:         38 32% 95%;
   --surface:    38 30% 92%;
   --surface-hi: 38 26% 87%;
   --line:       38 18% 78%;
 
-  --ink:        155 30% 14%;
-  --ink-muted:  155 14% 32%;
-  --ink-soft:   155 10% 50%;
+  --ink:        155 18% 14%;
+  --ink-muted:  155 10% 32%;
+  --ink-soft:   155  6% 50%;
 
   --accent:     38 70% 42%;
   --accent-hi:  38 78% 36%;
   --accent-ink: 38 32% 96%;
 
   --suit-red:   354 62% 42%;
-  --suit-black: 155 18% 14%;
+  --suit-black: 155 12% 14%;
+  --suit-blue:  205 38% 38%;
+  --suit-green: 145 28% 32%;
 
   --danger:     8 65% 42%;
   --win:        140 38% 32%;
