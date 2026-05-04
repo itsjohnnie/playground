@@ -35,10 +35,11 @@ export function HomeScreen({
       >
         <SuitMark className="mb-1 opacity-90" />
         <h1
-          className="font-display font-normal leading-none text-ink"
+          className="font-display font-normal leading-none text-ink text-center text-balance"
           style={{ fontSize: 'var(--fs-display-xl)' }}
         >
-          Truco
+          <span className="block">Mondays</span>
+          <span className="block">Truco League</span>
         </h1>
         <p className="eyebrow">Argentino</p>
       </motion.div>
