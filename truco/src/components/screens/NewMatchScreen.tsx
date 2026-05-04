@@ -177,7 +177,7 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
               <div className="flex flex-col gap-2">
                 {sortedRoster.map((p) => (
                   <Chip key={p.id} selected={selected.has(p.id)} onClick={() => toggle(p.id)}>
-                    <span className="inline-flex items-center gap-1">
+                    <span className="flex w-full items-center justify-between">
                       {p.name}
                       {selected.has(p.id) && <Check className="size-3.5" aria-hidden />}
                     </span>
