@@ -13,19 +13,50 @@ type Route = 'home' | 'mesa' | 'new' | 'game' | 'win' | 'historial'
 
 export default function App() {
   const store = useStore()
-  const { activeMatch } = store
+  const { activeMatch, loading, error } = store
 
-  const [route, setRoute] = useState<Route>(() => {
-    if (activeMatch?.winner) return 'win'
-    if (activeMatch) return 'game'
-    return 'home'
-  })
+  const [route, setRoute] = useState<Route>('home')
 
-  // Sync screen with match state
+  // Once loaded, jump into an active match if there is one.
+  useEffect(() => {
+    if (loading) return
+    if (activeMatch?.winner && route === 'home') setRoute('win')
+    else if (activeMatch && !activeMatch.winner && route === 'home') setRoute('game')
+  }, [loading, activeMatch, route])
+
+  // Sync screen with match state mid-session
   useEffect(() => {
     if (activeMatch?.winner && route === 'game') setRoute('win')
     if (!activeMatch && (route === 'game' || route === 'win')) setRoute('home')
   }, [activeMatch, route])
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-1.5 rounded-full bg-accent animate-pulse" />
+          <p className="eyebrow">Conectando</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 flex items-center justify-center px-6 text-center">
+        <div className="flex flex-col items-center gap-3 max-w-xs">
+          <p className="eyebrow text-danger">Sin conexión</p>
+          <p className="text-ink-muted text-sm">{error}</p>
+          <button
+            onClick={() => location.reload()}
+            className="pressable mt-2 rounded-sm border border-line bg-surface-hi px-4 py-2 text-sm text-ink"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <AnimatePresence mode="wait">
