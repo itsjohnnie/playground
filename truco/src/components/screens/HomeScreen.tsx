@@ -93,7 +93,7 @@ export function HomeScreen({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.35, duration: 0.3 }}
-        className="mt-auto pt-10 text-center text-sm text-ink-soft"
+        className="mt-auto pt-10 text-center text-sm text-ink-soft text-balance"
       >
         Instalá la app para llevar tu propio marcador en cada mesa.
       </motion.p>
