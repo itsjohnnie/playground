@@ -38,7 +38,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
+      <div className="fixed inset-0 grid place-items-center">
         <div className="flex flex-col items-center gap-3">
           <div className="size-1.5 rounded-full bg-accent animate-pulse" />
           <p className="eyebrow">Conectando</p>
@@ -49,7 +49,7 @@ export default function App() {
 
   if (error) {
     return (
-      <div className="flex-1 flex items-center justify-center px-6 text-center">
+      <div className="fixed inset-0 grid place-items-center px-6 text-center">
         <div className="flex flex-col items-center gap-3 max-w-xs">
           <p className="eyebrow text-danger">Sin conexión</p>
           <p className="text-ink-muted text-sm">{error}</p>
