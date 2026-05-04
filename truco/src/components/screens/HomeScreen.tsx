@@ -53,7 +53,7 @@ export function HomeScreen({
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...stagger(0), duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
             >
-              <Button variant="primary" size="xl" className="w-full" onClick={onContinue}>
+              <Button variant="primary" size="lg" className="w-full" onClick={onContinue}>
                 Continuar partida
               </Button>
             </motion.div>
@@ -66,7 +66,7 @@ export function HomeScreen({
           >
             <Button
               variant={hasActiveMatch ? 'outline' : 'primary'}
-              size="xl"
+              size="lg"
               className="w-full"
               onClick={onNewMatch}
             >
