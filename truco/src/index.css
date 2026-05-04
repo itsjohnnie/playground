@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Custom easing curves (Emil Kowalski) ── */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* shadcn/ui CSS variables — always-dark felt theme */
+  --background: 155 54% 11%;
+  --foreground: 39 67% 87%;
+  --card: 155 45% 14%;
+  --card-foreground: 39 67% 87%;
+  --popover: 155 50% 12%;
+  --popover-foreground: 39 67% 87%;
+  --primary: 45 66% 52%;
+  --primary-foreground: 28 73% 12%;
+  --secondary: 155 35% 20%;
+  --secondary-foreground: 39 50% 75%;
+  --muted: 155 30% 18%;
+  --muted-foreground: 39 22% 52%;
+  --accent: 45 45% 40%;
+  --accent-foreground: 28 73% 12%;
+  --destructive: 0 55% 48%;
+  --destructive-foreground: 39 67% 87%;
+  --border: 155 22% 22%;
+  --input: 155 38% 17%;
+  --ring: 45 66% 52%;
+  --radius: 0.75rem;
+}
+
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  background: #0d2b1a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background: #0d2b1a;
+  color: #F5E6C8;
+  font-family: 'Crimson Text', Georgia, serif;
+  /* subtle felt weave */
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(31,92,56,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(0,0,0,0.25) 0%, transparent 55%);
+  min-height: 100dvh;
+}
+
+#root {
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Button active feedback (Emil Kowalski) ── */
+.btn-pressable {
+  transition: transform 160ms var(--ease-out), opacity 160ms var(--ease-out);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-pressable:active { transform: scale(0.97); }
+
+/* ── SVG palito draw animation ── */
+@keyframes draw-line {
+  from { stroke-dashoffset: 50; opacity: 0; }
+  to   { stroke-dashoffset: 0;  opacity: 1; }
+}
+.palito-draw {
+  stroke-dasharray: 50;
+  animation: draw-line 0.32s var(--ease-out) both;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.25); border-radius: 2px; }
+
+/* ── Input focus ring ── */
+input:focus { outline: none; box-shadow: 0 0 0 2px rgba(212,175,55,0.4); }
+
+/* ── Remove tap highlight everywhere ── */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* ── Hover states only on devices with pointer ── */
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift:hover { transform: translateY(-1px); }
+}
