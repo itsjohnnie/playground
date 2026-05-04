@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from 'framer-motion'
+import { useRef, useState } from 'react'
+import { motion, AnimatePresence, animate, useMotionValue, useTransform } from 'framer-motion'
 import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
@@ -116,7 +116,7 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
               </span>
               {' · '}
               {SCORE_REASON_LABEL[lastEvent.reason]}{' '}
-              <span className="text-accent">+{lastEvent.points}</span>
+              <span className="text-accent">{lastEvent.points >= 0 ? '+' : ''}{lastEvent.points}</span>
             </motion.span>
           )}
         </AnimatePresence>
@@ -181,13 +181,17 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
             {[...match.events].reverse().map((ev, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between rounded-sm bg-surface-hi px-3 py-2"
+                className="grid grid-cols-[7rem_1fr_3rem] items-center gap-2 rounded-sm bg-surface-hi px-3 py-2"
               >
-                <span className="font-display text-ink text-base">
+                <span className="font-display text-ink text-base truncate">
                   {ev.team === 'A' ? match.teamA.name : match.teamB.name}
                 </span>
-                <span className="text-xs text-ink-muted">{SCORE_REASON_LABEL[ev.reason]}</span>
-                <span className="tabular text-accent font-semibold">+{ev.points}</span>
+                <span className="text-xs text-ink-muted text-center truncate">
+                  {SCORE_REASON_LABEL[ev.reason]}
+                </span>
+                <span className="tabular text-accent font-semibold text-right">
+                  {ev.points >= 0 ? '+' : ''}{ev.points}
+                </span>
               </div>
             ))}
           </div>
@@ -199,8 +203,14 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
 
 // ─── Team panel ──────────────────────────────────────────────
 
+// Threshold for "this is a deliberate drag" (otherwise it's a tap). Below
+// this distance we never visually move the panel and never trigger a swipe.
+const DRAG_START_PX = 12
+// Distance / velocity required to count as a successful swipe.
 const SWIPE_PX = 56
-const SWIPE_VEL = 380
+const SWIPE_VEL = 380   // px / second
+// Maximum visual offset (with elastic dampening already applied).
+const MAX_DRAG_PX = 110
 
 function TeamPanel({
   name, players, score, highlight, onOpenSheet, onQuickAdd, onQuickSub, right,
@@ -217,14 +227,70 @@ function TeamPanel({
   const inBuenas = isInBuenas(score)
   const { malas, buenas } = splitScore(score)
   const y = useMotionValue(0)
-  // Hint chevrons fade in as the user drags toward the threshold.
   const upHint   = useTransform(y, [-SWIPE_PX, 0],          [1, 0])
   const downHint = useTransform(y, [0,         SWIPE_PX],   [0, 1])
   const [pulse, setPulse] = useState<null | 'up' | 'down'>(null)
 
-  function handleDragEnd(_: unknown, info: PanInfo) {
-    const dy = info.offset.y
-    const vy = info.velocity.y
+  // Pointer state lives in a ref so we never re-render mid-gesture.
+  const ptr = useRef<{
+    id: number
+    startY: number
+    startT: number
+    dragging: boolean
+  } | null>(null)
+
+  function flash(kind: 'up' | 'down') {
+    if (navigator.vibrate) navigator.vibrate(8)
+    setPulse(kind)
+    window.setTimeout(() => setPulse(null), 260)
+  }
+
+  function snapBack() {
+    animate(y, 0, { type: 'spring', duration: 0.4, bounce: 0.22 })
+  }
+
+  function onPointerDown(e: React.PointerEvent) {
+    if (!e.isPrimary) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    y.stop()
+    ptr.current = {
+      id: e.pointerId,
+      startY: e.clientY,
+      startT: performance.now(),
+      dragging: false,
+    }
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    const p = ptr.current
+    if (!p || p.id !== e.pointerId) return
+    const dy = e.clientY - p.startY
+    if (!p.dragging && Math.abs(dy) > DRAG_START_PX) {
+      p.dragging = true
+    }
+    if (p.dragging) {
+      // Apply elastic dampening so the panel feels rubbery near the edge.
+      const damped = dy * 0.55
+      const clamped = Math.max(-MAX_DRAG_PX, Math.min(MAX_DRAG_PX, damped))
+      y.set(clamped)
+    }
+  }
+
+  function onPointerUp(e: React.PointerEvent) {
+    const p = ptr.current
+    if (!p || p.id !== e.pointerId) return
+    const dy = e.clientY - p.startY
+    const dt = Math.max(1, performance.now() - p.startT)
+    const vy = (dy / dt) * 1000
+    const wasDrag = p.dragging
+    ptr.current = null
+    snapBack()
+
+    if (!wasDrag) {
+      onOpenSheet()
+      return
+    }
+
     if (dy < -SWIPE_PX || vy < -SWIPE_VEL) {
       onQuickAdd()
       flash('up')
@@ -234,24 +300,25 @@ function TeamPanel({
     }
   }
 
-  function flash(kind: 'up' | 'down') {
-    if (navigator.vibrate) navigator.vibrate(8)
-    setPulse(kind)
-    window.setTimeout(() => setPulse(null), 260)
+  function onPointerCancel(e: React.PointerEvent) {
+    const p = ptr.current
+    if (!p || p.id !== e.pointerId) return
+    ptr.current = null
+    snapBack()
   }
 
   return (
-    <motion.button
-      onTap={onOpenSheet}
-      drag="y"
-      dragConstraints={{ top: -120, bottom: 120 }}
-      dragElastic={0.35}
-      dragMomentum={false}
-      dragSnapToOrigin
-      onDragEnd={handleDragEnd}
-      style={{ y, touchAction: 'none' }}
-      className={`pressable group relative flex flex-col gap-3 px-4 py-5 text-left ${right ? '' : 'border-r border-line/70'} hover-elevate select-none`}
-      aria-label={`Sumar puntos a ${name}. Arrastrá hacia arriba para sumar, hacia abajo para restar.`}
+    <motion.div
+      role="button"
+      tabIndex={0}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenSheet() } }}
+      style={{ y, touchAction: 'none', userSelect: 'none' }}
+      className={`pressable group relative flex flex-col gap-3 px-4 py-5 text-left ${right ? '' : 'border-r border-line/70'} hover-elevate select-none cursor-pointer`}
+      aria-label={`Sumar puntos a ${name}. Tocá para abrir las opciones, arrastrá hacia arriba para sumar, hacia abajo para restar.`}
     >
       {/* Swipe hint arrows — only visible while dragging */}
       <motion.div
@@ -315,7 +382,7 @@ function TeamPanel({
       <div className="absolute right-3 bottom-3 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
         ↕ deslizá
       </div>
-    </motion.button>
+    </motion.div>
   )
 }
 

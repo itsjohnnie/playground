@@ -174,12 +174,19 @@ function MatchDetail({ match, playerById, onDelete }: { match: Match; playerById
           <p className="eyebrow">Jugadas</p>
           <div className="flex flex-col gap-1">
             {match.events.map((ev, i) => (
-              <div key={i} className="flex items-center justify-between rounded-sm bg-surface-hi px-3 py-2">
-                <span className="font-display text-ink text-sm">
+              <div
+                key={i}
+                className="grid grid-cols-[6.5rem_1fr_2.75rem] items-center gap-2 rounded-sm bg-surface-hi px-3 py-2"
+              >
+                <span className="font-display text-ink text-sm truncate">
                   {ev.team === 'A' ? match.teamA.name : match.teamB.name}
                 </span>
-                <span className="text-xs text-ink-muted">{SCORE_REASON_LABEL[ev.reason]}</span>
-                <span className="tabular text-accent text-sm font-semibold">+{ev.points}</span>
+                <span className="text-xs text-ink-muted text-center truncate">
+                  {SCORE_REASON_LABEL[ev.reason]}
+                </span>
+                <span className="tabular text-accent text-sm font-semibold text-right">
+                  {ev.points >= 0 ? '+' : ''}{ev.points}
+                </span>
               </div>
             ))}
           </div>
