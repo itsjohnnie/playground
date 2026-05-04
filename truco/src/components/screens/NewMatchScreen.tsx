@@ -170,7 +170,7 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
                 La mesa está vacía. Sumá jugadores para arrancar.
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2">
                 {roster.map((p) => (
                   <Chip key={p.id} selected={selected.has(p.id)} onClick={() => toggle(p.id)}>
                     <span className="inline-flex items-center gap-1">
