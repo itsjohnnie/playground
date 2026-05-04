@@ -19,6 +19,7 @@ import {
 import { execOp } from '@/lib/writeQueue'
 import { getMesa, setMesa as persistMesa, makeMesaId, idBelongsToMesa } from '@/lib/mesa'
 import { optimizeAvatar } from '@/lib/photoOptim'
+import { toast } from '@/lib/toast'
 
 // ── Profile patch shape ─────────────────────────────────────────
 export interface PlayerProfilePatch {
@@ -114,13 +115,37 @@ export function useStore() {
   // ── Auth: track session + user, persists across reloads ──────
   useEffect(() => {
     let cancelled = false
+    // Detect a magic-link redirect *before* supabase consumes the URL —
+    // both the implicit (#access_token=…) and PKCE (?code=…) flows. The
+    // SIGNED_IN event fires on every page load with a session, so we
+    // arm a one-shot flag here to distinguish "fresh sign-in" from
+    // "session restored on reload."
+    const href = window.location.href
+    const isMagicLinkReturn =
+      href.includes('access_token=') ||
+      href.includes('refresh_token=') ||
+      /[?&]code=/.test(href)
+    const isMagicLinkError =
+      href.includes('error=') ||
+      href.includes('error_code=') ||
+      href.includes('error_description=')
+    let pendingMagicLinkToast = isMagicLinkReturn
+
     supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return
       setUser(data.session?.user ?? null)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
+      if (event === 'SIGNED_IN' && pendingMagicLinkToast && session?.user) {
+        toast(
+          'success',
+          session.user.email ? `Sesión iniciada — ${session.user.email}` : 'Sesión iniciada',
+        )
+        pendingMagicLinkToast = false
+      }
     })
+    if (isMagicLinkError) toast('error', 'No pudimos confirmar el link. Probá pedirlo de nuevo.')
     return () => {
       cancelled = true
       sub.subscription.unsubscribe()
