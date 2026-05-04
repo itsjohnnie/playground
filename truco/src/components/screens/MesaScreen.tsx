@@ -16,6 +16,7 @@ import { Screen } from '@/components/ui/Screen'
 import { Avatar } from '@/components/ui/Avatar'
 import { ProfileSheet } from '@/components/ui/ProfileSheet'
 import { SignInSheet } from '@/components/ui/SignInSheet'
+import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Player } from '@/types/game'
 import type { PlayerProfilePatch } from '@/hooks/useStore'
 
@@ -54,6 +55,10 @@ export function MesaScreen({
   const [mesaError, setMesaError] = useState<string | null>(null)
   const [theme, setTheme] = useState<ThemeChoice>(() => getThemeChoice())
   useEffect(() => subscribeTheme((c) => setTheme(c)), [])
+  // Disable the gesture while a sheet is open so dragging the sheet
+  // off the bottom edge doesn't also navigate back.
+  const sheetOpen = !!profileFor || signInOpen || mesaSheet || confirmWipe
+  useEdgeSwipeBack(onBack, { enabled: !sheetOpen })
 
   // Re-derive the open profile from the live roster so realtime updates
   // (photo upload, name edit, etc.) reflect immediately in the sheet.

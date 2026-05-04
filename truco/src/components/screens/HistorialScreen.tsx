@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
+import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Match, Player } from '@/types/game'
 import { leaderboard } from '@/utils/scoring'
 import { SCORE_REASON_LABEL } from '@/types/game'
@@ -23,6 +24,7 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
   const [openMatch, setOpenMatch] = useState<Match | null>(null)
   const finished = useMemo(() => matches.filter((m) => m.finishedAt !== null), [matches])
   const stats = useMemo(() => leaderboard(roster, matches), [roster, matches])
+  useEdgeSwipeBack(onBack, { enabled: !openMatch })
 
   return (
     <Screen className="px-5 py-5 gap-5">

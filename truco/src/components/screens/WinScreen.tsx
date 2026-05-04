@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { SuitMark } from '@/components/ui/SuitMark'
 import { Screen } from '@/components/ui/Screen'
+import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Match, Player } from '@/types/game'
 
 interface WinScreenProps {
@@ -15,6 +16,7 @@ interface WinScreenProps {
 const COUNT_DURATION = 600
 
 export function WinScreen({ match, playerById, onHome, onRevancha }: WinScreenProps) {
+  useEdgeSwipeBack(onHome)
   const winnerSide = match.winner
   if (winnerSide === null) return null
 
