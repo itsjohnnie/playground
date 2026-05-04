@@ -85,7 +85,7 @@ export function MesaScreen({ active, retired, mesa, onSwitchMesa, onBack, onAdd,
   return (
     <Screen className="px-5 py-5 gap-5">
       <div className="flex items-center justify-between">
-        <Button variant="link" size="sm" onClick={onBack} className="-ml-2 gap-1 text-ink-muted">
+        <Button variant="link" size="sm" onClick={onBack} className="px-0 -ml-1 gap-1 text-ink-muted">
           <ChevronLeft className="size-4" /> Volver
         </Button>
       </div>
