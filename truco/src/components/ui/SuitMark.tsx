@@ -1,14 +1,17 @@
-// Decorative suit row — only used on Home & Win.
+import { Oro, Copa, Espada, Basto } from './Suits'
+
+// Decorative Spanish-suit row — used on Home & Win.
+// Order is the canonical Argentine recital: oro, copa, espada, basto.
 export function SuitMark({ className = '' }: { className?: string }) {
   return (
     <div
       className={`flex items-center gap-3 text-xl no-select ${className}`}
       aria-hidden="true"
     >
-      <span className="text-ink/55">♠</span>
-      <span className="text-ink/55">♣</span>
-      <span className="text-suit-red/90">♥</span>
-      <span className="text-suit-red/90">♦</span>
+      <Oro    className="text-accent" />
+      <Copa   className="text-suit-red/90" />
+      <Espada className="text-ink/65" />
+      <Basto  className="text-ink/65" />
     </div>
   )
 }
