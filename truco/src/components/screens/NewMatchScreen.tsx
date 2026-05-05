@@ -254,7 +254,8 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
             className="flex flex-col gap-5 flex-1"
           >
             <p className="text-left text-sm text-ink-muted text-balance">
-              Arrastrá un nombre al otro lado, o tocalo para mandarlo enfrente.
+              Tocá un nombre para cambiarlo de equipo. Si querés un atajo, abajo
+              los podés armar parejos o totalmente al azar.
             </p>
 
             <div className="grid grid-cols-2 gap-3">
@@ -386,9 +387,6 @@ const TeamColumn = function TeamColumn({
         )}
       </div>
 
-      <p className="text-[11px] text-ink-soft mt-auto">
-        Arrastrá o tocá para cambiar de equipo.
-      </p>
     </motion.div>
   )
 }
