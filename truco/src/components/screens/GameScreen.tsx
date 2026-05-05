@@ -244,7 +244,7 @@ function TeamPanel({
   function flash(kind: 'up' | 'down') {
     if (navigator.vibrate) navigator.vibrate(8)
     setPulse(kind)
-    window.setTimeout(() => setPulse(null), 260)
+    window.setTimeout(() => setPulse(null), 1100)
   }
 
   function snapBack() {
@@ -377,21 +377,26 @@ function TeamPanel({
         </div>
       </div>
 
-      {/* Pulse glow on successful gesture — soft inset blur, not a hard ring */}
+      {/* Pulse glow on successful gesture — soft inset blur. Bloom in,
+          dwell while the eye registers it, then drift out. */}
       <AnimatePresence>
         {pulse && (
           <motion.div
             key={pulse + score}
-            initial={{ opacity: 0.7, scale: 0.97 }}
-            animate={{ opacity: 0, scale: 1.02 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 1, 0] }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }}
+            transition={{
+              duration: 1.05,
+              times: [0, 0.18, 0.62, 1],
+              ease: [0.23, 1, 0.32, 1],
+            }}
             className="pointer-events-none absolute inset-0 rounded-md"
             style={{
               boxShadow:
                 pulse === 'up'
-                  ? 'inset 0 0 48px hsl(var(--suit-green) / 0.5)'
-                  : 'inset 0 0 48px hsl(var(--suit-red) / 0.45)',
+                  ? 'inset 0 0 80px 4px hsl(var(--suit-green) / 0.6)'
+                  : 'inset 0 0 80px 4px hsl(var(--suit-red) / 0.55)',
             }}
           />
         )}

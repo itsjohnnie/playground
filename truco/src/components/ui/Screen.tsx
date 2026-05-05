@@ -20,6 +20,7 @@ const variants = {
 
 // Re-exported so list children can opt into the cascade by spreading
 // these variants without redefining the keyframes themselves.
+// eslint-disable-next-line react-refresh/only-export-components
 export const staggerItem = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.28, ease: EASE } },
