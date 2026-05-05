@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { motion, AnimatePresence, animate, useMotionValue } from 'framer-motion'
+import type { PanInfo } from 'framer-motion'
+import { ChevronLeft, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
@@ -22,6 +23,7 @@ type Tab = 'partidas' | 'stats'
 export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteMatch }: HistorialScreenProps) {
   const [tab, setTab] = useState<Tab>('partidas')
   const [openMatch, setOpenMatch] = useState<Match | null>(null)
+  const [swipedRowId, setSwipedRowId] = useState<string | null>(null)
   const finished = useMemo(() => matches.filter((m) => m.finishedAt !== null), [matches])
   const stats = useMemo(() => leaderboard(roster, matches), [roster, matches])
   useEdgeSwipeBack(onBack, { enabled: !openMatch })
@@ -55,7 +57,15 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
               <p className="text-ink-muted text-center pt-6">Todavía no hay partidas guardadas.</p>
             ) : (
               finished.map((m) => (
-                <MatchRow key={m.id} match={m} playerById={playerById} onClick={() => setOpenMatch(m)} />
+                <MatchRow
+                  key={m.id}
+                  match={m}
+                  playerById={playerById}
+                  onClick={() => setOpenMatch(m)}
+                  onDelete={() => onDeleteMatch(m.id)}
+                  swipeOpen={swipedRowId === m.id}
+                  onSwipeOpenChange={(open) => setSwipedRowId(open ? m.id : null)}
+                />
               ))
             )}
           </motion.div>
@@ -118,7 +128,19 @@ function SegmentedTabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void
   )
 }
 
-function MatchRow({ match, playerById, onClick }: { match: Match; playerById: (id: string) => Player | undefined; onClick: () => void }) {
+// Width of the revealed delete affordance, in px.
+const DELETE_REVEAL = 88
+
+interface MatchRowProps {
+  match: Match
+  playerById: (id: string) => Player | undefined
+  onClick: () => void
+  onDelete: () => void
+  swipeOpen: boolean
+  onSwipeOpenChange: (open: boolean) => void
+}
+
+function MatchRow({ match, playerById, onClick, onDelete, swipeOpen, onSwipeOpenChange }: MatchRowProps) {
   const date = new Date(match.startedAt)
   const dateStr = date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
   const winnerSide = match.winner
@@ -127,31 +149,81 @@ function MatchRow({ match, playerById, onClick }: { match: Match; playerById: (i
   const playersA = match.teamA.playerIds.map(playerById).filter(Boolean).map((p) => p!.name).join(', ')
   const playersB = match.teamB.playerIds.map(playerById).filter(Boolean).map((p) => p!.name).join(', ')
 
+  const x = useMotionValue(0)
+  const draggedRef = useRef(false)
+  const SPRING = { type: 'spring' as const, stiffness: 380, damping: 36, mass: 0.6 }
+
+  // When the parent says we're closed (because another row opened, or the
+  // user dismissed), animate back to 0. We don't fight an active drag.
+  useEffect(() => {
+    if (draggedRef.current) return
+    animate(x, swipeOpen ? -DELETE_REVEAL : 0, SPRING)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swipeOpen])
+
+  function handleDragEnd(_: unknown, info: PanInfo) {
+    setTimeout(() => { draggedRef.current = false }, 0)
+    const open = info.offset.x < -DELETE_REVEAL / 2 || info.velocity.x < -300
+    animate(x, open ? -DELETE_REVEAL : 0, SPRING)
+    onSwipeOpenChange(open)
+  }
+
+  function handleClick() {
+    if (draggedRef.current) return
+    if (swipeOpen) {
+      // Tap on an open row closes the reveal instead of opening detail.
+      onSwipeOpenChange(false)
+      return
+    }
+    onClick()
+  }
+
   return (
-    <button
-      onClick={onClick}
-      className="pressable text-left rounded-md border border-line bg-surface px-4 py-3 hover-elevate flex flex-col gap-1.5"
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-xs eyebrow">{dateStr}</span>
-        {match.abandoned && <span className="text-[11px] text-danger">Abandonada</span>}
-      </div>
-      <div className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
-        <div className="min-w-0">
-          <p className={`font-display truncate ${aWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamA.name}</p>
-          {playersA && <p className="text-[11px] text-ink-soft truncate">{playersA}</p>}
+    <div className="relative overflow-hidden rounded-md">
+      {/* Delete affordance revealed underneath */}
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label="Borrar partida"
+        className="pressable absolute inset-y-0 right-0 flex items-center justify-center bg-danger text-bg"
+        style={{ width: DELETE_REVEAL }}
+      >
+        <Trash2 className="size-5" />
+      </button>
+
+      <motion.button
+        type="button"
+        drag="x"
+        dragConstraints={{ left: -DELETE_REVEAL, right: 0 }}
+        dragElastic={{ left: 0.15, right: 0 }}
+        dragMomentum={false}
+        style={{ x, touchAction: 'pan-y' }}
+        onDragStart={() => { draggedRef.current = true }}
+        onDragEnd={handleDragEnd}
+        onClick={handleClick}
+        className="pressable relative w-full text-left rounded-md border border-line bg-surface px-4 py-3 hover-elevate flex flex-col gap-1.5"
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs eyebrow">{dateStr}</span>
+          {match.abandoned && <span className="text-[11px] text-danger">Abandonada</span>}
         </div>
-        <div className="font-display tabular text-ink">
-          <span className={aWon ? 'text-accent' : ''}>{match.scoreA}</span>
-          <span className="text-ink-soft mx-1.5">—</span>
-          <span className={bWon ? 'text-accent' : ''}>{match.scoreB}</span>
+        <div className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
+          <div className="min-w-0">
+            <p className={`font-display truncate ${aWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamA.name}</p>
+            {playersA && <p className="text-[11px] text-ink-soft truncate">{playersA}</p>}
+          </div>
+          <div className="font-display tabular text-ink">
+            <span className={aWon ? 'text-accent' : ''}>{match.scoreA}</span>
+            <span className="text-ink-soft mx-1.5">—</span>
+            <span className={bWon ? 'text-accent' : ''}>{match.scoreB}</span>
+          </div>
+          <div className="min-w-0 text-right">
+            <p className={`font-display truncate ${bWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamB.name}</p>
+            {playersB && <p className="text-[11px] text-ink-soft truncate">{playersB}</p>}
+          </div>
         </div>
-        <div className="min-w-0 text-right">
-          <p className={`font-display truncate ${bWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamB.name}</p>
-          {playersB && <p className="text-[11px] text-ink-soft truncate">{playersB}</p>}
-        </div>
-      </div>
-    </button>
+      </motion.button>
+    </div>
   )
 }
 
