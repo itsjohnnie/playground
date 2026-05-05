@@ -4,6 +4,7 @@ import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown, ArrowDownUp } fr
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
+import { PulseGlow } from '@/components/ui/PulseGlow'
 import {
   type Match,
   type Player,
@@ -376,33 +377,10 @@ function TeamPanel({
         </div>
       </div>
 
-      {/* Pulse glow on successful gesture — layered inset shadows so the
-          glow feathers in from the panel's actual rectangle edges rather
-          than betraying a circle/ellipse shape. No spread, no rounding —
-          pure inset blur. popLayout so a fast second swipe replaces the
-          previous glow cleanly instead of double-stacking. */}
-      <AnimatePresence mode="popLayout">
-        {pulse && (
-          <motion.div
-            key={pulse + score}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: [0, 1, 1, 0] }}
-            exit={{ opacity: 0, transition: { duration: 0.18, ease: [0.4, 0, 1, 1] } }}
-            transition={{
-              duration: 1.05,
-              times: [0, 0.32, 0.65, 1],
-              ease: [0.23, 1, 0.32, 1],
-            }}
-            className="pointer-events-none absolute inset-0"
-            style={{
-              boxShadow:
-                pulse === 'up'
-                  ? 'inset 0 0 40px hsl(var(--suit-green) / 0.35), inset 0 0 110px hsl(var(--suit-green) / 0.22)'
-                  : 'inset 0 0 40px hsl(var(--suit-red) / 0.32),   inset 0 0 110px hsl(var(--suit-red) / 0.20)',
-            }}
-          />
-        )}
-      </AnimatePresence>
+      {/* Pulse glow on successful gesture — WebGL fragment shader.
+          Each new pulse remounts via the key, so a fast second swipe
+          tears down the old context and starts a fresh one. */}
+      {pulse && <PulseGlow key={pulse + score} kind={pulse} />}
     </div>
   )
 }
