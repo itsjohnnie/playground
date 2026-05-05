@@ -222,7 +222,15 @@ function MatchRow({ match, playerById, onClick, onDelete, swipeOpen, onSwipeOpen
         dragConstraints={{ left: -DELETE_REVEAL, right: 0 }}
         dragElastic={{ left: 0.15, right: 0 }}
         dragMomentum={false}
-        style={{ x, touchAction: 'pan-y' }}
+        style={{
+          x,
+          touchAction: 'pan-y',
+          // Soft drop shadow off the row's right edge, so as the row
+          // slides it casts a quiet shadow onto the red beneath. At rest
+          // it lands outside the wrapper and gets clipped, so the effect
+          // only appears in motion.
+          boxShadow: '8px 0 18px -6px rgba(0, 0, 0, 0.45), 1px 0 0 rgba(0, 0, 0, 0.18)',
+        }}
         onDragStart={() => { draggedRef.current = true }}
         onDragEnd={handleDragEnd}
         onClick={handleClick}
