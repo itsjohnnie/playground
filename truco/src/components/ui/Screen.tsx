@@ -31,8 +31,43 @@ export const staggerItem = {
 // fade in the corresponding edge. Small dead zone so a 1px wobble
 // doesn't flicker the overlays.
 const FADE_THRESHOLD = 4
-// Height of the fade gradient + blur strip at each edge.
-const FADE_HEIGHT = 28
+// Height of the fade gradient + blur strip at each edge. Tall enough
+// for the falloff to feel gradual instead of reading as a hard band.
+const FADE_HEIGHT = 72
+
+// Smooth, ease-in-out-ish falloff curves. Multi-stop gradients
+// approximate a soft sigmoid so the bg colour and the blur both
+// taper away gently at the inner edge instead of cutting off.
+const FADE_BG_TOP =
+  'linear-gradient(to bottom, ' +
+  'hsl(var(--bg)) 0%, ' +
+  'hsl(var(--bg) / 0.92) 18%, ' +
+  'hsl(var(--bg) / 0.72) 38%, ' +
+  'hsl(var(--bg) / 0.42) 60%, ' +
+  'hsl(var(--bg) / 0.16) 80%, ' +
+  'transparent 100%)'
+const FADE_BG_BOTTOM =
+  'linear-gradient(to top, ' +
+  'hsl(var(--bg)) 0%, ' +
+  'hsl(var(--bg) / 0.92) 18%, ' +
+  'hsl(var(--bg) / 0.72) 38%, ' +
+  'hsl(var(--bg) / 0.42) 60%, ' +
+  'hsl(var(--bg) / 0.16) 80%, ' +
+  'transparent 100%)'
+const FADE_MASK_TOP =
+  'linear-gradient(to bottom, ' +
+  '#000 0%, ' +
+  'rgba(0,0,0,0.9) 30%, ' +
+  'rgba(0,0,0,0.55) 60%, ' +
+  'rgba(0,0,0,0.2) 85%, ' +
+  'transparent 100%)'
+const FADE_MASK_BOTTOM =
+  'linear-gradient(to top, ' +
+  '#000 0%, ' +
+  'rgba(0,0,0,0.9) 30%, ' +
+  'rgba(0,0,0,0.55) 60%, ' +
+  'rgba(0,0,0,0.2) 85%, ' +
+  'transparent 100%)'
 
 export function Screen({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -87,11 +122,11 @@ export function Screen({ children, className = '' }: { children: React.ReactNode
         style={{
           height: FADE_HEIGHT,
           opacity: showTop ? 1 : 0,
-          background: 'linear-gradient(to bottom, hsl(var(--bg)) 0%, hsl(var(--bg) / 0.6) 55%, transparent 100%)',
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
-          maskImage: 'linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 60%, transparent 100%)',
+          background: FADE_BG_TOP,
+          backdropFilter: 'blur(5px)',
+          WebkitBackdropFilter: 'blur(5px)',
+          maskImage: FADE_MASK_TOP,
+          WebkitMaskImage: FADE_MASK_TOP,
         }}
       />
 
@@ -103,11 +138,11 @@ export function Screen({ children, className = '' }: { children: React.ReactNode
         style={{
           height: FADE_HEIGHT,
           opacity: showBottom ? 1 : 0,
-          background: 'linear-gradient(to top, hsl(var(--bg)) 0%, hsl(var(--bg) / 0.6) 55%, transparent 100%)',
-          backdropFilter: 'blur(6px)',
-          WebkitBackdropFilter: 'blur(6px)',
-          maskImage: 'linear-gradient(to top, #000 0%, #000 60%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to top, #000 0%, #000 60%, transparent 100%)',
+          background: FADE_BG_BOTTOM,
+          backdropFilter: 'blur(5px)',
+          WebkitBackdropFilter: 'blur(5px)',
+          maskImage: FADE_MASK_BOTTOM,
+          WebkitMaskImage: FADE_MASK_BOTTOM,
         }}
       />
     </motion.div>
