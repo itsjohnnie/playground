@@ -33,10 +33,13 @@ export function calcFaltaEnvido(
   roundMode: RoundMode,
 ): number {
   if (roundMode === 'picapica') return FALTA_ENVIDO_PICAPICA
-  if (!isInBuenas(loserScore)) {
-    return Math.max(BUENAS_THRESHOLD - winnerScore, 1)
-  }
-  return Math.max(MAX_SCORE - winnerScore, 1)
+  // Canon: falta envido is worth what the LEADING team needs to finish.
+  // If both teams are still in malas, the target is buenas (15); as soon
+  // as either team has crossed into buenas, the target is the match (30).
+  const leader = Math.max(loserScore, winnerScore)
+  const eitherInBuenas = isInBuenas(loserScore) || isInBuenas(winnerScore)
+  const target = eitherInBuenas ? MAX_SCORE : BUENAS_THRESHOLD
+  return Math.max(target - leader, 1)
 }
 
 export function addPoints(current: number, points: number): number {
