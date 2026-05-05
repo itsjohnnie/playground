@@ -376,26 +376,28 @@ function TeamPanel({
         </div>
       </div>
 
-      {/* Pulse glow on successful gesture — soft inset blur. Bloom in,
-          dwell while the eye registers it, then drift out. */}
-      <AnimatePresence>
+      {/* Pulse glow on successful gesture — soft radial vignette that
+          follows the panel's full rectangle, no inset edges, no rounding.
+          popLayout so a fast second swipe replaces the previous glow
+          cleanly instead of double-stacking. */}
+      <AnimatePresence mode="popLayout">
         {pulse && (
           <motion.div
             key={pulse + score}
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 1, 1, 0] }}
-            exit={{ opacity: 0 }}
+            exit={{ opacity: 0, transition: { duration: 0.18, ease: [0.4, 0, 1, 1] } }}
             transition={{
               duration: 1.05,
-              times: [0, 0.18, 0.62, 1],
+              times: [0, 0.32, 0.65, 1],
               ease: [0.23, 1, 0.32, 1],
             }}
-            className="pointer-events-none absolute inset-0 rounded-md"
+            className="pointer-events-none absolute inset-0"
             style={{
-              boxShadow:
+              background:
                 pulse === 'up'
-                  ? 'inset 0 0 80px 4px hsl(var(--suit-green) / 0.6)'
-                  : 'inset 0 0 80px 4px hsl(var(--suit-red) / 0.55)',
+                  ? 'radial-gradient(ellipse at center, transparent 35%, hsl(var(--suit-green) / 0.5) 100%)'
+                  : 'radial-gradient(ellipse at center, transparent 35%, hsl(var(--suit-red) / 0.45) 100%)',
             }}
           />
         )}
