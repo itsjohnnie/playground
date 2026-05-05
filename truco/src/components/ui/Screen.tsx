@@ -74,7 +74,7 @@ export function Screen({ children, className = '' }: { children: React.ReactNode
     >
       <div
         ref={scrollRef}
-        className={`flex-1 overflow-y-auto overscroll-contain ${className}`}
+        className={`flex-1 flex flex-col min-h-0 overflow-y-auto overscroll-contain ${className}`}
       >
         {children}
       </div>
