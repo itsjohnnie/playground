@@ -150,12 +150,14 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
           >
             <Undo2 className="size-4" /> Deshacer último punto
           </Button>
-          <button
+          <Button
+            variant="danger"
+            size="lg"
             onClick={() => { setMenu(false); setConfirmAbandon(true) }}
-            className="pressable rounded-sm border border-danger/40 px-4 py-3 text-left text-danger hover:border-danger inline-flex items-center gap-3"
+            className="justify-start gap-3"
           >
             <X className="size-4" /> Abandonar partida
-          </button>
+          </Button>
         </div>
       </Sheet>
 
