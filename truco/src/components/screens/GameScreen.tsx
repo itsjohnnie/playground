@@ -99,8 +99,8 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
       </div>
 
       {/* Bottom bar — round mode + last action */}
-      <div className="border-t border-line/70 px-4 py-3 flex items-center justify-between text-xs">
-        <span className="eyebrow">{roundMode === 'picapica' ? 'Pica-pica' : 'Redondo'}</span>
+      <div className="border-t border-line/70 px-4 py-3 flex items-center justify-between text-xs text-ink-muted tabular">
+        <span>{roundMode === 'picapica' ? 'Pica-pica' : 'Redondo'}</span>
         <AnimatePresence mode="wait">
           {lastEvent && (
             <motion.span
@@ -109,9 +109,8 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-              className="text-ink-muted tabular"
             >
-              <span className="font-display text-ink">
+              <span className="text-ink">
                 {lastEvent.team === 'A' ? match.teamA.name : match.teamB.name}
               </span>
               {' · '}
@@ -369,7 +368,7 @@ function TeamPanel({
           <Palitos count={malas} accent={!inBuenas && score > 0} />
           {score >= BUENAS_THRESHOLD && <Palitos count={buenas} accent={true} />}
         </div>
-        <div className="pointer-events-none inline-flex items-center gap-1 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
+        <div className="pointer-events-none inline-flex items-center gap-1 text-[10px] text-accent uppercase tracking-wide opacity-40">
           <ArrowDownUp className="size-3" aria-hidden /> deslizá
         </div>
       </div>
