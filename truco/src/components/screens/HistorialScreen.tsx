@@ -60,18 +60,27 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
             {finished.length === 0 ? (
               <p className="text-ink-muted text-center pt-6">Todavía no hay partidas guardadas.</p>
             ) : (
-              finished.map((m) => (
-                <motion.div key={m.id} variants={staggerItem}>
-                  <MatchRow
-                    match={m}
-                    playerById={playerById}
-                    onClick={() => setOpenMatch(m)}
-                    onDelete={() => onDeleteMatch(m.id)}
-                    swipeOpen={swipedRowId === m.id}
-                    onSwipeOpenChange={(open) => setSwipedRowId(open ? m.id : null)}
-                  />
-                </motion.div>
-              ))
+              <AnimatePresence initial={false} mode="popLayout">
+                {finished.map((m) => (
+                  <motion.div
+                    key={m.id}
+                    layout
+                    variants={staggerItem}
+                    exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
+                    transition={{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }}
+                    style={{ overflow: 'hidden' }}
+                  >
+                    <MatchRow
+                      match={m}
+                      playerById={playerById}
+                      onClick={() => setOpenMatch(m)}
+                      onDelete={() => onDeleteMatch(m.id)}
+                      swipeOpen={swipedRowId === m.id}
+                      onSwipeOpenChange={(open) => setSwipedRowId(open ? m.id : null)}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             )}
           </motion.div>
         ) : (
@@ -189,15 +198,22 @@ function MatchRow({ match, playerById, onClick, onDelete, swipeOpen, onSwipeOpen
 
   return (
     <div className="relative overflow-hidden rounded-md">
-      {/* Delete affordance revealed underneath */}
+      {/* Delete affordance revealed underneath. The button spans the full
+          row so the red continues cleanly behind the row's rounded corners
+          during the slide and bounce-back, with the icon parked in the
+          DELETE_REVEAL strip on the right. */}
       <button
         type="button"
         onClick={onDelete}
         aria-label="Borrar partida"
-        className="pressable absolute inset-y-0 right-0 flex items-center justify-center bg-danger text-bg"
-        style={{ width: DELETE_REVEAL }}
+        className="pressable absolute inset-0 bg-danger text-bg"
       >
-        <Trash2 className="size-5" />
+        <span
+          className="absolute inset-y-0 right-0 flex items-center justify-center"
+          style={{ width: DELETE_REVEAL }}
+        >
+          <Trash2 className="size-5" />
+        </span>
       </button>
 
       <motion.button
@@ -210,7 +226,7 @@ function MatchRow({ match, playerById, onClick, onDelete, swipeOpen, onSwipeOpen
         onDragStart={() => { draggedRef.current = true }}
         onDragEnd={handleDragEnd}
         onClick={handleClick}
-        className="pressable relative w-full text-left rounded-md border border-line bg-surface px-4 py-3 hover-elevate flex flex-col gap-1.5"
+        className="pressable relative w-full text-left rounded-l-md border border-line bg-surface px-4 py-3 hover-elevate flex flex-col gap-1.5"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs eyebrow">{dateStr}</span>
