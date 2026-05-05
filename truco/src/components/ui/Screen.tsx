@@ -20,6 +20,7 @@ const variants = {
 
 // Re-exported so list children can opt into the cascade by spreading
 // these variants without redefining the keyframes themselves.
+// eslint-disable-next-line react-refresh/only-export-components
 export const staggerItem = {
   initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.28, ease: EASE } },
@@ -73,7 +74,7 @@ export function Screen({ children, className = '' }: { children: React.ReactNode
     >
       <div
         ref={scrollRef}
-        className={`flex-1 overflow-y-auto overscroll-contain ${className}`}
+        className={`flex-1 flex flex-col min-h-0 overflow-y-auto overscroll-contain ${className}`}
       >
         {children}
       </div>
