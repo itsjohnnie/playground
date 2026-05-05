@@ -244,7 +244,7 @@ function TeamPanel({
   function flash(kind: 'up' | 'down') {
     if (navigator.vibrate) navigator.vibrate(8)
     setPulse(kind)
-    window.setTimeout(() => setPulse(null), 260)
+    window.setTimeout(() => setPulse(null), 1100)
   }
 
   function snapBack() {
@@ -377,21 +377,28 @@ function TeamPanel({
         </div>
       </div>
 
-      {/* Pulse glow on successful gesture — soft inset blur, not a hard ring */}
-      <AnimatePresence>
+      {/* Pulse glow on successful gesture — soft radial vignette that
+          follows the panel's full rectangle, no inset edges, no rounding.
+          popLayout so a fast second swipe replaces the previous glow
+          cleanly instead of double-stacking. */}
+      <AnimatePresence mode="popLayout">
         {pulse && (
           <motion.div
             key={pulse + score}
-            initial={{ opacity: 0.7, scale: 0.97 }}
-            animate={{ opacity: 0, scale: 1.02 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }}
-            className="pointer-events-none absolute inset-0 rounded-md"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 1, 1, 0] }}
+            exit={{ opacity: 0, transition: { duration: 0.18, ease: [0.4, 0, 1, 1] } }}
+            transition={{
+              duration: 1.05,
+              times: [0, 0.32, 0.65, 1],
+              ease: [0.23, 1, 0.32, 1],
+            }}
+            className="pointer-events-none absolute inset-0"
             style={{
-              boxShadow:
+              background:
                 pulse === 'up'
-                  ? 'inset 0 0 48px hsl(var(--suit-green) / 0.5)'
-                  : 'inset 0 0 48px hsl(var(--suit-red) / 0.45)',
+                  ? 'radial-gradient(ellipse at center, transparent 35%, hsl(var(--suit-green) / 0.5) 100%)'
+                  : 'radial-gradient(ellipse at center, transparent 35%, hsl(var(--suit-red) / 0.45) 100%)',
             }}
           />
         )}
