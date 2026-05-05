@@ -10,7 +10,7 @@ export type ResolvedTheme = 'light' | 'dark'
 const KEY = 'truco.theme.v1'
 // Fallbacks if --meta-bg isn't yet readable (called pre-CSS-parse).
 const META_FALLBACK = {
-  dark: '#16221d',
+  dark: '#0E1110',
   light: '#f6f3ee',
 }
 
