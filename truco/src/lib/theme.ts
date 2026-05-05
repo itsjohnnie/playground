@@ -17,6 +17,11 @@ const META_FALLBACK = {
 type Listener = (choice: ThemeChoice, resolved: ResolvedTheme) => void
 const listeners = new Set<Listener>()
 
+// Duration of the cross-theme swap. Matches --dur-page-in.
+const TRANSITION_MS = 240
+let transitionTimer: number | null = null
+let lastApplied: ResolvedTheme | null = null
+
 export function getThemeChoice(): ThemeChoice {
   try {
     const v = localStorage.getItem(KEY)
@@ -37,7 +42,24 @@ export function getResolvedTheme(): ResolvedTheme {
 
 export function applyTheme() {
   const resolved = getResolvedTheme()
-  document.documentElement.dataset.theme = resolved
+  const root = document.documentElement
+  // Only arm the global transition if the resolved theme is actually
+  // changing. The first call (initial mount) shouldn't crossfade — the
+  // page is just rendering for the first time.
+  const isFlip = lastApplied !== null && lastApplied !== resolved
+
+  if (isFlip) {
+    root.classList.add('theme-transitioning')
+    if (transitionTimer != null) window.clearTimeout(transitionTimer)
+    transitionTimer = window.setTimeout(() => {
+      root.classList.remove('theme-transitioning')
+      transitionTimer = null
+    }, TRANSITION_MS + 60)
+  }
+
+  root.dataset.theme = resolved
+  lastApplied = resolved
+
   // Update iOS status bar / browser chrome color. Pull the hex straight
   // from the active theme's --meta-bg so it always matches the body bg.
   let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
@@ -46,8 +68,7 @@ export function applyTheme() {
     meta.name = 'theme-color'
     document.head.appendChild(meta)
   }
-  const fromVar = getComputedStyle(document.documentElement)
-    .getPropertyValue('--meta-bg').trim()
+  const fromVar = getComputedStyle(root).getPropertyValue('--meta-bg').trim()
   meta.content = fromVar || META_FALLBACK[resolved]
 }
 

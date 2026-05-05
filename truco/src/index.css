@@ -248,6 +248,25 @@ html {
   to   { opacity: 0; transform: translate(-50%, -50%) scale(0.97); }
 }
 
+/* ── Theme crossfade ──
+   Armed by lib/theme.ts when the resolved theme actually changes (not
+   on initial mount). One uniform 240ms ease-out for every color-bearing
+   property so every surface, border, icon, and shadow migrates in lock-
+   step — no element snaps ahead of another. !important is used to win
+   over per-element transitions (e.g. the 140ms on .pressable). */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition: background-color 240ms var(--ease-out),
+              color 240ms var(--ease-out),
+              border-color 240ms var(--ease-out),
+              outline-color 240ms var(--ease-out),
+              fill 240ms var(--ease-out),
+              stroke 240ms var(--ease-out),
+              box-shadow 240ms var(--ease-out) !important;
+}
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
