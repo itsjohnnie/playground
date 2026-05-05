@@ -48,8 +48,11 @@ values ('singleton', null)
 on conflict (id) do nothing;
 
 -- ─── Row-level security ────────────────────────────────────────
--- Anonymous = full access. The Supabase URL itself is the access
--- credential. Suitable for an internal app shared with friends.
+-- Anonymous AND authenticated visitors get full access to matches,
+-- events, and app_state. The Supabase URL itself is the access
+-- credential — suitable for an internal app shared with friends.
+-- (players policies are managed separately in profiles.sql once a
+-- player is claimed by an auth_user_id.)
 
 alter table players   enable row level security;
 alter table matches   enable row level security;
@@ -61,10 +64,10 @@ drop policy if exists "anon full" on matches;
 drop policy if exists "anon full" on events;
 drop policy if exists "anon full" on app_state;
 
-create policy "anon full" on players   for all to anon using (true) with check (true);
-create policy "anon full" on matches   for all to anon using (true) with check (true);
-create policy "anon full" on events    for all to anon using (true) with check (true);
-create policy "anon full" on app_state for all to anon using (true) with check (true);
+create policy "anon full" on players   for all to anon, authenticated using (true) with check (true);
+create policy "anon full" on matches   for all to anon, authenticated using (true) with check (true);
+create policy "anon full" on events    for all to anon, authenticated using (true) with check (true);
+create policy "anon full" on app_state for all to anon, authenticated using (true) with check (true);
 
 -- ─── Realtime ──────────────────────────────────────────────────
 -- Publish all four tables so subscribers get postgres_changes events.
