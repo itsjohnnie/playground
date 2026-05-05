@@ -4,7 +4,7 @@ import { Check, ChevronLeft, GripVertical, Plus, Shuffle, SplitSquareVertical } 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Chip } from '@/components/ui/Chip'
-import { Screen } from '@/components/ui/Screen'
+import { Screen, staggerItem } from '@/components/ui/Screen'
 import { cn } from '@/lib/utils'
 import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Player } from '@/types/game'
@@ -181,14 +181,24 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
                 La mesa está vacía. Sumá jugadores para arrancar.
               </p>
             ) : (
-              <div className="flex flex-col gap-2">
+              <motion.div
+                className="flex flex-col gap-2"
+                initial="initial"
+                animate="animate"
+                variants={{
+                  initial: {},
+                  animate: { transition: { staggerChildren: 0.035, delayChildren: 0.04 } },
+                }}
+              >
                 {sortedRoster.map((p) => (
-                  <Chip key={p.id} selected={selected.has(p.id)} onClick={() => toggle(p.id)}>
-                    <span className="flex w-full items-center justify-between">
-                      {p.name}
-                      {selected.has(p.id) && <Check className="size-3.5" aria-hidden />}
-                    </span>
-                  </Chip>
+                  <motion.div key={p.id} variants={staggerItem}>
+                    <Chip selected={selected.has(p.id)} onClick={() => toggle(p.id)}>
+                      <span className="flex w-full items-center justify-between">
+                        {p.name}
+                        {selected.has(p.id) && <Check className="size-3.5" aria-hidden />}
+                      </span>
+                    </Chip>
+                  </motion.div>
                 ))}
                 {adding ? (
                   <div className="flex items-center gap-2">
@@ -214,7 +224,7 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
                     <Plus className="size-4" /> Nuevo
                   </button>
                 )}
-              </div>
+              </motion.div>
             )}
 
             <div className="mt-auto pt-4">
