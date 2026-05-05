@@ -123,6 +123,16 @@ export async function execOp(op: QueuedOp, label: string): Promise<void> {
 
 let writeChain: Promise<unknown> = Promise.resolve()
 
+function describeError(e: unknown): string {
+  if (!e) return 'unknown'
+  const obj = e as { code?: string; message?: string; details?: string; hint?: string }
+  // PostgREST errors have code + message + details. Pick the most useful part
+  // and keep it short enough to read in a toast.
+  const code = obj.code ? `[${obj.code}]` : ''
+  const msg = (obj.message || obj.details || obj.hint || '').slice(0, 90)
+  return [code, msg].filter(Boolean).join(' ').trim() || 'unknown'
+}
+
 async function doExec(op: QueuedOp, label: string): Promise<void> {
   try {
     const { error } = await applyOp(op)
@@ -132,8 +142,8 @@ async function doExec(op: QueuedOp, label: string): Promise<void> {
         toast('info', `Sin conexión — ${label} se sincroniza más tarde`)
         return
       }
-      console.error(label, error)
-      toast('error', `No se pudo guardar: ${label}`)
+      console.error(label, error, op)
+      toast('error', `No se pudo guardar ${label}: ${describeError(error)}`, 8000)
     }
   } catch (e) {
     if (isNetworkErr(e)) {
@@ -141,8 +151,8 @@ async function doExec(op: QueuedOp, label: string): Promise<void> {
       toast('info', `Sin conexión — ${label} se sincroniza más tarde`)
       return
     }
-    console.error(label, e)
-    toast('error', `No se pudo guardar: ${label}`)
+    console.error(label, e, op)
+    toast('error', `No se pudo guardar ${label}: ${describeError(e)}`, 8000)
   }
 }
 
