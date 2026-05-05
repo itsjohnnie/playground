@@ -375,16 +375,22 @@ function TeamPanel({
         </div>
       </div>
 
-      {/* Pulse ring on successful gesture */}
+      {/* Pulse glow on successful gesture — soft inset blur, not a hard ring */}
       <AnimatePresence>
         {pulse && (
           <motion.div
             key={pulse + score}
-            initial={{ opacity: 0.55, scale: 0.94 }}
-            animate={{ opacity: 0, scale: 1.04 }}
+            initial={{ opacity: 0.7, scale: 0.97 }}
+            animate={{ opacity: 0, scale: 1.02 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.26, ease: [0.23, 1, 0.32, 1] }}
-            className={`pointer-events-none absolute inset-2 rounded-md ${pulse === 'up' ? 'ring-2 ring-suit-green/60' : 'ring-2 ring-suit-red/55'}`}
+            transition={{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }}
+            className="pointer-events-none absolute inset-0 rounded-md"
+            style={{
+              boxShadow:
+                pulse === 'up'
+                  ? 'inset 0 0 48px hsl(var(--suit-green) / 0.5)'
+                  : 'inset 0 0 48px hsl(var(--suit-red) / 0.45)',
+            }}
           />
         )}
       </AnimatePresence>
