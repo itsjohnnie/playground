@@ -280,18 +280,12 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
 
             <div className="mt-auto flex flex-col gap-2">
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={evenSplit}
-                  className="pressable inline-flex items-center justify-center gap-2 rounded-sm border border-line bg-surface-hi px-3 py-2.5 text-sm text-ink hover-elevate"
-                >
+                <Button variant="soft" size="lg" onClick={evenSplit}>
                   <SplitSquareVertical className="size-4" /> Parejo
-                </button>
-                <button
-                  onClick={autoBalance}
-                  className="pressable inline-flex items-center justify-center gap-2 rounded-sm border border-line bg-surface-hi px-3 py-2.5 text-sm text-ink hover-elevate"
-                >
+                </Button>
+                <Button variant="soft" size="lg" onClick={autoBalance}>
                   <Shuffle className="size-4" /> Al azar
-                </button>
+                </Button>
               </div>
               <Button variant="primary" size="lg" className="w-full" disabled={!isReady} onClick={start}>
                 ¡A jugar!
