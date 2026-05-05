@@ -68,20 +68,24 @@ void main() {
     fbm(c * 1.4 + vec2(0.0,  u_time * 0.35)),
     fbm(c * 1.4 + vec2(7.3, -u_time * 0.30))
   );
-  vec2 cd = c + (d - 0.5) * 0.32;
+  vec2 cd = c + (d - 0.5) * 0.42;
 
   float r = length(cd);
 
-  // Edge-only falloff: completely transparent in the middle, soft hint
-  // at the rim. Pulled in tight so the centre stays clean.
-  float edge = smoothstep(0.85, 1.4, r);
+  // Edge-leaning falloff — the rim picks up most of the glow, with a
+  // gentle bleed inward so the panel feels lit rather than ringed.
+  float edge = smoothstep(0.55, 1.3, r);
 
   // Modulate by another noise octave so the rim itself shimmers
   // softly rather than reading as a uniform band.
   float shimmer = fbm(c * 3.5 + u_time * 0.6);
-  edge *= mix(0.85, 1.1, shimmer);
+  edge *= mix(0.8, 1.15, shimmer);
 
-  float a = clamp(edge * u_intensity, 0.0, 0.45);
+  // Faint inner wash so the centre isn't a hole — the panel glows as
+  // a whole, just brighter at the edges.
+  float wash = (1.0 - smoothstep(0.0, 0.95, r)) * 0.08;
+
+  float a = clamp((edge + wash) * u_intensity, 0.0, 0.65);
   gl_FragColor = vec4(u_color, a);
 }
 `
@@ -175,21 +179,20 @@ export function PulseGlow({ kind, duration = 1050 }: PulseGlowProps) {
       const t = (now - start) / 1000
       const p = Math.min(1, (now - start) / duration)
 
-      // Smooth opacity curve: bloom in 0..0.35, brief dwell to 0.5,
-      // then a long soft fade to 1. The peak is held under 1 (multiplied
-      // by 0.7) so the hint never reaches its theoretical ceiling —
-      // keeps the cue whispered rather than declarative.
+      // Smooth opacity curve: bloom in 0..0.30, dwell to 0.58, fade to 1.
+      // Slight scalar so the cue feels confident without overpowering the
+      // panel content.
       let intensity: number
-      if (p < 0.35) {
-        const k = p / 0.35
+      if (p < 0.30) {
+        const k = p / 0.30
         intensity = k * k * (3 - 2 * k)
-      } else if (p < 0.5) {
+      } else if (p < 0.58) {
         intensity = 1
       } else {
-        const k = 1 - (p - 0.5) / 0.5
+        const k = 1 - (p - 0.58) / 0.42
         intensity = k * k * (3 - 2 * k)
       }
-      intensity *= 0.7
+      intensity *= 0.9
 
       gl.uniform1f(uTime, t)
       gl.uniform1f(uIntensity, intensity)
