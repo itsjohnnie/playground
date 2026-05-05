@@ -147,7 +147,9 @@ export default function App() {
             const b = activeMatch.teamB
             // Swap which team starts as A so loser "sale primero"
             const wasWinnerA = activeMatch.winner === 'A'
-            store.finishMatch()
+            // Skip finishMatch — startMatch supersedes the active match
+            // directly. Going through null first triggers a realtime echo
+            // that briefly flips the route to home.
             store.startMatch(
               wasWinnerA ? b : a,
               wasWinnerA ? a : b,

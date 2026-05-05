@@ -317,7 +317,7 @@ function TeamPanel({
       onPointerCancel={onPointerCancel}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenSheet() } }}
       style={{ touchAction: 'none' }}
-      className={`pressable group relative flex flex-col gap-3 px-4 py-5 text-left overflow-hidden ${right ? '' : 'border-r border-line/70'} hover-elevate select-none cursor-pointer`}
+      className={`group relative flex flex-col gap-3 px-4 py-5 text-left overflow-hidden ${right ? '' : 'border-r border-line/70'} hover-elevate select-none cursor-pointer`}
       aria-label={`Sumar puntos a ${name}. Tocá para abrir las opciones, arrastrá hacia arriba para sumar, hacia abajo para restar.`}
     >
       {/* Swipe hint arrows — only visible while dragging, stay anchored */}
@@ -363,10 +363,15 @@ function TeamPanel({
         </div>
       </motion.div>
 
-      {/* Static layer — palitos stay anchored */}
-      <div className="flex flex-col gap-1.5 mt-auto">
-        <Palitos count={malas} accent={!inBuenas && score > 0} />
-        {score >= BUENAS_THRESHOLD && <Palitos count={buenas} accent={true} />}
+      {/* Static bottom row — palitos and deslizá hint share a baseline */}
+      <div className="mt-auto flex items-end justify-between gap-2">
+        <div className="flex flex-col gap-1.5">
+          <Palitos count={malas} accent={!inBuenas && score > 0} />
+          {score >= BUENAS_THRESHOLD && <Palitos count={buenas} accent={true} />}
+        </div>
+        <div className="pointer-events-none inline-flex items-center gap-1 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
+          <ArrowDownUp className="size-3" aria-hidden /> deslizá
+        </div>
       </div>
 
       {/* Pulse ring on successful gesture */}
@@ -382,10 +387,6 @@ function TeamPanel({
           />
         )}
       </AnimatePresence>
-
-      <div className="pointer-events-none absolute right-3 bottom-3 inline-flex items-center gap-1 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
-        <ArrowDownUp className="size-3" aria-hidden /> deslizá
-      </div>
     </div>
   )
 }
