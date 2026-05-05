@@ -4,7 +4,7 @@ import type { PanInfo } from 'framer-motion'
 import { ChevronLeft, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
-import { Screen } from '@/components/ui/Screen'
+import { Screen, staggerItem } from '@/components/ui/Screen'
 import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Match, Player } from '@/types/game'
 import { leaderboard } from '@/utils/scoring'
@@ -47,35 +47,44 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
         {tab === 'partidas' ? (
           <motion.div
             key="partidas"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={{
+              initial: { opacity: 0, y: 6 },
+              animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.23, 1, 0.32, 1], staggerChildren: 0.05, delayChildren: 0.04 } },
+              exit:    { opacity: 0, y: -4, transition: { duration: 0.18, ease: [0.23, 1, 0.32, 1] } },
+            }}
             className="flex flex-col gap-2"
           >
             {finished.length === 0 ? (
               <p className="text-ink-muted text-center pt-6">Todavía no hay partidas guardadas.</p>
             ) : (
               finished.map((m) => (
-                <MatchRow
-                  key={m.id}
-                  match={m}
-                  playerById={playerById}
-                  onClick={() => setOpenMatch(m)}
-                  onDelete={() => onDeleteMatch(m.id)}
-                  swipeOpen={swipedRowId === m.id}
-                  onSwipeOpenChange={(open) => setSwipedRowId(open ? m.id : null)}
-                />
+                <motion.div key={m.id} variants={staggerItem}>
+                  <MatchRow
+                    match={m}
+                    playerById={playerById}
+                    onClick={() => setOpenMatch(m)}
+                    onDelete={() => onDeleteMatch(m.id)}
+                    swipeOpen={swipedRowId === m.id}
+                    onSwipeOpenChange={(open) => setSwipedRowId(open ? m.id : null)}
+                  />
+                </motion.div>
               ))
             )}
           </motion.div>
         ) : (
           <motion.div
             key="stats"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={{
+              initial: { opacity: 0, y: 6 },
+              animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.23, 1, 0.32, 1], staggerChildren: 0.04, delayChildren: 0.04 } },
+              exit:    { opacity: 0, y: -4, transition: { duration: 0.18, ease: [0.23, 1, 0.32, 1] } },
+            }}
             className="flex flex-col gap-2"
           >
             {stats.length === 0 ? (
@@ -304,7 +313,7 @@ function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard
       {rows.map((s) => {
         const p = playerById(s.playerId)
         return (
-          <div key={s.playerId} className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-3 border-b border-line/40 last:border-b-0 items-center">
+          <motion.div key={s.playerId} variants={staggerItem} className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-3 border-b border-line/40 last:border-b-0 items-center">
             <div className="min-w-0">
               <p className="font-display text-ink text-base truncate">{p?.name ?? '?'}</p>
               <div className="flex gap-0.5 mt-1">
@@ -319,7 +328,7 @@ function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard
             <span className="tabular text-ink-muted text-sm">{s.matches}</span>
             <span className="tabular text-ink text-sm">{s.wins}</span>
             <span className="tabular text-accent font-semibold">{Math.round(s.winRate * 100)}%</span>
-          </div>
+          </motion.div>
         )
       })}
     </div>
