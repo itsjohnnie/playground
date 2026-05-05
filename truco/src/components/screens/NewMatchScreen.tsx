@@ -182,7 +182,7 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
               </p>
             ) : (
               <motion.div
-                className="flex flex-col gap-2"
+                className="grid grid-cols-2 gap-2"
                 initial="initial"
                 animate="animate"
                 variants={{
@@ -192,16 +192,20 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
               >
                 {sortedRoster.map((p) => (
                   <motion.div key={p.id} variants={staggerItem}>
-                    <Chip selected={selected.has(p.id)} onClick={() => toggle(p.id)}>
-                      <span className="flex w-full items-center justify-between">
-                        {p.name}
-                        {selected.has(p.id) && <Check className="size-3.5" aria-hidden />}
+                    <Chip
+                      selected={selected.has(p.id)}
+                      onClick={() => toggle(p.id)}
+                      className="w-full"
+                    >
+                      <span className="flex w-full items-center justify-between gap-2">
+                        <span className="truncate">{p.name}</span>
+                        {selected.has(p.id) && <Check className="size-3.5 shrink-0" aria-hidden />}
                       </span>
                     </Chip>
                   </motion.div>
                 ))}
                 {adding ? (
-                  <div className="flex items-center gap-2">
+                  <div className="col-span-2 flex items-center gap-2">
                     <Input
                       autoFocus
                       value={newName}
@@ -212,14 +216,14 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
                       }}
                       maxLength={20}
                       placeholder="Nombre"
-                      className="h-11 w-32"
+                      className="h-11 flex-1"
                     />
                     <Button size="md" variant="primary" onClick={commitNew}>OK</Button>
                   </div>
                 ) : (
                   <button
                     onClick={() => setAdding(true)}
-                    className="pressable inline-flex items-center gap-1 rounded-sm border border-dashed border-line bg-transparent px-3 py-2 text-sm text-ink-muted hover:text-ink hover:border-ink/40 min-h-[44px]"
+                    className="pressable col-span-2 inline-flex items-center justify-center gap-1 rounded-sm border border-dashed border-line bg-transparent px-3 py-2 text-sm text-ink-muted hover:text-ink hover:border-ink/40 min-h-[44px]"
                   >
                     <Plus className="size-4" /> Nuevo
                   </button>
