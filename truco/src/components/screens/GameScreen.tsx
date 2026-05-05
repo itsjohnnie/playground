@@ -320,16 +320,17 @@ function TeamPanel({
       className={`group relative flex flex-col gap-3 px-4 py-5 text-left overflow-hidden ${right ? '' : 'border-r border-line/70'} hover-elevate select-none cursor-pointer`}
       aria-label={`Sumar puntos a ${name}. Tocá para abrir las opciones, arrastrá hacia arriba para sumar, hacia abajo para restar.`}
     >
-      {/* Swipe hint arrows — only visible while dragging, stay anchored */}
+      {/* Swipe hint arrows — only visible while dragging, stay anchored.
+          Up = basto green, down = copa red — same hues as the Spanish suits. */}
       <motion.div
         style={{ opacity: upHint }}
-        className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 text-accent"
+        className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 text-suit-green"
       >
         <ChevronUp className="size-5" strokeWidth={2.5} />
       </motion.div>
       <motion.div
         style={{ opacity: downHint }}
-        className="pointer-events-none absolute left-1/2 bottom-14 -translate-x-1/2 text-danger"
+        className="pointer-events-none absolute left-1/2 bottom-14 -translate-x-1/2 text-suit-red"
       >
         <ChevronDown className="size-5" strokeWidth={2.5} />
       </motion.div>
@@ -383,7 +384,7 @@ function TeamPanel({
             animate={{ opacity: 0, scale: 1.04 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.26, ease: [0.23, 1, 0.32, 1] }}
-            className={`pointer-events-none absolute inset-2 rounded-md ${pulse === 'up' ? 'ring-2 ring-accent/60' : 'ring-2 ring-danger/55'}`}
+            className={`pointer-events-none absolute inset-2 rounded-md ${pulse === 'up' ? 'ring-2 ring-suit-green/60' : 'ring-2 ring-suit-red/55'}`}
           />
         )}
       </AnimatePresence>
