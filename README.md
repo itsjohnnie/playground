@@ -8,6 +8,7 @@ A collection of experimental web projects, prototypes, and interactive demos.
 
 | Project | Description | Link |
 |---------|-------------|------|
+| **os** | A minimal morning-briefing dashboard — anti-Slack | [View](https://itsjohnnie.github.io/playground/os/) |
 | **ascii** | Terminal-style ASCII animations | [View](https://itsjohnnie.github.io/playground/ascii/) |
 | **cc** | Claude Code internal documentation for stakeholders | [View](https://itsjohnnie.github.io/playground/cc/) |
 | **dithered** | Dithered image effects | [View](https://itsjohnnie.github.io/playground/dithered/) |

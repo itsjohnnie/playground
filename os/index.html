@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WorkOS</title>
+  <meta name="description" content="A morning briefing for the workday — anti-clutter, anti-badge." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="os" id="os">
+
+    <header class="topbar">
+      <nav class="tabs" aria-label="Time horizon">
+        <button data-tab="today" aria-current="true">Today</button>
+        <button data-tab="week">This week</button>
+        <button data-tab="soon">Coming soon</button>
+      </nav>
+      <nav class="links" aria-label="Surfaces">
+        <a href="#/notifications">Notifications</a>
+        <a href="#/milestones">Milestones</a>
+        <a href="#/journal">Journal</a>
+        <a href="#/settings">Settings</a>
+      </nav>
+    </header>
+
+    <section data-route="home" class="is-active">
+      <div class="hero stagger">
+        <h1 id="greeting">Welcome.</h1>
+        <p class="state" id="state-of-day">&nbsp;</p>
+      </div>
+
+      <div class="compass">
+        <div class="people stagger" id="people">
+          <div class="column" data-circle="0" aria-label="Me">
+            <span class="label">You</span>
+            <div class="person" data-offline="false">
+              <span class="dot"></span>
+              <span class="name">Me</span>
+            </div>
+          </div>
+          <div class="column" data-circle="1"><span class="label">Inner</span></div>
+          <div class="column" data-circle="2"><span class="label">Second</span></div>
+          <div class="column" data-circle="3">
+            <span class="label">Today</span>
+          </div>
+        </div>
+
+        <div class="onyou">
+          <span class="panel-label">On you</span>
+          <ul id="onyou-list"></ul>
+        </div>
+
+        <div class="ring-wrap">
+          <div class="ring" id="ring" aria-label="Today's hours, meetings and milestones">
+            <svg viewBox="-110 -110 220 220" aria-hidden="true">
+              <g class="ticks"></g>
+              <g class="dots"></g>
+              <g class="now"></g>
+              <g class="focus"></g>
+              <g class="leads"></g>
+            </svg>
+            <button class="center-btn" id="focus-toggle" aria-label="Start focus session"></button>
+            <div class="ring-tooltip" id="ring-tooltip" role="tooltip"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-row">
+        <section>
+          <h2>In motion</h2>
+          <ul id="in-motion"></ul>
+        </section>
+        <section>
+          <h2>This week</h2>
+          <ul id="this-week"></ul>
+        </section>
+        <section>
+          <h2>Announcements</h2>
+          <ul id="announcements"></ul>
+        </section>
+      </div>
+    </section>
+
+    <section data-route="notifications">
+      <h1 class="stub">Notifications</h1>
+      <p>Coming in Phase 2 — a quiet feed grouped by sender, with no counters.</p>
+    </section>
+    <section data-route="milestones">
+      <h1 class="stub">Milestones</h1>
+      <p>Coming in Phase 2 — a vertical timeline that mirrors the Ring ticks.</p>
+    </section>
+    <section data-route="journal">
+      <h1 class="stub">Journal</h1>
+      <p>Coming in Phase 2 — today is editable, past days read-only.</p>
+    </section>
+    <section data-route="settings">
+      <h1 class="stub">Settings</h1>
+      <p>Coming in Phase 2 — edit name, greeting tone, circles, theme, reduced motion.</p>
+    </section>
+
+  </main>
+
+  <!-- Palette -->
+  <div class="palette-scrim" id="palette-scrim"></div>
+  <div class="palette" id="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+    <input type="text" id="palette-input" placeholder="Search people, surfaces, milestones…" autocomplete="off" />
+    <ul class="palette-results" id="palette-results"></ul>
+    <div class="palette-hint">
+      <span><kbd>↑</kbd><kbd>↓</kbd> to move &nbsp; <kbd>⏎</kbd> to open</span>
+      <span><kbd>esc</kbd> to close</span>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
