@@ -9,8 +9,9 @@
  * ───────────────────────────────────────────────────────── */
 
 import {
-  me, people, announcements, peopleByCircle, onYou, greet, stateOfDay,
-  inMotion, thisWeek, ageLabel, nameOf
+  me, people, announcements, milestones, onYou, greet, stateOfDay,
+  inMotion, thisWeek, ageLabel, nameOf,
+  notificationsFeed, applyCircleOverrides, groupByCircle
 } from "./data.js";
 import { initRing } from "./ring.js";
 
@@ -19,21 +20,63 @@ const TIMING = {
   paletteClose: 0
 };
 
-// ─── State ──────────────────────────────────────────────────
+// ─── Settings ───────────────────────────────────────────────
+// One source of truth for user-edited state. Other modules subscribe.
 
-const state = {
-  tab: "today",
-  theme: localStorage.getItem("workos:theme") || "auto"
+const SETTINGS_DEFAULTS = {
+  name: me.name,
+  greetingStyle: me.greetingStyle,
+  theme: "auto",
+  reducedMotion: false,
+  circleOverrides: {}
 };
+const SETTINGS_KEY = "workos:settings";
+const settingsSubscribers = new Set();
 
-applyTheme(state.theme);
+function loadSettings() {
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"); } catch {}
+  return { ...SETTINGS_DEFAULTS, ...stored };
+}
+
+function saveSettings(patch) {
+  const next = { ...loadSettings(), ...patch };
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+  for (const fn of settingsSubscribers) fn(next);
+  return next;
+}
+
+function onSettingsChange(fn) { settingsSubscribers.add(fn); }
+
+const state = { tab: "today" };
+
+// Initial application of theme + reduced-motion.
+applyTheme(loadSettings().theme);
+applyReducedMotion(loadSettings().reducedMotion);
+onSettingsChange((s) => {
+  applyTheme(s.theme);
+  applyReducedMotion(s.reducedMotion);
+});
+
+// Whenever settings change, re-render home if it's active.
+onSettingsChange(() => {
+  if (document.querySelector("[data-route='home']").classList.contains("is-active")) {
+    renderHero();
+    renderPeople();
+  }
+});
 
 // ─── Rendering ──────────────────────────────────────────────
 
 function renderHero() {
   const now = new Date();
-  document.getElementById("greeting").textContent = greet(now, me.name, me.greetingStyle);
+  const s = loadSettings();
+  document.getElementById("greeting").textContent = greet(now, s.name, s.greetingStyle);
   document.getElementById("state-of-day").textContent = stateOfDay(now);
+}
+
+function currentPeople() {
+  return applyCircleOverrides(loadSettings().circleOverrides);
 }
 
 function renderPeople() {
@@ -42,7 +85,7 @@ function renderPeople() {
     const col = grid.querySelector(`.column[data-circle="${i}"]`);
     [...col.children].forEach((c) => { if (!c.classList.contains("label")) c.remove(); });
   }
-  const byCircle = peopleByCircle();
+  const byCircle = groupByCircle(currentPeople());
   for (const circle of [1, 2, 3]) {
     const col = grid.querySelector(`.column[data-circle="${circle}"]`);
     const list = byCircle[circle];
@@ -179,7 +222,17 @@ function route() {
   document.querySelectorAll("[data-route]").forEach((s) => {
     s.classList.toggle("is-active", s.dataset.route === active);
   });
-  if (active === "home") renderAll();
+  document.querySelectorAll(".topbar .links a").forEach((a) => {
+    a.classList.toggle("is-active", a.getAttribute("href") === hash);
+  });
+  switch (active) {
+    case "home": renderAll(); break;
+    case "notifications": renderNotifications(); break;
+    case "milestones": renderMilestones(); break;
+    case "journal": renderJournal(); break;
+    case "settings": renderSettings(); break;
+  }
+  window.scrollTo(0, 0);
 }
 
 // ─── Tabs (Today / This week / Coming soon) ─────────────────
@@ -200,18 +253,20 @@ function bindTabs() {
 // ─── Theme ──────────────────────────────────────────────────
 
 function applyTheme(theme) {
-  state.theme = theme;
   if (theme === "auto") {
     const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     document.documentElement.dataset.theme = dark ? "dark" : "light";
   } else {
     document.documentElement.dataset.theme = theme;
   }
-  localStorage.setItem("workos:theme", theme);
+}
+
+function applyReducedMotion(reduced) {
+  document.documentElement.classList.toggle("reduce-motion", !!reduced);
 }
 
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-  if (state.theme === "auto") applyTheme("auto");
+  if (loadSettings().theme === "auto") applyTheme("auto");
 });
 
 // ─── Palette ────────────────────────────────────────────────
@@ -237,6 +292,9 @@ function paletteCorpus() {
   items.push({ label: "Action", title: "Switch to dark theme", meta: "", action: () => applyTheme("dark") });
   items.push({ label: "Action", title: "Match system theme", meta: "", action: () => applyTheme("auto") });
   items.push({ label: "Action", title: "Start a focus session", meta: "", action: () => document.getElementById("focus-toggle").click() });
+  items.push({ label: "Action", title: "Mark all notifications read", meta: "", action: markAllRead });
+  items.push({ label: "Action", title: "Reduce motion", meta: "", action: () => saveSettings({ reducedMotion: true }) });
+  items.push({ label: "Action", title: "Allow motion", meta: "", action: () => saveSettings({ reducedMotion: false }) });
   for (const it of items) {
     it._titleLower = it.title.toLowerCase();
     it._haystack = `${it._titleLower} ${(it.meta || "").toLowerCase()}`;
@@ -396,3 +454,419 @@ setInterval(() => {
   renderOnYou();
   renderInMotion();
 }, 60_000);
+
+// ─── Notifications surface ─────────────────────────────────
+
+const READ_KEY = "workos:read";
+function loadRead() {
+  try { return new Set(JSON.parse(localStorage.getItem(READ_KEY) || "[]")); } catch { return new Set(); }
+}
+function saveRead(set) {
+  localStorage.setItem(READ_KEY, JSON.stringify([...set]));
+}
+
+function renderNotifications() {
+  const ul = document.getElementById("notif-list");
+  const empty = document.getElementById("notif-empty");
+  ul.replaceChildren();
+  const items = notificationsFeed();
+  const read = loadRead();
+  if (!items.length) { empty.hidden = false; return; }
+  empty.hidden = true;
+
+  const peopleNow = currentPeople();
+  for (const item of items) {
+    const li = document.createElement("li");
+    li.dataset.read = read.has(item.id) ? "true" : "false";
+    const sender = peopleNow.find((p) => p.id === item.fromId);
+    li.dataset.online = sender?.online ? "true" : "false";
+
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    li.appendChild(dot);
+
+    const from = document.createElement("span");
+    from.className = "from";
+    from.textContent = item.from || "—";
+    from.title = item.from || "";
+    li.appendChild(from);
+
+    const msg = document.createElement("span");
+    msg.className = "msg";
+    msg.textContent = item.msg;
+    msg.title = item.msg;
+    li.appendChild(msg);
+
+    const ctx = document.createElement("span");
+    ctx.className = "context";
+    ctx.textContent = item.context;
+    li.appendChild(ctx);
+
+    const age = document.createElement("span");
+    age.className = "age";
+    age.textContent = ageLabel(Date.now() - new Date(item.at));
+    li.appendChild(age);
+
+    const button = document.createElement("button");
+    button.textContent = read.has(item.id) ? "Unread" : "Read";
+    button.title = read.has(item.id) ? "Mark as unread" : "Mark as read";
+    button.addEventListener("click", () => {
+      const r = loadRead();
+      if (r.has(item.id)) r.delete(item.id); else r.add(item.id);
+      saveRead(r);
+      renderNotifications();
+    });
+    li.appendChild(button);
+
+    ul.appendChild(li);
+  }
+}
+
+function markAllRead() {
+  const items = notificationsFeed();
+  const r = loadRead();
+  for (const it of items) r.add(it.id);
+  saveRead(r);
+  if (document.querySelector("[data-route='notifications']").classList.contains("is-active")) renderNotifications();
+}
+
+// ─── Milestones surface ────────────────────────────────────
+
+function renderMilestones() {
+  const ol = document.getElementById("milestone-timeline");
+  ol.replaceChildren();
+  const now = Date.now();
+  const sorted = [...milestones].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const peopleNow = currentPeople();
+  for (const m of sorted) {
+    const li = document.createElement("li");
+    const at = new Date(m.date);
+    li.dataset.past = at < now ? "true" : "false";
+    li.dataset.kind = m.kind;
+
+    const date = document.createElement("span");
+    date.className = "date";
+    date.textContent = at.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    li.appendChild(date);
+
+    const body = document.createElement("div");
+    body.className = "body";
+
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = m.title;
+    title.title = m.title;
+    body.appendChild(title);
+
+    if (m.attendeeIds?.length) {
+      const att = document.createElement("div");
+      att.className = "attendees";
+      for (const id of m.attendeeIds) {
+        const p = peopleNow.find((x) => x.id === id);
+        if (!p) continue;
+        const pill = document.createElement("span");
+        pill.className = "pill";
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        const name = document.createElement("span");
+        name.textContent = p.name;
+        pill.append(dot, name);
+        att.appendChild(pill);
+      }
+      body.appendChild(att);
+    }
+    li.appendChild(body);
+    ol.appendChild(li);
+  }
+}
+
+// ─── Journal surface ───────────────────────────────────────
+
+const JOURNAL_KEY = "workos:journal";
+function loadJournal() {
+  try { return JSON.parse(localStorage.getItem(JOURNAL_KEY) || "{}"); } catch { return {}; }
+}
+function saveJournal(map) {
+  localStorage.setItem(JOURNAL_KEY, JSON.stringify(map));
+}
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function isoToDate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+let journalSaveTimer = 0;
+
+function renderJournal() {
+  const today = todayKey();
+  const journal = loadJournal();
+  const editor = document.getElementById("journal-editor");
+  const dateEl = document.getElementById("journal-today-date");
+  const saveState = document.getElementById("journal-save");
+  const past = document.getElementById("journal-past");
+
+  dateEl.textContent = new Date().toLocaleDateString(undefined, {
+    weekday: "long", month: "long", day: "numeric"
+  });
+
+  editor.textContent = journal[today] || "";
+  editor.dataset.empty = editor.textContent ? "false" : "true";
+  saveState.textContent = "";
+
+  editor.oninput = () => {
+    editor.dataset.empty = editor.textContent.trim() ? "false" : "true";
+    saveState.textContent = "Saving…";
+    clearTimeout(journalSaveTimer);
+    journalSaveTimer = setTimeout(() => {
+      const j = loadJournal();
+      j[today] = editor.textContent;
+      saveJournal(j);
+      saveState.textContent = "Saved";
+      setTimeout(() => { saveState.textContent = ""; }, 1200);
+    }, 600);
+  };
+  editor.onkeydown = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+      e.preventDefault();
+      const j = loadJournal();
+      j[today] = editor.textContent;
+      saveJournal(j);
+      saveState.textContent = "Saved";
+      setTimeout(() => { saveState.textContent = ""; }, 1200);
+    }
+  };
+
+  past.replaceChildren();
+  const keys = Object.keys(journal).filter((k) => k !== today && journal[k]?.trim()).sort().reverse();
+  if (!keys.length) return;
+
+  const byWeek = new Map();
+  for (const key of keys) {
+    const date = isoToDate(key);
+    const start = startOfWeek(date);
+    const weekKey = `${start.getFullYear()}-${start.getMonth()}-${start.getDate()}`;
+    if (!byWeek.has(weekKey)) byWeek.set(weekKey, { start, items: [] });
+    byWeek.get(weekKey).items.push({ key, date, text: journal[key] });
+  }
+
+  for (const { start, items } of byWeek.values()) {
+    const section = document.createElement("section");
+    const head = document.createElement("h3");
+    head.className = "journal-week-head";
+    const startStr = start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const end = new Date(start); end.setDate(start.getDate() + 6);
+    const endStr = end.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    head.textContent = `Week of ${startStr} – ${endStr}`;
+    section.appendChild(head);
+
+    for (const it of items) {
+      const day = document.createElement("div");
+      day.className = "day";
+      const d = document.createElement("span");
+      d.className = "date";
+      d.textContent = it.date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+      day.appendChild(d);
+      const text = document.createElement("div");
+      text.className = "text";
+      text.textContent = it.text;
+      day.appendChild(text);
+      section.appendChild(day);
+    }
+    past.appendChild(section);
+  }
+}
+
+function startOfWeek(date) {
+  const d = new Date(date);
+  const day = (d.getDay() + 6) % 7; // Monday = 0
+  d.setDate(d.getDate() - day);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// ─── Settings surface ──────────────────────────────────────
+
+let settingsBound = false;
+function renderSettings() {
+  const s = loadSettings();
+  document.getElementById("set-name").value = s.name;
+  setSegmented("set-tone", s.greetingStyle);
+  setSegmented("set-theme", s.theme);
+  document.getElementById("set-reduced-motion").checked = !!s.reducedMotion;
+  updateGreetingPreview();
+  renderCirclesEditor();
+  if (settingsBound) return;
+  settingsBound = true;
+  bindSettingsControls();
+}
+
+function setSegmented(id, value) {
+  document.querySelectorAll(`#${id} button`).forEach((b) => {
+    b.setAttribute("aria-checked", b.dataset.value === value ? "true" : "false");
+  });
+}
+
+function bindSettingsControls() {
+  document.getElementById("set-name").addEventListener("input", (e) => {
+    saveSettings({ name: e.target.value.trim() || SETTINGS_DEFAULTS.name });
+    updateGreetingPreview();
+  });
+  document.querySelectorAll("#set-tone button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      saveSettings({ greetingStyle: btn.dataset.value });
+      setSegmented("set-tone", btn.dataset.value);
+      updateGreetingPreview();
+    });
+  });
+  document.querySelectorAll("#set-theme button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      saveSettings({ theme: btn.dataset.value });
+      setSegmented("set-theme", btn.dataset.value);
+    });
+  });
+  document.getElementById("set-reduced-motion").addEventListener("change", (e) => {
+    saveSettings({ reducedMotion: e.target.checked });
+  });
+  document.getElementById("set-reset").addEventListener("click", () => {
+    if (!confirm("Reset all settings, custom circles, journal, focus history, and read state?")) return;
+    localStorage.removeItem(SETTINGS_KEY);
+    localStorage.removeItem(JOURNAL_KEY);
+    localStorage.removeItem(READ_KEY);
+    localStorage.removeItem("workos:focus");
+    location.reload();
+  });
+  bindCirclesEditor();
+}
+
+function updateGreetingPreview() {
+  const s = loadSettings();
+  document.getElementById("set-greeting-preview").textContent = greet(new Date(), s.name, s.greetingStyle);
+}
+
+function renderCirclesEditor() {
+  const peopleNow = currentPeople();
+  for (const circle of [1, 2, 3]) {
+    const section = document.querySelector(`.settings-circles section[data-circle="${circle}"]`);
+    const ul = section.querySelector("ul");
+    ul.replaceChildren();
+    const members = peopleNow.filter((p) => p.circle === circle);
+    for (const p of members) {
+      ul.appendChild(circleRow(p));
+    }
+  }
+}
+
+function circleRow(p) {
+  const li = document.createElement("li");
+  li.dataset.id = p.id;
+  li.dataset.offline = p.online ? "false" : "true";
+  li.draggable = true;
+  const dot = document.createElement("span");
+  dot.className = "dot";
+  li.appendChild(dot);
+  const name = document.createElement("span");
+  name.className = "name";
+  name.textContent = p.name;
+  name.title = p.name;
+  li.appendChild(name);
+  const x = document.createElement("button");
+  x.textContent = "✕";
+  x.title = "Remove from circle";
+  x.addEventListener("click", () => {
+    const s = loadSettings();
+    saveSettings({ circleOverrides: { ...s.circleOverrides, [p.id]: null } });
+    renderCirclesEditor();
+  });
+  li.appendChild(x);
+  li.addEventListener("dragstart", (e) => {
+    li.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", p.id);
+  });
+  li.addEventListener("dragend", () => li.classList.remove("dragging"));
+  return li;
+}
+
+function bindCirclesEditor() {
+  document.querySelectorAll(".settings-circles section").forEach((section) => {
+    const circle = Number(section.dataset.circle);
+    section.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      section.classList.add("drop-target");
+    });
+    section.addEventListener("dragleave", () => section.classList.remove("drop-target"));
+    section.addEventListener("drop", (e) => {
+      e.preventDefault();
+      section.classList.remove("drop-target");
+      const id = e.dataTransfer.getData("text/plain");
+      if (!id) return;
+      const s = loadSettings();
+      saveSettings({ circleOverrides: { ...s.circleOverrides, [id]: circle } });
+      renderCirclesEditor();
+    });
+  });
+
+  const input = document.getElementById("set-add-input");
+  const results = document.getElementById("set-add-results");
+  let addResults = [];
+  let addIndex = 0;
+
+  function refreshAddResults() {
+    results.replaceChildren();
+    if (!addResults.length) {
+      results.classList.remove("is-open");
+      return;
+    }
+    results.classList.add("is-open");
+    addResults.forEach((p, i) => {
+      const li = document.createElement("li");
+      li.setAttribute("aria-selected", i === addIndex ? "true" : "false");
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = p.name;
+      name.title = p.name;
+      li.appendChild(name);
+      for (const c of [1, 2, 3]) {
+        const btn = document.createElement("span");
+        btn.className = "pick";
+        btn.textContent = c === 1 ? "INNER" : c === 2 ? "SECOND" : "TODAY";
+        btn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          const s = loadSettings();
+          saveSettings({ circleOverrides: { ...s.circleOverrides, [p.id]: c } });
+          input.value = "";
+          addResults = [];
+          refreshAddResults();
+          renderCirclesEditor();
+        });
+        li.appendChild(btn);
+      }
+      results.appendChild(li);
+    });
+  }
+
+  input.addEventListener("input", () => {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { addResults = []; refreshAddResults(); return; }
+    addResults = people
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .filter((p) => p.circle == null)
+      .slice(0, 8);
+    addIndex = 0;
+    refreshAddResults();
+  });
+  input.addEventListener("blur", () => {
+    setTimeout(() => results.classList.remove("is-open"), 120);
+  });
+}
+
+// React when settings change (e.g., palette toggles theme): refresh active surface.
+onSettingsChange(() => {
+  const active = document.querySelector("[data-route].is-active")?.dataset.route;
+  if (active === "settings") renderSettings();
+  if (active === "notifications") renderNotifications();
+  if (active === "milestones") renderMilestones();
+});
