@@ -14,11 +14,19 @@
   <main class="os" id="os">
 
     <header class="topbar">
-      <nav class="tabs" aria-label="Time horizon">
-        <button data-tab="today" aria-current="true">Today</button>
-        <button data-tab="week">This week</button>
-        <button data-tab="soon">Coming soon</button>
-      </nav>
+      <div class="range" id="range">
+        <button class="range-trigger" id="range-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span class="range-label" id="range-label">Today</span>
+          <span class="range-caret" aria-hidden="true">▾</span>
+        </button>
+        <ul class="range-menu" id="range-menu" role="listbox" aria-label="Time horizon">
+          <li role="option" data-tab="today" aria-selected="true">Today</li>
+          <li role="option" data-tab="week">This week</li>
+          <li role="option" data-tab="month">This month</li>
+          <li role="option" data-tab="soon">Coming soon</li>
+          <li role="option" data-tab="all">All</li>
+        </ul>
+      </div>
       <nav class="links" aria-label="Surfaces">
         <a href="#/notifications">Notifications</a>
         <a href="#/milestones">Milestones</a>

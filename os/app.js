@@ -235,18 +235,61 @@ function route() {
   window.scrollTo(0, 0);
 }
 
-// ─── Tabs (Today / This week / Coming soon) ─────────────────
+// ─── Time-range dropdown (Today / This week / This month / Coming soon / All) ─
 
-function bindTabs() {
-  const tabs = document.querySelectorAll(".tabs button");
+const RANGE_LABELS = { today: "Today", week: "This week", month: "This month", soon: "Coming soon", all: "All" };
+
+function applyRange(tab) {
+  state.tab = tab;
   const home = document.querySelector("[data-route='home']");
-  tabs.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.tab;
-      state.tab = tab;
-      tabs.forEach((b) => b.setAttribute("aria-current", b.dataset.tab === tab ? "true" : "false"));
-      home.classList.toggle("is-future-tab", tab !== "today");
-    });
+  document.getElementById("range-label").textContent = RANGE_LABELS[tab] || "Today";
+  document.querySelectorAll("#range-menu li").forEach((li) => {
+    li.setAttribute("aria-selected", li.dataset.tab === tab ? "true" : "false");
+  });
+  home.classList.toggle("is-future-tab", tab !== "today");
+}
+
+function bindRangeDropdown() {
+  const trigger = document.getElementById("range-trigger");
+  const menu = document.getElementById("range-menu");
+  let openTimer = 0;
+
+  function openMenu() {
+    menu.classList.add("is-open");
+    trigger.setAttribute("aria-expanded", "true");
+    clearTimeout(openTimer);
+    openTimer = setTimeout(() => {
+      document.addEventListener("click", outsideClick);
+    }, 0);
+  }
+  function closeMenu() {
+    menu.classList.remove("is-open");
+    trigger.setAttribute("aria-expanded", "false");
+    document.removeEventListener("click", outsideClick);
+  }
+  function outsideClick(e) {
+    if (!menu.contains(e.target) && e.target !== trigger) closeMenu();
+  }
+
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    menu.classList.contains("is-open") ? closeMenu() : openMenu();
+  });
+
+  menu.addEventListener("click", (e) => {
+    const li = e.target.closest("li[data-tab]");
+    if (!li) return;
+    e.stopPropagation();
+    applyRange(li.dataset.tab);
+    closeMenu();
+    if (location.hash && location.hash !== "#/") location.hash = "#/";
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && menu.classList.contains("is-open")) {
+      closeMenu();
+      trigger.focus();
+    }
   });
 }
 
@@ -440,7 +483,7 @@ function renderAll() {
 
 window.addEventListener("hashchange", route);
 window.addEventListener("DOMContentLoaded", () => {
-  bindTabs();
+  bindRangeDropdown();
   route();
 });
 
