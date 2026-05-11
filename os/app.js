@@ -939,6 +939,15 @@ onSettingsChange(() => {
 let teamBound = false;
 const teamState = { scope: "all", query: "" };
 const CIRCLE_NAME = { 1: "Inner", 2: "Second", 3: "Today" };
+const JOINED_FMT = new Intl.DateTimeFormat(undefined, { month: "short", year: "numeric" });
+function formatJoined(iso) {
+  const d = new Date(iso);
+  return Number.isNaN(d.valueOf()) ? "—" : JOINED_FMT.format(d);
+}
+function slugEmail(name) {
+  return name.normalize("NFKD").replace(/\p{M}/gu, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/(^\.|\.$)/g, "") + "@example.com";
+}
 
 function renderTeam() {
   const list = currentPeople();
@@ -965,7 +974,10 @@ function renderTeam() {
   for (const p of shown) {
     const tr = document.createElement("tr");
     tr.dataset.online = p.online ? "true" : "false";
-    tr.addEventListener("click", () => openPersonDrawer(p));
+    tr.addEventListener("click", (e) => {
+      if (e.target.closest("button, a")) return;
+      openPersonDrawer(p);
+    });
 
     const st = document.createElement("td");
     st.className = "t-status";
@@ -979,6 +991,12 @@ function renderTeam() {
     tr.appendChild(nm);
     maybeTitle(nm, p.name);
 
+    const tm = document.createElement("td");
+    tm.className = "t-team";
+    tm.textContent = p.team || "—";
+    tr.appendChild(tm);
+    if (p.team) maybeTitle(tm, p.team);
+
     const ci = document.createElement("td");
     ci.className = "t-circle";
     if (p.circle) ci.dataset.c = String(p.circle);
@@ -991,12 +1009,47 @@ function renderTeam() {
     tr.appendChild(wk);
     if (p.workingOn) maybeTitle(wk, p.workingOn);
 
+    const jd = document.createElement("td");
+    jd.className = "t-joined";
+    jd.textContent = p.joinedAt ? formatJoined(p.joinedAt) : "—";
+    tr.appendChild(jd);
+
+    const ac = document.createElement("td");
+    ac.className = "t-actions";
+    const acWrap = document.createElement("span");
+    acWrap.className = "row-actions";
+
+    const contact = document.createElement("a");
+    contact.className = "row-action";
+    contact.textContent = "Contact";
+    contact.href = `mailto:${slugEmail(p.name)}`;
+    contact.title = `Email ${p.name}`;
+    acWrap.appendChild(contact);
+
+    const inInner = p.circle === 1;
+    const innerBtn = document.createElement("button");
+    innerBtn.className = "row-icon";
+    innerBtn.dataset.state = inInner ? "in" : "out";
+    innerBtn.textContent = inInner ? "✓" : "+";
+    innerBtn.setAttribute("aria-label", inInner ? `Remove ${p.name} from Inner circle` : `Add ${p.name} to Inner circle`);
+    innerBtn.title = inInner ? "In Inner — click to remove" : "Add to Inner";
+    innerBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const s = loadSettings();
+      saveSettings({ circleOverrides: { ...s.circleOverrides, [p.id]: inInner ? null : 1 } });
+      renderTeam();
+    });
+    acWrap.appendChild(innerBtn);
+
+    ac.appendChild(acWrap);
+    tr.appendChild(ac);
+
     body.appendChild(tr);
   }
   if (scoped.length > CAP) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 4;
+    td.colSpan = 7;
     td.style.color = "var(--ink-50)";
     td.style.fontStyle = "italic";
     td.style.padding = "0.6rem 0.8rem";
