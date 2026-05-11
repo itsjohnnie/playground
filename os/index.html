@@ -85,21 +85,104 @@
       </div>
     </section>
 
-    <section data-route="notifications">
-      <h1 class="stub">Notifications</h1>
-      <p>Coming in Phase 2 — a quiet feed grouped by sender, with no counters.</p>
+    <section data-route="notifications" class="surface">
+      <header class="surface-head">
+        <h1>Notifications</h1>
+        <p>Grouped by sender. Read items fade. No counters.</p>
+      </header>
+      <ul class="notif-list" id="notif-list"></ul>
+      <p class="surface-empty" id="notif-empty" hidden>Inbox quiet. Nothing pending.</p>
     </section>
-    <section data-route="milestones">
-      <h1 class="stub">Milestones</h1>
-      <p>Coming in Phase 2 — a vertical timeline that mirrors the Ring ticks.</p>
+
+    <section data-route="milestones" class="surface">
+      <header class="surface-head">
+        <h1>Milestones</h1>
+        <p>The next stretch of work — launches, deadlines, OOO.</p>
+      </header>
+      <ol class="timeline" id="milestone-timeline"></ol>
     </section>
-    <section data-route="journal">
-      <h1 class="stub">Journal</h1>
-      <p>Coming in Phase 2 — today is editable, past days read-only.</p>
+
+    <section data-route="journal" class="surface">
+      <header class="surface-head">
+        <h1>Journal</h1>
+        <p>Today's editable. Past days are sealed.</p>
+      </header>
+      <article class="journal-today">
+        <header class="journal-day-head">
+          <h2 id="journal-today-date"></h2>
+          <span class="journal-save-state" id="journal-save"></span>
+        </header>
+        <div class="journal-editor" id="journal-editor" contenteditable="true" data-placeholder="Write what mattered today…" spellcheck="true"></div>
+      </article>
+      <section class="journal-past" id="journal-past"></section>
     </section>
-    <section data-route="settings">
-      <h1 class="stub">Settings</h1>
-      <p>Coming in Phase 2 — edit name, greeting tone, circles, theme, reduced motion.</p>
+
+    <section data-route="settings" class="surface">
+      <header class="surface-head">
+        <h1>Settings</h1>
+        <p>Tune the OS. Everything saves on change, nothing leaves your browser.</p>
+      </header>
+
+      <div class="settings-group">
+        <label class="settings-label" for="set-name">Your name</label>
+        <input class="settings-input" type="text" id="set-name" autocomplete="off" />
+        <p class="settings-hint">Used in the greeting: <span id="set-greeting-preview"></span></p>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Greeting tone</label>
+        <div class="segmented" role="radiogroup" id="set-tone">
+          <button role="radio" data-value="formal">Formal</button>
+          <button role="radio" data-value="casual">Casual</button>
+          <button role="radio" data-value="playful">Playful</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Theme</label>
+        <div class="segmented" role="radiogroup" id="set-theme">
+          <button role="radio" data-value="light">Light</button>
+          <button role="radio" data-value="dark">Dark</button>
+          <button role="radio" data-value="auto">Auto</button>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label">Motion</label>
+        <div class="settings-toggle">
+          <input type="checkbox" id="set-reduced-motion" />
+          <label for="set-reduced-motion">Reduce motion — pause the ring's idle pulse and cursor reactivity</label>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <header class="settings-circle-head">
+          <label class="settings-label">Your circles</label>
+          <span class="settings-hint">Who shows up on Home. Drag a name between Inner / Second / Today, or remove with ✕.</span>
+        </header>
+        <div class="settings-circles" id="set-circles">
+          <section data-circle="1">
+            <h3>Inner</h3>
+            <ul></ul>
+          </section>
+          <section data-circle="2">
+            <h3>Second</h3>
+            <ul></ul>
+          </section>
+          <section data-circle="3">
+            <h3>Today</h3>
+            <ul></ul>
+          </section>
+        </div>
+        <div class="settings-add">
+          <input type="text" id="set-add-input" placeholder="Add a person… (search the directory)" autocomplete="off" />
+          <ul class="settings-add-results" id="set-add-results"></ul>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <button class="settings-reset" id="set-reset">Reset everything</button>
+      </div>
     </section>
 
   </main>

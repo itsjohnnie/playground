@@ -378,3 +378,61 @@ export function formatHour(h) {
   const hour12 = h % 12 === 0 ? 12 : h % 12;
   return `${hour12}${meridiem}`;
 }
+
+// Unified notifications feed: reviews + threads + announcements, one row per item,
+// sorted by recency. Each entry carries enough metadata for the Notifications surface.
+export function notificationsFeed() {
+  const items = [];
+  for (const r of reviews) {
+    items.push({
+      id: `r:${r.id}`,
+      fromId: r.authorId,
+      from: nameOf(r.authorId),
+      msg: r.title,
+      context: r.kind === "pr" ? "PR review" : "Doc review",
+      at: r.openedAt
+    });
+  }
+  for (const t of threads) {
+    items.push({
+      id: `t:${t.id}`,
+      fromId: t.lastFrom,
+      from: nameOf(t.lastFrom),
+      msg: `“${t.snippet}”`,
+      context: t.channelOrDoc,
+      at: t.lastAt
+    });
+  }
+  for (const a of announcements) {
+    items.push({
+      id: `a:${a.id}`,
+      fromId: a.postedBy,
+      from: nameOf(a.postedBy),
+      msg: a.summary,
+      context: "Announcement",
+      at: a.postedAt
+    });
+  }
+  items.sort((a, b) => new Date(b.at) - new Date(a.at));
+  return items;
+}
+
+// Apply user circle overrides on top of the mock data, producing a fresh people array.
+// `overrides` is { [personId]: 1|2|3|null }.  null = remove from any circle.
+export function applyCircleOverrides(overrides) {
+  if (!overrides) return people;
+  return people.map((p) => {
+    if (Object.prototype.hasOwnProperty.call(overrides, p.id)) {
+      return { ...p, circle: overrides[p.id] };
+    }
+    return p;
+  });
+}
+
+export function groupByCircle(list) {
+  return {
+    1: list.filter((p) => p.circle === 1),
+    2: list.filter((p) => p.circle === 2),
+    3: list.filter((p) => p.circle === 3)
+  };
+}

@@ -30,6 +30,10 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const hasFinePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
 
+function motionReduced() {
+  return prefersReducedMotion.matches || document.documentElement.classList.contains("reduce-motion");
+}
+
 const ring = document.getElementById("ring");
 const svg = ring.querySelector("svg");
 const dotsGroup = svg.querySelector(".dots");
@@ -125,7 +129,7 @@ function buildNow() {
   nowGroup.appendChild(c);
   setTimeout(() => {
     c.setAttribute("opacity", "0.75");
-    if (!prefersReducedMotion.matches) c.classList.add("is-pulsing");
+    if (!motionReduced()) c.classList.add("is-pulsing");
   }, TIMING.pulseBegin);
 }
 
@@ -262,7 +266,7 @@ function resetCursorScale() {
 }
 
 ring.addEventListener("pointermove", (e) => {
-  if (!hasFinePointer.matches || prefersReducedMotion.matches) return;
+  if (!hasFinePointer.matches || motionReduced()) return;
   pendingPoint = { clientX: e.clientX, clientY: e.clientY };
   if (!pointerRaf) pointerRaf = requestAnimationFrame(applyCursorScale);
 });
