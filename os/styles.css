@@ -10,9 +10,9 @@
 
 /* Self-hosted so the page renders perfectly even if Google Fonts is unreachable. */
 @font-face {
-  font-family: "Source Serif 4";
-  src: url("./fonts/source-serif-4-latin.woff2") format("woff2");
-  font-weight: 400 700;
+  font-family: "Fraunces";
+  src: url("./fonts/fraunces-latin.woff2") format("woff2");
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
@@ -27,7 +27,7 @@
   --rule: rgba(26, 26, 26, 0.12);
   --sheet: rgba(245, 245, 245, 0.98);
 
-  --font-serif: "Source Serif 4", "GT Super Display", "Tiempos Headline", "New York", "Source Serif Pro", Georgia, serif;
+  --font-serif: "Fraunces", "GT Super Display", "Tiempos Headline", "New York", "Source Serif Pro", Georgia, serif;
   --font-sans: "Anthropic Sans", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -84,17 +84,65 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   font-size: 14px;
 }
 .topbar nav { display: flex; gap: 2rem; }
-.topbar .tabs button,
 .topbar .links a {
   color: var(--ink-50);
   transition: color 180ms var(--ease-out);
   letter-spacing: 0.005em;
 }
-.topbar .tabs button[aria-current="true"] { color: var(--ink); }
 .topbar .links a.is-active { color: var(--ink); }
 @media (hover: hover) and (pointer: fine) {
-  .topbar .tabs button:hover,
   .topbar .links a:hover { color: var(--ink); }
+}
+
+/* Time-range dropdown — also doubles as "back to home" */
+.range { position: relative; }
+.range-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 14px;
+  color: var(--ink);
+  letter-spacing: 0.005em;
+  padding: 0.15rem 0.05rem;
+  transition: color 180ms var(--ease-out);
+}
+.range-trigger .range-caret {
+  font-size: 11px;
+  color: var(--ink-50);
+  transition: transform 180ms var(--ease-out), color 180ms var(--ease-out);
+}
+.range-trigger[aria-expanded="true"] .range-caret { transform: rotate(180deg); color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .range-trigger:hover .range-caret { color: var(--ink); }
+}
+.range-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  min-width: 12rem;
+  list-style: none;
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 0.25rem 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 200ms var(--ease-drawer), transform 200ms var(--ease-drawer);
+  z-index: 15;
+}
+.range-menu.is-open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.range-menu li {
+  padding: 0.5rem 0.85rem;
+  font-size: 13.5px;
+  color: var(--ink-70);
+  cursor: pointer;
+  transition: background 140ms var(--ease-out), color 140ms var(--ease-out);
+}
+.range-menu li[aria-selected="true"] { color: var(--ink); }
+@media (hover: hover) and (pointer: fine) {
+  .range-menu li:hover { color: var(--ink); background: var(--ink-15); }
 }
 
 /* ---------------- Surfaces (hash routes) ---------------- */
@@ -124,11 +172,12 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 }
 .hero h1 {
   font-family: var(--font-serif);
-  font-weight: 500;
+  font-weight: 480;
   font-size: clamp(2.4rem, 4.8vw, 4.2rem);
   line-height: 1.06;
-  letter-spacing: -0.012em;
+  letter-spacing: -0.018em;
   color: var(--ink);
+  font-variation-settings: "opsz" 96, "SOFT" 30;
 }
 .hero .state {
   font-size: 14px;
@@ -204,14 +253,20 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 .person[data-offline="true"] .dot { background: var(--ink-30); }
 .person[data-active="true"] .dot { transform: scale(1.6); }
 .person .working {
+  position: absolute;
+  top: 100%;
+  left: 1.05rem;
   font-size: 12px;
   color: var(--ink-50);
   opacity: 0;
   transform: translateY(-2px);
   transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
-  grid-column: 2 / 3;
   pointer-events: none;
-  margin-top: -2px;
+  white-space: nowrap;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 2;
 }
 .person:focus-visible .working { opacity: 1; transform: translateY(0); }
 @media (hover: hover) and (pointer: fine) {
@@ -259,8 +314,8 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 }
 .onyou li .kind {
   color: var(--ink-50);
-  font-variant: small-caps;
-  letter-spacing: 0.04em;
+  font-size: 12.5px;
+  font-weight: 500;
 }
 .onyou li[data-kind="overdue"] .kind,
 .onyou li[data-kind="due"] .kind { color: var(--ink); }
@@ -496,11 +551,12 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 }
 .surface-head h1 {
   font-family: var(--font-serif);
-  font-weight: 500;
+  font-weight: 480;
   font-size: clamp(2rem, 3.8vw, 3.2rem);
-  letter-spacing: -0.012em;
+  letter-spacing: -0.018em;
   color: var(--ink);
   line-height: 1.06;
+  font-variation-settings: "opsz" 80, "SOFT" 30;
 }
 .surface-head p {
   color: var(--ink-50);
@@ -542,8 +598,8 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   color: var(--ink-70);
 }
 .notif-list li .context {
-  color: var(--ink-30); font-size: 12px;
-  font-variant: small-caps; letter-spacing: 0.06em;
+  color: var(--ink-30);
+  font-size: 12px;
   white-space: nowrap;
 }
 .notif-list li .age {
@@ -635,8 +691,9 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 .journal-day-head h2 {
   font-family: var(--font-serif);
   font-size: clamp(1.5rem, 2.4vw, 2rem);
-  font-weight: 500;
-  letter-spacing: -0.008em;
+  font-weight: 480;
+  letter-spacing: -0.012em;
+  font-variation-settings: "opsz" 60, "SOFT" 30;
 }
 .journal-save-state {
   font-size: 11px; color: var(--ink-30);
