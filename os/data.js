@@ -60,6 +60,12 @@ const WORKING_ON = [
   "All-hands rehearsal"
 ];
 
+const TEAMS = [
+  "Design", "Brand", "Marketing", "Engineering", "Product",
+  "Research", "Sales", "Operations", "People", "Finance",
+  "Legal", "Comms", "Partnerships", "Support"
+];
+
 // Deterministic pseudo-random so the dataset is stable across reloads (and across days for the noise pool).
 let seed = 17;
 const rand = () => {
@@ -75,29 +81,29 @@ export const me = { id: "me", name: "Johnnie", greetingStyle: "casual" };
 // dashboard mirrors the mock the user is comparing against.
 const namedCircles = {
   1: [ // Inner
-    { name: "Corey Moen", online: true, workingOn: "Brand 3.0 critique" },
-    { name: "Dexter Callander III", online: true, workingOn: "Enterprise page rewrite" },
-    { name: "Jennifer Tan", online: true, workingOn: "Hiring loop for design" },
-    { name: "Nikki Makagiansar", online: false },
-    { name: "Meaghan Hendricks", online: false, workingOn: "On-site Tuesday" },
-    { name: "Romello Goodman", online: false, workingOn: "OOH layout for SF" },
-    { name: "Skylar Kitchen", online: false }
+    { name: "Corey Moen", online: true, workingOn: "Brand 3.0 critique", team: "Brand", joinedYearsAgo: 3.2 },
+    { name: "Dexter Callander III", online: true, workingOn: "Enterprise page rewrite", team: "Design", joinedYearsAgo: 2.6 },
+    { name: "Jennifer Tan", online: true, workingOn: "Hiring loop for design", team: "Design", joinedYearsAgo: 4.1 },
+    { name: "Nikki Makagiansar", online: false, team: "Design", joinedYearsAgo: 1.4 },
+    { name: "Meaghan Hendricks", online: false, workingOn: "On-site Tuesday", team: "Operations", joinedYearsAgo: 5.7 },
+    { name: "Romello Goodman", online: false, workingOn: "OOH layout for SF", team: "Design", joinedYearsAgo: 2.1 },
+    { name: "Skylar Kitchen", online: false, team: "Brand", joinedYearsAgo: 0.8 }
   ],
   2: [ // Second
-    { name: "Austin Tan", online: true, workingOn: "Launch run-of-show" },
-    { name: "Amber Ward", online: true, workingOn: "Manifesto v4" },
-    { name: "Brooke Chambers", online: true, workingOn: "Pricing tier names" },
-    { name: "Cat Wu", online: true, workingOn: "Claude Code page revamp" },
-    { name: "Amanda Matuk", online: true, workingOn: "Q2 OKRs" },
-    { name: "Nino Dolce", online: true, workingOn: "DVQ prep for tomorrow" },
-    { name: "Trevor Pels", online: true, workingOn: "Sales enablement kit" },
-    { name: "John Egan", online: false },
-    { name: "Kacie Jenkins", online: false }
+    { name: "Austin Tan", online: true, workingOn: "Launch run-of-show", team: "Marketing", joinedYearsAgo: 1.9 },
+    { name: "Amber Ward", online: true, workingOn: "Manifesto v4", team: "Brand", joinedYearsAgo: 3.5 },
+    { name: "Brooke Chambers", online: true, workingOn: "Pricing tier names", team: "Product", joinedYearsAgo: 2.8 },
+    { name: "Cat Wu", online: true, workingOn: "Claude Code page revamp", team: "Engineering", joinedYearsAgo: 1.5 },
+    { name: "Amanda Matuk", online: true, workingOn: "Q2 OKRs", team: "Research", joinedYearsAgo: 3.0 },
+    { name: "Nino Dolce", online: true, workingOn: "DVQ prep for tomorrow", team: "Product", joinedYearsAgo: 2.3 },
+    { name: "Trevor Pels", online: true, workingOn: "Sales enablement kit", team: "Sales", joinedYearsAgo: 1.7 },
+    { name: "John Egan", online: false, team: "Engineering", joinedYearsAgo: 4.4 },
+    { name: "Kacie Jenkins", online: false, team: "People", joinedYearsAgo: 0.6 }
   ],
   3: [ // Today's collaborators (people you don't normally work with but today you do)
-    { name: "Priya Iyer", online: true, workingOn: "Anthropoll readout" },
-    { name: "Marcus Lin", online: true, workingOn: "Startup founders campaign" },
-    { name: "Hana Kowalski", online: true, workingOn: "All-hands rehearsal" }
+    { name: "Priya Iyer", online: true, workingOn: "Anthropoll readout", team: "Research", joinedYearsAgo: 2.0 },
+    { name: "Marcus Lin", online: true, workingOn: "Startup founders campaign", team: "Marketing", joinedYearsAgo: 1.2 },
+    { name: "Hana Kowalski", online: true, workingOn: "All-hands rehearsal", team: "Comms", joinedYearsAgo: 3.8 }
   ]
 };
 
@@ -111,7 +117,9 @@ for (const [circleKey, list] of Object.entries(namedCircles)) {
       name: p.name,
       circle,
       online: p.online,
-      workingOn: p.workingOn ?? null
+      workingOn: p.workingOn ?? null,
+      team: p.team,
+      joinedAt: shiftDays(-Math.round(p.joinedYearsAgo * 365.25))
     });
   }
 }
@@ -124,12 +132,16 @@ while (noisePool.length < target) {
   const name = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
   if (seen.has(name)) continue;
   seen.add(name);
+  // Joined sometime between 8 years ago and 2 weeks ago, biased toward more recent.
+  const yearsAgo = Math.pow(rand(), 1.6) * 8 + (14 / 365.25);
   noisePool.push({
     id: `n${noisePool.length}`,
     name,
     circle: null,
     online: rand() < 0.42,
-    workingOn: rand() < 0.18 ? pick(WORKING_ON) : null
+    workingOn: rand() < 0.18 ? pick(WORKING_ON) : null,
+    team: pick(TEAMS),
+    joinedAt: shiftDays(-Math.round(yearsAgo * 365.25))
   });
 }
 
