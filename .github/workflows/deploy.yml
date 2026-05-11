@@ -39,10 +39,30 @@ jobs:
       # The site lives at /playground/truco/ to match the existing
       # webclip URL. Stage dist/ into a wrapper so the artifact root
       # serves /truco/ correctly.
-      - name: Stage artifact
+      - name: Stage truco
         run: |
           mkdir -p ../_site/truco
           cp -r dist/. ../_site/truco/
+
+      # Bundle every other static experiment + root files into the
+      # same Pages artifact. The repo root is the working directory
+      # here, not truco/. Anything that is its own folder of static
+      # HTML/CSS/JS gets copied wholesale.
+      - name: Stage rest of playground
+        working-directory: ${{ github.workspace }}
+        run: |
+          shopt -s nullglob
+          cp .nojekyll _site/ 2>/dev/null || true
+          for f in index.html styles.css script.js README.md; do
+            [ -e "$f" ] && cp "$f" _site/
+          done
+          for d in ascii cc dithered dots generative-ui haiku jitter \
+                   liquid liquid-glass-icon mask orb os pretext sizzle toaster; do
+            if [ -d "$d" ]; then
+              mkdir -p "_site/$d"
+              cp -r "$d/." "_site/$d/"
+            fi
+          done
 
       - uses: actions/configure-pages@v5
 
