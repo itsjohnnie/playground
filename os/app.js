@@ -9,7 +9,8 @@
  * ───────────────────────────────────────────────────────── */
 
 import {
-  me, people, announcements, milestones, onYou, greet, stateOfDay,
+  me, people, announcements, milestones, meetings, reviews, threads, tasks, docs,
+  onYou, greet, stateOfDay,
   inMotion, thisWeek, ageLabel, nameOf,
   notificationsFeed, applyCircleOverrides, groupByCircle
 } from "./data.js";
@@ -75,6 +76,14 @@ function renderHero() {
   document.getElementById("state-of-day").textContent = stateOfDay(now);
 }
 
+// Only set `title` when the element is actually truncated — avoids native-tooltip noise.
+function maybeTitle(el, full) {
+  requestAnimationFrame(() => {
+    if (el.scrollWidth > el.clientWidth + 1) el.title = full;
+    else el.removeAttribute("title");
+  });
+}
+
 function currentPeople() {
   return applyCircleOverrides(loadSettings().circleOverrides);
 }
@@ -95,6 +104,8 @@ function renderPeople() {
       el.dataset.offline = p.online ? "false" : "true";
       el.dataset.id = p.id;
       el.tabIndex = 0;
+      el.addEventListener("click", () => openPersonDrawer(p));
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter") openPersonDrawer(p); });
 
       const dot = document.createElement("span");
       dot.className = "dot";
@@ -103,8 +114,8 @@ function renderPeople() {
       const name = document.createElement("span");
       name.className = "name";
       name.textContent = p.name;
-      name.title = p.name;
       el.appendChild(name);
+      maybeTitle(name, p.name);
 
       if (p.workingOn) {
         const working = document.createElement("span");
@@ -138,6 +149,7 @@ function renderOnYou() {
   for (const item of items.slice(0, 6)) {
     const li = document.createElement("li");
     li.dataset.kind = item.kind.toLowerCase();
+    li.addEventListener("click", () => openOnYouDrawer(item));
 
     const kind = document.createElement("span");
     kind.className = "kind";
@@ -148,8 +160,8 @@ function renderOnYou() {
     what.className = "what";
     const full = item.who ? `${item.who} · ${item.what}` : item.what;
     what.textContent = full;
-    what.title = full;
     li.appendChild(what);
+    maybeTitle(what, full);
 
     const age = document.createElement("span");
     age.className = "age";
@@ -175,13 +187,13 @@ function renderTitleMetaList(ulId, items, projector) {
     const t = document.createElement("span");
     t.className = "title";
     t.textContent = title;
-    t.title = title;
     li.appendChild(t);
     const m = document.createElement("span");
     m.className = "meta";
     m.textContent = meta;
     li.appendChild(m);
     ul.appendChild(li);
+    maybeTitle(t, title);
   }
 }
 
@@ -213,6 +225,7 @@ function route() {
   const hash = location.hash || "#/";
   const map = {
     "#/": "home",
+    "#/team": "team",
     "#/notifications": "notifications",
     "#/milestones": "milestones",
     "#/journal": "journal",
@@ -227,6 +240,7 @@ function route() {
   });
   switch (active) {
     case "home": renderAll(); break;
+    case "team": renderTeam(); break;
     case "notifications": renderNotifications(); break;
     case "milestones": renderMilestones(); break;
     case "journal": renderJournal(); break;
@@ -327,6 +341,7 @@ function paletteCorpus() {
     items.push({ label: "Person", title: p.name, meta: p.workingOn || (p.online ? "online" : "offline"), action: () => focusPerson(p) });
   }
   items.push({ label: "Surface", title: "Home", meta: "", action: () => { location.hash = "#/"; } });
+  items.push({ label: "Surface", title: "Team", meta: "", action: () => { location.hash = "#/team"; } });
   items.push({ label: "Surface", title: "Notifications", meta: "", action: () => { location.hash = "#/notifications"; } });
   items.push({ label: "Surface", title: "Milestones", meta: "", action: () => { location.hash = "#/milestones"; } });
   items.push({ label: "Surface", title: "Journal", meta: "", action: () => { location.hash = "#/journal"; } });
@@ -523,6 +538,10 @@ function renderNotifications() {
     li.dataset.read = read.has(item.id) ? "true" : "false";
     const sender = peopleNow.find((p) => p.id === item.fromId);
     li.dataset.online = sender?.online ? "true" : "false";
+    li.addEventListener("click", (e) => {
+      if (e.target.closest("button")) return;
+      openNotificationDrawer(item);
+    });
 
     const dot = document.createElement("span");
     dot.className = "dot";
@@ -912,4 +931,257 @@ onSettingsChange(() => {
   if (active === "settings") renderSettings();
   if (active === "notifications") renderNotifications();
   if (active === "milestones") renderMilestones();
+  if (active === "team") renderTeam();
 });
+
+// ─── Team surface ──────────────────────────────────────────
+
+let teamBound = false;
+const teamState = { scope: "all", query: "" };
+const CIRCLE_NAME = { 1: "Inner", 2: "Second", 3: "Today" };
+
+function renderTeam() {
+  const list = currentPeople();
+  let scoped = list;
+  if (teamState.scope === "inner") scoped = scoped.filter((p) => p.circle === 1);
+  else if (teamState.scope === "second") scoped = scoped.filter((p) => p.circle === 2);
+  else if (teamState.scope === "today") scoped = scoped.filter((p) => p.circle === 3);
+  else if (teamState.scope === "online") scoped = scoped.filter((p) => p.online);
+
+  const q = teamState.query.trim().toLowerCase();
+  if (q) scoped = scoped.filter((p) => p.name.toLowerCase().includes(q) || (p.workingOn || "").toLowerCase().includes(q));
+
+  const onlineCount = scoped.filter((p) => p.online).length;
+  document.getElementById("team-meta").textContent = `${scoped.length.toLocaleString()} people · ${onlineCount.toLocaleString()} online`;
+
+  const body = document.getElementById("team-body");
+  const empty = document.getElementById("team-empty");
+  body.replaceChildren();
+  if (!scoped.length) { empty.hidden = false; return; }
+  empty.hidden = true;
+
+  const CAP = 200;
+  const shown = scoped.slice(0, CAP);
+  for (const p of shown) {
+    const tr = document.createElement("tr");
+    tr.dataset.online = p.online ? "true" : "false";
+    tr.addEventListener("click", () => openPersonDrawer(p));
+
+    const st = document.createElement("td");
+    st.className = "t-status";
+    const dot = document.createElement("span"); dot.className = "dot";
+    st.appendChild(dot);
+    tr.appendChild(st);
+
+    const nm = document.createElement("td");
+    nm.className = "t-name";
+    nm.textContent = p.name;
+    tr.appendChild(nm);
+    maybeTitle(nm, p.name);
+
+    const ci = document.createElement("td");
+    ci.className = "t-circle";
+    if (p.circle) ci.dataset.c = String(p.circle);
+    ci.textContent = p.circle ? CIRCLE_NAME[p.circle] : "—";
+    tr.appendChild(ci);
+
+    const wk = document.createElement("td");
+    wk.className = "t-working";
+    wk.textContent = p.workingOn || "";
+    tr.appendChild(wk);
+    if (p.workingOn) maybeTitle(wk, p.workingOn);
+
+    body.appendChild(tr);
+  }
+  if (scoped.length > CAP) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 4;
+    td.style.color = "var(--ink-50)";
+    td.style.fontStyle = "italic";
+    td.style.padding = "0.6rem 0.8rem";
+    td.textContent = `+${(scoped.length - CAP).toLocaleString()} more — refine the search to narrow.`;
+    tr.appendChild(td);
+    body.appendChild(tr);
+  }
+
+  if (teamBound) return;
+  teamBound = true;
+  document.getElementById("team-search").addEventListener("input", (e) => {
+    teamState.query = e.target.value;
+    renderTeam();
+  });
+  document.querySelectorAll(".team-chips button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      teamState.scope = btn.dataset.scope;
+      document.querySelectorAll(".team-chips button").forEach((b) => b.setAttribute("aria-checked", b === btn ? "true" : "false"));
+      renderTeam();
+    });
+  });
+}
+
+// ─── Detail drawer ─────────────────────────────────────────
+
+const drawer = document.getElementById("drawer");
+const drawerScrim = document.getElementById("drawer-scrim");
+const drawerBody = document.getElementById("drawer-body");
+const drawerKind = document.getElementById("drawer-kind");
+
+function openDrawer(kind, builder) {
+  drawerKind.textContent = kind;
+  drawerBody.replaceChildren();
+  builder(drawerBody);
+  drawer.classList.add("is-open");
+  drawerScrim.classList.add("is-open");
+}
+function closeDrawer() {
+  drawer.classList.remove("is-open");
+  drawerScrim.classList.remove("is-open");
+}
+document.getElementById("drawer-close").addEventListener("click", closeDrawer);
+drawerScrim.addEventListener("click", closeDrawer);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && drawer.classList.contains("is-open")) closeDrawer();
+});
+
+function el(tag, props, ...children) {
+  const node = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (k === "className") node.className = v;
+    else if (k === "text") node.textContent = v;
+    else node.setAttribute(k, v);
+  }
+  for (const c of children) if (c != null) node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+  return node;
+}
+function field(label, value, opts = {}) {
+  const f = el("div", { className: "field" });
+  f.appendChild(el("span", { className: "field-label", text: label }));
+  const v = el("div", { className: "field-value" + (opts.muted ? " muted" : "") });
+  if (typeof value === "string") v.textContent = value;
+  else if (value) v.appendChild(value);
+  else { v.textContent = "—"; v.classList.add("muted"); }
+  f.appendChild(v);
+  return f;
+}
+
+function openPersonDrawer(p) {
+  openDrawer("Person", (b) => {
+    b.appendChild(el("h2", { text: p.name }));
+    const sub = p.online ? "Online now" : "Offline";
+    const subEl = el("div", { className: "subtitle" });
+    subEl.textContent = sub + (p.circle ? ` · ${CIRCLE_NAME[p.circle]} circle` : "");
+    b.appendChild(subEl);
+
+    b.appendChild(field("Working on", p.workingOn || "Nothing posted"));
+    b.appendChild(field("Circle", p.circle ? CIRCLE_NAME[p.circle] : "Not in your circles"));
+
+    const personMeetings = meetings.filter((m) => m.attendeeIds.includes(p.id));
+    if (personMeetings.length) {
+      const list = el("div", { className: "list" });
+      for (const m of personMeetings) {
+        const row = el("div", { className: "row" });
+        row.appendChild(el("span", { className: "title", text: m.title }));
+        row.appendChild(el("span", { className: "meta", text: `${fmtHourLocal(m.startHour)}–${fmtHourLocal(m.endHour)}` }));
+        list.appendChild(row);
+      }
+      b.appendChild(field("Meetings today", list));
+    } else {
+      b.appendChild(field("Meetings today", "None"));
+    }
+
+    const personReviews = reviews.filter((r) => r.authorId === p.id || r.awaitingId === p.id);
+    if (personReviews.length) {
+      const list = el("div", { className: "list" });
+      for (const r of personReviews) {
+        const row = el("div", { className: "row" });
+        row.appendChild(el("span", { className: "title", text: r.title }));
+        row.appendChild(el("span", { className: "meta", text: ageLabel(Date.now() - new Date(r.openedAt)) }));
+        list.appendChild(row);
+      }
+      b.appendChild(field("Open reviews", list));
+    }
+
+    const sharedDocs = docs.filter((d) => d.collaboratorIds?.includes(p.id));
+    if (sharedDocs.length) {
+      const list = el("div", { className: "list" });
+      for (const d of sharedDocs) {
+        const row = el("div", { className: "row" });
+        row.appendChild(el("span", { className: "title", text: d.title }));
+        row.appendChild(el("span", { className: "meta", text: ageLabel(Date.now() - new Date(d.lastEditedAt)) + " ago" }));
+        list.appendChild(row);
+      }
+      b.appendChild(field("Shared docs", list));
+    }
+  });
+}
+
+function fmtHourLocal(h) {
+  const meridiem = h >= 12 ? "pm" : "am";
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}${meridiem}`;
+}
+
+function openOnYouDrawer(item) {
+  openDrawer(item.kind, (b) => {
+    b.appendChild(el("h2", { text: item.what.replace(/^["]|["]$/g, "") }));
+    const sub = el("div", { className: "subtitle" });
+    sub.textContent = item.who ? `From ${item.who} · ${ageLabel(item.ageMs)} ago` : `${ageLabel(item.ageMs)} ago`;
+    b.appendChild(sub);
+
+    b.appendChild(field("Kind", item.kind));
+    if (item.who) b.appendChild(field("From", item.who));
+
+    let source = null;
+    if (item.id.startsWith("r")) {
+      source = reviews.find((r) => r.id === item.id);
+      if (source) {
+        b.appendChild(field("Type", source.kind === "pr" ? "Pull request" : "Doc review"));
+        b.appendChild(field("Location", source.repo || source.docId || "—"));
+        b.appendChild(field("Opened", new Date(source.openedAt).toLocaleString()));
+      }
+    } else if (item.id.startsWith("t") && tasks.find((t) => t.id === item.id)) {
+      source = tasks.find((t) => t.id === item.id);
+      b.appendChild(field("Due", new Date(source.dueDate).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })));
+      b.appendChild(field("Status", source.status));
+      b.appendChild(field("Source", source.source));
+    } else if (item.id.startsWith("th")) {
+      source = threads.find((t) => t.id === item.id);
+      if (source) {
+        b.appendChild(field("Channel", source.channelOrDoc));
+        b.appendChild(field("Last activity", new Date(source.lastAt).toLocaleString()));
+        b.appendChild(field("Source", source.source));
+      }
+    }
+  });
+}
+
+function openNotificationDrawer(item) {
+  openDrawer(item.context || "Notification", (b) => {
+    b.appendChild(el("h2", { text: item.msg.replace(/^["]|["]$/g, "") }));
+    const sub = el("div", { className: "subtitle" });
+    sub.textContent = `From ${item.from || "—"} · ${ageLabel(Date.now() - new Date(item.at))} ago`;
+    b.appendChild(sub);
+    b.appendChild(field("Context", item.context));
+    if (item.from) b.appendChild(field("Sender", item.from));
+    b.appendChild(field("Received", new Date(item.at).toLocaleString()));
+
+    const read = loadRead();
+    const toggle = el("button", { className: "drawer-close" });
+    toggle.textContent = read.has(item.id) ? "Mark unread" : "Mark read";
+    toggle.style.marginTop = "1rem";
+    toggle.style.padding = "0.5rem 0.85rem";
+    toggle.style.border = "1px solid var(--rule)";
+    toggle.style.borderRadius = "4px";
+    toggle.style.color = "var(--ink-70)";
+    toggle.style.fontSize = "12.5px";
+    toggle.addEventListener("click", () => {
+      const r = loadRead();
+      if (r.has(item.id)) r.delete(item.id); else r.add(item.id);
+      saveRead(r);
+      renderNotifications();
+      closeDrawer();
+    });
+    b.appendChild(toggle);
+  });
+}

@@ -28,6 +28,7 @@
         </ul>
       </div>
       <nav class="links" aria-label="Surfaces">
+        <a href="#/team">Team</a>
         <a href="#/notifications">Notifications</a>
         <a href="#/milestones">Milestones</a>
         <a href="#/journal">Journal</a>
@@ -91,6 +92,39 @@
           <ul id="announcements"></ul>
         </section>
       </div>
+    </section>
+
+    <section data-route="team" class="surface">
+      <header class="surface-head">
+        <h1>Team</h1>
+        <p>Everyone in the org. Filter, scope to your circles, surface what they're working on.</p>
+      </header>
+
+      <div class="team-controls">
+        <input class="team-search" type="text" id="team-search" placeholder="Search by name or what they're working on…" autocomplete="off" />
+        <div class="team-chips" role="radiogroup" aria-label="Scope">
+          <button role="radio" data-scope="all" aria-checked="true">All</button>
+          <button role="radio" data-scope="inner">Inner</button>
+          <button role="radio" data-scope="second">Second</button>
+          <button role="radio" data-scope="today">Today</button>
+          <button role="radio" data-scope="online">Online</button>
+        </div>
+      </div>
+
+      <div class="team-meta" id="team-meta"></div>
+
+      <table class="team-table">
+        <thead>
+          <tr>
+            <th class="t-status" aria-label="Status"></th>
+            <th class="t-name">Name</th>
+            <th class="t-circle">Circle</th>
+            <th class="t-working">Working on</th>
+          </tr>
+        </thead>
+        <tbody id="team-body"></tbody>
+      </table>
+      <p class="surface-empty" id="team-empty" hidden>No matches.</p>
     </section>
 
     <section data-route="notifications" class="surface">
@@ -194,6 +228,16 @@
     </section>
 
   </main>
+
+  <!-- Detail drawer (people, on-you, notifications, team) -->
+  <div class="drawer-scrim" id="drawer-scrim"></div>
+  <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Details">
+    <header class="drawer-head">
+      <span class="drawer-kind" id="drawer-kind"></span>
+      <button class="drawer-close" id="drawer-close" aria-label="Close">✕</button>
+    </header>
+    <div class="drawer-body" id="drawer-body"></div>
+  </aside>
 
   <!-- Palette -->
   <div class="palette-scrim" id="palette-scrim"></div>
