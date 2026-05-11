@@ -40,17 +40,16 @@
       <div class="hero stagger">
         <h1 id="greeting">Welcome.</h1>
         <p class="state" id="state-of-day">&nbsp;</p>
+        <div class="hero-presence" id="hero-presence" aria-label="Your presence">
+          <span class="dot"></span>
+          <span class="me-name">Me</span>
+          <span class="sep">·</span>
+          <span class="me-meta" id="me-meta">Online</span>
+        </div>
       </div>
 
       <div class="compass stagger">
         <div class="people stagger" id="people">
-          <div class="column" data-circle="0" aria-label="Me">
-            <span class="label">You</span>
-            <div class="person" data-offline="false">
-              <span class="dot"></span>
-              <span class="name">Me</span>
-            </div>
-          </div>
           <div class="column" data-circle="1"><span class="label">Inner</span></div>
           <div class="column" data-circle="2"><span class="label">Second</span></div>
           <div class="column" data-circle="3">
@@ -63,17 +62,28 @@
           <ul id="onyou-list"></ul>
         </div>
 
-        <div class="ring-wrap">
-          <div class="ring" id="ring" aria-label="Today's hours, meetings and milestones">
-            <svg viewBox="-110 -110 220 220" aria-hidden="true">
-              <g class="ticks"></g>
-              <g class="dots"></g>
-              <g class="now"></g>
-              <g class="focus"></g>
-              <g class="leads"></g>
-            </svg>
-            <button class="center-btn" id="focus-toggle" aria-label="Start focus session"></button>
-            <div class="ring-tooltip" id="ring-tooltip" role="tooltip"></div>
+        <div class="ring-col">
+          <div class="ring-wrap">
+            <div class="ring" id="ring" aria-label="Today's hours, meetings and milestones">
+              <svg viewBox="-110 -110 220 220" aria-hidden="true">
+                <g class="ticks"></g>
+                <g class="dots"></g>
+                <g class="now"></g>
+                <g class="focus"></g>
+                <g class="leads"></g>
+              </svg>
+              <button class="center-btn" id="focus-toggle" aria-label="Start focus session"></button>
+              <div class="ring-tooltip" id="ring-tooltip" role="tooltip"></div>
+            </div>
+          </div>
+
+          <div class="weekstrip" id="weekstrip" aria-label="Meeting density this week">
+            <div class="weekstrip-head">
+              <span class="weekstrip-title">This week</span>
+              <span class="weekstrip-meta" id="weekstrip-meta"></span>
+            </div>
+            <svg class="weekstrip-svg" viewBox="0 0 280 64" aria-hidden="true"></svg>
+            <div class="weekstrip-axis" id="weekstrip-axis"></div>
           </div>
         </div>
       </div>

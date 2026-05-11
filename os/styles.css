@@ -158,6 +158,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 }
 [data-route="home"].is-active {
   gap: clamp(1.8rem, 3.4vh, 2.6rem);
+  flex: 1;
 }
 [data-route="milestones"].is-active,
 [data-route="journal"].is-active,
@@ -198,20 +199,37 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   max-width: 38rem;
 }
 
+.hero-presence {
+  margin-top: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12.5px;
+  color: var(--ink-70);
+  font-variant-numeric: tabular-nums;
+}
+.hero-presence .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--ink);
+}
+.hero-presence[data-offline="true"] .dot { background: var(--ink-30); }
+.hero-presence .me-name { color: var(--ink); }
+.hero-presence .sep { color: var(--ink-30); }
+.hero-presence .me-meta { color: var(--ink-50); }
+
 /* ---------------- Compass: People · On-you · Ring ---------------- */
 
 .compass {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(220px, 0.85fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(280px, 1.15fr);
   gap: clamp(2rem, 4vw, 4.5rem);
   align-items: start;
   margin-top: clamp(1.5rem, 3.5vh, 3rem);
 }
 
-/* People columns — four equal columns so Me doesn't collapse next to the named circles. */
+/* People columns — three equal columns; "Me" lives in the hero presence line. */
 .people {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(1.2rem, 2.2vw, 2rem);
   align-items: start;
 }
@@ -354,17 +372,26 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   font-size: 13px;
 }
 
+/* Ring column wraps the ring + a small week microvis underneath. */
+.ring-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+  align-items: stretch;
+  min-width: 0;
+}
+
 /* Ring */
 .ring-wrap {
   display: flex;
   justify-content: flex-end;
   align-items: flex-start;
   padding-top: 0.4rem;
-  min-height: 220px;
+  min-height: 260px;
 }
 .ring {
   position: relative;
-  width: clamp(180px, 18vw, 240px);
+  width: clamp(220px, 22vw, 320px);
   aspect-ratio: 1;
 }
 .ring svg { width: 100%; height: 100%; display: block; overflow: visible; }
@@ -407,6 +434,61 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 }
 .ring-tooltip.is-visible { opacity: 1; transform: translateY(0); }
 .ring-tooltip .meta { color: var(--ink-50); font-size: 11px; margin-top: 2px; }
+
+/* Week heatmap microvis — meeting density across the next 7 days × 3 bands. */
+.weekstrip {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 1.2rem;
+  margin-top: 0.4rem;
+}
+.weekstrip-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.weekstrip-title {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 480;
+  font-variation-settings: "opsz" 24, "SOFT" 30;
+}
+.weekstrip-meta {
+  font-size: 11px;
+  color: var(--ink-50);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.weekstrip-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.weekstrip-axis {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  font-size: 10px;
+  color: var(--ink-30);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.weekstrip-axis span { text-align: center; }
+.weekstrip-axis span[data-today="true"] { color: var(--ink); }
+.weekstrip-svg .cell {
+  fill: var(--ink);
+  transition: opacity 200ms var(--ease-out);
+}
+.weekstrip-svg .cell[data-load="0"] { opacity: 0.06; }
+.weekstrip-svg .cell[data-load="1"] { opacity: 0.22; }
+.weekstrip-svg .cell[data-load="2"] { opacity: 0.45; }
+.weekstrip-svg .cell[data-load="3"] { opacity: 0.72; }
+.weekstrip-svg .cell[data-load="4"] { opacity: 0.95; }
+.weekstrip-svg .col-today { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.4; }
 
 /* ---------------- Footer row: in motion · this week · announcements ---------------- */
 
@@ -1237,7 +1319,8 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 
 @media (max-width: 1100px) {
   .compass { grid-template-columns: 1fr 1fr; }
-  .ring-wrap { grid-column: 1 / -1; justify-content: flex-start; padding-top: 1rem; }
+  .ring-col { grid-column: 1 / -1; padding-top: 1rem; }
+  .ring-wrap { justify-content: flex-start; }
 }
 @media (max-width: 760px) {
   :root { --gutter: 1.2rem; --row-gap: 2rem; }

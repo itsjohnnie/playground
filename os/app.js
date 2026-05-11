@@ -9,7 +9,7 @@
  * ───────────────────────────────────────────────────────── */
 
 import {
-  me, people, announcements, milestones, meetings, reviews, threads, tasks, docs,
+  me, people, announcements, milestones, meetings, reviews, threads, tasks, docs, peopleByCircle, weekMeetingGrid,
   onYou, greet, stateOfDay,
   inMotion, thisWeek, ageLabel, nameOf,
   notificationsFeed, applyCircleOverrides, groupByCircle
@@ -64,6 +64,7 @@ onSettingsChange(() => {
   if (document.querySelector("[data-route='home']").classList.contains("is-active")) {
     renderHero();
     renderPeople();
+    renderWeekstrip();
   }
 });
 
@@ -74,6 +75,67 @@ function renderHero() {
   const s = loadSettings();
   document.getElementById("greeting").textContent = greet(now, s.name, s.greetingStyle);
   document.getElementById("state-of-day").textContent = stateOfDay(now);
+
+  const counts = peopleByCircle();
+  const inner = counts[1].length, second = counts[2].length, today = counts[3].length;
+  document.getElementById("me-meta").textContent =
+    `${inner} inner · ${second} second · ${today} today`;
+}
+
+function renderWeekstrip() {
+  const svg = document.querySelector("#weekstrip .weekstrip-svg");
+  const axis = document.getElementById("weekstrip-axis");
+  const meta = document.getElementById("weekstrip-meta");
+  if (!svg || !axis) return;
+
+  const grid = weekMeetingGrid();
+  const W = 280, H = 64;
+  const cols = 7, rows = 3;
+  const gapX = 4, gapY = 4;
+  const cellW = (W - gapX * (cols - 1)) / cols;
+  const cellH = (H - gapY * (rows - 1)) / rows;
+
+  svg.replaceChildren();
+  const now = new Date();
+  const todayIdx = grid.findIndex((d) => d.isToday);
+
+  for (let c = 0; c < cols; c++) {
+    for (let r = 0; r < rows; r++) {
+      const cell = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      cell.setAttribute("x", c * (cellW + gapX));
+      cell.setAttribute("y", r * (cellH + gapY));
+      cell.setAttribute("width", cellW);
+      cell.setAttribute("height", cellH);
+      cell.setAttribute("rx", 1.5);
+      cell.classList.add("cell");
+      const load = grid[c].bands[r];
+      cell.dataset.load = String(Math.min(4, load));
+      svg.appendChild(cell);
+    }
+  }
+  if (todayIdx >= 0) {
+    const x = todayIdx * (cellW + gapX) - 2;
+    const marker = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    marker.setAttribute("x", x);
+    marker.setAttribute("y", -2);
+    marker.setAttribute("width", cellW + 4);
+    marker.setAttribute("height", H + 4);
+    marker.setAttribute("rx", 3);
+    marker.classList.add("col-today");
+    svg.appendChild(marker);
+  }
+
+  axis.replaceChildren();
+  const fmt = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+  for (const d of grid) {
+    const span = document.createElement("span");
+    span.textContent = fmt.format(d.date).slice(0, 3);
+    if (d.isToday) span.dataset.today = "true";
+    axis.appendChild(span);
+  }
+
+  const totalLoad = grid.reduce((sum, d) => sum + d.bands.reduce((a, b) => a + b, 0), 0);
+  meta.textContent = `${totalLoad} blocks · 7 days`;
 }
 
 // Only set `title` when the element is actually truncated — avoids native-tooltip noise.
@@ -493,6 +555,7 @@ function renderAll() {
   renderInMotion();
   renderThisWeek();
   renderAnnouncements();
+  renderWeekstrip();
   initRing();
 }
 
