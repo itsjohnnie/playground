@@ -15,13 +15,36 @@ const HistorialScreen = lazy(() =>
 
 type Route = 'home' | 'mesa' | 'new' | 'game' | 'win' | 'historial'
 
+// Restore the last route across reloads so a refresh lands the user
+// back where they were. The mid-session sync effect below still
+// kicks them out of `game` / `win` if the active match no longer
+// exists, so a stale value can't strand them on an empty screen.
+const ROUTE_KEY = 'truco.route.v1'
+const ROUTES: Route[] = ['home', 'mesa', 'new', 'game', 'win', 'historial']
+function readSavedRoute(): Route {
+  if (typeof window === 'undefined') return 'home'
+  try {
+    const v = window.localStorage.getItem(ROUTE_KEY)
+    return v && (ROUTES as string[]).includes(v) ? (v as Route) : 'home'
+  } catch {
+    return 'home'
+  }
+}
+
 export default function App() {
   const store = useStore()
   const { activeMatch, loading, error } = store
 
-  const [route, setRoute] = useState<Route>('home')
+  const [route, setRoute] = useState<Route>(readSavedRoute)
 
-  // Once loaded, jump into an active match if there is one.
+  // Persist route changes so a refresh comes back to the same screen.
+  useEffect(() => {
+    try { window.localStorage.setItem(ROUTE_KEY, route) } catch { /* private mode etc. */ }
+  }, [route])
+
+  // Once loaded, jump into an active match if there is one — but
+  // only when the user landed on `home`. If they had something else
+  // open (Historial, Mesa, …) when they refreshed, respect that.
   useEffect(() => {
     if (loading) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -29,7 +52,10 @@ export default function App() {
     else if (activeMatch && !activeMatch.winner && route === 'home') setRoute('game')
   }, [loading, activeMatch, route])
 
-  // Sync screen with match state mid-session
+  // Sync screen with match state mid-session. Also covers the
+  // "restored route is `game` / `win` but the match was deleted
+  // remotely" case — we kick back to home rather than rendering an
+  // empty screen.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (activeMatch?.winner && route === 'game') setRoute('win')
