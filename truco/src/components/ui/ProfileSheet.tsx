@@ -259,23 +259,20 @@ export function ProfileSheet({
 
         {errorMsg && <p className="text-danger text-xs">{errorMsg}</p>}
 
-        {/* Save / cancel */}
-        {canEdit && (
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-            <Button variant="primary" onClick={save} disabled={busy !== null}>
-              {busy === 'save' ? 'Guardando…' : 'Guardar'}
-            </Button>
-          </div>
-        )}
-
-        {/* Secondary actions, in order of severity:
-            – Retirar de la mesa: anyone, retires the player record.
-            – Liberar este perfil: claimant-only, releases the claim.
-            "Liberar" sits last as a quieter, centred link so it
-            reads as a tertiary escape hatch rather than competing
-            with the framed Retirar action. */}
-        <div className="flex flex-col gap-3 pt-1">
+        {/* Action cluster: Cancelar / Guardar share a row and
+            Retirar sits directly beneath them, so the three primary
+            actions read as one block. The internal `gap-3` matches
+            the form's row gap above, and the row's horizontal
+            `gap-3` matches it on the other axis too. */}
+        <div className="flex flex-col gap-3">
+          {canEdit && (
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+              <Button variant="primary" onClick={save} disabled={busy !== null}>
+                {busy === 'save' ? 'Guardando…' : 'Guardar'}
+              </Button>
+            </div>
+          )}
           <button
             onClick={() => {
               if (!player) return
@@ -284,7 +281,7 @@ export function ProfileSheet({
             }}
             aria-pressed={confirmRetire}
             className={
-              'pressable mt-1 rounded-md border px-4 py-3 transition-colors ' +
+              'pressable rounded-md border px-4 py-3 transition-colors ' +
               (confirmRetire
                 ? 'border-danger bg-danger text-bg font-medium'
                 : 'border-danger/40 text-danger hover:border-danger')
@@ -292,16 +289,22 @@ export function ProfileSheet({
           >
             {confirmRetire ? 'Tocá de nuevo para confirmar' : 'Retirar de la mesa'}
           </button>
-          {isMine && (
+        </div>
+
+        {/* Liberar este perfil — tertiary escape hatch, separated
+            from the action cluster above by the outer `gap-4` so it
+            reads as a distinct, quieter affordance. */}
+        {isMine && (
+          <div className="flex justify-center">
             <button
               onClick={unclaim}
               disabled={busy !== null}
-              className="pressable text-xs text-ink-muted underline underline-offset-4 self-center"
+              className="pressable text-xs text-ink-muted underline underline-offset-4"
             >
               Liberar este perfil
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </Sheet>
   )
