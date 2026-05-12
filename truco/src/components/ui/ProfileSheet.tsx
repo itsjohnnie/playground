@@ -35,6 +35,10 @@ export function ProfileSheet({
   const [zelle, setZelle]         = useState('')
   const [busy, setBusy]           = useState<null | 'save' | 'photo' | 'claim'>(null)
   const [errorMsg, setErrorMsg]   = useState<string | null>(null)
+  // Retire is a destructive, no-undo action — first tap arms the
+  // confirmation, second tap commits. State lives in the sheet so it
+  // resets when a different player is opened (effect below).
+  const [confirmRetire, setConfirmRetire] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Reset form whenever a different player is opened.
@@ -49,7 +53,16 @@ export function ProfileSheet({
     setZelle(player.zelle        ?? '')
     setErrorMsg(null)
     setBusy(null)
+    setConfirmRetire(false)
   }, [player])
+
+  // Auto-disarm the retire confirmation after a few seconds so the
+  // armed state doesn't linger if the user wanders away mid-decision.
+  useEffect(() => {
+    if (!confirmRetire) return
+    const t = setTimeout(() => setConfirmRetire(false), 4000)
+    return () => clearTimeout(t)
+  }, [confirmRetire])
 
   if (!player) return null
 
@@ -264,10 +277,20 @@ export function ProfileSheet({
             with the framed Retirar action. */}
         <div className="flex flex-col gap-3 pt-1">
           <button
-            onClick={() => { if (player) { onRetire(player.id); onClose() } }}
-            className="pressable mt-1 rounded-md border border-danger/40 px-4 py-3 text-danger hover:border-danger"
+            onClick={() => {
+              if (!player) return
+              if (confirmRetire) { onRetire(player.id); onClose() }
+              else setConfirmRetire(true)
+            }}
+            aria-pressed={confirmRetire}
+            className={
+              'pressable mt-1 rounded-md border px-4 py-3 transition-colors ' +
+              (confirmRetire
+                ? 'border-danger bg-danger text-bg font-medium'
+                : 'border-danger/40 text-danger hover:border-danger')
+            }
           >
-            Retirar de la mesa
+            {confirmRetire ? 'Tocá de nuevo para confirmar' : 'Retirar de la mesa'}
           </button>
           {isMine && (
             <button
