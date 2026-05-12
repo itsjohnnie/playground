@@ -595,18 +595,18 @@ interface SeatSlotProps {
 }
 
 function SeatSlot({ tone, player, refCb, onDragEnd, onTap }: SeatSlotProps) {
-  // Slot is sized so the chip sits with even gap on every side:
-  // border-2 (2 px) + p-1 (4 px) on each side = 6 px from the dashed
-  // outline to the chip on top / bottom / left / right. min-h-[52px]
-  // = chip min-h-[44px] + 4 px padding + 2 px border × 2 sides, so
-  // there's no centring slack on the vertical axis that wouldn't
-  // also exist horizontally. Tighter than the previous 68 px, which
-  // also makes the whole table block noticeably less tall.
+  // Slot is sized so the chip sits with even gap on every side AND
+  // empty vs filled slots are the same height. Math:
+  //   chip min-h-[44px] + p-1 (4 + 4) + border-2 (2 + 2) = 56 px.
+  // Setting min-h-[56px] means a filled slot doesn't grow past the
+  // empty one — both render at exactly 56 px tall, so swapping the
+  // contents in/out doesn't shift the surrounding layout. The 6 px
+  // visible gap (padding 4 + border 2) is uniform on every side.
   return (
     <div
       ref={refCb}
       className={cn(
-        'relative rounded-md border-2 border-dashed min-h-[52px] flex items-center justify-center p-1',
+        'relative rounded-md border-2 border-dashed min-h-[56px] flex items-center justify-center p-1',
         tone === 'a' ? 'border-accent/30' : 'border-ink-soft/30',
       )}
     >
