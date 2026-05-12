@@ -164,7 +164,7 @@ export function ProfileSheet({
                 onClick={() => fileRef.current?.click()}
                 disabled={busy !== null}
                 aria-label={player.photoUrl ? 'Cambiar foto' : 'Agregar foto'}
-                className="pressable rounded-sm border border-line bg-surface-hi p-2 text-ink-muted hover:text-ink"
+                className="pressable rounded-md border border-line bg-surface-hi p-2 text-ink-muted hover:text-ink"
               >
                 {player.photoUrl
                   ? <Camera   className="size-4" />
@@ -175,7 +175,7 @@ export function ProfileSheet({
                   onClick={removePhoto}
                   disabled={busy !== null}
                   aria-label="Quitar foto"
-                  className="pressable rounded-sm border border-line bg-surface-hi p-2 text-ink-soft hover:text-danger"
+                  className="pressable rounded-md border border-line bg-surface-hi p-2 text-ink-soft hover:text-danger"
                 >
                   <Trash2 className="size-4" />
                 </button>
@@ -213,7 +213,7 @@ export function ProfileSheet({
           <Field label="Apodo (en pantalla)">
             <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} disabled={!canEdit} />
           </Field>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-4">
             <Field label="Nombre">
               <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={40} disabled={!canEdit} />
             </Field>
@@ -267,7 +267,7 @@ export function ProfileSheet({
           )}
           <button
             onClick={() => { if (player) { onRetire(player.id); onClose() } }}
-            className="pressable mt-1 rounded-sm border border-danger/40 px-4 py-3 text-danger hover:border-danger"
+            className="pressable mt-1 rounded-md border border-danger/40 px-4 py-3 text-danger hover:border-danger"
           >
             Retirar de la mesa
           </button>
