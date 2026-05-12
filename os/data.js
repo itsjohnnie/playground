@@ -275,7 +275,42 @@ export function greet(now, name = me.name, style = me.greetingStyle) {
   return `${prefix}${name}${suffix}`;
 }
 
-export function stateOfDay(now) {
+// Announcements posted within the tab window, most recent first.
+export function announcementsIn(tab = "today") {
+  const { start, end } = rangeBounds(tab);
+  const out = announcements
+    .map((a) => ({ ...a, at: new Date(a.postedAt) }))
+    .sort((a, b) => b.at - a.at);
+  if (tab === "all") return out;
+  return out.filter((a) => a.at >= start && a.at < end);
+}
+
+export function stateOfDay(now, tab = "today") {
+  if (tab === "week") {
+    const milesIn = thisWeek("week").length;
+    const dueIn = tasks.filter((t) => {
+      const d = new Date(t.dueDate);
+      const { start, end } = rangeBounds("week");
+      return t.assigneeId === "me" && d >= start && d < end;
+    }).length;
+    return `${milesIn} milestone${milesIn === 1 ? "" : "s"} this week. ${dueIn} due.`;
+  }
+  if (tab === "month") {
+    const milesIn = thisWeek("month").length;
+    return `${milesIn} milestone${milesIn === 1 ? "" : "s"} this month.`;
+  }
+  if (tab === "soon") {
+    const upcoming = thisWeek("soon");
+    if (upcoming.length === 0) return "Nothing on the horizon.";
+    const next = upcoming[0];
+    const day = next.at.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return `Next up: ${next.title} on ${day}.`;
+  }
+  if (tab === "all") {
+    const total = milestones.length;
+    return `${total} milestones tracked.`;
+  }
+  // Today
   const hour = now.getHours();
   const remaining = meetings.filter((m) => m.endHour > hour).length;
   const reviewsOwed = reviews.filter((r) => r.awaitingId === "me").length;
@@ -295,41 +330,75 @@ export function stateOfDay(now) {
   return parts.join(" ");
 }
 
-// On-you: composes reviews, threads, tasks. Sorted by age × criticality.
-export function onYou() {
+// Time-horizon bounds for the range dropdown. Returns half-open [start, end).
+export function rangeBounds(tab) {
+  const now = new Date();
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(dayStart); tomorrow.setDate(dayStart.getDate() + 1);
+  switch (tab) {
+    case "week": {
+      const dow = now.getDay();
+      const monday = new Date(dayStart); monday.setDate(dayStart.getDate() - ((dow + 6) % 7));
+      const nextMonday = new Date(monday); nextMonday.setDate(monday.getDate() + 7);
+      return { start: monday, end: nextMonday };
+    }
+    case "month": {
+      const ms = new Date(now.getFullYear(), now.getMonth(), 1);
+      const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      return { start: ms, end: next };
+    }
+    case "soon": {
+      const in30 = new Date(dayStart); in30.setDate(dayStart.getDate() + 30);
+      return { start: now, end: in30 };
+    }
+    case "all":
+      return { start: new Date(0), end: new Date(Date.now() + 10 * 365 * 24 * 3600 * 1000) };
+    case "today":
+    default:
+      return { start: dayStart, end: tomorrow };
+  }
+}
+
+// On-you: composes reviews, threads, tasks. Sorted by age × criticality. Filtered by tab.
+// Open reviews and threads are always "current" — they show up in today/week/month/all but
+// drop out of "soon" (which is strictly future-dated work).
+export function onYou(tab = "today") {
+  const { end } = rangeBounds(tab);
+  const includeOpen = tab !== "soon";
   const now = new Date();
   const out = [];
-  for (const r of reviews) {
-    if (r.awaitingId !== "me") continue;
-    out.push({
-      id: r.id,
-      kind: "Review",
-      who: nameOf(r.authorId),
-      whoId: r.authorId,
-      what: r.title,
-      ageMs: now - new Date(r.openedAt),
-      weight: 0.6
-    });
-  }
-  for (const t of threads) {
-    if (!t.awaitingReply) continue;
-    out.push({
-      id: t.id,
-      kind: "Reply",
-      who: nameOf(t.lastFrom),
-      whoId: t.lastFrom,
-      what: `“${t.snippet}”`,
-      ageMs: now - new Date(t.lastAt),
-      weight: 0.5
-    });
+  if (includeOpen) {
+    for (const r of reviews) {
+      if (r.awaitingId !== "me") continue;
+      out.push({
+        id: r.id, kind: "Review",
+        who: nameOf(r.authorId), whoId: r.authorId,
+        what: r.title,
+        ageMs: now - new Date(r.openedAt),
+        weight: 0.6
+      });
+    }
+    for (const t of threads) {
+      if (!t.awaitingReply) continue;
+      out.push({
+        id: t.id, kind: "Reply",
+        who: nameOf(t.lastFrom), whoId: t.lastFrom,
+        what: `“${t.snippet}”`,
+        ageMs: now - new Date(t.lastAt),
+        weight: 0.5
+      });
+    }
   }
   for (const task of tasks) {
     if (task.assigneeId !== "me") continue;
-    const dueMs = new Date(task.dueDate) - now;
+    const due = new Date(task.dueDate);
+    const dueMs = due - now;
+    const inWindow = due < end || task.status === "overdue";
+    if (!inWindow) continue;
     if (task.status === "overdue") {
       out.push({ id: task.id, kind: "Overdue", who: null, whoId: null, what: task.title,
         ageMs: -dueMs, weight: 1.0 });
-    } else if (dueMs < 24 * 3600 * 1000) {
+    } else {
       out.push({ id: task.id, kind: "Due", who: null, whoId: null, what: task.title,
         ageMs: -dueMs, weight: 0.7 });
     }
@@ -344,23 +413,34 @@ export function nameOf(id) {
   return people.find((p) => p.id === id)?.name ?? null;
 }
 
-// In-motion: projects + docs ordered by recent activity.
-export function inMotion() {
+// In-motion: projects + docs ordered by recent activity, filtered by tab window.
+// "Today" shows items active today; wider tabs widen the window. "All" shows the
+// most recent activity regardless of age.
+export function inMotion(tab = "today") {
+  const { start, end } = rangeBounds(tab);
   const items = [];
   for (const p of projects) items.push({ id: p.id, kind: "project", title: p.name, status: p.status, at: p.lastActivityAt });
   for (const d of docs) items.push({ id: d.id, kind: "doc", title: d.title, status: d.status, at: d.lastEditedAt });
   items.sort((a, b) => new Date(b.at) - new Date(a.at));
-  return items.slice(0, 5);
+  if (tab === "all") return items.slice(0, 6);
+  const within = items.filter((it) => {
+    const at = new Date(it.at);
+    return at >= start && at < end;
+  });
+  return within.slice(0, 6);
 }
 
-// This week: next-3 milestones from now.
-export function thisWeek() {
+// This week column: upcoming milestones inside the tab's window. "Soon" allows
+// up to a month out. "All" shows the next handful regardless.
+export function thisWeek(tab = "today") {
   const now = new Date();
-  return milestones
+  const { end } = rangeBounds(tab);
+  const upcoming = milestones
     .map((m) => ({ ...m, at: new Date(m.date) }))
     .filter((m) => m.at >= now)
-    .sort((a, b) => a.at - b.at)
-    .slice(0, 3);
+    .sort((a, b) => a.at - b.at);
+  if (tab === "all") return upcoming.slice(0, 4);
+  return upcoming.filter((m) => m.at < end).slice(0, 4);
 }
 
 // People grouped by circle for the columns.

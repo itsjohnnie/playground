@@ -11,7 +11,7 @@
 import {
   me, people, announcements, milestones, meetings, reviews, threads, tasks, docs, peopleByCircle,
   onYou, greet, stateOfDay,
-  inMotion, thisWeek, ageLabel, nameOf,
+  inMotion, thisWeek, announcementsIn, ageLabel, nameOf,
   notificationsFeed, applyCircleOverrides, groupByCircle
 } from "./data.js";
 import { initRing } from "./ring.js";
@@ -74,7 +74,7 @@ function renderHero() {
   const now = new Date();
   const s = loadSettings();
   document.getElementById("greeting").textContent = greet(now, s.name, s.greetingStyle);
-  document.getElementById("state-of-day").textContent = stateOfDay(now);
+  document.getElementById("state-of-day").textContent = stateOfDay(now, state.tab);
 
   const counts = peopleByCircle();
   const inner = counts[1].length, second = counts[2].length, today = counts[3].length;
@@ -145,11 +145,13 @@ function renderPeople() {
 function renderOnYou() {
   const ul = document.getElementById("onyou-list");
   ul.replaceChildren();
-  const items = onYou();
+  const items = onYou(state.tab);
   if (!items.length) {
     const li = document.createElement("li");
     li.className = "empty";
-    li.textContent = "Nothing waiting on you. Take a beat.";
+    li.textContent = state.tab === "today"
+      ? "Nothing waiting on you. Take a beat."
+      : `Nothing waiting on you ${RANGE_LABELS[state.tab].toLowerCase()}.`;
     ul.appendChild(li);
     return;
   }
@@ -205,7 +207,7 @@ function renderTitleMetaList(ulId, items, projector) {
 }
 
 function renderInMotion() {
-  renderTitleMetaList("in-motion", inMotion(), (item) => ({
+  renderTitleMetaList("in-motion", inMotion(state.tab), (item) => ({
     title: item.title,
     meta: ageLabel(Date.now() - new Date(item.at)) + " ago",
     status: item.status
@@ -213,14 +215,14 @@ function renderInMotion() {
 }
 
 function renderThisWeek() {
-  renderTitleMetaList("this-week", thisWeek(), (m) => ({
+  renderTitleMetaList("this-week", thisWeek(state.tab), (m) => ({
     title: m.title,
     meta: new Date(m.date).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })
   }));
 }
 
 function renderAnnouncements() {
-  renderTitleMetaList("announcements", announcements.slice(0, 2), (a) => {
+  renderTitleMetaList("announcements", announcementsIn(state.tab).slice(0, 3), (a) => {
     const author = nameOf(a.postedBy);
     return { title: a.summary, meta: author ? `· ${author.split(" ")[0]}` : "" };
   });
@@ -283,7 +285,8 @@ function applyRange(tab) {
   document.querySelectorAll("#range-menu li").forEach((li) => {
     li.setAttribute("aria-selected", li.dataset.tab === tab ? "true" : "false");
   });
-  home.classList.toggle("is-future-tab", tab !== "today");
+  home.dataset.tab = tab;
+  if (home.classList.contains("is-active")) renderAll();
 }
 
 function bindRangeDropdown() {
@@ -594,6 +597,7 @@ function formatHour(h) {
 window.addEventListener("hashchange", route);
 window.addEventListener("DOMContentLoaded", () => {
   bindRangeDropdown();
+  document.querySelector("[data-route='home']").dataset.tab = state.tab;
   route();
 });
 
@@ -601,7 +605,7 @@ let lastTickSignature = "";
 setInterval(() => {
   if (!document.querySelector("[data-route='home']").classList.contains("is-active")) return;
   const now = Date.now();
-  const sig = onYou().concat(inMotion()).map((it) => `${it.id}:${ageLabel(it.ageMs ?? now - new Date(it.at))}`).join("|");
+  const sig = onYou(state.tab).concat(inMotion(state.tab)).map((it) => `${it.id}:${ageLabel(it.ageMs ?? now - new Date(it.at))}`).join("|");
   if (sig === lastTickSignature) return;
   lastTickSignature = sig;
   renderOnYou();
@@ -636,7 +640,10 @@ function renderNotifications() {
     li.dataset.online = sender?.online ? "true" : "false";
     li.addEventListener("click", (e) => {
       if (e.target.closest("button")) return;
+      const r = loadRead();
+      if (!r.has(item.id)) { r.add(item.id); saveRead(r); }
       openNotificationDrawer(item);
+      renderNotifications();
     });
 
     const dot = document.createElement("span");
