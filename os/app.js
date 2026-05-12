@@ -9,7 +9,7 @@
  * ───────────────────────────────────────────────────────── */
 
 import {
-  me, people, announcements, milestones, meetings, reviews, threads, tasks, docs, peopleByCircle, weekMeetingGrid,
+  me, people, announcements, milestones, meetings, reviews, threads, tasks, docs, peopleByCircle,
   onYou, greet, stateOfDay,
   inMotion, thisWeek, ageLabel, nameOf,
   notificationsFeed, applyCircleOverrides, groupByCircle
@@ -65,7 +65,6 @@ onSettingsChange(() => {
     renderHero();
     renderPeople();
     renderHours();
-    renderWeekstrip();
   }
 });
 
@@ -83,61 +82,6 @@ function renderHero() {
     `${inner} inner · ${second} second · ${today} today`;
 }
 
-function renderWeekstrip() {
-  const svg = document.querySelector("#weekstrip .weekstrip-svg");
-  const axis = document.getElementById("weekstrip-axis");
-  const meta = document.getElementById("weekstrip-meta");
-  if (!svg || !axis) return;
-
-  const grid = weekMeetingGrid();
-  const W = 280, H = 64;
-  const cols = 7, rows = 3;
-  const gapX = 4, gapY = 4;
-  const cellW = (W - gapX * (cols - 1)) / cols;
-  const cellH = (H - gapY * (rows - 1)) / rows;
-
-  svg.replaceChildren();
-  const now = new Date();
-  const todayIdx = grid.findIndex((d) => d.isToday);
-
-  for (let c = 0; c < cols; c++) {
-    for (let r = 0; r < rows; r++) {
-      const cell = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-      cell.setAttribute("x", c * (cellW + gapX));
-      cell.setAttribute("y", r * (cellH + gapY));
-      cell.setAttribute("width", cellW);
-      cell.setAttribute("height", cellH);
-      cell.setAttribute("rx", 1.5);
-      cell.classList.add("cell");
-      const load = grid[c].bands[r];
-      cell.dataset.load = String(Math.min(4, load));
-      svg.appendChild(cell);
-    }
-  }
-  if (todayIdx >= 0) {
-    const x = todayIdx * (cellW + gapX) - 2;
-    const marker = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    marker.setAttribute("x", x);
-    marker.setAttribute("y", -2);
-    marker.setAttribute("width", cellW + 4);
-    marker.setAttribute("height", H + 4);
-    marker.setAttribute("rx", 3);
-    marker.classList.add("col-today");
-    svg.appendChild(marker);
-  }
-
-  axis.replaceChildren();
-  const fmt = new Intl.DateTimeFormat(undefined, { weekday: "short" });
-  for (const d of grid) {
-    const span = document.createElement("span");
-    span.textContent = fmt.format(d.date).slice(0, 3);
-    if (d.isToday) span.dataset.today = "true";
-    axis.appendChild(span);
-  }
-
-  const totalLoad = grid.reduce((sum, d) => sum + d.bands.reduce((a, b) => a + b, 0), 0);
-  meta.textContent = `${totalLoad} blocks · 7 days`;
-}
 
 // Only set `title` when the element is actually truncated — avoids native-tooltip noise.
 function maybeTitle(el, full) {
@@ -573,86 +517,60 @@ function renderAll() {
   renderThisWeek();
   renderAnnouncements();
   renderHours();
-  renderWeekstrip();
   initRing();
 }
 
 function renderHours() {
-  const svg = document.querySelector(".hours-svg");
+  const strip = document.getElementById("hours-strip");
   const axis = document.getElementById("hours-axis");
   const meta = document.getElementById("hours-meta");
-  if (!svg || !axis) return;
+  if (!strip || !axis) return;
 
   const startHour = 7, endHour = 21;
   const span = endHour - startHour;
-  const W = 1200, H = 96;
-  const padX = 6;
-  const innerW = W - padX * 2;
-  const hourW = innerW / span;
-  const laneY = 14, laneH = 68;
-  const NS = "http://www.w3.org/2000/svg";
+  const pct = (h) => `${((h - startHour) / span) * 100}%`;
 
-  svg.replaceChildren();
+  strip.replaceChildren();
   const now = new Date();
   const nowH = now.getHours() + now.getMinutes() / 60;
 
-  // 3-hour grid ticks
-  for (let h = startHour; h <= endHour; h++) {
-    if (h % 3 !== 0) continue;
-    const x = padX + (h - startHour) * hourW;
-    const line = document.createElementNS(NS, "line");
-    line.setAttribute("x1", x); line.setAttribute("x2", x);
-    line.setAttribute("y1", laneY); line.setAttribute("y2", laneY + laneH);
-    line.classList.add("tick");
-    svg.appendChild(line);
+  for (let h = startHour + 3; h < endHour; h += 3) {
+    const tick = document.createElement("div");
+    tick.className = "hours-tick";
+    tick.style.left = pct(h);
+    strip.appendChild(tick);
   }
 
-  // Meeting blocks
   for (const m of meetings) {
     if (m.endHour <= startHour || m.startHour >= endHour) continue;
     const sh = Math.max(m.startHour, startHour);
     const eh = Math.min(m.endHour, endHour);
-    const x = padX + (sh - startHour) * hourW;
-    const w = Math.max(3, (eh - sh) * hourW);
-    const rect = document.createElementNS(NS, "rect");
-    rect.setAttribute("x", x + 2); rect.setAttribute("y", laneY);
-    rect.setAttribute("width", Math.max(2, w - 4)); rect.setAttribute("height", laneH);
-    rect.setAttribute("rx", 3);
-    rect.classList.add("meeting");
-    if (m.endHour <= nowH) rect.classList.add("meeting-past");
-    svg.appendChild(rect);
+    const block = document.createElement("div");
+    block.className = "hours-block";
+    if (m.endHour <= nowH) block.classList.add("past");
+    block.style.left = `calc(${pct(sh)} + 2px)`;
+    block.style.width = `calc(${((eh - sh) / span) * 100}% - 4px)`;
 
-    if (w > 70) {
-      const text = document.createElementNS(NS, "text");
-      text.setAttribute("x", x + 10); text.setAttribute("y", laneY + 24);
-      text.classList.add("meeting-label");
-      text.textContent = m.title;
-      svg.appendChild(text);
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = m.title;
+    block.appendChild(title);
 
-      const time = document.createElementNS(NS, "text");
-      time.setAttribute("x", x + 10); time.setAttribute("y", laneY + 42);
-      time.classList.add("meeting-time");
-      time.textContent = `${formatHour(sh)} – ${formatHour(eh)}`;
-      svg.appendChild(time);
-    }
+    const time = document.createElement("span");
+    time.className = "time";
+    time.textContent = `${formatHour(sh)} – ${formatHour(eh)}`;
+    block.appendChild(time);
+
+    strip.appendChild(block);
   }
 
-  // Now indicator
   if (nowH >= startHour && nowH <= endHour) {
-    const x = padX + (nowH - startHour) * hourW;
-    const line = document.createElementNS(NS, "line");
-    line.setAttribute("x1", x); line.setAttribute("x2", x);
-    line.setAttribute("y1", laneY - 6); line.setAttribute("y2", laneY + laneH + 6);
-    line.classList.add("now-line");
-    svg.appendChild(line);
-    const dot = document.createElementNS(NS, "circle");
-    dot.setAttribute("cx", x); dot.setAttribute("cy", laneY - 6);
-    dot.setAttribute("r", 2.5);
-    dot.classList.add("now-dot");
-    svg.appendChild(dot);
+    const line = document.createElement("div");
+    line.className = "hours-now";
+    line.style.left = pct(nowH);
+    strip.appendChild(line);
   }
 
-  // Axis labels every 3 hours
   axis.replaceChildren();
   for (let h = startHour; h <= endHour; h += 3) {
     const span = document.createElement("span");
