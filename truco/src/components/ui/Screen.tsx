@@ -120,13 +120,18 @@ export function Screen({ children, className = '' }: { children: React.ReactNode
         {children}
       </div>
 
-      {/* Top fade — visible only when content has been scrolled down past
-          the threshold. Backdrop-blur softens whatever is sliding under it. */}
+      {/* Top fade — extends through the device safe-area inset so
+          in standalone (PWA) mode the gradient reaches the very top
+          of the viewport, gently veiling the status bar instead of
+          stopping at the content edge. In Safari `env(...)` resolves
+          to 0, so the strip lands flush at the top of the scroll
+          area as before — no branching needed for browser vs PWA. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-200 ease-out"
+        className="pointer-events-none absolute inset-x-0 transition-opacity duration-200 ease-out"
         style={{
-          height: FADE_HEIGHT,
+          top: 'calc(-1 * env(safe-area-inset-top, 0px))',
+          height: `calc(${FADE_HEIGHT}px + env(safe-area-inset-top, 0px))`,
           opacity: showTop ? 1 : 0,
           background: FADE_BG_TOP,
           backdropFilter: 'blur(6px)',
@@ -136,13 +141,15 @@ export function Screen({ children, className = '' }: { children: React.ReactNode
         }}
       />
 
-      {/* Bottom fade — mirror of the top, shown when there's more
-          content below the visible area. */}
+      {/* Bottom fade — mirror of the top, extends through
+          `safe-area-inset-bottom` so the home-indicator area on iOS
+          gets the same soft veil in PWA mode. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 transition-opacity duration-200 ease-out"
+        className="pointer-events-none absolute inset-x-0 transition-opacity duration-200 ease-out"
         style={{
-          height: FADE_HEIGHT,
+          bottom: 'calc(-1 * env(safe-area-inset-bottom, 0px))',
+          height: `calc(${FADE_HEIGHT}px + env(safe-area-inset-bottom, 0px))`,
           opacity: showBottom ? 1 : 0,
           background: FADE_BG_BOTTOM,
           backdropFilter: 'blur(6px)',
