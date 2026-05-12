@@ -259,10 +259,6 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
           <SeatPicker
             key="seats"
             players={selectedPlayers}
-            nameA={nameA}
-            setNameA={setNameA}
-            nameB={nameB}
-            setNameB={setNameB}
             defaultTeamNames={defaultTeamNames}
             onStart={onStart}
           />
@@ -350,10 +346,6 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
 
 interface SeatPickerProps {
   players: Player[]                // exactly 6, already selected in step 1
-  nameA: string
-  setNameA: (v: string) => void
-  nameB: string
-  setNameB: (v: string) => void
   defaultTeamNames: [string, string]
   onStart: (
     teamA: { name: string; playerIds: string[] },
@@ -362,7 +354,7 @@ interface SeatPickerProps {
   ) => void
 }
 
-function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamNames, onStart }: SeatPickerProps) {
+function SeatPicker({ players, defaultTeamNames, onStart }: SeatPickerProps) {
   // null in a slot = empty seat. Length 6, clockwise around the table.
   const [seats, setSeats] = useState<(string | null)[]>(() => [null, null, null, null, null, null])
   const seatRefs = useRef<Array<HTMLDivElement | null>>([null, null, null, null, null, null])
@@ -436,8 +428,8 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
     if (!allSeated) return
     const ids = seats as string[]
     onStart(
-      { name: nameA.trim() || defaultTeamNames[0], playerIds: [ids[0], ids[2], ids[4]] },
-      { name: nameB.trim() || defaultTeamNames[1], playerIds: [ids[1], ids[3], ids[5]] },
+      { name: defaultTeamNames[0], playerIds: [ids[0], ids[2], ids[4]] },
+      { name: defaultTeamNames[1], playerIds: [ids[1], ids[3], ids[5]] },
       ids,
     )
   }
@@ -458,13 +450,6 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
         Sentate alrededor de la mesa. El que te quede enfrente es tu
         pica pica — los compañeros quedan a tus costados.
       </p>
-
-      {/* Team name inputs, color-coded so it's clear which seats are
-          which team once the names land on the table. */}
-      <div className="grid grid-cols-2 gap-2">
-        <TeamNameInput tone="a" value={nameA} onChange={setNameA} />
-        <TeamNameInput tone="b" value={nameB} onChange={setNameB} />
-      </div>
 
       {/* The table — hexagonal layout on a 4-row × 3-col grid. The
           mesa spans rows 2–3 of column 2, and the six seats sit at
@@ -507,7 +492,7 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
         </div>
         <div
           aria-hidden
-          className="col-start-2 row-start-2 row-span-2 rounded-2xl border border-line/60 bg-surface-hi flex items-center justify-center"
+          className="col-start-2 row-start-2 row-span-2 rounded-[28px] border border-line/60 bg-surface-hi flex items-center justify-center"
         >
           <span className="eyebrow">Mesa</span>
         </div>
@@ -557,6 +542,20 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
         </div>
       </div>
 
+      {/* Team legend — read-only key under the table. Two team
+          names are fixed defaults; the colour dots let you map a
+          seated chip's tone back to the team name at a glance. */}
+      <div className="flex items-center justify-center gap-5 text-xs text-ink-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden className="size-2 rounded-full bg-accent" />
+          {defaultTeamNames[0]}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden className="size-2 rounded-full bg-ink" />
+          {defaultTeamNames[1]}
+        </span>
+      </div>
+
       <div className="flex flex-col gap-2">
         <p className="eyebrow">Esperando silla</p>
         <div className="flex flex-wrap gap-2 min-h-[44px]">
@@ -586,35 +585,6 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
   )
 }
 
-function TeamNameInput({
-  tone, value, onChange,
-}: {
-  tone: Tone
-  value: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className={cn(
-      'flex items-center gap-2 rounded-md border bg-surface px-2',
-      tone === 'a' ? 'border-accent/40' : 'border-ink-soft/40',
-    )}>
-      <span
-        aria-hidden
-        className={cn(
-          'size-2 rounded-full shrink-0',
-          tone === 'a' ? 'bg-accent' : 'bg-ink',
-        )}
-      />
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        maxLength={18}
-        className="h-9 px-1 font-display border-transparent bg-transparent focus:border-transparent focus:ring-0 min-w-0 flex-1"
-      />
-    </div>
-  )
-}
-
 interface SeatSlotProps {
   index: number
   tone: Tone
@@ -625,17 +595,17 @@ interface SeatSlotProps {
 }
 
 function SeatSlot({ tone, player, refCb, onDragEnd, onTap }: SeatSlotProps) {
-  // Border radius is intentionally concentric with the chip inside:
-  // slot rounded-xl (12 px) − padding p-1 (4 px) − border-2 (2 px)
-  // leaves the chip with a 6 px radius (rounded-md), so the inset
-  // gap reads as uniform on every side. The radii are also bigger
-  // than before so the two curves clearly rhyme instead of looking
-  // like an almost-square chip inside a roundish slot.
+  // Slot radius matches the CTA buttons (rounded-md = 6 px) so the
+  // dashed slots, the chips inside them, the pool chips, and the Al
+  // azar / ¡A jugar! buttons all share one radius family. The chip
+  // inside lands at rounded-sm (2 px), which keeps it concentric
+  // with the slot (6 − 4 px padding ≈ 2 px) without introducing a
+  // third radius value.
   return (
     <div
       ref={refCb}
       className={cn(
-        'relative rounded-xl border-2 border-dashed min-h-[68px] flex items-center justify-center p-1',
+        'relative rounded-md border-2 border-dashed min-h-[68px] flex items-center justify-center p-1',
         tone === 'a' ? 'border-accent/30' : 'border-ink-soft/30',
       )}
     >
@@ -679,9 +649,9 @@ function SeatChip({
       onClick={() => { if (!draggedRef.current) onTap() }}
       style={{ touchAction: 'none' }}
       className={cn(
-        // rounded-md (6px) = slot rounded-xl (12) − p-1 (4) − border-2 (2)
-        // so the chip is properly concentric inside the dashed slot.
-        'no-select inline-flex items-center gap-1 rounded-md px-2 py-1.5 text-sm border w-full min-h-[44px]',
+        // rounded-sm (2 px) keeps the chip concentric with the slot's
+        // rounded-md (6 px) once the p-1 padding is accounted for.
+        'no-select inline-flex items-center gap-1 rounded-sm px-2 py-1.5 text-sm border w-full min-h-[44px]',
         'cursor-grab active:cursor-grabbing',
         tone === 'a'
           ? 'bg-accent text-accent-ink border-accent'
@@ -720,7 +690,7 @@ function PoolChip({
       style={{ touchAction: 'none' }}
       className={cn(
         // Same radius as a seated chip so the two visually rhyme.
-        'no-select inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm border min-h-[44px]',
+        'no-select inline-flex items-center gap-1.5 rounded-sm px-3 py-2 text-sm border min-h-[44px]',
         'cursor-grab active:cursor-grabbing',
         'bg-surface-hi text-ink border-line',
       )}
