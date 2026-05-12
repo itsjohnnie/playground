@@ -260,6 +260,34 @@ function MatchRow({ match, playerById, onClick, onDelete, swipeOpen, onSwipeOpen
   )
 }
 
+// Scroll-fade overlay strip applied to MatchDetail. The Sheet's bg
+// is `--surface` (not `--bg`), so the fade has to wash from the
+// surface colour to transparent — using `--bg` would draw a darker
+// strip on top of the sheet instead of disappearing into it.
+const DETAIL_FADE_HEIGHT = 40
+const DETAIL_FADE_BG_TOP =
+  'linear-gradient(to bottom, ' +
+  'hsl(var(--surface)) 0%, ' +
+  'hsl(var(--surface) / 0.86) 30%, ' +
+  'hsl(var(--surface) / 0.46) 65%, ' +
+  'transparent 100%)'
+const DETAIL_FADE_BG_BOTTOM =
+  'linear-gradient(to top, ' +
+  'hsl(var(--surface)) 0%, ' +
+  'hsl(var(--surface) / 0.86) 30%, ' +
+  'hsl(var(--surface) / 0.46) 65%, ' +
+  'transparent 100%)'
+const DETAIL_FADE_MASK_TOP =
+  'linear-gradient(to bottom, ' +
+  '#000 0%, ' +
+  'rgba(0,0,0,0.6) 60%, ' +
+  'transparent 100%)'
+const DETAIL_FADE_MASK_BOTTOM =
+  'linear-gradient(to top, ' +
+  '#000 0%, ' +
+  'rgba(0,0,0,0.6) 60%, ' +
+  'transparent 100%)'
+
 function MatchDetail({ match, playerById, onDelete }: { match: Match; playerById: (id: string) => Player | undefined; onDelete: () => void }) {
   const dur = match.finishedAt
     ? Math.max(1, Math.round((match.finishedAt - match.startedAt) / 60000))
@@ -267,8 +295,50 @@ function MatchDetail({ match, playerById, onDelete }: { match: Match; playerById
   const date = new Date(match.startedAt).toLocaleString('es-AR', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
   })
+
+  // Soft-fade the top + bottom of the scroll area instead of letting
+  // the jugadas list hard-crop against the sheet's edges. Mirrors the
+  // pattern from `Screen` — observe the container, all direct
+  // children, and subsequent child-list mutations so the gradients
+  // appear on initial mount when there's overflow, not just on the
+  // first scroll.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [showTop, setShowTop] = useState(false)
+  const [showBottom, setShowBottom] = useState(false)
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    function update() {
+      if (!el) return
+      setShowTop(el.scrollTop > 4)
+      setShowBottom(el.scrollTop + el.clientHeight < el.scrollHeight - 4)
+    }
+    const ro = new ResizeObserver(update)
+    function reobserve() {
+      ro.disconnect()
+      ro.observe(el!)
+      for (const child of Array.from(el!.children)) ro.observe(child)
+    }
+    reobserve()
+    update()
+    const raf = requestAnimationFrame(update)
+    el.addEventListener('scroll', update, { passive: true })
+    const mo = new MutationObserver(() => { reobserve(); update() })
+    mo.observe(el, { childList: true })
+    return () => {
+      cancelAnimationFrame(raf)
+      el.removeEventListener('scroll', update)
+      ro.disconnect()
+      mo.disconnect()
+    }
+  }, [match.id])
+
   return (
-    <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto pb-2">
+    <div className="relative">
+      <div
+        ref={scrollRef}
+        className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto pb-2"
+      >
       <div className="grid grid-cols-2 gap-3">
         <TeamSummary side="A" match={match} playerById={playerById} />
         <TeamSummary side="B" match={match} playerById={playerById} />
@@ -305,6 +375,36 @@ function MatchDetail({ match, playerById, onDelete }: { match: Match; playerById
       >
         Borrar partida
       </button>
+      </div>
+
+      {/* Top fade — visible once the jugadas list has been scrolled
+          down past the dead zone, so the top of the scroll area
+          softens into the sheet instead of cutting off. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-200 ease-out"
+        style={{
+          height: DETAIL_FADE_HEIGHT,
+          opacity: showTop ? 1 : 0,
+          background: DETAIL_FADE_BG_TOP,
+          maskImage: DETAIL_FADE_MASK_TOP,
+          WebkitMaskImage: DETAIL_FADE_MASK_TOP,
+        }}
+      />
+      {/* Bottom fade — visible whenever there's more content below
+          the visible area. This is the main one in practice: the
+          jugadas list is often long enough to need it. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 transition-opacity duration-200 ease-out"
+        style={{
+          height: DETAIL_FADE_HEIGHT,
+          opacity: showBottom ? 1 : 0,
+          background: DETAIL_FADE_BG_BOTTOM,
+          maskImage: DETAIL_FADE_MASK_BOTTOM,
+          WebkitMaskImage: DETAIL_FADE_MASK_BOTTOM,
+        }}
+      />
     </div>
   )
 }
