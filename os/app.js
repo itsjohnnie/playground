@@ -64,6 +64,7 @@ onSettingsChange(() => {
   if (document.querySelector("[data-route='home']").classList.contains("is-active")) {
     renderHero();
     renderPeople();
+    renderHours();
     renderWeekstrip();
   }
 });
@@ -294,21 +295,37 @@ function route() {
     "#/settings": "settings"
   };
   const active = map[hash] || "home";
-  document.querySelectorAll("[data-route]").forEach((s) => {
-    s.classList.toggle("is-active", s.dataset.route === active);
-  });
-  document.querySelectorAll(".topbar .links a").forEach((a) => {
-    a.classList.toggle("is-active", a.getAttribute("href") === hash);
-  });
-  switch (active) {
-    case "home": renderAll(); break;
-    case "team": renderTeam(); break;
-    case "notifications": renderNotifications(); break;
-    case "milestones": renderMilestones(); break;
-    case "journal": renderJournal(); break;
-    case "settings": renderSettings(); break;
+
+  // Crossfade: brief opacity dip on the outgoing surface, then swap, then fade in.
+  // Short and ease-out per the WorkOS motion budget — under 300ms total.
+  const prev = document.querySelector("[data-route].is-active");
+  const next = document.querySelector(`[data-route="${active}"]`);
+  if (prev && next && prev !== next) {
+    prev.classList.add("is-leaving");
   }
-  window.scrollTo(0, 0);
+  const swap = () => {
+    document.querySelectorAll("[data-route]").forEach((s) => {
+      s.classList.toggle("is-active", s === next);
+      s.classList.remove("is-leaving");
+    });
+    document.querySelectorAll(".topbar .links a").forEach((a) => {
+      a.classList.toggle("is-active", a.getAttribute("href") === hash);
+    });
+    switch (active) {
+      case "home": renderAll(); break;
+      case "team": renderTeam(); break;
+      case "notifications": renderNotifications(); break;
+      case "milestones": renderMilestones(); break;
+      case "journal": renderJournal(); break;
+      case "settings": renderSettings(); break;
+    }
+    window.scrollTo(0, 0);
+    next.classList.add("is-entering");
+    requestAnimationFrame(() => requestAnimationFrame(() => next.classList.remove("is-entering")));
+  };
+
+  if (prev && next && prev !== next) setTimeout(swap, 120);
+  else swap();
 }
 
 // ─── Time-range dropdown (Today / This week / This month / Coming soon / All) ─
@@ -555,8 +572,105 @@ function renderAll() {
   renderInMotion();
   renderThisWeek();
   renderAnnouncements();
+  renderHours();
   renderWeekstrip();
   initRing();
+}
+
+function renderHours() {
+  const svg = document.querySelector(".hours-svg");
+  const axis = document.getElementById("hours-axis");
+  const meta = document.getElementById("hours-meta");
+  if (!svg || !axis) return;
+
+  const startHour = 7, endHour = 21;
+  const span = endHour - startHour;
+  const W = 1200, H = 96;
+  const padX = 6;
+  const innerW = W - padX * 2;
+  const hourW = innerW / span;
+  const laneY = 14, laneH = 68;
+  const NS = "http://www.w3.org/2000/svg";
+
+  svg.replaceChildren();
+  const now = new Date();
+  const nowH = now.getHours() + now.getMinutes() / 60;
+
+  // 3-hour grid ticks
+  for (let h = startHour; h <= endHour; h++) {
+    if (h % 3 !== 0) continue;
+    const x = padX + (h - startHour) * hourW;
+    const line = document.createElementNS(NS, "line");
+    line.setAttribute("x1", x); line.setAttribute("x2", x);
+    line.setAttribute("y1", laneY); line.setAttribute("y2", laneY + laneH);
+    line.classList.add("tick");
+    svg.appendChild(line);
+  }
+
+  // Meeting blocks
+  for (const m of meetings) {
+    if (m.endHour <= startHour || m.startHour >= endHour) continue;
+    const sh = Math.max(m.startHour, startHour);
+    const eh = Math.min(m.endHour, endHour);
+    const x = padX + (sh - startHour) * hourW;
+    const w = Math.max(3, (eh - sh) * hourW);
+    const rect = document.createElementNS(NS, "rect");
+    rect.setAttribute("x", x + 2); rect.setAttribute("y", laneY);
+    rect.setAttribute("width", Math.max(2, w - 4)); rect.setAttribute("height", laneH);
+    rect.setAttribute("rx", 3);
+    rect.classList.add("meeting");
+    if (m.endHour <= nowH) rect.classList.add("meeting-past");
+    svg.appendChild(rect);
+
+    if (w > 70) {
+      const text = document.createElementNS(NS, "text");
+      text.setAttribute("x", x + 10); text.setAttribute("y", laneY + 24);
+      text.classList.add("meeting-label");
+      text.textContent = m.title;
+      svg.appendChild(text);
+
+      const time = document.createElementNS(NS, "text");
+      time.setAttribute("x", x + 10); time.setAttribute("y", laneY + 42);
+      time.classList.add("meeting-time");
+      time.textContent = `${formatHour(sh)} – ${formatHour(eh)}`;
+      svg.appendChild(time);
+    }
+  }
+
+  // Now indicator
+  if (nowH >= startHour && nowH <= endHour) {
+    const x = padX + (nowH - startHour) * hourW;
+    const line = document.createElementNS(NS, "line");
+    line.setAttribute("x1", x); line.setAttribute("x2", x);
+    line.setAttribute("y1", laneY - 6); line.setAttribute("y2", laneY + laneH + 6);
+    line.classList.add("now-line");
+    svg.appendChild(line);
+    const dot = document.createElementNS(NS, "circle");
+    dot.setAttribute("cx", x); dot.setAttribute("cy", laneY - 6);
+    dot.setAttribute("r", 2.5);
+    dot.classList.add("now-dot");
+    svg.appendChild(dot);
+  }
+
+  // Axis labels every 3 hours
+  axis.replaceChildren();
+  for (let h = startHour; h <= endHour; h += 3) {
+    const span = document.createElement("span");
+    span.textContent = formatHour(h);
+    if (h <= nowH && nowH < h + 3) span.dataset.now = "true";
+    axis.appendChild(span);
+  }
+
+  const ahead = meetings.filter((m) => m.endHour > nowH);
+  const aheadHours = ahead.reduce((sum, m) => sum + Math.max(0, m.endHour - Math.max(m.startHour, nowH)), 0);
+  meta.textContent = aheadHours > 0
+    ? `${ahead.length} meeting${ahead.length === 1 ? "" : "s"} ahead · ${aheadHours.toFixed(1)}h scheduled`
+    : `${meetings.length} meetings done · clear from here`;
+}
+
+function formatHour(h) {
+  const hh = h % 12 || 12;
+  return `${hh}${h < 12 || h === 24 ? "a" : "p"}`;
 }
 
 window.addEventListener("hashchange", route);
@@ -574,6 +688,7 @@ setInterval(() => {
   lastTickSignature = sig;
   renderOnYou();
   renderInMotion();
+  renderHours();
 }, 60_000);
 
 // ─── Notifications surface ─────────────────────────────────
