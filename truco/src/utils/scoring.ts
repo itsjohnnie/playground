@@ -3,6 +3,7 @@ import {
   BUENAS_THRESHOLD,
   FALTA_ENVIDO_PICAPICA,
   PICAPICA_START,
+  picaPicaPairs,
   type RoundMode,
   type Match,
   type ScoreEvent,
@@ -123,6 +124,57 @@ export function leaderboard(roster: Player[], matches: Match[]): PlayerStats[] {
       if (b.matches !== a.matches) return b.matches - a.matches
       return 0
     })
+}
+
+// ─── Duelos (pica pica head-to-head) ─────────────────────────
+//
+// For every finished match that has a `seats` array (3v3 only),
+// each "across-the-table" pair contributes one duel result. Pairs
+// are stored with playerIds sorted lexicographically so the same
+// (X, Y) and (Y, X) collapse into a single entry; wins are tallied
+// against the pair, not against a side.
+
+export interface Duel {
+  // Lexicographically sorted so the pair key is stable. `winsA` is
+  // wins by `playerIdA`; `winsB` by `playerIdB`.
+  playerIdA: string
+  playerIdB: string
+  matches: number
+  winsA: number
+  winsB: number
+}
+
+export function duels(matches: Match[]): Duel[] {
+  const map = new Map<string, Duel>()
+  for (const m of matches) {
+    if (!m.winner || m.abandoned) continue
+    const pairs = picaPicaPairs(m.seats)
+    if (!pairs) continue
+    for (const [aId, bId] of pairs) {
+      // picaPicaPairs returns [teamA_id, teamB_id] tuples. Sort to
+      // make the map key order-independent, then remember which slot
+      // each ended up in so winsA / winsB credit the right player.
+      const [first, second] = [aId, bId].sort()
+      const key = first + ':' + second
+      const teamAWon = m.winner === 'A'
+      // `aId` is the player on Team A in this match's pairing.
+      const aPlayerInFirstSlot = first === aId
+      let d = map.get(key)
+      if (!d) {
+        d = { playerIdA: first, playerIdB: second, matches: 0, winsA: 0, winsB: 0 }
+        map.set(key, d)
+      }
+      d.matches++
+      // Credit the win to whichever slot the winning side's player is in.
+      if (teamAWon ? aPlayerInFirstSlot : !aPlayerInFirstSlot) d.winsA++
+      else d.winsB++
+    }
+  }
+  return Array.from(map.values()).sort((x, y) => {
+    if (y.matches !== x.matches) return y.matches - x.matches
+    // Tie-break by total wins difference (more decisive duels first).
+    return Math.abs(y.winsA - y.winsB) - Math.abs(x.winsA - x.winsB)
+  })
 }
 
 // ─── Reducers ─────────────────────────────────────────────────
