@@ -209,7 +209,7 @@ export function ProfileSheet({
         )}
 
         {/* Form */}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           <Field label="Apodo (en pantalla)">
             <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={20} disabled={!canEdit} />
           </Field>
