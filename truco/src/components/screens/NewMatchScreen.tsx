@@ -466,18 +466,29 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
         <TeamNameInput tone="b" value={nameB} onChange={setNameB} />
       </div>
 
-      {/* The table. CSS grid: 3 columns × 4 rows. Six seats park at
-          12, 2, 4, 6, 8, 10 o'clock and the center cell spans rows
-          2–3 as the mesa. */}
-      <div
-        className="grid gap-x-2 gap-y-1 mx-auto w-full max-w-[320px]"
-        style={{
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gridTemplateRows: 'auto auto auto auto',
-        }}
-      >
-        {/* Row 1: top seat */}
-        <div className="col-start-2 row-start-1">
+      {/* The table. Seats are absolutely positioned around a centered
+          mesa so the layout reads as a real round table — equal
+          breathing room top/bottom/left/right — instead of inheriting
+          the lopsided shape of a 4-row × 3-col grid (where rows 1 / 4
+          held a single seat each and bloated the vertical bounding
+          box well past the horizontal one). */}
+      <div className="relative mx-auto w-full max-w-[300px] h-[240px]">
+        {/* Mesa — the felt in the middle. */}
+        <div
+          aria-hidden
+          className="absolute rounded-[44px] border border-line/60 bg-surface-hi flex items-center justify-center"
+          style={{ left: '32%', right: '32%', top: '20%', bottom: '20%' }}
+        >
+          <span className="eyebrow">Mesa</span>
+        </div>
+
+        {/* Six seats at 12 / 2 / 4 / 6 / 8 / 10 o'clock. Side seats
+            inset slightly from the container edge so they don't hug
+            the screen border. */}
+        <div
+          className="absolute"
+          style={{ left: '50%', top: 0, transform: 'translateX(-50%)', width: 92 }}
+        >
           <SeatSlot
             index={0}
             tone={seatTone(0)}
@@ -487,24 +498,10 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
             onTap={(pid) => unseat(pid)}
           />
         </div>
-        {/* Row 2: upper-left + mesa + upper-right */}
-        <div className="col-start-1 row-start-2">
-          <SeatSlot
-            index={5}
-            tone={seatTone(5)}
-            player={seats[5] ? playerById.get(seats[5]) : undefined}
-            refCb={(el) => { seatRefs.current[5] = el }}
-            onDragEnd={handleDragEnd}
-            onTap={(pid) => unseat(pid)}
-          />
-        </div>
         <div
-          className="col-start-2 row-start-2 row-end-4 m-1 rounded-[28px] border border-line/60 bg-surface-hi flex items-center justify-center min-h-[120px]"
-          aria-hidden
+          className="absolute"
+          style={{ right: 0, top: '22%', width: 84 }}
         >
-          <span className="eyebrow">Mesa</span>
-        </div>
-        <div className="col-start-3 row-start-2">
           <SeatSlot
             index={1}
             tone={seatTone(1)}
@@ -514,18 +511,10 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
             onTap={(pid) => unseat(pid)}
           />
         </div>
-        {/* Row 3: lower-left + lower-right (mesa continues from row 2) */}
-        <div className="col-start-1 row-start-3">
-          <SeatSlot
-            index={4}
-            tone={seatTone(4)}
-            player={seats[4] ? playerById.get(seats[4]) : undefined}
-            refCb={(el) => { seatRefs.current[4] = el }}
-            onDragEnd={handleDragEnd}
-            onTap={(pid) => unseat(pid)}
-          />
-        </div>
-        <div className="col-start-3 row-start-3">
+        <div
+          className="absolute"
+          style={{ right: 0, bottom: '22%', width: 84 }}
+        >
           <SeatSlot
             index={2}
             tone={seatTone(2)}
@@ -535,13 +524,41 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
             onTap={(pid) => unseat(pid)}
           />
         </div>
-        {/* Row 4: bottom seat */}
-        <div className="col-start-2 row-start-4">
+        <div
+          className="absolute"
+          style={{ left: '50%', bottom: 0, transform: 'translateX(-50%)', width: 92 }}
+        >
           <SeatSlot
             index={3}
             tone={seatTone(3)}
             player={seats[3] ? playerById.get(seats[3]) : undefined}
             refCb={(el) => { seatRefs.current[3] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
+        <div
+          className="absolute"
+          style={{ left: 0, bottom: '22%', width: 84 }}
+        >
+          <SeatSlot
+            index={4}
+            tone={seatTone(4)}
+            player={seats[4] ? playerById.get(seats[4]) : undefined}
+            refCb={(el) => { seatRefs.current[4] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
+        <div
+          className="absolute"
+          style={{ left: 0, top: '22%', width: 84 }}
+        >
+          <SeatSlot
+            index={5}
+            tone={seatTone(5)}
+            player={seats[5] ? playerById.get(seats[5]) : undefined}
+            refCb={(el) => { seatRefs.current[5] = el }}
             onDragEnd={handleDragEnd}
             onTap={(pid) => unseat(pid)}
           />
