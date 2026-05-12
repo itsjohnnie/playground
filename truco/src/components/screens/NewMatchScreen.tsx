@@ -447,8 +447,7 @@ function SeatPicker({ players, defaultTeamNames, onStart }: SeatPickerProps) {
       className="flex flex-col gap-4 flex-1"
     >
       <p className="text-left text-sm text-ink-muted text-pretty w-full">
-        Sentate alrededor de la mesa. El que te quede enfrente es tu
-        pica pica — los compañeros quedan a tus costados.
+        Sentate alrededor de la mesa.
       </p>
 
       {/* The table — hexagonal layout on a 4-row × 3-col grid. The
