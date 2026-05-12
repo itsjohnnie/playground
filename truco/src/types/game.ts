@@ -70,24 +70,27 @@ export interface Match {
   events: ScoreEvent[]
   winner: 'A' | 'B' | null
   abandoned?: true
-  // Seating arrangement for 3v3 "pica pica" matches. Length 6:
-  //   indices 0..2 — Team A seats, left → right
-  //   indices 3..5 — Team B seats, left → right
-  // The i-th seat of team A faces the i-th seat of team B across the
-  // table, so picaPicaPairs() can just pair (seats[i], seats[i + 3]).
-  // Undefined on 1v1 / 2v2 / pre-feature matches.
+  // Seating arrangement for 3v3 "pica pica" matches. Length 6: the
+  // seats are in clockwise order around the round table, alternating
+  // Team A / Team B starting at seat 0. So:
+  //   even indices (0, 2, 4) belong to Team A
+  //   odd indices  (1, 3, 5) belong to Team B
+  // The pica pica rival is always the player directly across the
+  // table, three seats away. Alternation guarantees the rival is on
+  // the opposite team. Undefined on 1v1 / 2v2 / pre-feature matches.
   seats?: string[]
 }
 
 // Derive the pica pica head-to-head pairings from a `seats` array.
-// Each Team A seat faces the Team B seat at the same column.
-// Returns [teamA_id, teamB_id] tuples, one per duel.
+// Each seat's rival is the one 3 seats away (directly across the
+// round table). Returns [teamA_id, teamB_id] tuples — one duel per
+// pair — with Team A always first.
 export function picaPicaPairs(seats: string[] | undefined): Array<[string, string]> | null {
   if (!seats || seats.length !== 6) return null
   return [
-    [seats[0], seats[3]],
-    [seats[1], seats[4]],
-    [seats[2], seats[5]],
+    [seats[0], seats[3]],  // top  ↔ bottom
+    [seats[2], seats[5]],  // lower-right ↔ upper-left
+    [seats[4], seats[1]],  // lower-left  ↔ upper-right
   ]
 }
 

@@ -333,11 +333,20 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
 
 // ─── SeatPicker (3v3 only) ─────────────────────────────────────
 //
-// Visual: two rows of three seats with a "mesa" divider between them.
-// Indices 0..2 are Team A (top row, left → right); 3..5 are Team B
-// (bottom row, left → right). The seat directly below each Team A
-// seat is its pica pica rival, and the column-aligned grid makes that
-// obvious without any extra "↕" lines.
+// Visual: six seats arranged around a round table, alternating
+// Team A / Team B clockwise. Each player's pica pica rival is the
+// seat directly across (3 seats away). Layout:
+//
+//                     seat 0 (A)
+//          seat 5 (B)             seat 1 (B)
+//                       MESA
+//          seat 4 (A)             seat 2 (A)
+//                     seat 3 (B)
+//
+// Index parity decides the team: even = A, odd = B. So Team A's
+// players come from [seats[0], seats[2], seats[4]] and Team B from
+// [seats[1], seats[3], seats[5]] — every shuffle keeps the seating
+// authentic to how pica pica is played around a real round table.
 
 interface SeatPickerProps {
   players: Player[]                // exactly 6, already selected in step 1
@@ -354,9 +363,12 @@ interface SeatPickerProps {
 }
 
 function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamNames, onStart }: SeatPickerProps) {
-  // null in a slot = empty seat. Length 6 (Team A top, Team B bottom).
+  // null in a slot = empty seat. Length 6, clockwise around the table.
   const [seats, setSeats] = useState<(string | null)[]>(() => [null, null, null, null, null, null])
   const seatRefs = useRef<Array<HTMLDivElement | null>>([null, null, null, null, null, null])
+  // Team assignment is implied by seat index parity:
+  //   even = Team A (accent / gold)   odd = Team B (ink / dark)
+  const seatTone = (i: number): Tone => (i % 2 === 0 ? 'a' : 'b')
 
   const playerById = useMemo(() => {
     const map = new Map<string, Player>()
@@ -424,15 +436,15 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
     if (!allSeated) return
     const ids = seats as string[]
     onStart(
-      { name: nameA.trim() || defaultTeamNames[0], playerIds: ids.slice(0, 3) },
-      { name: nameB.trim() || defaultTeamNames[1], playerIds: ids.slice(3, 6) },
+      { name: nameA.trim() || defaultTeamNames[0], playerIds: [ids[0], ids[2], ids[4]] },
+      { name: nameB.trim() || defaultTeamNames[1], playerIds: [ids[1], ids[3], ids[5]] },
       ids,
     )
   }
 
-  const teamARowIds = seats.slice(0, 3)
-  const teamBRowIds = seats.slice(3, 6)
-
+  // Render order for the hexagonal grid: which seat sits in each
+  // cell (and which cells stay empty). The center cell holds the
+  // mesa graphic and spans two rows.
   return (
     <motion.section
       key="seats"
@@ -443,61 +455,97 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
       className="flex flex-col gap-4 flex-1"
     >
       <p className="text-left text-sm text-ink-muted text-balance">
-        Arrastrá cada nombre a una silla. El que te quede enfrente es tu
-        pica pica — tu duelo personal de la noche.
+        Sentate alrededor de la mesa. El que te quede enfrente es tu
+        pica pica — los compañeros quedan a tus costados.
       </p>
 
-      <div className="flex flex-col gap-2">
-        <Input
-          value={nameA}
-          onChange={(e) => setNameA(e.target.value)}
-          maxLength={18}
-          className="h-9 px-2 text-base font-display border-transparent bg-transparent focus:border-line"
-        />
-        <div className="grid grid-cols-3 gap-2">
-          {teamARowIds.map((id, i) => (
-            <SeatSlot
-              key={i}
-              index={i}
-              tone="a"
-              player={id ? playerById.get(id) : undefined}
-              refCb={(el) => { seatRefs.current[i] = el }}
-              onDragEnd={handleDragEnd}
-              onTap={(pid) => unseat(pid)}
-            />
-          ))}
-        </div>
+      {/* Team name inputs, color-coded so it's clear which seats are
+          which team once the names land on the table. */}
+      <div className="grid grid-cols-2 gap-2">
+        <TeamNameInput tone="a" value={nameA} onChange={setNameA} />
+        <TeamNameInput tone="b" value={nameB} onChange={setNameB} />
       </div>
 
-      {/* Table — a quiet horizontal divider with a label, so the seat
-          rows read as two sides of the same table. */}
-      <div className="relative h-6">
-        <div className="absolute inset-x-3 top-1/2 h-px bg-line/70 -translate-y-1/2" />
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-center">
-          <span className="eyebrow bg-bg px-3">Mesa</span>
+      {/* The table. CSS grid: 3 columns × 4 rows. Six seats park at
+          12, 2, 4, 6, 8, 10 o'clock and the center cell spans rows
+          2–3 as the mesa. */}
+      <div
+        className="grid gap-x-2 gap-y-1 mx-auto w-full max-w-[320px]"
+        style={{
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: 'auto auto auto auto',
+        }}
+      >
+        {/* Row 1: top seat */}
+        <div className="col-start-2 row-start-1">
+          <SeatSlot
+            index={0}
+            tone={seatTone(0)}
+            player={seats[0] ? playerById.get(seats[0]) : undefined}
+            refCb={(el) => { seatRefs.current[0] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
         </div>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="grid grid-cols-3 gap-2">
-          {teamBRowIds.map((id, i) => (
-            <SeatSlot
-              key={i + 3}
-              index={i + 3}
-              tone="b"
-              player={id ? playerById.get(id) : undefined}
-              refCb={(el) => { seatRefs.current[i + 3] = el }}
-              onDragEnd={handleDragEnd}
-              onTap={(pid) => unseat(pid)}
-            />
-          ))}
+        {/* Row 2: upper-left + mesa + upper-right */}
+        <div className="col-start-1 row-start-2">
+          <SeatSlot
+            index={5}
+            tone={seatTone(5)}
+            player={seats[5] ? playerById.get(seats[5]) : undefined}
+            refCb={(el) => { seatRefs.current[5] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
         </div>
-        <Input
-          value={nameB}
-          onChange={(e) => setNameB(e.target.value)}
-          maxLength={18}
-          className="h-9 px-2 text-base font-display border-transparent bg-transparent focus:border-line"
-        />
+        <div
+          className="col-start-2 row-start-2 row-end-4 m-1 rounded-[28px] border border-line/60 bg-surface-hi flex items-center justify-center min-h-[120px]"
+          aria-hidden
+        >
+          <span className="eyebrow">Mesa</span>
+        </div>
+        <div className="col-start-3 row-start-2">
+          <SeatSlot
+            index={1}
+            tone={seatTone(1)}
+            player={seats[1] ? playerById.get(seats[1]) : undefined}
+            refCb={(el) => { seatRefs.current[1] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
+        {/* Row 3: lower-left + lower-right (mesa continues from row 2) */}
+        <div className="col-start-1 row-start-3">
+          <SeatSlot
+            index={4}
+            tone={seatTone(4)}
+            player={seats[4] ? playerById.get(seats[4]) : undefined}
+            refCb={(el) => { seatRefs.current[4] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
+        <div className="col-start-3 row-start-3">
+          <SeatSlot
+            index={2}
+            tone={seatTone(2)}
+            player={seats[2] ? playerById.get(seats[2]) : undefined}
+            refCb={(el) => { seatRefs.current[2] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
+        {/* Row 4: bottom seat */}
+        <div className="col-start-2 row-start-4">
+          <SeatSlot
+            index={3}
+            tone={seatTone(3)}
+            player={seats[3] ? playerById.get(seats[3]) : undefined}
+            refCb={(el) => { seatRefs.current[3] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -526,6 +574,35 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
         </Button>
       </div>
     </motion.section>
+  )
+}
+
+function TeamNameInput({
+  tone, value, onChange,
+}: {
+  tone: Tone
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className={cn(
+      'flex items-center gap-2 rounded-md border bg-surface px-2',
+      tone === 'a' ? 'border-accent/40' : 'border-ink-soft/40',
+    )}>
+      <span
+        aria-hidden
+        className={cn(
+          'size-2 rounded-full shrink-0',
+          tone === 'a' ? 'bg-accent' : 'bg-ink',
+        )}
+      />
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        maxLength={18}
+        className="h-9 px-1 font-display border-transparent bg-transparent focus:border-transparent focus:ring-0 min-w-0 flex-1"
+      />
+    </div>
   )
 }
 
