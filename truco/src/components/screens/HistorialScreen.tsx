@@ -326,9 +326,14 @@ function TeamSummary({ side, match, playerById }: { side: 'A' | 'B'; match: Matc
 }
 
 function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard>; playerById: (id: string) => Player | undefined }) {
+  // Fixed widths for the three numeric columns so the header letters and
+  // the row values share the same column track. With auto widths each
+  // row sized to its own digits ("PJ" wider than "2", "%" narrower than
+  // "50%") and the headers drifted relative to the numbers below.
+  const gridTemplate = { gridTemplateColumns: '1fr 2.5rem 2.5rem 3rem' }
   return (
     <div className="rounded-md border border-line bg-surface overflow-hidden">
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2 border-b border-line/70 text-[11px] eyebrow">
+      <div className="grid gap-3 px-4 py-2 border-b border-line/70 text-[11px] eyebrow" style={gridTemplate}>
         <span>Jugador</span>
         <span className="text-right">PJ</span>
         <span className="text-right">G</span>
@@ -337,7 +342,12 @@ function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard
       {rows.map((s) => {
         const p = playerById(s.playerId)
         return (
-          <motion.div key={s.playerId} variants={staggerItem} className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-3 border-b border-line/40 last:border-b-0 items-center">
+          <motion.div
+            key={s.playerId}
+            variants={staggerItem}
+            style={gridTemplate}
+            className="grid gap-3 px-4 py-3 border-b border-line/40 last:border-b-0 items-center"
+          >
             <div className="min-w-0">
               <p className="font-display text-ink text-base truncate">{p?.name ?? '?'}</p>
               <div className="flex gap-0.5 mt-1">
@@ -349,9 +359,9 @@ function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard
                 ))}
               </div>
             </div>
-            <span className="tabular text-ink-muted text-sm">{s.matches}</span>
-            <span className="tabular text-ink text-sm">{s.wins}</span>
-            <span className="tabular text-accent font-semibold">{Math.round(s.winRate * 100)}%</span>
+            <span className="tabular text-ink-muted text-sm text-right">{s.matches}</span>
+            <span className="tabular text-ink text-sm text-right">{s.wins}</span>
+            <span className="tabular text-accent font-semibold text-right">{Math.round(s.winRate * 100)}%</span>
           </motion.div>
         )
       })}
