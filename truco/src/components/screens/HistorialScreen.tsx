@@ -7,7 +7,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { Screen, staggerItem } from '@/components/ui/Screen'
 import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Match, Player } from '@/types/game'
-import { leaderboard } from '@/utils/scoring'
+import { leaderboard, duels, type Duel } from '@/utils/scoring'
 import { SCORE_REASON_LABEL } from '@/types/game'
 
 interface HistorialScreenProps {
@@ -18,7 +18,7 @@ interface HistorialScreenProps {
   onDeleteMatch: (id: string) => void
 }
 
-type Tab = 'partidas' | 'stats'
+type Tab = 'partidas' | 'stats' | 'duelos'
 
 export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteMatch }: HistorialScreenProps) {
   const [tab, setTab] = useState<Tab>('partidas')
@@ -26,6 +26,7 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
   const [swipedRowId, setSwipedRowId] = useState<string | null>(null)
   const finished = useMemo(() => matches.filter((m) => m.finishedAt !== null), [matches])
   const stats = useMemo(() => leaderboard(roster, matches), [roster, matches])
+  const allDuels = useMemo(() => duels(matches), [matches])
   useEdgeSwipeBack(onBack, { enabled: !openMatch })
 
   return (
@@ -44,7 +45,7 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
       <SegmentedTabs tab={tab} onChange={setTab} />
 
       <AnimatePresence mode="wait">
-        {tab === 'partidas' ? (
+        {tab === 'partidas' && (
           <motion.div
             key="partidas"
             initial="initial"
@@ -83,7 +84,9 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
               </AnimatePresence>
             )}
           </motion.div>
-        ) : (
+        )}
+
+        {tab === 'stats' && (
           <motion.div
             key="stats"
             initial="initial"
@@ -105,6 +108,30 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
             )}
           </motion.div>
         )}
+
+        {tab === 'duelos' && (
+          <motion.div
+            key="duelos"
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={{
+              initial: { opacity: 0, y: 6 },
+              animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.23, 1, 0.32, 1], staggerChildren: 0.04, delayChildren: 0.04 } },
+              exit:    { opacity: 0, y: -4, transition: { duration: 0.18, ease: [0.23, 1, 0.32, 1] } },
+            }}
+            className="flex flex-col gap-2"
+          >
+            {allDuels.length === 0 ? (
+              <p className="text-ink-muted text-center pt-6 text-balance">
+                Los duelos aparecen cuando termina una partida 3 vs 3 — cada
+                jugador queda frente a uno del otro equipo (su pica pica).
+              </p>
+            ) : (
+              <DuelsList duels={allDuels} playerById={playerById} />
+            )}
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <Sheet
@@ -121,25 +148,34 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
 // ─── Subcomponents ──────────────────────────────────────────
 
 function SegmentedTabs({ tab, onChange }: { tab: Tab; onChange: (t: Tab) => void }) {
+  // Three equal-width tabs. The active-pill is positioned per index
+  // via calc() over the percentage column edges, with a 2 px gutter
+  // from the segment's inner padding.
+  const tabs: Tab[] = ['partidas', 'stats', 'duelos']
+  const label = (t: Tab) =>
+    t === 'partidas' ? 'Partidas' : t === 'stats' ? 'Estadísticas' : 'Duelos'
+  const idx = tabs.indexOf(tab)
+  // Each tab occupies 1/3 of the container width. Inner padding p-1
+  // (4 px) means the pill should leave a 2 px gutter at each side
+  // of its slot.
+  const left = `calc(${(idx * 100) / 3}% + 2px)`
+  const right = `calc(${((tabs.length - 1 - idx) * 100) / 3}% + 2px)`
   return (
-    <div className="relative grid grid-cols-2 gap-0 rounded-md border border-line bg-surface p-1">
+    <div className="relative grid grid-cols-3 gap-0 rounded-md border border-line bg-surface p-1">
       <motion.div
         layout
         transition={{ type: 'spring', duration: 0.34, bounce: 0.18 }}
         className="absolute top-1 bottom-1 rounded-sm bg-surface-hi"
-        style={{
-          left: tab === 'partidas' ? '4px' : 'calc(50% + 2px)',
-          right: tab === 'partidas' ? 'calc(50% + 2px)' : '4px',
-        }}
+        style={{ left, right }}
       />
-      {(['partidas', 'stats'] as Tab[]).map((t) => (
+      {tabs.map((t) => (
         <button
           key={t}
           onClick={() => onChange(t)}
           className="pressable relative z-10 py-2.5 text-sm font-medium text-ink"
           aria-pressed={tab === t}
         >
-          {t === 'partidas' ? 'Partidas' : 'Estadísticas'}
+          {label(t)}
         </button>
       ))}
     </div>
@@ -462,6 +498,56 @@ function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard
             <span className="tabular text-ink-muted text-sm text-right">{s.matches}</span>
             <span className="tabular text-ink text-sm text-right">{s.wins}</span>
             <span className="tabular text-accent font-semibold text-right">{Math.round(s.winRate * 100)}%</span>
+          </motion.div>
+        )
+      })}
+    </div>
+  )
+}
+
+function DuelsList({ duels: rows, playerById }: { duels: Duel[]; playerById: (id: string) => Player | undefined }) {
+  // Each row is one head-to-head pair: name · score · name, then a
+  // small "N duelos" subline. The middle column holds a tabular score
+  // with a fixed-width centre dash so longer name pairs don't shift
+  // the digits around when the grid widths vary.
+  return (
+    <div className="rounded-md border border-line bg-surface overflow-hidden">
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-3 px-4 py-2 border-b border-line/70 text-[11px] eyebrow">
+        <span className="text-right">Jugador</span>
+        <span className="text-center">Duelos</span>
+        <span>Jugador</span>
+      </div>
+      {rows.map((d) => {
+        const pa = playerById(d.playerIdA)
+        const pb = playerById(d.playerIdB)
+        const aLeads = d.winsA > d.winsB
+        const bLeads = d.winsB > d.winsA
+        return (
+          <motion.div
+            key={d.playerIdA + ':' + d.playerIdB}
+            variants={staggerItem}
+            className="grid grid-cols-[1fr_auto_1fr] gap-3 px-4 py-3 border-b border-line/40 last:border-b-0 items-center"
+          >
+            <div className="min-w-0 text-right">
+              <p className={`font-display text-base truncate ${aLeads ? 'text-ink' : 'text-ink-muted'}`}>
+                {pa?.name ?? '?'}
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <div className="font-display tabular text-ink text-base">
+                <span className={aLeads ? 'text-accent' : ''}>{d.winsA}</span>
+                <span className="text-ink-soft mx-1.5">—</span>
+                <span className={bLeads ? 'text-accent' : ''}>{d.winsB}</span>
+              </div>
+              <p className="text-[11px] text-ink-soft tabular">
+                {d.matches === 1 ? '1 duelo' : `${d.matches} duelos`}
+              </p>
+            </div>
+            <div className="min-w-0 text-left">
+              <p className={`font-display text-base truncate ${bLeads ? 'text-ink' : 'text-ink-muted'}`}>
+                {pb?.name ?? '?'}
+              </p>
+            </div>
           </motion.div>
         )
       })}
