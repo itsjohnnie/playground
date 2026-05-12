@@ -259,10 +259,6 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
           <SeatPicker
             key="seats"
             players={selectedPlayers}
-            nameA={nameA}
-            setNameA={setNameA}
-            nameB={nameB}
-            setNameB={setNameB}
             defaultTeamNames={defaultTeamNames}
             onStart={onStart}
           />
@@ -350,10 +346,6 @@ export function NewMatchScreen({ roster, defaultTeamNames, onAddPlayer, onBack, 
 
 interface SeatPickerProps {
   players: Player[]                // exactly 6, already selected in step 1
-  nameA: string
-  setNameA: (v: string) => void
-  nameB: string
-  setNameB: (v: string) => void
   defaultTeamNames: [string, string]
   onStart: (
     teamA: { name: string; playerIds: string[] },
@@ -362,7 +354,7 @@ interface SeatPickerProps {
   ) => void
 }
 
-function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamNames, onStart }: SeatPickerProps) {
+function SeatPicker({ players, defaultTeamNames, onStart }: SeatPickerProps) {
   // null in a slot = empty seat. Length 6, clockwise around the table.
   const [seats, setSeats] = useState<(string | null)[]>(() => [null, null, null, null, null, null])
   const seatRefs = useRef<Array<HTMLDivElement | null>>([null, null, null, null, null, null])
@@ -436,8 +428,8 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
     if (!allSeated) return
     const ids = seats as string[]
     onStart(
-      { name: nameA.trim() || defaultTeamNames[0], playerIds: [ids[0], ids[2], ids[4]] },
-      { name: nameB.trim() || defaultTeamNames[1], playerIds: [ids[1], ids[3], ids[5]] },
+      { name: defaultTeamNames[0], playerIds: [ids[0], ids[2], ids[4]] },
+      { name: defaultTeamNames[1], playerIds: [ids[1], ids[3], ids[5]] },
       ids,
     )
   }
@@ -454,90 +446,114 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
       transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
       className="flex flex-col gap-4 flex-1"
     >
-      <p className="text-left text-sm text-ink-muted text-balance">
+      <p className="text-left text-sm text-ink-muted text-pretty w-full">
         Sentate alrededor de la mesa. El que te quede enfrente es tu
         pica pica — los compañeros quedan a tus costados.
       </p>
 
-      {/* Team name inputs, color-coded so it's clear which seats are
-          which team once the names land on the table. */}
-      <div className="grid grid-cols-2 gap-2">
-        <TeamNameInput tone="a" value={nameA} onChange={setNameA} />
-        <TeamNameInput tone="b" value={nameB} onChange={setNameB} />
-      </div>
-
-      {/* The table — a plain 3×3 CSS grid. The mesa sits in the
-          centre cell; the six seats occupy the four corners plus
-          the top-centre and bottom-centre cells. The two side cells
-          of the middle row (col 1 / col 3) are intentionally empty,
-          which gives the mesa its breathing room without any
-          absolute positioning. Pica pica across-pairs still pass
-          through the centre:
-            seat 5 (top-left)  ↔ seat 2 (bottom-right)
-            seat 0 (top-centre) ↔ seat 3 (bottom-centre)
-            seat 1 (top-right) ↔ seat 4 (bottom-left)
+      {/* The table — hexagonal layout on a 4-row × 3-col grid. The
+          mesa spans rows 2–3 of column 2, and the six seats sit at
+          the six hexagon vertices (top + bottom + two on each side).
+          Every seat has two clear side-neighbours around the rim and
+          one across-rival through the centre:
+            seat 0 (top)        ↔ seat 3 (bottom)         vertical
+            seat 1 (upper-right) ↔ seat 4 (lower-left)    diagonal
+            seat 2 (lower-right) ↔ seat 5 (upper-left)    diagonal
       */}
-      <div className="grid grid-cols-3 gap-2 mx-auto w-full max-w-[320px]">
-        <SeatSlot
-          index={5}
-          tone={seatTone(5)}
-          player={seats[5] ? playerById.get(seats[5]) : undefined}
-          refCb={(el) => { seatRefs.current[5] = el }}
-          onDragEnd={handleDragEnd}
-          onTap={(pid) => unseat(pid)}
-        />
-        <SeatSlot
-          index={0}
-          tone={seatTone(0)}
-          player={seats[0] ? playerById.get(seats[0]) : undefined}
-          refCb={(el) => { seatRefs.current[0] = el }}
-          onDragEnd={handleDragEnd}
-          onTap={(pid) => unseat(pid)}
-        />
-        <SeatSlot
-          index={1}
-          tone={seatTone(1)}
-          player={seats[1] ? playerById.get(seats[1]) : undefined}
-          refCb={(el) => { seatRefs.current[1] = el }}
-          onDragEnd={handleDragEnd}
-          onTap={(pid) => unseat(pid)}
-        />
+      <div
+        className="grid gap-2 mx-auto w-full max-w-[320px]"
+        style={{
+          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateRows: 'auto auto auto auto',
+        }}
+      >
+        {/* Row 1: top seat */}
+        <div className="col-start-2 row-start-1">
+          <SeatSlot
+            index={0}
+            tone={seatTone(0)}
+            player={seats[0] ? playerById.get(seats[0]) : undefined}
+            refCb={(el) => { seatRefs.current[0] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
 
-        {/* Middle row: empty | mesa | empty. The empty cells give the
-            mesa visual room without needing inset percentages. */}
-        <div />
+        {/* Row 2: upper-left, mesa (rows 2–3), upper-right */}
+        <div className="col-start-1 row-start-2">
+          <SeatSlot
+            index={5}
+            tone={seatTone(5)}
+            player={seats[5] ? playerById.get(seats[5]) : undefined}
+            refCb={(el) => { seatRefs.current[5] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
         <div
           aria-hidden
-          className="rounded-xl border border-line/60 bg-surface-hi flex items-center justify-center min-h-[88px]"
+          className="col-start-2 row-start-2 row-span-2 rounded-[28px] border border-line/60 bg-surface-hi flex items-center justify-center"
         >
           <span className="eyebrow">Mesa</span>
         </div>
-        <div />
+        <div className="col-start-3 row-start-2">
+          <SeatSlot
+            index={1}
+            tone={seatTone(1)}
+            player={seats[1] ? playerById.get(seats[1]) : undefined}
+            refCb={(el) => { seatRefs.current[1] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
 
-        <SeatSlot
-          index={4}
-          tone={seatTone(4)}
-          player={seats[4] ? playerById.get(seats[4]) : undefined}
-          refCb={(el) => { seatRefs.current[4] = el }}
-          onDragEnd={handleDragEnd}
-          onTap={(pid) => unseat(pid)}
-        />
-        <SeatSlot
-          index={3}
-          tone={seatTone(3)}
-          player={seats[3] ? playerById.get(seats[3]) : undefined}
-          refCb={(el) => { seatRefs.current[3] = el }}
-          onDragEnd={handleDragEnd}
-          onTap={(pid) => unseat(pid)}
-        />
-        <SeatSlot
-          index={2}
-          tone={seatTone(2)}
-          player={seats[2] ? playerById.get(seats[2]) : undefined}
-          refCb={(el) => { seatRefs.current[2] = el }}
-          onDragEnd={handleDragEnd}
-          onTap={(pid) => unseat(pid)}
-        />
+        {/* Row 3: lower-left, mesa continues, lower-right */}
+        <div className="col-start-1 row-start-3">
+          <SeatSlot
+            index={4}
+            tone={seatTone(4)}
+            player={seats[4] ? playerById.get(seats[4]) : undefined}
+            refCb={(el) => { seatRefs.current[4] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
+        <div className="col-start-3 row-start-3">
+          <SeatSlot
+            index={2}
+            tone={seatTone(2)}
+            player={seats[2] ? playerById.get(seats[2]) : undefined}
+            refCb={(el) => { seatRefs.current[2] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
+
+        {/* Row 4: bottom seat */}
+        <div className="col-start-2 row-start-4">
+          <SeatSlot
+            index={3}
+            tone={seatTone(3)}
+            player={seats[3] ? playerById.get(seats[3]) : undefined}
+            refCb={(el) => { seatRefs.current[3] = el }}
+            onDragEnd={handleDragEnd}
+            onTap={(pid) => unseat(pid)}
+          />
+        </div>
+      </div>
+
+      {/* Team legend — read-only key under the table. Two team
+          names are fixed defaults; the colour dots let you map a
+          seated chip's tone back to the team name at a glance. */}
+      <div className="flex items-center justify-center gap-5 text-xs text-ink-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden className="size-2 rounded-full bg-accent" />
+          {defaultTeamNames[0]}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden className="size-2 rounded-full bg-ink" />
+          {defaultTeamNames[1]}
+        </span>
       </div>
 
       <div className="flex flex-col gap-2">
@@ -569,35 +585,6 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
   )
 }
 
-function TeamNameInput({
-  tone, value, onChange,
-}: {
-  tone: Tone
-  value: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <div className={cn(
-      'flex items-center gap-2 rounded-md border bg-surface px-2',
-      tone === 'a' ? 'border-accent/40' : 'border-ink-soft/40',
-    )}>
-      <span
-        aria-hidden
-        className={cn(
-          'size-2 rounded-full shrink-0',
-          tone === 'a' ? 'bg-accent' : 'bg-ink',
-        )}
-      />
-      <Input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        maxLength={18}
-        className="h-9 px-1 font-display border-transparent bg-transparent focus:border-transparent focus:ring-0 min-w-0 flex-1"
-      />
-    </div>
-  )
-}
-
 interface SeatSlotProps {
   index: number
   tone: Tone
@@ -608,15 +595,17 @@ interface SeatSlotProps {
 }
 
 function SeatSlot({ tone, player, refCb, onDragEnd, onTap }: SeatSlotProps) {
-  // Border radius is intentionally concentric with the chip inside:
-  // slot rounded-lg (8px) − padding p-1 (4px) leaves the chip with a
-  // 4px radius, so the chip looks evenly inset on all sides instead
-  // of having different-shaped outer and inner curves.
+  // Slot radius matches the CTA buttons (rounded-md = 6 px) so the
+  // dashed slots, the chips inside them, the pool chips, and the Al
+  // azar / ¡A jugar! buttons all share one radius family. The chip
+  // inside lands at rounded-sm (2 px), which keeps it concentric
+  // with the slot (6 − 4 px padding ≈ 2 px) without introducing a
+  // third radius value.
   return (
     <div
       ref={refCb}
       className={cn(
-        'relative rounded-lg border-2 border-dashed min-h-[68px] flex items-center justify-center p-1',
+        'relative rounded-md border-2 border-dashed min-h-[68px] flex items-center justify-center p-1',
         tone === 'a' ? 'border-accent/30' : 'border-ink-soft/30',
       )}
     >
@@ -660,9 +649,9 @@ function SeatChip({
       onClick={() => { if (!draggedRef.current) onTap() }}
       style={{ touchAction: 'none' }}
       className={cn(
-        // rounded equals slot rounded-lg (8px) minus slot's p-1 (4px)
-        // so the chip looks evenly inset on every side.
-        'no-select inline-flex items-center gap-1 rounded px-2 py-1.5 text-sm border w-full min-h-[44px]',
+        // rounded-sm (2 px) keeps the chip concentric with the slot's
+        // rounded-md (6 px) once the p-1 padding is accounted for.
+        'no-select inline-flex items-center gap-1 rounded-sm px-2 py-1.5 text-sm border w-full min-h-[44px]',
         'cursor-grab active:cursor-grabbing',
         tone === 'a'
           ? 'bg-accent text-accent-ink border-accent'
@@ -701,7 +690,7 @@ function PoolChip({
       style={{ touchAction: 'none' }}
       className={cn(
         // Same radius as a seated chip so the two visually rhyme.
-        'no-select inline-flex items-center gap-1.5 rounded px-3 py-2 text-sm border min-h-[44px]',
+        'no-select inline-flex items-center gap-1.5 rounded-sm px-3 py-2 text-sm border min-h-[44px]',
         'cursor-grab active:cursor-grabbing',
         'bg-surface-hi text-ink border-line',
       )}
