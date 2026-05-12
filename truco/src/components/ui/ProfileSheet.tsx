@@ -228,18 +228,20 @@ export function ProfileSheet({
               maxLength={32} disabled={!canEdit}
             />
           </Field>
-          <Field label="Venmo">
-            <Input
-              value={venmo} onChange={(e) => setVenmo(e.target.value)}
-              placeholder="@usuario" maxLength={40} disabled={!canEdit}
-            />
-          </Field>
-          <Field label="Zelle">
-            <Input
-              value={zelle} onChange={(e) => setZelle(e.target.value)}
-              placeholder="mail o teléfono" maxLength={64} disabled={!canEdit}
-            />
-          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Venmo">
+              <Input
+                value={venmo} onChange={(e) => setVenmo(e.target.value)}
+                placeholder="@usuario" maxLength={40} disabled={!canEdit}
+              />
+            </Field>
+            <Field label="Zelle">
+              <Input
+                value={zelle} onChange={(e) => setZelle(e.target.value)}
+                placeholder="mail o teléfono" maxLength={64} disabled={!canEdit}
+              />
+            </Field>
+          </div>
         </div>
 
         {errorMsg && <p className="text-danger text-xs">{errorMsg}</p>}
