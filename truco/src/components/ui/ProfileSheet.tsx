@@ -256,23 +256,28 @@ export function ProfileSheet({
           </div>
         )}
 
-        {/* Secondary actions: retire (anyone can retire), unclaim (claimant) */}
-        <div className="flex flex-col gap-2 pt-1">
-          {isMine && (
-            <button
-              onClick={unclaim}
-              disabled={busy !== null}
-              className="pressable text-xs text-ink-muted underline underline-offset-4 self-start"
-            >
-              Liberar este perfil
-            </button>
-          )}
+        {/* Secondary actions, in order of severity:
+            – Retirar de la mesa: anyone, retires the player record.
+            – Liberar este perfil: claimant-only, releases the claim.
+            "Liberar" sits last as a quieter, centred link so it
+            reads as a tertiary escape hatch rather than competing
+            with the framed Retirar action. */}
+        <div className="flex flex-col gap-3 pt-1">
           <button
             onClick={() => { if (player) { onRetire(player.id); onClose() } }}
             className="pressable mt-1 rounded-md border border-danger/40 px-4 py-3 text-danger hover:border-danger"
           >
             Retirar de la mesa
           </button>
+          {isMine && (
+            <button
+              onClick={unclaim}
+              disabled={busy !== null}
+              className="pressable text-xs text-ink-muted underline underline-offset-4 self-center"
+            >
+              Liberar este perfil
+            </button>
+          )}
         </div>
       </div>
     </Sheet>
