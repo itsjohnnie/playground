@@ -24,6 +24,7 @@
   --ink-50: rgba(26, 26, 26, 0.5);
   --ink-30: rgba(26, 26, 26, 0.3);
   --ink-15: rgba(26, 26, 26, 0.15);
+  --hover-bg: rgba(26, 26, 26, 0.06);
   --rule: rgba(26, 26, 26, 0.12);
   --sheet: rgba(245, 245, 245, 0.98);
 
@@ -45,6 +46,7 @@
   --ink-50: rgba(236, 236, 236, 0.5);
   --ink-30: rgba(236, 236, 236, 0.3);
   --ink-15: rgba(236, 236, 236, 0.15);
+  --hover-bg: rgba(236, 236, 236, 0.05);
   --rule: rgba(236, 236, 236, 0.12);
   --sheet: rgba(28, 28, 28, 0.98);
 }
@@ -146,16 +148,23 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 }
 .range-menu li[aria-selected="true"] { color: var(--ink); }
 @media (hover: hover) and (pointer: fine) {
-  .range-menu li:hover { color: var(--ink); background: var(--ink-15); }
+  .range-menu li:hover { color: var(--ink); background: var(--hover-bg); }
 }
 
 /* ---------------- Surfaces (hash routes) ---------------- */
-[data-route] { display: none; }
+[data-route] {
+  display: none;
+  opacity: 1;
+  transition: opacity 180ms var(--ease-out);
+}
 [data-route].is-active {
   display: flex;
   flex-direction: column;
   gap: 2rem;
 }
+[data-route].is-leaving { opacity: 0; }
+[data-route].is-entering { opacity: 0; transition: none; }
+.reduce-motion [data-route] { transition: none; }
 [data-route="home"].is-active {
   gap: clamp(1.8rem, 3.4vh, 2.6rem);
   flex: 1;
@@ -343,7 +352,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   border-radius: 3px;
 }
 @media (hover: hover) and (pointer: fine) {
-  .onyou li:hover { background: var(--ink-15); }
+  .onyou li:hover { background: var(--hover-bg); }
 }
 .onyou li .what {
   white-space: nowrap;
@@ -489,6 +498,71 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 .weekstrip-svg .cell[data-load="3"] { opacity: 0.72; }
 .weekstrip-svg .cell[data-load="4"] { opacity: 0.95; }
 .weekstrip-svg .col-today { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.4; }
+
+/* ---------------- Hours: a horizontal "today" timeline that complements the Ring ---------------- */
+
+.hours {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: clamp(0.5rem, 1.5vh, 1.4rem);
+}
+.hours-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--rule);
+}
+.hours-title {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 480;
+  color: var(--ink);
+  font-variation-settings: "opsz" 32, "SOFT" 30;
+}
+.hours-meta {
+  font-size: 12px;
+  color: var(--ink-50);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+.hours-strip { width: 100%; }
+.hours-svg { width: 100%; height: 96px; display: block; }
+.hours-svg .tick { stroke: var(--ink-15); stroke-width: 0.5; }
+.hours-svg .meeting { fill: var(--ink); opacity: 0.85; transition: opacity 200ms var(--ease-out); }
+.hours-svg .meeting-past { opacity: 0.22; }
+.hours-svg .meeting:hover { opacity: 1; }
+.hours-svg .meeting-label {
+  fill: var(--canvas);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  pointer-events: none;
+}
+.hours-svg .meeting-time {
+  fill: var(--canvas);
+  font-size: 10px;
+  opacity: 0.6;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.hours-svg .meeting-past .meeting-label,
+.hours-svg .meeting-past .meeting-time { fill: var(--ink); }
+.hours-svg .now-line { stroke: var(--ink); stroke-width: 1.2; opacity: 0.9; }
+.hours-svg .now-dot { fill: var(--ink); }
+.hours-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--ink-30);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+}
+.hours-axis span[data-now="true"] { color: var(--ink); }
 
 /* ---------------- Footer row: in motion · this week · announcements ---------------- */
 
@@ -731,7 +805,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   border-radius: 3px;
 }
 @media (hover: hover) and (pointer: fine) {
-  .notif-list li:hover { background: var(--ink-15); }
+  .notif-list li:hover { background: var(--hover-bg); }
 }
 .notif-list li:last-child { border-bottom: 0; }
 .notif-list li[data-read="true"] { opacity: 0.4; }
@@ -766,7 +840,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   transition: color 160ms var(--ease-out), background 160ms var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .notif-list li button:hover { color: var(--ink); background: var(--ink-15); }
+  .notif-list li button:hover { color: var(--ink); background: var(--hover-bg); }
 }
 
 /* — Milestones (timeline) — */
@@ -1009,7 +1083,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   transition: color 160ms var(--ease-out), background 160ms var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .settings-circles li button:hover { color: var(--ink); background: var(--ink-15); }
+  .settings-circles li button:hover { color: var(--ink); background: var(--hover-bg); }
 }
 .settings-add {
   position: relative;
@@ -1066,7 +1140,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   transition: color 160ms var(--ease-out), background 160ms var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .settings-reset:hover { color: var(--ink); background: var(--ink-15); }
+  .settings-reset:hover { color: var(--ink); background: var(--hover-bg); }
 }
 
 @media (max-width: 760px) {
@@ -1145,7 +1219,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   transition: background 140ms var(--ease-out);
   border-bottom: 1px solid var(--rule);
 }
-.team-table tbody td { padding: 0.55rem 0.8rem; color: var(--ink); vertical-align: middle; }
+.team-table tbody td { padding: 0.7rem 0.8rem; color: var(--ink); vertical-align: middle; }
 .team-table tbody tr[data-online="false"] td { color: var(--ink-30); }
 .team-table tbody td.t-status { padding-right: 0; }
 .team-table tbody td.t-status .dot {
@@ -1178,7 +1252,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   align-items: center;
 }
 @media (hover: hover) and (pointer: fine) {
-  .team-table tbody tr:hover { background: var(--ink-15); }
+  .team-table tbody tr:hover { background: var(--hover-bg); }
 }
 
 /* Row action buttons — Contact (text) and circle-add (icon). */
@@ -1194,22 +1268,29 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   white-space: nowrap;
 }
 @media (hover: hover) and (pointer: fine) {
-  .row-action:hover { color: var(--ink); border-color: var(--ink-30); background: var(--ink-15); }
+  .row-action:hover { color: var(--ink); border-color: var(--ink-30); background: var(--hover-bg); }
 }
 .row-icon {
-  width: 26px; height: 26px;
+  width: 22px; height: 22px;
+  flex: 0 0 22px;
+  padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: 999px;
   border: 1px solid var(--rule);
   color: var(--ink-50);
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1;
+  vertical-align: middle;
   transition: color 160ms var(--ease-out), background 160ms var(--ease-out), border-color 160ms var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .row-icon:hover { color: var(--ink); border-color: var(--ink-30); background: var(--ink-15); }
+  .row-icon:hover { color: var(--ink); border-color: var(--ink-50); background: var(--hover-bg); }
 }
-.row-icon[data-state="in"] { color: var(--ink); border-color: var(--ink); background: var(--ink-15); }
+.row-icon[data-state="in"] {
+  color: var(--ink);
+  border-color: var(--ink-50);
+  background: var(--hover-bg);
+}
 
 /* ---------------- Detail drawer ---------------- */
 
@@ -1261,7 +1342,7 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   transition: color 160ms var(--ease-out), background 160ms var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .drawer-close:hover { color: var(--ink); background: var(--ink-15); }
+  .drawer-close:hover { color: var(--ink); background: var(--hover-bg); }
 }
 .drawer-body { padding: 1.2rem 1.4rem 1.6rem; overflow-y: auto; }
 .drawer-body h2 {
