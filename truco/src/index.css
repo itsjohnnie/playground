@@ -134,7 +134,15 @@
 
 html, body {
   margin: 0;
-  background: hsl(var(--bg));
+  background-color: hsl(var(--bg));
+  /* Uniform felt across the entire viewport — applied at the html
+     level so the iOS Safari status-bar zone (above the body) also
+     picks up the noise. Without this, the status bar showed plain
+     --bg while the content area showed --bg + noise, reading as a
+     subtle two-tone strip even though the colours match. */
+  background-image: var(--grain-noise);
+  background-attachment: fixed;
+  background-size: 160px 160px;
   color: hsl(var(--ink));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -151,17 +159,6 @@ body {
   font-feature-settings: 'ss01', 'ss02';
   height: 100dvh;
   overflow: hidden;
-
-  /* Uniform felt — no vignette so the color is edge-to-edge consistent
-     with the iOS status bar / Safari chrome. Just a subtle noise grain. */
-  background-image: var(--grain-noise);
-  background-attachment: fixed;
-  background-size: 160px 160px;
-}
-
-html {
-  /* Match body bg exactly so any 1px gap doesn't show a lighter strip. */
-  background: hsl(var(--bg));
 }
 
 #root {
