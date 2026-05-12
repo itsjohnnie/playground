@@ -174,14 +174,28 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 [data-route="settings"].is-active {
   max-width: 64rem;
 }
-/* Notifications and Team go full-width so dense tables breathe. */
-[data-route="home"].is-future-tab .compass,
-[data-route="home"].is-future-tab .footer-row {
-  opacity: 0.4;
-  transition: opacity 220ms var(--ease-in-out);
-}
 /* Pin the In motion / This week / Announcements row to the bottom of the home viewport. */
 [data-route="home"].is-active .footer-row { margin-top: auto; }
+
+/* The Ring and Hours strip are inherently "today" — hide them when the range
+   dropdown widens to a longer horizon. The People columns + On-you panel stay,
+   they're useful at every horizon. */
+[data-route="home"][data-tab="week"] .ring-col,
+[data-route="home"][data-tab="month"] .ring-col,
+[data-route="home"][data-tab="soon"] .ring-col,
+[data-route="home"][data-tab="all"] .ring-col,
+[data-route="home"][data-tab="week"] .hours,
+[data-route="home"][data-tab="month"] .hours,
+[data-route="home"][data-tab="soon"] .hours,
+[data-route="home"][data-tab="all"] .hours {
+  display: none;
+}
+[data-route="home"][data-tab="week"] .compass,
+[data-route="home"][data-tab="month"] .compass,
+[data-route="home"][data-tab="soon"] .compass,
+[data-route="home"][data-tab="all"] .compass {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+}
 
 /* ---------------- Hero ---------------- */
 
