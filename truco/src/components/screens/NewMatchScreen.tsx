@@ -466,103 +466,78 @@ function SeatPicker({ players, nameA, setNameA, nameB, setNameB, defaultTeamName
         <TeamNameInput tone="b" value={nameB} onChange={setNameB} />
       </div>
 
-      {/* The table. Seats are absolutely positioned around a centered
-          mesa so the layout reads as a real round table — equal
-          breathing room top/bottom/left/right — instead of inheriting
-          the lopsided shape of a 4-row × 3-col grid (where rows 1 / 4
-          held a single seat each and bloated the vertical bounding
-          box well past the horizontal one). */}
-      <div className="relative mx-auto w-full max-w-[300px] h-[240px]">
-        {/* Mesa — the felt in the middle. */}
+      {/* The table — a plain 3×3 CSS grid. The mesa sits in the
+          centre cell; the six seats occupy the four corners plus
+          the top-centre and bottom-centre cells. The two side cells
+          of the middle row (col 1 / col 3) are intentionally empty,
+          which gives the mesa its breathing room without any
+          absolute positioning. Pica pica across-pairs still pass
+          through the centre:
+            seat 5 (top-left)  ↔ seat 2 (bottom-right)
+            seat 0 (top-centre) ↔ seat 3 (bottom-centre)
+            seat 1 (top-right) ↔ seat 4 (bottom-left)
+      */}
+      <div className="grid grid-cols-3 gap-2 mx-auto w-full max-w-[320px]">
+        <SeatSlot
+          index={5}
+          tone={seatTone(5)}
+          player={seats[5] ? playerById.get(seats[5]) : undefined}
+          refCb={(el) => { seatRefs.current[5] = el }}
+          onDragEnd={handleDragEnd}
+          onTap={(pid) => unseat(pid)}
+        />
+        <SeatSlot
+          index={0}
+          tone={seatTone(0)}
+          player={seats[0] ? playerById.get(seats[0]) : undefined}
+          refCb={(el) => { seatRefs.current[0] = el }}
+          onDragEnd={handleDragEnd}
+          onTap={(pid) => unseat(pid)}
+        />
+        <SeatSlot
+          index={1}
+          tone={seatTone(1)}
+          player={seats[1] ? playerById.get(seats[1]) : undefined}
+          refCb={(el) => { seatRefs.current[1] = el }}
+          onDragEnd={handleDragEnd}
+          onTap={(pid) => unseat(pid)}
+        />
+
+        {/* Middle row: empty | mesa | empty. The empty cells give the
+            mesa visual room without needing inset percentages. */}
+        <div />
         <div
           aria-hidden
-          className="absolute rounded-[44px] border border-line/60 bg-surface-hi flex items-center justify-center"
-          style={{ left: '32%', right: '32%', top: '20%', bottom: '20%' }}
+          className="rounded-xl border border-line/60 bg-surface-hi flex items-center justify-center min-h-[88px]"
         >
           <span className="eyebrow">Mesa</span>
         </div>
+        <div />
 
-        {/* Six seats at 12 / 2 / 4 / 6 / 8 / 10 o'clock. Side seats
-            inset slightly from the container edge so they don't hug
-            the screen border. */}
-        <div
-          className="absolute"
-          style={{ left: '50%', top: 0, transform: 'translateX(-50%)', width: 92 }}
-        >
-          <SeatSlot
-            index={0}
-            tone={seatTone(0)}
-            player={seats[0] ? playerById.get(seats[0]) : undefined}
-            refCb={(el) => { seatRefs.current[0] = el }}
-            onDragEnd={handleDragEnd}
-            onTap={(pid) => unseat(pid)}
-          />
-        </div>
-        <div
-          className="absolute"
-          style={{ right: 0, top: '22%', width: 84 }}
-        >
-          <SeatSlot
-            index={1}
-            tone={seatTone(1)}
-            player={seats[1] ? playerById.get(seats[1]) : undefined}
-            refCb={(el) => { seatRefs.current[1] = el }}
-            onDragEnd={handleDragEnd}
-            onTap={(pid) => unseat(pid)}
-          />
-        </div>
-        <div
-          className="absolute"
-          style={{ right: 0, bottom: '22%', width: 84 }}
-        >
-          <SeatSlot
-            index={2}
-            tone={seatTone(2)}
-            player={seats[2] ? playerById.get(seats[2]) : undefined}
-            refCb={(el) => { seatRefs.current[2] = el }}
-            onDragEnd={handleDragEnd}
-            onTap={(pid) => unseat(pid)}
-          />
-        </div>
-        <div
-          className="absolute"
-          style={{ left: '50%', bottom: 0, transform: 'translateX(-50%)', width: 92 }}
-        >
-          <SeatSlot
-            index={3}
-            tone={seatTone(3)}
-            player={seats[3] ? playerById.get(seats[3]) : undefined}
-            refCb={(el) => { seatRefs.current[3] = el }}
-            onDragEnd={handleDragEnd}
-            onTap={(pid) => unseat(pid)}
-          />
-        </div>
-        <div
-          className="absolute"
-          style={{ left: 0, bottom: '22%', width: 84 }}
-        >
-          <SeatSlot
-            index={4}
-            tone={seatTone(4)}
-            player={seats[4] ? playerById.get(seats[4]) : undefined}
-            refCb={(el) => { seatRefs.current[4] = el }}
-            onDragEnd={handleDragEnd}
-            onTap={(pid) => unseat(pid)}
-          />
-        </div>
-        <div
-          className="absolute"
-          style={{ left: 0, top: '22%', width: 84 }}
-        >
-          <SeatSlot
-            index={5}
-            tone={seatTone(5)}
-            player={seats[5] ? playerById.get(seats[5]) : undefined}
-            refCb={(el) => { seatRefs.current[5] = el }}
-            onDragEnd={handleDragEnd}
-            onTap={(pid) => unseat(pid)}
-          />
-        </div>
+        <SeatSlot
+          index={4}
+          tone={seatTone(4)}
+          player={seats[4] ? playerById.get(seats[4]) : undefined}
+          refCb={(el) => { seatRefs.current[4] = el }}
+          onDragEnd={handleDragEnd}
+          onTap={(pid) => unseat(pid)}
+        />
+        <SeatSlot
+          index={3}
+          tone={seatTone(3)}
+          player={seats[3] ? playerById.get(seats[3]) : undefined}
+          refCb={(el) => { seatRefs.current[3] = el }}
+          onDragEnd={handleDragEnd}
+          onTap={(pid) => unseat(pid)}
+        />
+        <SeatSlot
+          index={2}
+          tone={seatTone(2)}
+          player={seats[2] ? playerById.get(seats[2]) : undefined}
+          refCb={(el) => { seatRefs.current[2] = el }}
+          onDragEnd={handleDragEnd}
+          onTap={(pid) => unseat(pid)}
+        />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -633,11 +608,15 @@ interface SeatSlotProps {
 }
 
 function SeatSlot({ tone, player, refCb, onDragEnd, onTap }: SeatSlotProps) {
+  // Border radius is intentionally concentric with the chip inside:
+  // slot rounded-lg (8px) − padding p-1 (4px) leaves the chip with a
+  // 4px radius, so the chip looks evenly inset on all sides instead
+  // of having different-shaped outer and inner curves.
   return (
     <div
       ref={refCb}
       className={cn(
-        'relative rounded-md border-2 border-dashed min-h-[68px] flex items-center justify-center p-1',
+        'relative rounded-lg border-2 border-dashed min-h-[68px] flex items-center justify-center p-1',
         tone === 'a' ? 'border-accent/30' : 'border-ink-soft/30',
       )}
     >
@@ -681,7 +660,9 @@ function SeatChip({
       onClick={() => { if (!draggedRef.current) onTap() }}
       style={{ touchAction: 'none' }}
       className={cn(
-        'no-select inline-flex items-center justify-center gap-1 rounded-sm px-2 py-1.5 text-sm border w-full min-h-[44px]',
+        // rounded equals slot rounded-lg (8px) minus slot's p-1 (4px)
+        // so the chip looks evenly inset on every side.
+        'no-select inline-flex items-center gap-1 rounded px-2 py-1.5 text-sm border w-full min-h-[44px]',
         'cursor-grab active:cursor-grabbing',
         tone === 'a'
           ? 'bg-accent text-accent-ink border-accent'
@@ -689,6 +670,13 @@ function SeatChip({
       )}
       aria-label={`${player.name}. Arrastrá a otra silla o tocá para liberar.`}
     >
+      <GripVertical
+        className={cn(
+          'size-3.5 opacity-60 shrink-0',
+          tone === 'a' ? 'text-accent-ink' : 'text-bg',
+        )}
+        aria-hidden
+      />
       <span className="truncate">{player.name}</span>
     </motion.button>
   )
@@ -712,7 +700,8 @@ function PoolChip({
       onDragEnd={(_, info) => onDragEnd(player.id, info)}
       style={{ touchAction: 'none' }}
       className={cn(
-        'no-select inline-flex items-center gap-1.5 rounded-sm px-3 py-2 text-sm border min-h-[44px]',
+        // Same radius as a seated chip so the two visually rhyme.
+        'no-select inline-flex items-center gap-1.5 rounded px-3 py-2 text-sm border min-h-[44px]',
         'cursor-grab active:cursor-grabbing',
         'bg-surface-hi text-ink border-line',
       )}
