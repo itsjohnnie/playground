@@ -444,60 +444,6 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
 .ring-tooltip.is-visible { opacity: 1; transform: translateY(0); }
 .ring-tooltip .meta { color: var(--ink-50); font-size: 11px; margin-top: 2px; }
 
-/* Week heatmap microvis — meeting density across the next 7 days × 3 bands. */
-.weekstrip {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
-  border-top: 1px solid var(--rule);
-  padding-top: 1.2rem;
-  margin-top: 0.4rem;
-}
-.weekstrip-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-.weekstrip-title {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 14px;
-  color: var(--ink);
-  font-weight: 480;
-  font-variation-settings: "opsz" 24, "SOFT" 30;
-}
-.weekstrip-meta {
-  font-size: 11px;
-  color: var(--ink-50);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-}
-.weekstrip-svg {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-.weekstrip-axis {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-  font-size: 10px;
-  color: var(--ink-30);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.weekstrip-axis span { text-align: center; }
-.weekstrip-axis span[data-today="true"] { color: var(--ink); }
-.weekstrip-svg .cell {
-  fill: var(--ink);
-  transition: opacity 200ms var(--ease-out);
-}
-.weekstrip-svg .cell[data-load="0"] { opacity: 0.06; }
-.weekstrip-svg .cell[data-load="1"] { opacity: 0.22; }
-.weekstrip-svg .cell[data-load="2"] { opacity: 0.45; }
-.weekstrip-svg .cell[data-load="3"] { opacity: 0.72; }
-.weekstrip-svg .cell[data-load="4"] { opacity: 0.95; }
-.weekstrip-svg .col-today { fill: none; stroke: var(--ink); stroke-width: 1; opacity: 0.4; }
 
 /* ---------------- Hours: a horizontal "today" timeline that complements the Ring ---------------- */
 
@@ -528,30 +474,77 @@ input { font: inherit; color: inherit; background: none; border: 0; outline: 0; 
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
-.hours-strip { width: 100%; }
-.hours-svg { width: 100%; height: 96px; display: block; }
-.hours-svg .tick { stroke: var(--ink-15); stroke-width: 0.5; }
-.hours-svg .meeting { fill: var(--ink); opacity: 0.85; transition: opacity 200ms var(--ease-out); }
-.hours-svg .meeting-past { opacity: 0.22; }
-.hours-svg .meeting:hover { opacity: 1; }
-.hours-svg .meeting-label {
-  fill: var(--canvas);
-  font-size: 11px;
+.hours-strip {
+  position: relative;
+  width: 100%;
+  height: 76px;
+  margin: 6px 0 4px;
+}
+.hours-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ink-15);
+  pointer-events: none;
+}
+.hours-block {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 4px;
+  background: var(--ink);
+  color: var(--canvas);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 200ms var(--ease-out), transform 160ms var(--ease-out);
+}
+.hours-block .title {
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.005em;
-  pointer-events: none;
+  text-overflow: ellipsis;
+  overflow: hidden;
 }
-.hours-svg .meeting-time {
-  fill: var(--canvas);
-  font-size: 10px;
+.hours-block .time {
+  font-size: 10.5px;
   opacity: 0.6;
-  pointer-events: none;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
-.hours-svg .meeting-past .meeting-label,
-.hours-svg .meeting-past .meeting-time { fill: var(--ink); }
-.hours-svg .now-line { stroke: var(--ink); stroke-width: 1.2; opacity: 0.9; }
-.hours-svg .now-dot { fill: var(--ink); }
+.hours-block.past {
+  background: transparent;
+  border: 1px solid var(--ink-15);
+  color: var(--ink-50);
+}
+.hours-block.past .time { opacity: 0.7; }
+@media (hover: hover) and (pointer: fine) {
+  .hours-block:hover { transform: translateY(-1px); }
+}
+.hours-now {
+  position: absolute;
+  top: -7px;
+  bottom: -7px;
+  left: 0;
+  width: 1px;
+  background: var(--ink);
+  pointer-events: none;
+}
+.hours-now::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: -2.5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink);
+}
 .hours-axis {
   display: flex;
   justify-content: space-between;

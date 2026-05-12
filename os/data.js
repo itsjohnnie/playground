@@ -353,40 +353,6 @@ export function inMotion() {
   return items.slice(0, 5);
 }
 
-// Week meeting density: 7 days × 3 bands (morning/afternoon/evening) of meeting load.
-// Returns [{date, isToday, bands: [m, a, e]}, ...]. Deterministic from the day-of-year
-// so the heatmap is stable across reloads but shifts naturally over time.
-export function weekMeetingGrid() {
-  const days = [];
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    const isToday = i === 0;
-    let bands;
-    if (isToday) {
-      bands = [0, 0, 0];
-      for (const m of meetings) {
-        const dur = Math.max(1, m.endHour - m.startHour);
-        const band = m.startHour < 12 ? 0 : m.startHour < 18 ? 1 : 2;
-        bands[band] += dur;
-      }
-    } else {
-      // Deterministic pseudo-load from day-of-year so the heatmap is stable per day.
-      const doy = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
-      const dow = d.getDay();
-      bands = [
-        ((doy * 7 + dow * 3 + 1) % 5),
-        ((doy * 11 + dow * 5 + 3) % 5),
-        (dow === 0 || dow === 6 ? 0 : ((doy * 13 + 2) % 3))
-      ];
-    }
-    days.push({ date: d, isToday, bands });
-  }
-  return days;
-}
-
 // This week: next-3 milestones from now.
 export function thisWeek() {
   const now = new Date();
