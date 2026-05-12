@@ -90,17 +90,44 @@ export function Screen({ children, className = '' }: { children: React.ReactNode
       setShowBottom(el.scrollTop + el.clientHeight < el.scrollHeight - FADE_THRESHOLD)
     }
 
-    update()
-    el.addEventListener('scroll', update, { passive: true })
+    // ResizeObserver only fires on observed elements' bounding boxes.
+    // The scroll container itself doesn't grow when its content does
+    // (flex-1 fixes its height), and historically we only observed the
+    // first child — which on most screens is the static back-button
+    // row that never resizes. So the bottom fade wouldn't appear on
+    // initial load even when there was content overflowing below.
+    //
+    // Fix: observe the scroll container and every direct child, and
+    // also watch the child list with MutationObserver so newly mounted
+    // children (e.g. AnimatePresence switching screens, lazy-loaded
+    // sections) get observed too. Each observed mutation triggers an
+    // update().
+    const scrollEl = el
     const ro = new ResizeObserver(update)
-    ro.observe(el)
-    // Children mounting/unmounting can change scrollHeight without firing
-    // either of the above; observe the inner content as well.
-    const inner = el.firstElementChild
-    if (inner) ro.observe(inner)
+    function reobserve() {
+      ro.disconnect()
+      ro.observe(scrollEl)
+      for (const child of Array.from(scrollEl.children)) ro.observe(child)
+    }
+    reobserve()
+    update()
+    // Once more after the next paint so any first-frame layout shift
+    // (motion.section's initial y offset etc.) is reflected.
+    const raf = requestAnimationFrame(update)
+
+    el.addEventListener('scroll', update, { passive: true })
+
+    const mo = new MutationObserver(() => {
+      reobserve()
+      update()
+    })
+    mo.observe(el, { childList: true })
+
     return () => {
+      cancelAnimationFrame(raf)
       el.removeEventListener('scroll', update)
       ro.disconnect()
+      mo.disconnect()
     }
   }, [])
 

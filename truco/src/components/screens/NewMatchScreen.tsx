@@ -492,7 +492,7 @@ function SeatPicker({ players, defaultTeamNames, onStart }: SeatPickerProps) {
         </div>
         <div
           aria-hidden
-          className="col-start-2 row-start-2 row-span-2 rounded-[28px] border border-line/60 bg-surface-hi flex items-center justify-center"
+          className="col-start-2 row-start-2 row-span-2 rounded-md border border-line/60 bg-surface-hi flex items-center justify-center"
         >
           <span className="eyebrow">Mesa</span>
         </div>
@@ -595,17 +595,18 @@ interface SeatSlotProps {
 }
 
 function SeatSlot({ tone, player, refCb, onDragEnd, onTap }: SeatSlotProps) {
-  // Slot radius matches the CTA buttons (rounded-md = 6 px) so the
-  // dashed slots, the chips inside them, the pool chips, and the Al
-  // azar / ¡A jugar! buttons all share one radius family. The chip
-  // inside lands at rounded-sm (2 px), which keeps it concentric
-  // with the slot (6 − 4 px padding ≈ 2 px) without introducing a
-  // third radius value.
+  // Slot is sized so the chip sits with even gap on every side:
+  // border-2 (2 px) + p-1 (4 px) on each side = 6 px from the dashed
+  // outline to the chip on top / bottom / left / right. min-h-[52px]
+  // = chip min-h-[44px] + 4 px padding + 2 px border × 2 sides, so
+  // there's no centring slack on the vertical axis that wouldn't
+  // also exist horizontally. Tighter than the previous 68 px, which
+  // also makes the whole table block noticeably less tall.
   return (
     <div
       ref={refCb}
       className={cn(
-        'relative rounded-md border-2 border-dashed min-h-[68px] flex items-center justify-center p-1',
+        'relative rounded-md border-2 border-dashed min-h-[52px] flex items-center justify-center p-1',
         tone === 'a' ? 'border-accent/30' : 'border-ink-soft/30',
       )}
     >
