@@ -38,6 +38,8 @@ export interface MatchRow {
   score_b: number
   winner: 'A' | 'B' | null
   abandoned: boolean
+  // Optional — null on pre-seats matches, length 6 on 3v3.
+  seats?: string[] | null
 }
 
 export interface EventRow {

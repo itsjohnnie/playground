@@ -111,8 +111,8 @@ export default function App() {
           defaultTeamNames={['Nosotros', 'Ellos']}
           onAddPlayer={store.addPlayer}
           onBack={() => setRoute('home')}
-          onStart={(a, b) => {
-            store.startMatch(a, b)
+          onStart={(a, b, seats) => {
+            store.startMatch(a, b, seats)
             setRoute('game')
           }}
         />

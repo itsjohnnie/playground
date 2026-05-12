@@ -78,6 +78,7 @@ function rowToMatch(m: MatchRow, events: EventRow[]): Match {
     scoreB: m.score_b,
     winner: m.winner,
     abandoned: m.abandoned ? true : undefined,
+    seats: m.seats ?? undefined,
     events: events
       .filter((e) => e.match_id === m.id)
       .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
@@ -491,6 +492,7 @@ export function useStore() {
     (
       teamA: { name: string; playerIds: string[] },
       teamB: { name: string; playerIds: string[] },
+      seats?: string[],
     ): Match => {
       const m: Match = {
         id: makeId(),
@@ -502,6 +504,7 @@ export function useStore() {
         scoreB: 0,
         events: [],
         winner: null,
+        seats,
       }
       setState((s) => ({
         ...s,
@@ -518,6 +521,7 @@ export function useStore() {
             team_a_player_ids: teamA.playerIds,
             team_b_name: teamB.name,
             team_b_player_ids: teamB.playerIds,
+            ...(seats ? { seats } : {}),
           },
         },
         'iniciar partida',
@@ -798,6 +802,7 @@ function matchToRow(m: Match): MatchRow {
     score_b: m.scoreB,
     winner: m.winner,
     abandoned: !!m.abandoned,
+    seats: m.seats ?? null,
   }
 }
 

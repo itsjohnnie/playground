@@ -22,8 +22,17 @@ create table if not exists matches (
   score_a             int  not null default 0,
   score_b             int  not null default 0,
   winner              text,                            -- 'A' | 'B' | null
-  abandoned           bool not null default false
+  abandoned           bool not null default false,
+  -- Clockwise seating around the table (only set for 3v3, length 6).
+  -- Position N alternates between team A (even) and team B (odd); the
+  -- seat across the table is N + 3 (mod 6), which is also the pica pica
+  -- duel rival. Older matches have null here and are excluded from any
+  -- pica pica stats.
+  seats               text[]
 );
+
+-- Idempotent migration for existing databases — safe to re-run.
+alter table matches add column if not exists seats text[];
 
 create table if not exists events (
   id          bigserial primary key,
