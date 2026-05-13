@@ -1,6 +1,9 @@
 // Spanish-deck suit glyphs (baraja española): oro, copa, espada, basto.
-// Stylised silhouettes, sized to follow the parent's font-size.
-// All shapes use currentColor; render on a solid background.
+// Glyph paths come from the Figma OS file (nodes 41-408 / 41-441) so they
+// match the iOS webclip icon exactly. Each path is authored on a 1024×1024
+// canvas; the wrapping <g transform> scales it to ~20×20 inside the 24×24
+// viewBox (≈2px breathing room) and centers it at (12, 12).
+// All shapes use currentColor so the parent's text-color sets the tint.
 
 import type { SVGProps } from 'react'
 
@@ -13,9 +16,11 @@ const base = {
 
 export function Oro(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg {...base} fill="none" stroke="currentColor" strokeWidth={1.6} aria-hidden="true" {...props}>
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="3.6" fill="currentColor" stroke="none" />
+    <svg {...base} fill="none" aria-hidden="true" {...props}>
+      <g transform="translate(-41.82 -11.32) scale(0.0757)">
+        <circle cx="711" cy="308" r="119" stroke="currentColor" strokeWidth={26.2508} />
+        <circle cx="711.006" cy="308.171" r="59.064" fill="currentColor" />
+      </g>
     </svg>
   )
 }
@@ -23,9 +28,9 @@ export function Oro(props: SVGProps<SVGSVGElement>) {
 export function Copa(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} fill="currentColor" aria-hidden="true" {...props}>
-      <path d="M5.4 3.5 H18.6 V5 C18.6 9.2 15.6 12.6 12 13 C8.4 12.6 5.4 9.2 5.4 5 Z" />
-      <rect x="11.2" y="13" width="1.6" height="5" />
-      <rect x="7" y="18.4" width="10" height="1.8" rx="0.5" />
+      <g transform="translate(-10.01 -41.99) scale(0.0739)">
+        <path d="M400.006 595.277C403.099 595.277 405.606 597.784 405.606 600.876V619.778C405.606 682.18 385.659 739.174 319.059 748.965C314.966 749.566 311.797 752.993 311.797 757.129V834C311.797 838.419 315.379 842 319.797 842H371.152C375.653 842 379.302 844.985 379.303 848.666V859.333C379.303 863.015 375.653 866 371.152 866H224.453C219.952 866 216.303 863.015 216.303 859.333V848.666C216.303 844.985 219.952 842 224.453 842H275.797C280.215 842 283.797 838.419 283.797 834V757.127C283.797 752.991 280.628 749.565 276.536 748.963C209.944 739.167 190 682.177 190 619.778V600.876C190 597.784 192.507 595.277 195.6 595.277H400.006Z"/>
+      </g>
     </svg>
   )
 }
@@ -33,14 +38,9 @@ export function Copa(props: SVGProps<SVGSVGElement>) {
 export function Espada(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} fill="currentColor" aria-hidden="true" {...props}>
-      {/* Blade pointing up */}
-      <path d="M12 2.5 L13.4 16 H10.6 Z" />
-      {/* Crossguard */}
-      <rect x="5.6" y="16" width="12.8" height="1.6" rx="0.4" />
-      {/* Grip */}
-      <rect x="11.2" y="17.6" width="1.6" height="2.6" />
-      {/* Pommel */}
-      <circle cx="12" cy="21" r="1.4" />
+      <g transform="translate(-6.36 -6.95) scale(0.0617)">
+        <path d="M293.907 146.893C294.355 143.036 300.645 143.036 301.093 146.893L325.365 355.92C325.693 358.744 328.085 360.874 330.928 360.874H395.469C399.076 360.874 402 363.561 402 366.874V378.874C402 382.188 399.076 384.874 395.469 384.874H317.6C314.507 384.874 312 387.382 312 390.474V416.19C312 418.142 313.044 419.919 314.583 421.119C320.93 426.065 325 433.704 325 442.277C325 457.188 312.688 469.277 297.5 469.277C282.312 469.277 270 457.188 270 442.277C270 433.704 274.07 426.065 280.417 421.119C281.956 419.919 283 418.142 283 416.19V390.474C283 387.382 280.493 384.874 277.4 384.874H199.531C195.924 384.874 193 382.188 193 378.874V366.874C193 363.561 195.924 360.874 199.531 360.874H264.072C266.915 360.874 269.307 358.744 269.635 355.92L293.907 146.893Z"/>
+      </g>
     </svg>
   )
 }
@@ -48,12 +48,9 @@ export function Espada(props: SVGProps<SVGSVGElement>) {
 export function Basto(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base} fill="currentColor" aria-hidden="true" {...props}>
-      {/* Top knob */}
-      <ellipse cx="12" cy="3.5" rx="2" ry="1" />
-      {/* Tapered shaft */}
-      <path d="M10 3.5 H14 L14.7 19.5 H9.3 Z" />
-      {/* Foot */}
-      <ellipse cx="12" cy="19.8" rx="2.7" ry="1.1" />
+      <g transform="translate(-33.86 -34.44) scale(0.0645)">
+        <path d="M684.624 850.204C685.485 864.139 697.038 875 711 875C724.962 875 736.515 864.139 737.376 850.204L752.286 608.916C753.757 585.113 734.849 565 711 565C687.151 565 668.243 585.113 669.714 608.916L684.624 850.204Z"/>
+      </g>
     </svg>
   )
 }
