@@ -11,11 +11,11 @@
       h1 { font-weight: 500; margin: 0 0 4px; letter-spacing: -0.02em; }
       p  { margin: 0 0 24px; opacity: 0.65; font-size: 14px; max-width: 64ch; line-height: 1.55; }
       h2 { font-weight: 500; margin: 40px 0 12px; font-size: 12px; opacity: 0.7; letter-spacing: 0.12em; text-transform: uppercase; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em; opacity: 0.85; }
       .row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end; }
       .card { display: flex; flex-direction: column; gap: 8px; }
       .card small { opacity: 0.55; font-size: 12px; }
-      img.ios { border-radius: 22.37%; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
-      .favicon { display: inline-block; vertical-align: middle; }
+      svg.ios { border-radius: 22.37%; box-shadow: 0 8px 24px rgba(0,0,0,0.18), 0 0 0 1px rgba(127,127,127,0.18); display: block; }
       .stage-dark, .stage-light {
         display: inline-block;
         padding: 16px;
@@ -47,7 +47,6 @@
       }
       .swatch .name { font-weight: 600; letter-spacing: 0.02em; }
       .swatch .hex  { opacity: 0.65; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
-
       .palette-light .swatch { background: #F6F3EE; color: #0D1110; }
       .palette-dark  .swatch { background: #0D1110; color: #F6F3EE; }
 
@@ -63,48 +62,155 @@
         opacity: 0.6;
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       }
-      .cycle-strip img { display: block; }
+
+      /* Theme-aware classes used by inline favicon SVGs. Prefixed with .fav- so
+         they can't collide with anything else on the page. */
+      .fav-bg       { fill: #0D1110; }
+      .fav-espada   { fill: #88A8BF; }
+      .fav-oro-s    { stroke: #D68B5C; fill: none; }
+      .fav-oro-f    { fill: #D68B5C; }
+      .fav-copa     { fill: #D24150; }
+      .fav-basto    { fill: #76A78B; }
+      @media (prefers-color-scheme: light) {
+        .fav-bg     { fill: #F6F3EE; }
+        .fav-espada { fill: #1F77B8; }
+        .fav-oro-s  { stroke: #D28E23; }
+        .fav-oro-f  { fill: #D28E23; }
+        .fav-copa   { fill: #C7283A; }
+        .fav-basto  { fill: #1B9859; }
+      }
     </style>
   </head>
   <body>
+
+    <!-- ── Hidden SVG defs ────────────────────────────────────────
+         All three icon assets inlined as <symbol> elements so the
+         preview works under file:// (Safari blocks cross-file svg
+         loads). Body-level <svg><use href="#…"/></svg> instantiates
+         each one at the desired display size. -->
+    <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+
+      <!-- Static dark icon — 1024² Figma paths, dark felt bg, dark suit tints -->
+      <symbol id="icon-dark" viewBox="0 0 1024 1024">
+        <rect width="1024" height="1024" fill="#0D1110"/>
+        <path fill="#88A8BF" d="M293.907 146.893C294.355 143.036 300.645 143.036 301.093 146.893L325.365 355.92C325.693 358.744 328.085 360.874 330.928 360.874H395.469C399.076 360.874 402 363.561 402 366.874V378.874C402 382.188 399.076 384.874 395.469 384.874H317.6C314.507 384.874 312 387.382 312 390.474V416.19C312 418.142 313.044 419.919 314.583 421.119C320.93 426.065 325 433.704 325 442.277C325 457.188 312.688 469.277 297.5 469.277C282.312 469.277 270 457.188 270 442.277C270 433.704 274.07 426.065 280.417 421.119C281.956 419.919 283 418.142 283 416.19V390.474C283 387.382 280.493 384.874 277.4 384.874H199.531C195.924 384.874 193 382.188 193 378.874V366.874C193 363.561 195.924 360.874 199.531 360.874H264.072C266.915 360.874 269.307 358.744 269.635 355.92L293.907 146.893Z"/>
+        <circle cx="711" cy="308" r="119" fill="none" stroke="#D68B5C" stroke-width="26.2508"/>
+        <circle cx="711.006" cy="308.171" r="59.064" fill="#D68B5C"/>
+        <path fill="#D24150" d="M400.006 595.277C403.099 595.277 405.606 597.784 405.606 600.876V619.778C405.606 682.18 385.659 739.174 319.059 748.965C314.966 749.566 311.797 752.993 311.797 757.129V834C311.797 838.419 315.379 842 319.797 842H371.152C375.653 842 379.302 844.985 379.303 848.666V859.333C379.303 863.015 375.653 866 371.152 866H224.453C219.952 866 216.303 863.015 216.303 859.333V848.666C216.303 844.985 219.952 842 224.453 842H275.797C280.215 842 283.797 838.419 283.797 834V757.127C283.797 752.991 280.628 749.565 276.536 748.963C209.944 739.167 190 682.177 190 619.778V600.876C190 597.784 192.507 595.277 195.6 595.277H400.006Z"/>
+        <path fill="#76A78B" d="M684.624 850.204C685.485 864.139 697.038 875 711 875C724.962 875 736.515 864.139 737.376 850.204L752.286 608.916C753.757 585.113 734.849 565 711 565C687.151 565 668.243 585.113 669.714 608.916L684.624 850.204Z"/>
+      </symbol>
+
+      <!-- Static light icon — 1024² Figma paths, bone bg, harmonized light suit tints -->
+      <symbol id="icon-light" viewBox="0 0 1024 1024">
+        <rect width="1024" height="1024" fill="#F6F3EE"/>
+        <path fill="#1F77B8" d="M293.907 146.893C294.355 143.036 300.645 143.036 301.093 146.893L325.365 355.92C325.693 358.744 328.085 360.874 330.928 360.874H395.469C399.076 360.874 402 363.561 402 366.874V378.874C402 382.188 399.076 384.874 395.469 384.874H317.6C314.507 384.874 312 387.382 312 390.474V416.19C312 418.142 313.044 419.919 314.583 421.119C320.93 426.065 325 433.704 325 442.277C325 457.188 312.688 469.277 297.5 469.277C282.312 469.277 270 457.188 270 442.277C270 433.704 274.07 426.065 280.417 421.119C281.956 419.919 283 418.142 283 416.19V390.474C283 387.382 280.493 384.874 277.4 384.874H199.531C195.924 384.874 193 382.188 193 378.874V366.874C193 363.561 195.924 360.874 199.531 360.874H264.072C266.915 360.874 269.307 358.744 269.635 355.92L293.907 146.893Z"/>
+        <circle cx="711" cy="308" r="119" fill="none" stroke="#D28E23" stroke-width="26.2508"/>
+        <circle cx="711.006" cy="308.171" r="59.064" fill="#D28E23"/>
+        <path fill="#C7283A" d="M400.006 595.277C403.099 595.277 405.606 597.784 405.606 600.876V619.778C405.606 682.18 385.659 739.174 319.059 748.965C314.966 749.566 311.797 752.993 311.797 757.129V834C311.797 838.419 315.379 842 319.797 842H371.152C375.653 842 379.302 844.985 379.303 848.666V859.333C379.303 863.015 375.653 866 371.152 866H224.453C219.952 866 216.303 863.015 216.303 859.333V848.666C216.303 844.985 219.952 842 224.453 842H275.797C280.215 842 283.797 838.419 283.797 834V757.127C283.797 752.991 280.628 749.565 276.536 748.963C209.944 739.167 190 682.177 190 619.778V600.876C190 597.784 192.507 595.277 195.6 595.277H400.006Z"/>
+        <path fill="#1B9859" d="M684.624 850.204C685.485 864.139 697.038 875 711 875C724.962 875 736.515 864.139 737.376 850.204L752.286 608.916C753.757 585.113 734.849 565 711 565C687.151 565 668.243 585.113 669.714 608.916L684.624 850.204Z"/>
+      </symbol>
+
+      <!-- Static "frame" symbols: one per suit, centered in 32×32 with theme-aware bg.
+           Used by the cycle strip below so each frame shows exactly one suit. -->
+      <symbol id="frame-espada" viewBox="0 0 32 32">
+        <rect class="fav-bg" width="32" height="32" rx="6"/>
+        <g transform="translate(-6.02 -6.73) scale(0.074)">
+          <path class="fav-espada" d="M293.907 146.893C294.355 143.036 300.645 143.036 301.093 146.893L325.365 355.92C325.693 358.744 328.085 360.874 330.928 360.874H395.469C399.076 360.874 402 363.561 402 366.874V378.874C402 382.188 399.076 384.874 395.469 384.874H317.6C314.507 384.874 312 387.382 312 390.474V416.19C312 418.142 313.044 419.919 314.583 421.119C320.93 426.065 325 433.704 325 442.277C325 457.188 312.688 469.277 297.5 469.277C282.312 469.277 270 457.188 270 442.277C270 433.704 274.07 426.065 280.417 421.119C281.956 419.919 283 418.142 283 416.19V390.474C283 387.382 280.493 384.874 277.4 384.874H199.531C195.924 384.874 193 382.188 193 378.874V366.874C193 363.561 195.924 360.874 199.531 360.874H264.072C266.915 360.874 269.307 358.744 269.635 355.92L293.907 146.893Z"/>
+        </g>
+      </symbol>
+      <symbol id="frame-oro" viewBox="0 0 32 32">
+        <rect class="fav-bg" width="32" height="32" rx="6"/>
+        <g transform="translate(-48.56 -11.97) scale(0.0908)">
+          <circle class="fav-oro-s" cx="711" cy="308" r="119" stroke-width="26.2508"/>
+          <circle class="fav-oro-f" cx="711.006" cy="308.171" r="59.064"/>
+        </g>
+      </symbol>
+      <symbol id="frame-copa" viewBox="0 0 32 32">
+        <rect class="fav-bg" width="32" height="32" rx="6"/>
+        <g transform="translate(-10.38 -48.73) scale(0.0886)">
+          <path class="fav-copa" d="M400.006 595.277C403.099 595.277 405.606 597.784 405.606 600.876V619.778C405.606 682.18 385.659 739.174 319.059 748.965C314.966 749.566 311.797 752.993 311.797 757.129V834C311.797 838.419 315.379 842 319.797 842H371.152C375.653 842 379.302 844.985 379.303 848.666V859.333C379.303 863.015 375.653 866 371.152 866H224.453C219.952 866 216.303 863.015 216.303 859.333V848.666C216.303 844.985 219.952 842 224.453 842H275.797C280.215 842 283.797 838.419 283.797 834V757.127C283.797 752.991 280.628 749.565 276.536 748.963C209.944 739.167 190 682.177 190 619.778V600.876C190 597.784 192.507 595.277 195.6 595.277H400.006Z"/>
+        </g>
+      </symbol>
+      <symbol id="frame-basto" viewBox="0 0 32 32">
+        <rect class="fav-bg" width="32" height="32" rx="6"/>
+        <g transform="translate(-39.05 -39.74) scale(0.0774)">
+          <path class="fav-basto" d="M684.624 850.204C685.485 864.139 697.038 875 711 875C724.962 875 736.515 864.139 737.376 850.204L752.286 608.916C753.757 585.113 734.849 565 711 565C687.151 565 668.243 585.113 669.714 608.916L684.624 850.204Z"/>
+        </g>
+      </symbol>
+    </svg>
+
     <h1>Truco — icon preview</h1>
     <p>
-      Three new assets: animated favicon, light home-screen icon, dark home-screen icon.
-      All three use the exact Figma path data (espada/oro/copa/basto, 2×2 grid with
-      verticals on the descending diagonal). Toggle your OS theme — bg + suit
-      tints should swap. The favicon in the browser tab should cycle
-      <em>espada → oro → copa → basto</em>, 1 second each.
+      Three new assets: animated favicon (browser tab), light webclip icon, dark webclip icon.
+      All use the Figma glyph paths (espada/oro/copa/basto). Toggle your OS theme to verify
+      the favicon's bg + suit tints swap. The static webclip icons are hardcoded
+      per-mode and don't swap with system theme — iOS picks one at install time.
+      Inlined so this works under <code>file://</code> in Safari too.
     </p>
 
     <h2>Animated favicon (browser tab, 32×32 SVG)</h2>
     <div class="row">
       <div class="card">
-        <div class="stage-dark"><img class="favicon" src="./icon.svg" width="32" height="32" alt=""></div>
+        <div class="stage-dark">
+          <svg viewBox="0 0 32 32" width="32" height="32">
+            <rect class="fav-bg" width="32" height="32" rx="6" ry="6"/>
+            <g transform="translate(-6.02 -6.73) scale(0.074)">
+              <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.225;0.25;0.975;1" calcMode="linear" dur="4s" repeatCount="indefinite"/>
+              <path class="fav-espada" d="M293.907 146.893C294.355 143.036 300.645 143.036 301.093 146.893L325.365 355.92C325.693 358.744 328.085 360.874 330.928 360.874H395.469C399.076 360.874 402 363.561 402 366.874V378.874C402 382.188 399.076 384.874 395.469 384.874H317.6C314.507 384.874 312 387.382 312 390.474V416.19C312 418.142 313.044 419.919 314.583 421.119C320.93 426.065 325 433.704 325 442.277C325 457.188 312.688 469.277 297.5 469.277C282.312 469.277 270 457.188 270 442.277C270 433.704 274.07 426.065 280.417 421.119C281.956 419.919 283 418.142 283 416.19V390.474C283 387.382 280.493 384.874 277.4 384.874H199.531C195.924 384.874 193 382.188 193 378.874V366.874C193 363.561 195.924 360.874 199.531 360.874H264.072C266.915 360.874 269.307 358.744 269.635 355.92L293.907 146.893Z"/>
+            </g>
+            <g transform="translate(-48.56 -11.97) scale(0.0908)">
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.225;0.25;0.475;0.5;1" calcMode="linear" dur="4s" repeatCount="indefinite"/>
+              <circle class="fav-oro-s" cx="711" cy="308" r="119" stroke-width="26.2508"/>
+              <circle class="fav-oro-f" cx="711.006" cy="308.171" r="59.064"/>
+            </g>
+            <g transform="translate(-10.38 -48.73) scale(0.0886)">
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.475;0.5;0.725;0.75;1" calcMode="linear" dur="4s" repeatCount="indefinite"/>
+              <path class="fav-copa" d="M400.006 595.277C403.099 595.277 405.606 597.784 405.606 600.876V619.778C405.606 682.18 385.659 739.174 319.059 748.965C314.966 749.566 311.797 752.993 311.797 757.129V834C311.797 838.419 315.379 842 319.797 842H371.152C375.653 842 379.302 844.985 379.303 848.666V859.333C379.303 863.015 375.653 866 371.152 866H224.453C219.952 866 216.303 863.015 216.303 859.333V848.666C216.303 844.985 219.952 842 224.453 842H275.797C280.215 842 283.797 838.419 283.797 834V757.127C283.797 752.991 280.628 749.565 276.536 748.963C209.944 739.167 190 682.177 190 619.778V600.876C190 597.784 192.507 595.277 195.6 595.277H400.006Z"/>
+            </g>
+            <g transform="translate(-39.05 -39.74) scale(0.0774)">
+              <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.725;0.75;0.975;1" calcMode="linear" dur="4s" repeatCount="indefinite"/>
+              <path class="fav-basto" d="M684.624 850.204C685.485 864.139 697.038 875 711 875C724.962 875 736.515 864.139 737.376 850.204L752.286 608.916C753.757 585.113 734.849 565 711 565C687.151 565 668.243 585.113 669.714 608.916L684.624 850.204Z"/>
+            </g>
+          </svg>
+        </div>
         <small>32×32 on dark stage</small>
       </div>
       <div class="card">
-        <div class="stage-light"><img class="favicon" src="./icon.svg" width="32" height="32" alt=""></div>
+        <div class="stage-light">
+          <svg viewBox="0 0 32 32" width="32" height="32">
+            <rect class="fav-bg" width="32" height="32" rx="6" ry="6"/>
+            <g transform="translate(-6.02 -6.73) scale(0.074)">
+              <animate attributeName="opacity" values="1;1;0;0;1" keyTimes="0;0.225;0.25;0.975;1" calcMode="linear" dur="4s" repeatCount="indefinite"/>
+              <path class="fav-espada" d="M293.907 146.893C294.355 143.036 300.645 143.036 301.093 146.893L325.365 355.92C325.693 358.744 328.085 360.874 330.928 360.874H395.469C399.076 360.874 402 363.561 402 366.874V378.874C402 382.188 399.076 384.874 395.469 384.874H317.6C314.507 384.874 312 387.382 312 390.474V416.19C312 418.142 313.044 419.919 314.583 421.119C320.93 426.065 325 433.704 325 442.277C325 457.188 312.688 469.277 297.5 469.277C282.312 469.277 270 457.188 270 442.277C270 433.704 274.07 426.065 280.417 421.119C281.956 419.919 283 418.142 283 416.19V390.474C283 387.382 280.493 384.874 277.4 384.874H199.531C195.924 384.874 193 382.188 193 378.874V366.874C193 363.561 195.924 360.874 199.531 360.874H264.072C266.915 360.874 269.307 358.744 269.635 355.92L293.907 146.893Z"/>
+            </g>
+            <g transform="translate(-48.56 -11.97) scale(0.0908)">
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.225;0.25;0.475;0.5;1" calcMode="linear" dur="4s" repeatCount="indefinite"/>
+              <circle class="fav-oro-s" cx="711" cy="308" r="119" stroke-width="26.2508"/>
+              <circle class="fav-oro-f" cx="711.006" cy="308.171" r="59.064"/>
+            </g>
+            <g transform="translate(-10.38 -48.73) scale(0.0886)">
+              <animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.475;0.5;0.725;0.75;1" calcMode="linear" dur="4s" repeatCount="indefinite"/>
+              <path class="fav-copa" d="M400.006 595.277C403.099 595.277 405.606 597.784 405.606 600.876V619.778C405.606 682.18 385.659 739.174 319.059 748.965C314.966 749.566 311.797 752.993 311.797 757.129V834C311.797 838.419 315.379 842 319.797 842H371.152C375.653 842 379.302 844.985 379.303 848.666V859.333C379.303 863.015 375.653 866 371.152 866H224.453C219.952 866 216.303 863.015 216.303 859.333V848.666C216.303 844.985 219.952 842 224.453 842H275.797C280.215 842 283.797 838.419 283.797 834V757.127C283.797 752.991 280.628 749.565 276.536 748.963C209.944 739.167 190 682.177 190 619.778V600.876C190 597.784 192.507 595.277 195.6 595.277H400.006Z"/>
+            </g>
+            <g transform="translate(-39.05 -39.74) scale(0.0774)">
+              <animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.725;0.75;0.975;1" calcMode="linear" dur="4s" repeatCount="indefinite"/>
+              <path class="fav-basto" d="M684.624 850.204C685.485 864.139 697.038 875 711 875C724.962 875 736.515 864.139 737.376 850.204L752.286 608.916C753.757 585.113 734.849 565 711 565C687.151 565 668.243 585.113 669.714 608.916L684.624 850.204Z"/>
+            </g>
+          </svg>
+        </div>
         <small>32×32 on bone stage</small>
-      </div>
-      <div class="card">
-        <div class="stage-dark"><img class="favicon" src="./icon.svg" width="128" height="128" alt=""></div>
-        <small>4× zoom (128×128)</small>
-      </div>
-      <div class="card">
-        <div class="stage-light"><img class="favicon" src="./icon.svg" width="128" height="128" alt=""></div>
-        <small>4× zoom (128×128)</small>
       </div>
     </div>
 
-    <h2>Cycle order — espada → oro → copa → basto</h2>
-    <p>Same order as the static grid reads (top-left, top-right, bottom-left, bottom-right). 1 second per suit, 4 second loop.</p>
+    <h2>Cycle frames — espada → oro → copa → basto</h2>
+    <p>The favicon spends 1 second on each frame in this exact order, looping every 4 seconds.</p>
     <div class="row">
       <div class="stage-dark">
         <div class="cycle-strip">
-          <img src="./icon.svg" width="56" height="56" alt="">
-          <img src="./icon.svg" width="56" height="56" alt="">
-          <img src="./icon.svg" width="56" height="56" alt="">
-          <img src="./icon.svg" width="56" height="56" alt="">
+          <svg width="56" height="56"><use href="#frame-espada"/></svg>
+          <svg width="56" height="56"><use href="#frame-oro"/></svg>
+          <svg width="56" height="56"><use href="#frame-copa"/></svg>
+          <svg width="56" height="56"><use href="#frame-basto"/></svg>
           <div class="step">0–1s<br>espada</div>
           <div class="step">1–2s<br>oro</div>
           <div class="step">2–3s<br>copa</div>
@@ -113,23 +219,23 @@
       </div>
     </div>
 
-    <h2>iOS home-screen icon (apple-touch-icon source, 1024×1024 → 180×180)</h2>
-    <p>The squircle below approximates iOS's mask. iOS applies its own mask in production, so the source PNG is a flat square.</p>
+    <h2>iOS webclip icon (apple-touch-icon source, 1024×1024 → 180×180)</h2>
+    <p>The squircle approximates iOS's mask. iOS applies its own mask in production, so the source PNG is a flat square.</p>
     <div class="row">
       <div class="card">
-        <img class="ios" src="./icon-dark.svg" width="180" height="180" alt="">
+        <svg class="ios" width="180" height="180"><use href="#icon-dark"/></svg>
         <small>dark — picked when iOS is in dark mode at install</small>
       </div>
       <div class="card">
-        <img class="ios" src="./icon-light.svg" width="180" height="180" alt="">
+        <svg class="ios" width="180" height="180"><use href="#icon-light"/></svg>
         <small>light — picked when iOS is in light mode at install</small>
       </div>
       <div class="card">
-        <img class="ios" src="./icon-dark.svg" width="256" height="256" alt="">
+        <svg class="ios" width="256" height="256"><use href="#icon-dark"/></svg>
         <small>256×256 dark</small>
       </div>
       <div class="card">
-        <img class="ios" src="./icon-light.svg" width="256" height="256" alt="">
+        <svg class="ios" width="256" height="256"><use href="#icon-light"/></svg>
         <small>256×256 light</small>
       </div>
     </div>
@@ -138,8 +244,8 @@
     <p>
       Figma's <code>#F92E49</code> copa and <code>#1990D4</code> espada were too
       saturated/bright next to oro and basto. The set below sits in a unified
-      S 67–71% / L 35–48% band, with perceptually equal lightness so no
-      single suit dominates. These values are also written into <code>src/index.css</code>
+      S 67–71% / L 35–48% band, with perceptually equal lightness so no single
+      suit dominates. These values are also written into <code>src/index.css</code>
       (<code>--accent</code>, <code>--suit-red</code>, <code>--suit-blue</code>,
       <code>--suit-green</code>), so the on-screen suit row on Home, palitos, and
       PulseGlow inherit them automatically.

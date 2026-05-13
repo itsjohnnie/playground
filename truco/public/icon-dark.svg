@@ -3,7 +3,7 @@
   <title>Truco</title>
   <!-- Felt-dark background. iOS applies its own rounded mask, so this stays flat full-bleed.
        Glyph paths come from Figma node 41-441 verbatim. Suit palette uses the
-       dark-theme --suit-* / --accent tokens from src/index.css. -->
+       dark-theme suit and accent tokens from src/index.css. -->
   <rect width="1024" height="1024" fill="#0D1110"/>
 
   <!-- Espada — top-left -->
