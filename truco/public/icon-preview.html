@@ -9,8 +9,8 @@
       html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
       body { padding: 32px; background: canvas; color: canvastext; }
       h1 { font-weight: 500; margin: 0 0 4px; letter-spacing: -0.02em; }
-      p  { margin: 0 0 24px; opacity: 0.6; font-size: 14px; max-width: 60ch; line-height: 1.5; }
-      h2 { font-weight: 500; margin: 40px 0 12px; font-size: 14px; opacity: 0.7; letter-spacing: 0.08em; text-transform: uppercase; }
+      p  { margin: 0 0 24px; opacity: 0.65; font-size: 14px; max-width: 64ch; line-height: 1.55; }
+      h2 { font-weight: 500; margin: 40px 0 12px; font-size: 12px; opacity: 0.7; letter-spacing: 0.12em; text-transform: uppercase; }
       .row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end; }
       .card { display: flex; flex-direction: column; gap: 8px; }
       .card small { opacity: 0.55; font-size: 12px; }
@@ -23,47 +23,107 @@
       }
       .stage-dark  { background: #0D1110; color: #F6F3EE; }
       .stage-light { background: #F6F3EE; color: #0D1110; }
+
+      .palette {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(120px, 1fr));
+        gap: 12px;
+        max-width: 720px;
+      }
+      .swatch {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 14px 14px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        line-height: 1.3;
+      }
+      .swatch .dot {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        margin-bottom: 6px;
+      }
+      .swatch .name { font-weight: 600; letter-spacing: 0.02em; }
+      .swatch .hex  { opacity: 0.65; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+
+      .palette-light .swatch { background: #F6F3EE; color: #0D1110; }
+      .palette-dark  .swatch { background: #0D1110; color: #F6F3EE; }
+
+      .cycle-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 56px);
+        gap: 12px;
+        align-items: center;
+      }
+      .cycle-strip .step {
+        text-align: center;
+        font-size: 11px;
+        opacity: 0.6;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .cycle-strip img { display: block; }
     </style>
   </head>
   <body>
     <h1>Truco — icon preview</h1>
     <p>
-      Watch the browser tab — the favicon should cycle <em>oro → copa → espada → basto</em>,
-      one second each. Toggle your system theme (or your browser's "Force colors" devtools panel)
-      to verify the dark/light backgrounds swap correctly.
+      Three new assets: animated favicon, light home-screen icon, dark home-screen icon.
+      All three use the exact Figma path data (espada/oro/copa/basto, 2×2 grid with
+      verticals on the descending diagonal). Toggle your OS theme — bg + suit
+      tints should swap. The favicon in the browser tab should cycle
+      <em>espada → oro → copa → basto</em>, 1 second each.
     </p>
 
     <h2>Animated favicon (browser tab, 32×32 SVG)</h2>
     <div class="row">
       <div class="card">
         <div class="stage-dark"><img class="favicon" src="./icon.svg" width="32" height="32" alt=""></div>
-        <small>at 32×32 on dark stage</small>
+        <small>32×32 on dark stage</small>
       </div>
       <div class="card">
         <div class="stage-light"><img class="favicon" src="./icon.svg" width="32" height="32" alt=""></div>
-        <small>at 32×32 on bone stage</small>
+        <small>32×32 on bone stage</small>
       </div>
       <div class="card">
         <div class="stage-dark"><img class="favicon" src="./icon.svg" width="128" height="128" alt=""></div>
         <small>4× zoom (128×128)</small>
       </div>
+      <div class="card">
+        <div class="stage-light"><img class="favicon" src="./icon.svg" width="128" height="128" alt=""></div>
+        <small>4× zoom (128×128)</small>
+      </div>
     </div>
 
-    <h2>iOS home-screen icon (apple-touch-icon, 180×180)</h2>
+    <h2>Cycle order — espada → oro → copa → basto</h2>
+    <p>Same order as the static grid reads (top-left, top-right, bottom-left, bottom-right). 1 second per suit, 4 second loop.</p>
+    <div class="row">
+      <div class="stage-dark">
+        <div class="cycle-strip">
+          <img src="./icon.svg" width="56" height="56" alt="">
+          <img src="./icon.svg" width="56" height="56" alt="">
+          <img src="./icon.svg" width="56" height="56" alt="">
+          <img src="./icon.svg" width="56" height="56" alt="">
+          <div class="step">0–1s<br>espada</div>
+          <div class="step">1–2s<br>oro</div>
+          <div class="step">2–3s<br>copa</div>
+          <div class="step">3–4s<br>basto</div>
+        </div>
+      </div>
+    </div>
+
+    <h2>iOS home-screen icon (apple-touch-icon source, 1024×1024 → 180×180)</h2>
     <p>The squircle below approximates iOS's mask. iOS applies its own mask in production, so the source PNG is a flat square.</p>
     <div class="row">
       <div class="card">
         <img class="ios" src="./icon-dark.svg" width="180" height="180" alt="">
-        <small>dark variant — picked when iOS is in dark mode at install time</small>
+        <small>dark — picked when iOS is in dark mode at install</small>
       </div>
       <div class="card">
         <img class="ios" src="./icon-light.svg" width="180" height="180" alt="">
-        <small>light variant — picked when iOS is in light mode at install time</small>
+        <small>light — picked when iOS is in light mode at install</small>
       </div>
-    </div>
-
-    <h2>Larger sizes</h2>
-    <div class="row">
       <div class="card">
         <img class="ios" src="./icon-dark.svg" width="256" height="256" alt="">
         <small>256×256 dark</small>
@@ -71,6 +131,64 @@
       <div class="card">
         <img class="ios" src="./icon-light.svg" width="256" height="256" alt="">
         <small>256×256 light</small>
+      </div>
+    </div>
+
+    <h2>Light palette — harmonized</h2>
+    <p>
+      Figma's <code>#F92E49</code> copa and <code>#1990D4</code> espada were too
+      saturated/bright next to oro and basto. The set below sits in a unified
+      S 67–71% / L 35–48% band, with perceptually equal lightness so no
+      single suit dominates. These values are also written into <code>src/index.css</code>
+      (<code>--accent</code>, <code>--suit-red</code>, <code>--suit-blue</code>,
+      <code>--suit-green</code>), so the on-screen suit row on Home, palitos, and
+      PulseGlow inherit them automatically.
+    </p>
+    <div class="palette palette-light">
+      <div class="swatch">
+        <div class="dot" style="background:#1F77B8"></div>
+        <span class="name">Espada</span>
+        <span class="hex">#1F77B8 · hsl 205 71% 42%</span>
+      </div>
+      <div class="swatch">
+        <div class="dot" style="background:#D28E23"></div>
+        <span class="name">Oro</span>
+        <span class="hex">#D28E23 · hsl 39 71% 48%</span>
+      </div>
+      <div class="swatch">
+        <div class="dot" style="background:#C7283A"></div>
+        <span class="name">Copa</span>
+        <span class="hex">#C7283A · hsl 353 67% 47%</span>
+      </div>
+      <div class="swatch">
+        <div class="dot" style="background:#1B9859"></div>
+        <span class="name">Basto</span>
+        <span class="hex">#1B9859 · hsl 150 70% 35%</span>
+      </div>
+    </div>
+
+    <h2>Dark palette — unchanged</h2>
+    <p>Sticking with the existing dark-theme tokens. They already harmonize on felt.</p>
+    <div class="palette palette-dark">
+      <div class="swatch">
+        <div class="dot" style="background:#88A8BF"></div>
+        <span class="name">Espada</span>
+        <span class="hex">#88A8BF · hsl 205 30% 64%</span>
+      </div>
+      <div class="swatch">
+        <div class="dot" style="background:#D68B5C"></div>
+        <span class="name">Oro</span>
+        <span class="hex">#D68B5C · hsl 38 60% 60%</span>
+      </div>
+      <div class="swatch">
+        <div class="dot" style="background:#D24150"></div>
+        <span class="name">Copa</span>
+        <span class="hex">#D24150 · hsl 354 62% 54%</span>
+      </div>
+      <div class="swatch">
+        <div class="dot" style="background:#76A78B"></div>
+        <span class="name">Basto</span>
+        <span class="hex">#76A78B · hsl 145 22% 56%</span>
       </div>
     </div>
   </body>
