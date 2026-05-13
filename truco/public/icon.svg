@@ -1,73 +1,77 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="32" height="32">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <title>Truco</title>
-  <!-- Animated favicon. Uses Figma path data verbatim, scaled to 32×32 via viewBox.
-       Theme-aware bg + suit colors via prefers-color-scheme. Cycles in grid order:
-       espada → oro → copa → basto, 1s each (4s loop). SMIL only animates in
-       Chrome/Firefox/Edge — Safari renders the first frame (espada) statically. -->
+  <!-- Animated favicon. Each Figma suit path is scaled down (~13×) and centered
+       on a 32×32 canvas, so the four suits take turns at the same spot.
+       Cycle order: espada → oro → copa → basto, 1s each (4s loop) with ~100ms
+       crossfades. Theme-aware bg + suit tints via prefers-color-scheme. SMIL
+       animates in Chrome/Firefox/Edge; Safari renders the first frame (espada). -->
   <style>
-    .bg     { fill: #0D1110; }
-    .espada { color: #88A8BF; }
-    .oro    { color: #D68B5C; }
-    .copa   { color: #D24150; }
-    .basto  { color: #76A78B; }
+    /* Defaults = dark theme */
+    .bg        { fill: #0D1110; }
+    .c-espada  { fill: #88A8BF; }
+    .c-oro-s   { stroke: #D68B5C; fill: none; }
+    .c-oro-f   { fill: #D68B5C; }
+    .c-copa    { fill: #D24150; }
+    .c-basto   { fill: #76A78B; }
     @media (prefers-color-scheme: light) {
-      .bg     { fill: #F6F3EE; }
-      .espada { color: #1F77B8; }
-      .oro    { color: #D28E23; }
-      .copa   { color: #C7283A; }
-      .basto  { color: #1B9859; }
+      .bg       { fill: #F6F3EE; }
+      .c-espada { fill: #1F77B8; }
+      .c-oro-s  { stroke: #D28E23; }
+      .c-oro-f  { fill: #D28E23; }
+      .c-copa   { fill: #C7283A; }
+      .c-basto  { fill: #1B9859; }
     }
-    .suit { opacity: 0; }
-    .suit > [data-fill] { fill: currentColor; }
-    .suit > [data-stroke] { stroke: currentColor; fill: none; }
   </style>
 
-  <!-- 1024-space corner radius keeps a ~6px favicon corner at 32×32 (≈18.75%). -->
-  <rect class="bg" width="1024" height="1024" rx="192" ry="192"/>
+  <rect class="bg" width="32" height="32" rx="6" ry="6"/>
 
-  <!-- 1. Espada — visible 0.00s – 1.00s -->
-  <g class="suit espada">
+  <!-- Each <g> wraps a Figma path and centers it at (16,16) of the favicon canvas.
+       Transform = translate(tx ty) scale(s) where s normalizes each glyph's
+       longest axis to 24 (giving 4px padding inside the 32×32 canvas). -->
+
+  <!-- 1. Espada — slot 0.00s – 1.00s -->
+  <g transform="translate(-6.02 -6.73) scale(0.074)">
     <animate attributeName="opacity"
              values="1;1;0;0;1"
              keyTimes="0;0.225;0.25;0.975;1"
              calcMode="linear"
              dur="4s"
              repeatCount="indefinite"/>
-    <path data-fill="" d="M293.907 146.893C294.355 143.036 300.645 143.036 301.093 146.893L325.365 355.92C325.693 358.744 328.085 360.874 330.928 360.874H395.469C399.076 360.874 402 363.561 402 366.874V378.874C402 382.188 399.076 384.874 395.469 384.874H317.6C314.507 384.874 312 387.382 312 390.474V416.19C312 418.142 313.044 419.919 314.583 421.119C320.93 426.065 325 433.704 325 442.277C325 457.188 312.688 469.277 297.5 469.277C282.312 469.277 270 457.188 270 442.277C270 433.704 274.07 426.065 280.417 421.119C281.956 419.919 283 418.142 283 416.19V390.474C283 387.382 280.493 384.874 277.4 384.874H199.531C195.924 384.874 193 382.188 193 378.874V366.874C193 363.561 195.924 360.874 199.531 360.874H264.072C266.915 360.874 269.307 358.744 269.635 355.92L293.907 146.893Z"/>
+    <path class="c-espada" d="M293.907 146.893C294.355 143.036 300.645 143.036 301.093 146.893L325.365 355.92C325.693 358.744 328.085 360.874 330.928 360.874H395.469C399.076 360.874 402 363.561 402 366.874V378.874C402 382.188 399.076 384.874 395.469 384.874H317.6C314.507 384.874 312 387.382 312 390.474V416.19C312 418.142 313.044 419.919 314.583 421.119C320.93 426.065 325 433.704 325 442.277C325 457.188 312.688 469.277 297.5 469.277C282.312 469.277 270 457.188 270 442.277C270 433.704 274.07 426.065 280.417 421.119C281.956 419.919 283 418.142 283 416.19V390.474C283 387.382 280.493 384.874 277.4 384.874H199.531C195.924 384.874 193 382.188 193 378.874V366.874C193 363.561 195.924 360.874 199.531 360.874H264.072C266.915 360.874 269.307 358.744 269.635 355.92L293.907 146.893Z"/>
   </g>
 
-  <!-- 2. Oro — visible 1.00s – 2.00s -->
-  <g class="suit oro">
+  <!-- 2. Oro — slot 1.00s – 2.00s -->
+  <g transform="translate(-48.56 -11.97) scale(0.0908)">
     <animate attributeName="opacity"
              values="0;0;1;1;0;0"
              keyTimes="0;0.225;0.25;0.475;0.5;1"
              calcMode="linear"
              dur="4s"
              repeatCount="indefinite"/>
-    <circle data-stroke="" cx="711" cy="308" r="119" stroke-width="26.2508"/>
-    <circle data-fill="" cx="711.006" cy="308.171" r="59.064"/>
+    <circle class="c-oro-s" cx="711" cy="308" r="119" stroke-width="26.2508"/>
+    <circle class="c-oro-f" cx="711.006" cy="308.171" r="59.064"/>
   </g>
 
-  <!-- 3. Copa — visible 2.00s – 3.00s -->
-  <g class="suit copa">
+  <!-- 3. Copa — slot 2.00s – 3.00s -->
+  <g transform="translate(-10.38 -48.73) scale(0.0886)">
     <animate attributeName="opacity"
              values="0;0;1;1;0;0"
              keyTimes="0;0.475;0.5;0.725;0.75;1"
              calcMode="linear"
              dur="4s"
              repeatCount="indefinite"/>
-    <path data-fill="" d="M400.006 595.277C403.099 595.277 405.606 597.784 405.606 600.876V619.778C405.606 682.18 385.659 739.174 319.059 748.965C314.966 749.566 311.797 752.993 311.797 757.129V834C311.797 838.419 315.379 842 319.797 842H371.152C375.653 842 379.302 844.985 379.303 848.666V859.333C379.303 863.015 375.653 866 371.152 866H224.453C219.952 866 216.303 863.015 216.303 859.333V848.666C216.303 844.985 219.952 842 224.453 842H275.797C280.215 842 283.797 838.419 283.797 834V757.127C283.797 752.991 280.628 749.565 276.536 748.963C209.944 739.167 190 682.177 190 619.778V600.876C190 597.784 192.507 595.277 195.6 595.277H400.006Z"/>
+    <path class="c-copa" d="M400.006 595.277C403.099 595.277 405.606 597.784 405.606 600.876V619.778C405.606 682.18 385.659 739.174 319.059 748.965C314.966 749.566 311.797 752.993 311.797 757.129V834C311.797 838.419 315.379 842 319.797 842H371.152C375.653 842 379.302 844.985 379.303 848.666V859.333C379.303 863.015 375.653 866 371.152 866H224.453C219.952 866 216.303 863.015 216.303 859.333V848.666C216.303 844.985 219.952 842 224.453 842H275.797C280.215 842 283.797 838.419 283.797 834V757.127C283.797 752.991 280.628 749.565 276.536 748.963C209.944 739.167 190 682.177 190 619.778V600.876C190 597.784 192.507 595.277 195.6 595.277H400.006Z"/>
   </g>
 
-  <!-- 4. Basto — visible 3.00s – 4.00s -->
-  <g class="suit basto">
+  <!-- 4. Basto — slot 3.00s – 4.00s -->
+  <g transform="translate(-39.05 -39.74) scale(0.0774)">
     <animate attributeName="opacity"
              values="0;0;1;1;0"
              keyTimes="0;0.725;0.75;0.975;1"
              calcMode="linear"
              dur="4s"
              repeatCount="indefinite"/>
-    <path data-fill="" d="M684.624 850.204C685.485 864.139 697.038 875 711 875C724.962 875 736.515 864.139 737.376 850.204L752.286 608.916C753.757 585.113 734.849 565 711 565C687.151 565 668.243 585.113 669.714 608.916L684.624 850.204Z"/>
+    <path class="c-basto" d="M684.624 850.204C685.485 864.139 697.038 875 711 875C724.962 875 736.515 864.139 737.376 850.204L752.286 608.916C753.757 585.113 734.849 565 711 565C687.151 565 668.243 585.113 669.714 608.916L684.624 850.204Z"/>
   </g>
 </svg>
