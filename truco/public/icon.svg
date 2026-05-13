@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Truco</title>
+  <style>
+    .bg     { fill: #0D1110; }
+    .oro    { color: #D68B5C; }
+    .copa   { color: #D24150; }
+    .espada { color: #88A8BF; }
+    .basto  { color: #76A78B; }
+    @media (prefers-color-scheme: light) {
+      .bg     { fill: #F6F3EE; }
+      .oro    { color: #B67F20; }
+      .copa   { color: #AE2936; }
+      .espada { color: #3C6786; }
+      .basto  { color: #3B684E; }
+    }
+    .suit { opacity: 0; }
+    .suit > * { fill: currentColor; }
+  </style>
+
+  <rect class="bg" width="32" height="32" rx="6" ry="6"/>
+
+  <g transform="translate(4 4)">
+    <!-- Each glyph is authored on a 24x24 grid (same as src/components/ui/Suits.tsx).
+         Stroke widths scale with the parent transform. -->
+
+    <!-- Oro: visible 0.00s – 1.00s -->
+    <g class="suit oro">
+      <animate attributeName="opacity"
+               values="1;1;0;0;1"
+               keyTimes="0;0.225;0.25;0.975;1"
+               calcMode="linear"
+               dur="4s"
+               repeatCount="indefinite"/>
+      <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="12" cy="12" r="3.6" fill="currentColor"/>
+    </g>
+
+    <!-- Copa: visible 1.00s – 2.00s -->
+    <g class="suit copa">
+      <animate attributeName="opacity"
+               values="0;0;1;1;0;0"
+               keyTimes="0;0.225;0.25;0.475;0.5;1"
+               calcMode="linear"
+               dur="4s"
+               repeatCount="indefinite"/>
+      <path d="M5.4 3.5 H18.6 V5 C18.6 9.2 15.6 12.6 12 13 C8.4 12.6 5.4 9.2 5.4 5 Z"/>
+      <rect x="11.2" y="13" width="1.6" height="5"/>
+      <rect x="7" y="18.4" width="10" height="1.8" rx="0.5"/>
+    </g>
+
+    <!-- Espada: visible 2.00s – 3.00s -->
+    <g class="suit espada">
+      <animate attributeName="opacity"
+               values="0;0;1;1;0;0"
+               keyTimes="0;0.475;0.5;0.725;0.75;1"
+               calcMode="linear"
+               dur="4s"
+               repeatCount="indefinite"/>
+      <path d="M12 2.5 L13.4 16 H10.6 Z"/>
+      <rect x="5.6" y="16" width="12.8" height="1.6" rx="0.4"/>
+      <rect x="11.2" y="17.6" width="1.6" height="2.6"/>
+      <circle cx="12" cy="21" r="1.4"/>
+    </g>
+
+    <!-- Basto: visible 3.00s – 4.00s -->
+    <g class="suit basto">
+      <animate attributeName="opacity"
+               values="0;0;1;1;0"
+               keyTimes="0;0.725;0.75;0.975;1"
+               calcMode="linear"
+               dur="4s"
+               repeatCount="indefinite"/>
+      <ellipse cx="12" cy="3.5" rx="2" ry="1"/>
+      <path d="M10 3.5 H14 L14.7 19.5 H9.3 Z"/>
+      <ellipse cx="12" cy="19.8" rx="2.7" ry="1.1"/>
+    </g>
+  </g>
+</svg>

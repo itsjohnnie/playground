@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Truco — icon preview</title>
+    <link rel="icon" type="image/svg+xml" href="/playground/truco/icon.svg" />
+    <style>
+      :root { color-scheme: light dark; }
+      html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; }
+      body { padding: 32px; background: canvas; color: canvastext; }
+      h1 { font-weight: 500; margin: 0 0 4px; letter-spacing: -0.02em; }
+      p  { margin: 0 0 24px; opacity: 0.6; font-size: 14px; max-width: 60ch; line-height: 1.5; }
+      h2 { font-weight: 500; margin: 40px 0 12px; font-size: 14px; opacity: 0.7; letter-spacing: 0.08em; text-transform: uppercase; }
+      .row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end; }
+      .card { display: flex; flex-direction: column; gap: 8px; }
+      .card small { opacity: 0.55; font-size: 12px; }
+      img.ios { border-radius: 22.37%; box-shadow: 0 8px 24px rgba(0,0,0,0.18); }
+      .favicon { display: inline-block; vertical-align: middle; }
+      .stage-dark, .stage-light {
+        display: inline-block;
+        padding: 16px;
+        border-radius: 12px;
+      }
+      .stage-dark  { background: #0D1110; color: #F6F3EE; }
+      .stage-light { background: #F6F3EE; color: #0D1110; }
+    </style>
+  </head>
+  <body>
+    <h1>Truco — icon preview</h1>
+    <p>
+      Watch the browser tab — the favicon should cycle <em>oro → copa → espada → basto</em>,
+      one second each. Toggle your system theme (or your browser's "Force colors" devtools panel)
+      to verify the dark/light backgrounds swap correctly.
+    </p>
+
+    <h2>Animated favicon (browser tab, 32×32 SVG)</h2>
+    <div class="row">
+      <div class="card">
+        <div class="stage-dark"><img class="favicon" src="/playground/truco/icon.svg" width="32" height="32" alt=""></div>
+        <small>at 32×32 on dark stage</small>
+      </div>
+      <div class="card">
+        <div class="stage-light"><img class="favicon" src="/playground/truco/icon.svg" width="32" height="32" alt=""></div>
+        <small>at 32×32 on bone stage</small>
+      </div>
+      <div class="card">
+        <div class="stage-dark"><img class="favicon" src="/playground/truco/icon.svg" width="128" height="128" alt=""></div>
+        <small>4× zoom (128×128)</small>
+      </div>
+    </div>
+
+    <h2>iOS home-screen icon (apple-touch-icon, 180×180)</h2>
+    <p>The squircle below approximates iOS's mask. iOS applies its own mask in production, so the source PNG is a flat square.</p>
+    <div class="row">
+      <div class="card">
+        <img class="ios" src="/playground/truco/icon-dark.svg" width="180" height="180" alt="">
+        <small>dark variant — picked when iOS is in dark mode at install time</small>
+      </div>
+      <div class="card">
+        <img class="ios" src="/playground/truco/icon-light.svg" width="180" height="180" alt="">
+        <small>light variant — picked when iOS is in light mode at install time</small>
+      </div>
+    </div>
+
+    <h2>Larger sizes</h2>
+    <div class="row">
+      <div class="card">
+        <img class="ios" src="/playground/truco/icon-dark.svg" width="256" height="256" alt="">
+        <small>256×256 dark</small>
+      </div>
+      <div class="card">
+        <img class="ios" src="/playground/truco/icon-light.svg" width="256" height="256" alt="">
+        <small>256×256 light</small>
+      </div>
+    </div>
+  </body>
+</html>
