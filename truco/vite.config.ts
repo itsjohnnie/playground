@@ -16,8 +16,8 @@ export default defineConfig({
         'icon.svg',
       ],
       manifest: {
-        name: 'Mondays — Truco',
-        short_name: 'Truco',
+        name: 'MTL Score',
+        short_name: 'MTL Score',
         description: 'Marcador de Truco para la mesa de los lunes.',
         theme_color: '#0E1110',
         background_color: '#0E1110',
