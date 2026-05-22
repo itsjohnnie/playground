@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!-- Tells the UA (especially iOS Safari) that the page natively supports both schemes,
+     so the safe-area chrome / address bar / form controls follow the active theme
+     instead of locking to the system default. -->
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#ececea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)">
 <title>dott — halftone shader playground</title>
 <!-- Phosphor icons (regular outline weight) -->
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
@@ -67,10 +73,21 @@
     --danger:       #ef4444;
     --shadow:       0 8px 28px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.30);
   }
-  /* Tighten the variable axes for UI sizes — opsz tuned for small text, modest wdth. */
-  html { font-feature-settings: "tnum" 1; font-variation-settings: "opsz" 14, "wdth" 100; }
+  /* Tighten the variable axes for UI sizes — opsz tuned for small text, modest wdth.
+     `color-scheme` is set at the root and on the theme-override classes so iOS Safari
+     paints scrollbars, form controls, and the area behind the safe-area inset to match
+     the active theme. Without this, the iPhone status-bar/notch region stays in the
+     system's chosen scheme regardless of our CSS variables, which is what made the
+     canvas behind dark dots appear washed-out light on dark-mode devices. */
+  html { font-feature-settings: "tnum" 1; font-variation-settings: "opsz" 14, "wdth" 100; color-scheme: light dark; }
+  html.theme-dark { color-scheme: dark; }
+  html.theme-light { color-scheme: light; }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
+  /* Both html and body get the surface color — when viewport-fit=cover lets the body
+     extend under the safe-area inset, the html element fills the rest with the same
+     colour so there's no visible seam at the notch / home indicator. */
+  html { background: var(--surface); }
   body {
     background: var(--surface); color: var(--text);
     font: 13px/1.5 var(--font-sans);
@@ -117,8 +134,10 @@
       !important;
   }
 
-  /* `.mobile-only` is hidden on desktop and revealed by the mobile @media block below. */
-  .mobile-only { display: none; }
+  /* `.mobile-only` is hidden on desktop and revealed by the mobile @media block below.
+     `!important` is intentional: `button.icon` has higher specificity (0-1-1 vs 0-1-0),
+     so a plain `.mobile-only { display: none }` would lose the cascade on icon buttons. */
+  .mobile-only { display: none !important; }
 
   /* layout */
   #app { display: grid; grid-template-columns: 1fr 360px; height: 100vh; overflow: hidden; }
@@ -582,7 +601,7 @@
      caret) slides the sheet up to fill the viewport, scrollable internally
      for the full control set. The stage occupies the area above. */
   @media (max-width: 720px) {
-    .mobile-only { display: inline-flex; }
+    .mobile-only { display: inline-flex !important; }
 
     /* Single-column layout; stage on top, panel anchored to bottom. Use
        `dvh` where supported so the bottom sheet doesn't jump when the
