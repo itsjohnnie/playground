@@ -56,7 +56,7 @@ jobs:
           for f in index.html styles.css script.js README.md; do
             [ -e "$f" ] && cp "$f" _site/
           done
-          for d in ascii cc dithered dots generative-ui haiku jitter \
+          for d in ascii cc dithered dots dott generative-ui haiku jitter \
                    liquid liquid-glass-icon mask orb os pretext sizzle toaster; do
             if [ -d "$d" ]; then
               mkdir -p "_site/$d"
