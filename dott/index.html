@@ -624,11 +624,14 @@
     }
 
     #stage { min-height: 0; cursor: pointer; }             /* let the row collapse so the panel keeps its 64px; tap-to-cycle */
-    /* Move the status pill to the top-left on mobile, clearing the iPhone notch
-       with safe-area-inset-top. The bottom is reserved for the floating sheet. */
+    /* Move the status pill to the top-center on mobile, clearing the iPhone
+       notch with safe-area-inset-top. The bottom is reserved for the floating
+       sheet, and the top-left/right are reserved for any future controls. */
     #status {
       bottom: auto;
       top: calc(14px + env(safe-area-inset-top, 0px));
+      left: 50%;
+      transform: translateX(-50%);
     }
     #gl { max-width: calc(100% - 24px); max-height: calc(100% - 24px); }
 
