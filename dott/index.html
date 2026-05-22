@@ -618,12 +618,18 @@
        so the stage doesn't crowd the floating sheet. */
     #app {
       grid-template-columns: 1fr;
-      grid-template-rows: 1fr 70px;        /* panel 58px + 12px bottom inset */
+      grid-template-rows: 1fr 74px;        /* panel 62px + 12px bottom inset */
       height: 100vh;
       height: 100dvh;
     }
 
     #stage { min-height: 0; cursor: pointer; }             /* let the row collapse so the panel keeps its 64px; tap-to-cycle */
+    /* Move the status pill to the top-left on mobile, clearing the iPhone notch
+       with safe-area-inset-top. The bottom is reserved for the floating sheet. */
+    #status {
+      bottom: auto;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+    }
     #gl { max-width: calc(100% - 24px); max-height: calc(100% - 24px); }
 
     /* Panel: a floating card pinned to the bottom — the same 12px inset and
@@ -635,7 +641,7 @@
       left: 12px; right: 12px;
       bottom: calc(12px + env(safe-area-inset-bottom, 0px));   /* clear iPhone home indicator */
       margin: 0;
-      height: 58px;                                        /* h1 line-height (30px) + 14px top/bottom padding — fits content exactly */
+      height: 62px;                                        /* h1 line-height (30px) + 16px top/bottom padding — fits content exactly */
       max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px));
       border-radius: 14px;
       box-shadow: none;                                    /* dark-on-darker halo isn't useful on mobile; the inset + border carries the card look */
@@ -658,12 +664,12 @@
     #panel:not(.mobile-expanded) header {
       border-bottom-color: transparent;
     }
-    /* Without the tagline, the header simplifies to logo + icons. Horizontal
-       padding matches `section` (18px each side) so the header reads as just
-       another panel block. Icon-button spacing inherits the desktop 6px gap —
-       comfortable for thumb taps and consistent with the rest of the UI. */
+    /* Without the tagline, the header simplifies to logo + icons. Even 16px
+       padding all around for a balanced, slightly tighter mobile-specific
+       block. Icon-button spacing inherits the desktop 6px gap — comfortable
+       for thumb taps and consistent with the rest of the UI. */
     #panel header .sub { display: none; }
-    #panel header { padding: 14px 18px; }
+    #panel header { padding: 16px; }
 
     /* When expanded, the mobile toggle's caret rotates to point down. */
     #panel.mobile-expanded #mobileToggle i { transform: rotate(180deg); }
@@ -710,7 +716,7 @@
   <div id="stage">
     <canvas id="gl" width="800" height="800"></canvas>
     <div id="drophint">Drop video, GIF, or image</div>
-    <div id="status">ready</div>
+    <div id="status">Ready</div>
   </div>
 
   <aside id="panel">
@@ -1236,7 +1242,7 @@ async function decodeGif(blobOrDataUri) {
 
 async function loadGif(blobOrDataUri, label){
   disposeGifFrames();
-  setStatus(`decoding ${label}…`);
+  setStatus(`Decoding ${label}…`);
   try {
     gifFrames = await decodeGif(blobOrDataUri);
     if (gifFrames) {
@@ -1244,10 +1250,10 @@ async function loadGif(blobOrDataUri, label){
       mode = 'gif';
       const f0 = gifFrames.frames[0].bitmap;
       fitSrcCanvas(f0.width, f0.height);
-      setStatus(`gif · ${label} · ${gifFrames.frames.length} frames`);
+      setStatus(`GIF · ${label} · ${gifFrames.frames.length} frames`);
     }
   } catch (err) {
-    setStatus('gif decode failed: ' + err.message);
+    setStatus('GIF decode failed: ' + err.message);
   }
 }
 
@@ -1319,7 +1325,7 @@ function uploadTexture(){
     // CORS headers. Surface it in the status bar instead of failing silently.
     if (!textureUploadFailed) {
       textureUploadFailed = true;
-      setStatus(`texture upload failed: ${err.name || 'error'}`);
+      setStatus(`Texture upload failed: ${err.name || 'error'}`);
       console.error('uploadTexture:', err);
     }
   }
@@ -1455,7 +1461,7 @@ function loadFile(f){
     video.src = url;
     video.play().catch(()=>{});
     mode = 'video';
-    setStatus(`video · ${f.name}`);
+    setStatus(`Video · ${f.name}`);
   } else if (f.type === 'image/gif') {
     loadGif(f, f.name);                                // decoder path, replaces gifFrames
   } else if (f.type.startsWith('image/')) {
@@ -1465,7 +1471,7 @@ function loadFile(f){
     image.addEventListener('load', () => {
       mode = 'image';
       disposeGifFrames();
-      setStatus(`image · ${f.name}`);
+      setStatus(`Image · ${f.name}`);
     }, { once: true });
     image.src = url;
   }
@@ -1493,7 +1499,7 @@ function loadDemo(name){
   mode = 'video';
   disposeGifFrames();
   resolveFlip(name);
-  setStatus(`demo · ${name}`);
+  setStatus(name.charAt(0).toUpperCase() + name.slice(1));
   try { localStorage.setItem(DEMO_STORAGE_KEY, name); } catch {}
   const sel = document.getElementById('demoSelect');
   if (sel && sel.value !== name) sel.value = name;
@@ -1685,7 +1691,7 @@ window.addEventListener('keydown', e => {
 let pendingSnapshot = null;
 function snapshot(){
   pendingSnapshot = `dott-${Date.now()}.png`;
-  setStatus('snapshot saved');
+  setStatus('Snapshot saved');
 }
 document.getElementById('snap').addEventListener('click', snapshot);
 
@@ -1845,13 +1851,13 @@ exportColorEl.addEventListener('change', () => {
 const exportFill = () => exportColorEl.checked ? 'currentColor' : rgbCss(P.fg);
 
 function exportSvg(){
-  if (P.dotMode === 0) { setStatus('SVG needs halftone on'); return; }
+  if (P.dotMode === 0) { setStatus('SVG needs halftone on'); return; }                  // already capitalised
   const w = P.size, h = P.size;   // logical, matches what the shader's cell grid uses
   const shapes = computeShapes(w, h);
   // viewBox alone is enough — drop width/height for a tighter root. Transparent (no bg rect).
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"><g fill="${exportFill()}">${shapes.join('')}</g></svg>`;
   downloadBlob(svg, `dott-${Date.now()}.svg`, 'image/svg+xml');
-  setStatus(`svg · ${shapes.length} shapes · ${(svg.length/1024).toFixed(1)} KB`);
+  setStatus(`SVG · ${shapes.length} shapes · ${(svg.length/1024).toFixed(1)} KB`);
 }
 document.getElementById('svg').addEventListener('click', exportSvg);
 
@@ -1879,7 +1885,7 @@ async function extractVideoFrames(v, fps = 20, maxFrames = 80){
     ctx.drawImage(v, 0, 0);
     const bitmap = await createImageBitmap(tmp);
     out.push({ bitmap, duration: dt * 1000 });           // ms per frame
-    if (i % 4 === 0) setStatus(`extracting ${i+1}/${targetCount} frames…`);
+    if (i % 4 === 0) setStatus(`Extracting ${i+1}/${targetCount} frames…`);
   }
 
   v.currentTime = savedTime;
@@ -1898,10 +1904,10 @@ async function exportSvgAnimated(){
     bundle = await extractVideoFrames(video);
   }
   if (!bundle || !bundle.frames.length) {
-    setStatus(`animated SVG needs a video or GIF (current: ${mode})`);
+    setStatus(`Animated SVG needs a video or GIF (current: ${mode})`);
     return;
   }
-  setStatus('rendering animated SVG…');
+  setStatus('Rendering animated SVG…');
 
   const w = P.size, h = P.size;     // logical, matches the shader's cell grid
   const frames = bundle.frames;
@@ -1947,7 +1953,7 @@ async function exportSvgAnimated(){
 
   downloadBlob(svg, `dott-anim-${Date.now()}.svg`, 'image/svg+xml');
   const totalShapes = allShapes.reduce((s, a) => s + a.length, 0);
-  setStatus(`svg ↻ · ${frames.length} frames · ${totalShapes} shapes · ${(svg.length/1024).toFixed(1)} KB`);
+  setStatus(`SVG ↻ · ${frames.length} frames · ${totalShapes} shapes · ${(svg.length/1024).toFixed(1)} KB`);
   P.playing = wasPlaying;
   gifStartTime = performance.now();                 // restart loop cleanly
 }
@@ -2006,7 +2012,7 @@ function render(){
     const filename = pendingSnapshot;
     pendingSnapshot = null;
     displayCanvas.toBlob(b => {
-      if (!b) { setStatus('snapshot failed'); return; }
+      if (!b) { setStatus('Snapshot failed'); return; }
       const url = URL.createObjectURL(b);
       const a = document.createElement('a');
       a.href = url; a.download = filename; a.click();
