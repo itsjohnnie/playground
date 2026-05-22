@@ -618,7 +618,7 @@
        so the stage doesn't crowd the floating sheet. */
     #app {
       grid-template-columns: 1fr;
-      grid-template-rows: 1fr 76px;
+      grid-template-rows: 1fr 70px;        /* panel 58px + 12px bottom inset */
       height: 100vh;
       height: 100dvh;
     }
@@ -635,7 +635,7 @@
       left: 12px; right: 12px;
       bottom: calc(12px + env(safe-area-inset-bottom, 0px));   /* clear iPhone home indicator */
       margin: 0;
-      height: 64px;                                        /* fits the `dott` cap height with even visual top/bottom breathing room */
+      height: 58px;                                        /* h1 line-height (30px) + 14px top/bottom padding — fits content exactly */
       max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px));
       border-radius: 14px;
       box-shadow: none;                                    /* dark-on-darker halo isn't useful on mobile; the inset + border carries the card look */
