@@ -660,11 +660,9 @@
     }
     /* Without the tagline, the header simplifies to logo + icons. Horizontal
        padding matches `section` (18px each side) so the header reads as just
-       another panel block. The icon glyph optical inset (~7px inside a 30px
-       button) makes the right side look slightly looser than the left, which
-       is fine — visual consistency with the section padding wins. */
+       another panel block. Icon-button spacing inherits the desktop 6px gap —
+       comfortable for thumb taps and consistent with the rest of the UI. */
     #panel header .sub { display: none; }
-    #panel header .header-actions { gap: 2px; }
     #panel header { padding: 14px 18px; }
 
     /* When expanded, the mobile toggle's caret rotates to point down. */
