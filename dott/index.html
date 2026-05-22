@@ -216,7 +216,10 @@
     font: 500 11px/1 var(--font-sans);
     font-variant-numeric: tabular-nums;
     color: var(--text-muted);
-    background: rgba(0,0,0,.55);
+    /* Theme-aware translucent background — light frosted glass in light mode,
+       dark frosted glass in dark mode. Reusing --header-bg keeps the look
+       consistent with the panel header's translucent treatment. */
+    background: var(--header-bg);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     padding: 6px 10px;
@@ -485,6 +488,12 @@
     background: var(--panel-3);
   }
 
+  /* Phosphor icon glyphs — explicit color transition so the glyph re-rasterises
+     in sync with everything else during a theme toggle. iOS Safari is slow to
+     pick up the universal `theme-transitioning *` rule for icon-font glyphs;
+     attaching the transition directly skips that latency. */
+  .ph { transition: color 320ms cubic-bezier(.4, 0, .2, 1); }
+
   /* buttons */
   button {
     background: var(--panel-2); color: var(--text);
@@ -493,7 +502,7 @@
     border-radius: var(--r);
     font: 500 12px/1.2 inherit;
     cursor: pointer;
-    transition: background .12s, border-color .12s, transform .08s;
+    transition: background .12s, border-color .12s, transform .08s, color 320ms cubic-bezier(.4, 0, .2, 1);
     white-space: nowrap;
   }
   button:hover { background: var(--panel-3); border-color: var(--border-hi); }
@@ -649,14 +658,14 @@
     #panel:not(.mobile-expanded) header {
       border-bottom-color: transparent;
     }
-    /* Without the tagline, the header simplifies to logo + icons. Right
-       padding is reduced so the optical inset matches the left: icon
-       buttons have ~7px of empty space inside their box, so 14px – 7px
-       = 7px of CSS padding lands the rightmost glyph at the same visual
-       distance from the edge as the `dott` glyph on the left. */
+    /* Without the tagline, the header simplifies to logo + icons. Horizontal
+       padding matches `section` (18px each side) so the header reads as just
+       another panel block. The icon glyph optical inset (~7px inside a 30px
+       button) makes the right side look slightly looser than the left, which
+       is fine — visual consistency with the section padding wins. */
     #panel header .sub { display: none; }
     #panel header .header-actions { gap: 2px; }
-    #panel header { padding: 14px 7px 14px 14px; }
+    #panel header { padding: 14px 18px; }
 
     /* When expanded, the mobile toggle's caret rotates to point down. */
     #panel.mobile-expanded #mobileToggle i { transform: rotate(180deg); }
