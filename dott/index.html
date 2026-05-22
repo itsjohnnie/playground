@@ -1117,18 +1117,18 @@ void main(){
 
 /* ─────────────────────────── webgl plumbing ─────────────────────────── */
 const canvas = document.getElementById('gl');
-// Spec defaults for `alpha` and `premultipliedAlpha` are `true`, but on iOS Safari
-// the combination with `preserveDrawingBuffer: true` (which we need for PNG snapshots)
-// has historically rendered the canvas as opaque white when these aren't set
-// explicitly. Listing every attribute removes the ambiguity.
+// iOS Safari renders the canvas as an opaque white square when
+// `preserveDrawingBuffer: true` is set, regardless of the alpha attribute or
+// CSS background. The fix is to leave `preserveDrawingBuffer` at its default
+// (false) and capture PNG snapshots in the same frame as the draw — see
+// `pendingSnapshot` below.
 //
 // `premultipliedAlpha: false` so the shader's non-premultiplied output
-// (`vec4(u_fg, a)`) composites correctly without us having to multiply the colour
-// by `a` per fragment.
+// (`vec4(u_fg, a)`) composites correctly without us having to multiply the
+// colour by `a` per fragment.
 const gl = canvas.getContext('webgl', {
   alpha: true,
   premultipliedAlpha: false,
-  preserveDrawingBuffer: true,
   antialias: false,
 });
 if (!gl) { document.body.textContent = 'WebGL not available in this browser.'; throw new Error('no webgl'); }
@@ -1666,15 +1666,14 @@ window.addEventListener('keydown', e => {
 
 
 /* export */
+// PNG snapshots: with `preserveDrawingBuffer: false` (required for iOS Safari
+// transparency), the drawing buffer is invalidated as soon as the browser
+// composites. `toBlob` called outside the draw frame returns blank pixels.
+// The reliable fix: set a flag, then have the render loop call `toBlob` in the
+// same synchronous tick as the draw — before the buffer is presented.
+let pendingSnapshot = null;
 function snapshot(){
-  canvas.toBlob(b => {
-    const url = URL.createObjectURL(b);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `dott-${Date.now()}.png`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 0);     // browser already started the download
-  }, 'image/png');
+  pendingSnapshot = `dott-${Date.now()}.png`;
   setStatus('snapshot saved');
 }
 document.getElementById('snap').addEventListener('click', snapshot);
@@ -1983,6 +1982,22 @@ function render(){
 
   gl.clear(gl.COLOR_BUFFER_BIT);                       // clearColor set once at init below
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+  // Capture pending PNG snapshot while the framebuffer is still valid —
+  // toBlob is synchronous-capture / async-encode, so the encoded pixels are
+  // safe even after the browser composites and clears the buffer.
+  if (pendingSnapshot) {
+    const filename = pendingSnapshot;
+    pendingSnapshot = null;
+    canvas.toBlob(b => {
+      if (!b) { setStatus('snapshot failed'); return; }
+      const url = URL.createObjectURL(b);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }, 'image/png');
+  }
+
   requestAnimationFrame(render);
 }
 render();
