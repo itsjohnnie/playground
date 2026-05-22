@@ -9,6 +9,18 @@
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f5f5f3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)">
+<!-- Resolve the persisted theme override BEFORE the stylesheet evaluates so
+     the first paint matches the user's saved preference. Without this, a user
+     who saved 'light' but is on a dark-mode device gets a brief flash of dark
+     while JS later toggles the theme-light class. Mirrors the logic in
+     applyTheme()'s init path. -->
+<script>
+  try {
+    var t = localStorage.getItem('dott:theme');
+    if (t === 'dark') document.documentElement.classList.add('theme-dark');
+    else if (t === 'light') document.documentElement.classList.add('theme-light');
+  } catch (e) {}
+</script>
 <title>dott — halftone shader playground</title>
 <!-- Phosphor icons (regular outline weight) -->
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
@@ -225,6 +237,18 @@
     padding: 6px 10px;
     border-radius: var(--r);
     border: 1px solid var(--border);
+  }
+
+  /* Subtle entrance: the panel slides up 12px while fading in over 520ms on
+     page load. Same easing curve as everything else (cubic-bezier(.4, 0, .2, 1))
+     so it feels native, not bolted on. `prefers-reduced-motion` skips the
+     animation entirely. */
+  @keyframes panelEntrance {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    #panel { animation: panelEntrance 520ms cubic-bezier(.4, 0, .2, 1) both; }
   }
 
   /* side panel — floats inside its grid cell with a uniform margin, rounded corners,
