@@ -7,7 +7,7 @@
      so the safe-area chrome / address bar / form controls follow the active theme
      instead of locking to the system default. -->
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#ececea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#f5f5f3" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0a0a0c" media="(prefers-color-scheme: dark)">
 <title>dott — halftone shader playground</title>
 <!-- Phosphor icons (regular outline weight) -->
@@ -21,7 +21,7 @@
      automatically. The .theme-dark / .theme-light classes (set by the toggle button)
      force a mode regardless of system, with persistence via localStorage. */
   :root {
-    --surface:      #ececea;
+    --surface:      #f5f5f3;
     --panel:        #ffffff;
     --panel-2:      #f5f5f4;
     --panel-3:      #ececea;
@@ -863,8 +863,8 @@
       <div class="row toggle"><label>Transparent</label><input type="checkbox" id="transparent" checked></div>
       <div class="row color-pair">
         <label>Background</label>
-        <input type="text" class="hex-input" id="bgColorHex" value="#E8E8E8" maxlength="7" spellcheck="false" autocomplete="off">
-        <input type="color" id="bgColor" value="#e8e8e8">
+        <input type="text" class="hex-input" id="bgColorHex" value="#F5F5F3" maxlength="7" spellcheck="false" autocomplete="off">
+        <input type="color" id="bgColor" value="#f5f5f3">
       </div>
       <div class="row color-pair">
         <label>Foreground</label>
@@ -1340,7 +1340,7 @@ const P = {
   threshMode: 1, threshLevel: 1, threshSoft: 0,
   dotMode: 1, dotShape: 0, dotScale: 15, dotRadius: 0.2, dotEdge: 0, dotAngle: 0,
   maskShape: 0, maskSize: 0.9, maskFeather: 0.05,
-  bg: [0.91, 0.91, 0.91], fg: [0.06, 0.06, 0.06], transparent: 1,
+  bg: [0.961, 0.961, 0.953], fg: [0.06, 0.06, 0.06], transparent: 1,    // #f5f5f3 matches --surface
   size: 800, fit: 1 /* contain — only branch reachable */, sourceSize: 0.85,
   playing: true, theme: 'light',
   flipX: 0, facingLeft: false,
@@ -1611,7 +1611,7 @@ function applyTheme(theme, opts = {}){
   if (opts.persist) localStorage.setItem(THEME_STORAGE_KEY, theme);
 
   const targetFgHex = theme === 'dark' ? '#fafafa' : '#101010';
-  const targetBgHex = theme === 'dark' ? '#0a0a0c' : '#e8e8e8';
+  const targetBgHex = theme === 'dark' ? '#0a0a0c' : '#f5f5f3';
   const targetFg = hexToRgb(targetFgHex);
   const targetBg = hexToRgb(targetBgHex);
   const fromFg = [P.fg[0], P.fg[1], P.fg[2]];
