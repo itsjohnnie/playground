@@ -618,7 +618,7 @@
        so the stage doesn't crowd the floating sheet. */
     #app {
       grid-template-columns: 1fr;
-      grid-template-rows: 1fr 68px;
+      grid-template-rows: 1fr 76px;
       height: 100vh;
       height: 100dvh;
     }
@@ -635,7 +635,7 @@
       left: 12px; right: 12px;
       bottom: calc(12px + env(safe-area-inset-bottom, 0px));   /* clear iPhone home indicator */
       margin: 0;
-      height: 56px;                                        /* drag-handle + logo + tight 14px padding (no tagline) */
+      height: 64px;                                        /* fits the `dott` cap height with even visual top/bottom breathing room */
       max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px));
       border-radius: 14px;
       box-shadow: none;                                    /* dark-on-darker halo isn't useful on mobile; the inset + border carries the card look */
@@ -1116,19 +1116,28 @@ void main(){
 }`;
 
 /* ─────────────────────────── webgl plumbing ─────────────────────────── */
-const canvas = document.getElementById('gl');
-// iOS Safari renders the canvas as an opaque white square when
-// `preserveDrawingBuffer: true` is set, regardless of the alpha attribute or
-// CSS background. The fix is to leave `preserveDrawingBuffer` at its default
-// (false) and capture PNG snapshots in the same frame as the draw — see
-// `pendingSnapshot` below.
+// iOS Safari has a long-standing bug where a visible WebGL canvas renders as
+// an opaque white square regardless of context attributes, CSS background,
+// or clear color. The reliable workaround is to render WebGL to an offscreen
+// canvas, then copy it into a visible 2D canvas each frame — 2D canvases
+// respect alpha properly everywhere, including iOS.
 //
+// `displayCanvas` (id="gl") is the visible 2D output that users see.
+// `glCanvas` is an in-memory WebGL surface that does the actual rendering.
+const displayCanvas = document.getElementById('gl');
+const display2d = displayCanvas.getContext('2d');
+const glCanvas = document.createElement('canvas');
+glCanvas.width = displayCanvas.width;
+glCanvas.height = displayCanvas.height;
 // `premultipliedAlpha: false` so the shader's non-premultiplied output
 // (`vec4(u_fg, a)`) composites correctly without us having to multiply the
-// colour by `a` per fragment.
-const gl = canvas.getContext('webgl', {
+// colour by `a` per fragment. `preserveDrawingBuffer: true` is safe here
+// because the WebGL canvas isn't displayed — iOS Safari's opaque-when-preserved
+// bug only affects visible canvases, not offscreen ones used as image sources.
+const gl = glCanvas.getContext('webgl', {
   alpha: true,
   premultipliedAlpha: false,
+  preserveDrawingBuffer: true,
   antialias: false,
 });
 if (!gl) { document.body.textContent = 'WebGL not available in this browser.'; throw new Error('no webgl'); }
@@ -1415,8 +1424,12 @@ bindRange('sourceSize', 'sourceSize');
 function resizeCanvas(){
   const w = P.size;
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = w * dpr; canvas.height = w * dpr;
-  gl.viewport(0, 0, canvas.width, canvas.height);
+  const px = w * dpr;
+  // Both canvases stay in lockstep — the visible 2D canvas matches the
+  // offscreen WebGL canvas pixel-for-pixel so `drawImage` is a 1:1 copy.
+  displayCanvas.width = px; displayCanvas.height = px;
+  glCanvas.width = px; glCanvas.height = px;
+  gl.viewport(0, 0, px, px);
 }
 resizeCanvas();
 
@@ -1983,13 +1996,18 @@ function render(){
   gl.clear(gl.COLOR_BUFFER_BIT);                       // clearColor set once at init below
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-  // Capture pending PNG snapshot while the framebuffer is still valid —
-  // toBlob is synchronous-capture / async-encode, so the encoded pixels are
-  // safe even after the browser composites and clears the buffer.
+  // Copy the WebGL output into the visible 2D canvas. iOS Safari renders
+  // visible WebGL canvases as opaque white; this indirection sidesteps that
+  // entirely because 2D canvases respect alpha correctly on every platform.
+  display2d.clearRect(0, 0, displayCanvas.width, displayCanvas.height);
+  display2d.drawImage(glCanvas, 0, 0);
+
+  // Capture pending PNG snapshot from the visible 2D canvas. The 2D canvas
+  // is what the user sees, so its pixels are the source of truth.
   if (pendingSnapshot) {
     const filename = pendingSnapshot;
     pendingSnapshot = null;
-    canvas.toBlob(b => {
+    displayCanvas.toBlob(b => {
       if (!b) { setStatus('snapshot failed'); return; }
       const url = URL.createObjectURL(b);
       const a = document.createElement('a');
