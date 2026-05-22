@@ -1490,6 +1490,9 @@ function resolveFlip(demoName){
 // handler and the initial-load path (which restores the user's last choice from
 // localStorage so refresh keeps the same animal on screen).
 const DEMO_STORAGE_KEY = 'dott:lastDemo';
+// Bumped on every load so a slow-arriving `loadeddata` event from a prior
+// load can't apply its flip after the user has already moved on to another demo.
+let demoLoadToken = 0;
 function loadDemo(name){
   if (!name) return;
   setBlobUrl('video', null);                            // demo URLs are normal URLs, not blobs
@@ -1498,7 +1501,15 @@ function loadDemo(name){
   if (P.playing) video.play().catch(()=>{});             // honour the paused-by-default reduced-motion path
   mode = 'video';
   disposeGifFrames();
-  resolveFlip(name);
+
+  // Defer flip application until the new video's first frame is ready.
+  // Otherwise P.flipX flips on the *current* (still-visible) frame for a few
+  // milliseconds before the new source arrives, producing a brief glitch
+  // where the outgoing animal mirrors itself.
+  const token = ++demoLoadToken;
+  const apply = () => { if (token === demoLoadToken) resolveFlip(name); };
+  video.addEventListener('loadeddata', apply, { once: true });
+
   setStatus(name.charAt(0).toUpperCase() + name.slice(1));
   try { localStorage.setItem(DEMO_STORAGE_KEY, name); } catch {}
   const sel = document.getElementById('demoSelect');
@@ -1594,34 +1605,46 @@ function applyTheme(theme, opts = {}){
     document.documentElement.classList.remove('theme-transitioning');
   }, THEME_DUR + 60);
 
-  document.documentElement.classList.toggle('theme-dark', theme === 'dark');
-  document.documentElement.classList.toggle('theme-light', theme === 'light');
   if (opts.persist) localStorage.setItem(THEME_STORAGE_KEY, theme);
 
-  // Animate the WebGL fg/bg colours to match the canvas surface.
   const targetFgHex = theme === 'dark' ? '#fafafa' : '#101010';
   const targetBgHex = theme === 'dark' ? '#0a0a0c' : '#e8e8e8';
   const targetFg = hexToRgb(targetFgHex);
   const targetBg = hexToRgb(targetBgHex);
   const fromFg = [P.fg[0], P.fg[1], P.fg[2]];
   const fromBg = [P.bg[0], P.bg[1], P.bg[2]];
-  const start = performance.now();
   const myId = ++themeAnimId;
-  function tick(now){
-    if (myId !== themeAnimId) return;
-    const u = Math.min(1, (now - start) / THEME_DUR);
-    const e = themeEase(u);
-    P.fg = [fromFg[0] + (targetFg[0]-fromFg[0])*e, fromFg[1] + (targetFg[1]-fromFg[1])*e, fromFg[2] + (targetFg[2]-fromFg[2])*e];
-    P.bg = [fromBg[0] + (targetBg[0]-fromBg[0])*e, fromBg[1] + (targetBg[1]-fromBg[1])*e, fromBg[2] + (targetBg[2]-fromBg[2])*e];
-    if (u < 1) requestAnimationFrame(tick);
-    else {
-      document.getElementById('fgColor').value = targetFgHex;
-      document.getElementById('bgColor').value = targetBgHex;
-      document.getElementById('fgColorHex').value = targetFgHex.toUpperCase();
-      document.getElementById('bgColorHex').value = targetBgHex.toUpperCase();
+
+  // Defer the CSS variable swap *and* the JS colour tween to the next frame.
+  // This ensures the universal `theme-transitioning *` transition rule is
+  // committed to the style system before the variables change — otherwise
+  // body's own `transition: background` rule picks up the var change first
+  // (since it's a direct rule) and the rest of the UI lags behind. Starting
+  // both CSS classes and the JS tween in the same rAF callback keeps every
+  // surface in lockstep.
+  requestAnimationFrame(now => {
+    document.documentElement.classList.toggle('theme-dark', theme === 'dark');
+    document.documentElement.classList.toggle('theme-light', theme === 'light');
+
+    const start = now;
+    function tick(t){
+      if (myId !== themeAnimId) return;
+      const u = Math.min(1, (t - start) / THEME_DUR);
+      const e = themeEase(u);
+      P.fg = [fromFg[0] + (targetFg[0]-fromFg[0])*e, fromFg[1] + (targetFg[1]-fromFg[1])*e, fromFg[2] + (targetFg[2]-fromFg[2])*e];
+      P.bg = [fromBg[0] + (targetBg[0]-fromBg[0])*e, fromBg[1] + (targetBg[1]-fromBg[1])*e, fromBg[2] + (targetBg[2]-fromBg[2])*e];
+      if (u < 1) requestAnimationFrame(tick);
+      else _tweenSettled();
     }
+    tick(start);
+  });
+
+  function _tweenSettled(){
+    document.getElementById('fgColor').value = targetFgHex;
+    document.getElementById('bgColor').value = targetBgHex;
+    document.getElementById('fgColorHex').value = targetFgHex.toUpperCase();
+    document.getElementById('bgColorHex').value = targetBgHex.toUpperCase();
   }
-  requestAnimationFrame(tick);
 
   document.querySelector('#themeBtn i').className = theme === 'dark' ? 'ph ph-sun' : 'ph ph-moon';
 }
