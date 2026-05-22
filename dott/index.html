@@ -1108,7 +1108,20 @@ void main(){
 
 /* ─────────────────────────── webgl plumbing ─────────────────────────── */
 const canvas = document.getElementById('gl');
-const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, antialias: false });
+// Spec defaults for `alpha` and `premultipliedAlpha` are `true`, but on iOS Safari
+// the combination with `preserveDrawingBuffer: true` (which we need for PNG snapshots)
+// has historically rendered the canvas as opaque white when these aren't set
+// explicitly. Listing every attribute removes the ambiguity.
+//
+// `premultipliedAlpha: false` so the shader's non-premultiplied output
+// (`vec4(u_fg, a)`) composites correctly without us having to multiply the colour
+// by `a` per fragment.
+const gl = canvas.getContext('webgl', {
+  alpha: true,
+  premultipliedAlpha: false,
+  preserveDrawingBuffer: true,
+  antialias: false,
+});
 if (!gl) { document.body.textContent = 'WebGL not available in this browser.'; throw new Error('no webgl'); }
 
 function compile(src, type){
