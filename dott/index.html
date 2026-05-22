@@ -121,7 +121,7 @@
   .mobile-only { display: none; }
 
   /* layout */
-  #app { display: grid; grid-template-columns: 1fr 340px; height: 100vh; overflow: hidden; }
+  #app { display: grid; grid-template-columns: 1fr 360px; height: 100vh; overflow: hidden; }
   /* The stage and canvas surfaces are driven by --surface. Toggling theme-dark / theme-light on <html>
      swaps both surfaces to dark — independent of OS color scheme. */
   /* Stage = the only visible surface. The canvas is transparent and edge-less so the
@@ -271,6 +271,16 @@
     z-index: 2;
     border-top-left-radius: 14px;        /* honour panel's rounded corners when scrolled */
     border-top-right-radius: 14px;
+  }
+  /* Right-side icon cluster. Explicit flex + nowrap so the buttons can never
+     wrap to a second row even if the panel column gets tight or fonts load
+     in a wider fallback before swapping. */
+  #panel header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
   }
   #panel header h1 {
     margin: 0;
