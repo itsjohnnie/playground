@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>dott — halftone shader playground</title>
+<!-- Phosphor icons (regular outline weight) -->
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<!-- Google Sans Flex (variable font: opsz, wdth, wght) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wdth,wght@6..144,25..151,1..1000&display=swap" rel="stylesheet">
+<style>
+  /* Light theme is the default. @media (prefers-color-scheme: dark) flips to dark
+     automatically. The .theme-dark / .theme-light classes (set by the toggle button)
+     force a mode regardless of system, with persistence via localStorage. */
+  :root {
+    --surface:      #ececea;
+    --panel:        #ffffff;
+    --panel-2:      #f5f5f4;
+    --panel-3:      #ececea;
+    --border:       #d4d4d2;
+    --border-hi:    #b3b3b0;
+    --text:         #18181b;
+    --text-muted:   #52525b;
+    --text-dim:     #8a8a8d;
+    --header-bg:    rgba(255,255,255,.82);
+    --accent:       #2563eb;
+    --accent-2:     #1d4ed8;
+    --danger:       #dc2626;
+    --shadow:       0 8px 28px rgba(0,0,0,.10), 0 1px 3px rgba(0,0,0,.06);
+    --r:            6px;
+    --r-lg:         10px;
+    --font-sans:    "Google Sans Flex", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not(.theme-light) {
+      --surface:      #0a0a0c;
+      --panel:        #111114;
+      --panel-2:      #18181c;
+      --panel-3:      #1f1f24;
+      --border:       #26262c;
+      --border-hi:    #34343c;
+      --text:         #fafafa;
+      --text-muted:   #a1a1aa;
+      --text-dim:     #71717a;
+      --header-bg:    rgba(17,17,20,.85);
+      --accent:       #3b82f6;
+      --accent-2:     #60a5fa;
+      --danger:       #ef4444;
+      --shadow:       0 8px 28px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.30);
+    }
+  }
+  html.theme-dark {
+    --surface:      #0a0a0c;
+    --panel:        #111114;
+    --panel-2:      #18181c;
+    --panel-3:      #1f1f24;
+    --border:       #26262c;
+    --border-hi:    #34343c;
+    --text:         #fafafa;
+    --text-muted:   #a1a1aa;
+    --text-dim:     #71717a;
+    --header-bg:    rgba(17,17,20,.85);
+    --accent:       #60a5fa;
+    --accent-2:     #93c5fd;
+    --danger:       #ef4444;
+    --shadow:       0 8px 28px rgba(0,0,0,.45), 0 1px 3px rgba(0,0,0,.30);
+  }
+  /* Tighten the variable axes for UI sizes — opsz tuned for small text, modest wdth. */
+  html { font-feature-settings: "tnum" 1; font-variation-settings: "opsz" 14, "wdth" 100; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--surface); color: var(--text);
+    font: 13px/1.5 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -.005em;
+    transition: background 320ms cubic-bezier(.4, 0, .2, 1);  /* matches #stage and the JS color tween */
+  }
+  /* --surface unifies the body/stage colour so the panel appears to float on the
+     same canvas surface. Now driven by the theme variables above. */
+
+  /* When the theme toggle fires, every element on the page cross-fades its
+     colour-related properties together — same duration, same easing as the JS
+     WebGL colour tween and the body/stage/panel CSS transitions. The class is
+     added by applyTheme() and removed after THEME_DUR ms so normal interactions
+     (hover, focus, etc.) stay snappy outside the toggle window. */
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition:
+      background-color 320ms cubic-bezier(.4, 0, .2, 1),
+      background       320ms cubic-bezier(.4, 0, .2, 1),
+      color            320ms cubic-bezier(.4, 0, .2, 1),
+      border-color     320ms cubic-bezier(.4, 0, .2, 1),
+      box-shadow       320ms cubic-bezier(.4, 0, .2, 1),
+      fill             320ms cubic-bezier(.4, 0, .2, 1),
+      stroke           320ms cubic-bezier(.4, 0, .2, 1)
+      !important;
+  }
+  /* Vendor pseudo-elements aren't matched by `*`, so we re-declare the same
+     synced transition explicitly. Without these, range thumbs, the file
+     upload button, and the scrollbar thumb snap instantly while everything
+     around them fades. */
+  html.theme-transitioning input[type="range"]::-webkit-slider-thumb,
+  html.theme-transitioning input[type="range"]::-moz-range-thumb,
+  html.theme-transitioning input[type="file"]::-webkit-file-upload-button,
+  html.theme-transitioning input[type="file"]::file-selector-button,
+  html.theme-transitioning #panel::-webkit-scrollbar-thumb {
+    transition:
+      background-color 320ms cubic-bezier(.4, 0, .2, 1),
+      background       320ms cubic-bezier(.4, 0, .2, 1),
+      color            320ms cubic-bezier(.4, 0, .2, 1),
+      border-color     320ms cubic-bezier(.4, 0, .2, 1)
+      !important;
+  }
+
+  /* `.mobile-only` is hidden on desktop and revealed by the mobile @media block below. */
+  .mobile-only { display: none; }
+
+  /* layout */
+  #app { display: grid; grid-template-columns: 1fr 340px; height: 100vh; overflow: hidden; }
+  /* The stage and canvas surfaces are driven by --surface. Toggling theme-dark / theme-light on <html>
+     swaps both surfaces to dark — independent of OS color scheme. */
+  /* Stage = the only visible surface. The canvas is transparent and edge-less so the
+     dots appear to float on an endless plane — but the canvas pixel dimensions are
+     unchanged, so PNG/SVG exports still come out 1:1. */
+  #stage {
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    background: var(--surface);                /* shares colour with body so panel gap blends seamlessly */
+    color-scheme: light;
+    transition: background 320ms cubic-bezier(.4, 0, .2, 1);
+  }
+  #gl {
+    max-width: calc(100% - 48px); max-height: calc(100% - 48px);
+    image-rendering: auto;                   /* smooth scaling — combined with shader AA, dots stay round */
+    background: transparent;                 /* canvas blends into the stage */
+    border-radius: 0;
+    opacity: 0;                              /* hidden until the first real frame lands */
+    transition: opacity 600ms cubic-bezier(.4, 0, .2, 1);
+  }
+  body.ready #gl { opacity: 1; }
+
+  /* file:// warning — under file:// each URL is its own opaque origin in Chrome,
+     so drawImage(video) taints the canvas and WebGL refuses to read it. Show a
+     blocking banner that points at serve.command. */
+  #file-warn {
+    display: none;
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 100;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    color: var(--text);
+    padding: 28px 32px;
+    max-width: 480px;
+    flex-direction: column;
+    gap: 14px;
+  }
+  body.file-protocol #file-warn { display: flex; }
+  body.file-protocol #app { filter: blur(4px); pointer-events: none; }
+  #file-warn h2 { margin: 0; font: 600 16px/1.3 var(--font-sans); }
+  #file-warn p { margin: 0; color: var(--text-muted); font-size: 13px; line-height: 1.55; }
+  #file-warn code {
+    display: inline-block;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 9px;
+    font: 500 12px/1.4 var(--font-sans);
+    color: var(--text);
+  }
+
+  html.theme-dark #stage { color-scheme: dark; }
+  @media (prefers-color-scheme: dark) {
+    html:not(.theme-light) #stage { color-scheme: dark; }
+  }
+  #drophint {
+    position: absolute; inset: 24px;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(37,99,235,.08);
+    border: 2px dashed #2563eb;
+    color: #1d4ed8;
+    border-radius: var(--r-lg);
+    font-weight: 500;
+    pointer-events: none;
+  }
+  #stage.drag #drophint { display: flex; }
+  #status {
+    position: absolute; bottom: 14px; left: 14px;
+    font: 500 11px/1 var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 6px 10px;
+    border-radius: var(--r);
+    border: 1px solid var(--border);
+  }
+
+  /* side panel — floats inside its grid cell with a uniform margin, rounded corners,
+     and a soft shadow so it reads as a card rather than a wall fastened to the edge. */
+  #panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    margin: 12px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-hi) transparent;
+    transition: background 320ms cubic-bezier(.4, 0, .2, 1), border-color 320ms cubic-bezier(.4, 0, .2, 1);
+  }
+  #panel::-webkit-scrollbar { width: 8px; }
+  #panel::-webkit-scrollbar-track { background: transparent; }
+  #panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  #panel::-webkit-scrollbar-thumb:hover { background: var(--border-hi); }
+
+  /* Scroll affordances. ::after is sticky to the panel's viewport bottom and shows
+     when there's more content below; the header's ::after sits just below the (also
+     sticky) header and shows when content has been scrolled up out of view. JS
+     toggles the `not-at-top` / `not-at-bot` classes from the scroll handler. */
+  #panel::after {
+    content: '';
+    display: block;
+    position: sticky;
+    bottom: 0; left: 0;
+    width: 100%; height: 36px;
+    margin-top: -36px;
+    pointer-events: none;
+    z-index: 1;
+    color: var(--panel);                                   /* drives the gradient — transitions smoothly with theme */
+    background: linear-gradient(to top, currentColor, transparent);
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+    opacity: 0;
+    transition: opacity 180ms ease;
+  }
+  #panel.not-at-bot::after { opacity: 1; }
+
+  #panel header { position: sticky; }     /* (already sticky, restating to make ::after below well-anchored) */
+  #panel header::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    top: 100%;
+    height: 28px;
+    pointer-events: none;
+    color: var(--header-bg);
+    background: linear-gradient(to bottom, currentColor, transparent);
+    opacity: 0;
+    transition: opacity 180ms ease;
+  }
+  #panel.not-at-top header::after { opacity: 1; }
+
+  #panel header {
+    padding: 12px 18px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0;
+    background: var(--header-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 2;
+    border-top-left-radius: 14px;        /* honour panel's rounded corners when scrolled */
+    border-top-right-radius: 14px;
+  }
+  #panel header h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -.025em;
+  }
+  /* Pull the second `t` closer to the first so the double-t reads as one ligature-like form. */
+  #panel header h1 .tt { margin-left: -.05em; }
+  #panel header .sub { color: var(--text-dim); font-size: 11px; margin-top: 1px; }
+
+  section { border-bottom: 1px solid var(--border); padding: 20px 18px 10px; }
+  section:last-child { border-bottom: none; }
+  section h2 {
+    font: 600 10px/1 var(--font-sans);
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--text-dim);
+    margin: 0 0 12px;
+  }
+
+  /* rows */
+  .row {
+    display: grid;
+    grid-template-columns: 78px 1fr 44px;
+    gap: 10px;
+    align-items: center;
+    margin: 8px 0;
+    min-height: 26px;
+  }
+  .row.toggle { grid-template-columns: 1fr auto; }
+  /* Rows that contain a select, a full-width ghost button, or a color picker
+     don't need the reserved value column — span across cols 2–3 and hide the
+     (empty) .val placeholder. Sliders keep the value column. */
+  .row:has(> select),
+  .row:has(> button.ghost),
+  .row:has(> input[type="color"]):not(.color-pair) { grid-template-columns: 78px 1fr; }
+  .row:has(> select) > .val,
+  .row:has(> button.ghost) > .val,
+  .row:has(> input[type="color"]):not(.color-pair) > .val { display: none; }
+  /* Color rows pair a hex text input with the native swatch picker, side by side. */
+  .row.color-pair { grid-template-columns: 78px 1fr 32px; column-gap: 8px; }
+  .hex-input {
+    width: 100%; min-width: 0;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 6px 10px;
+    font: 500 12px/1.2 var(--font-sans);
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    font-variant-numeric: tabular-nums;
+    transition: border-color .12s;
+  }
+  .hex-input:hover { border-color: var(--border-hi); }
+  .hex-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .hex-input.invalid { border-color: var(--danger); }
+  .row.color-pair input[type="color"] { width: 32px; height: 28px; padding: 2px; }
+  .row label {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 400;
+  }
+  .row .val {
+    color: var(--text);
+    font: 500 11px/1 var(--font-sans);
+    text-align: right;
+    letter-spacing: -.005em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* sliders */
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px;
+    background: var(--panel-3);
+    border-radius: 999px;
+    outline: none; cursor: pointer;
+    margin: 0;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    border: 1px solid var(--border-hi);
+    box-shadow: 0 1px 2px rgba(0,0,0,.4);
+    cursor: grab;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.18);
+    box-shadow: 0 0 0 6px rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.4);
+  }
+  input[type="range"]::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.08); }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--text);
+    border: 1px solid var(--border-hi);
+    cursor: grab;
+  }
+
+  /* selects */
+  select {
+    -webkit-appearance: none; appearance: none;
+    width: 100%;
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 6px 28px 6px 10px;
+    border-radius: var(--r);
+    font: 12px/1.2 inherit;
+    cursor: pointer;
+    transition: border-color .12s, background .12s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 9px center;
+  }
+  select:hover { border-color: var(--border-hi); background-color: var(--panel-3); }
+  select:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  /* color picker */
+  input[type="color"] {
+    width: 100%; height: 26px; padding: 2px;
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    border-radius: var(--r);
+    cursor: pointer;
+  }
+  input[type="color"]::-webkit-color-swatch { border-radius: 3px; border: none; }
+  input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type="color"]::-moz-color-swatch { border-radius: 3px; border: none; }
+
+  /* toggles — every checkbox becomes an iOS-style switch */
+  input[type="checkbox"] {
+    -webkit-appearance: none; appearance: none;
+    position: relative;
+    width: 32px; height: 18px;
+    background: var(--panel-3);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease;
+    flex-shrink: 0;
+    margin: 0;
+  }
+  input[type="checkbox"]::after {
+    content: '';
+    position: absolute;
+    top: 1px; left: 1px;
+    width: 14px; height: 14px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    transition: transform .15s ease, background .15s ease;
+  }
+  input[type="checkbox"]:hover { border-color: var(--border-hi); }
+  input[type="checkbox"]:checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  input[type="checkbox"]:checked::after {
+    transform: translateX(14px);
+    background: #fff;
+  }
+  input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* file input */
+  input[type="file"] { width: 100%; color: var(--text-muted); font-size: 11px; }
+  input[type="file"]::file-selector-button,
+  input[type="file"]::-webkit-file-upload-button {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border);
+    padding: 5px 10px; border-radius: var(--r);
+    font: inherit; cursor: pointer;
+    margin-right: 8px;
+    transition: border-color .12s, background .12s;
+  }
+  input[type="file"]::file-selector-button:hover,
+  input[type="file"]::-webkit-file-upload-button:hover {
+    border-color: var(--border-hi);
+    background: var(--panel-3);
+  }
+
+  /* buttons */
+  button {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: var(--r);
+    font: 500 12px/1.2 inherit;
+    cursor: pointer;
+    transition: background .12s, border-color .12s, transform .08s;
+    white-space: nowrap;
+  }
+  button:hover { background: var(--panel-3); border-color: var(--border-hi); }
+  button:active { transform: scale(.97); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.primary {
+    background: var(--text); color: var(--surface);
+    border-color: var(--text); font-weight: 600;
+  }
+  button.primary:hover { filter: brightness(1.1); }
+  button.icon {
+    width: 30px; height: 30px;
+    padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  /* Phosphor icons inside buttons. Icon-only buttons (.icon) drop the trailing
+     gap to keep the glyph perfectly centred; text buttons get a small gutter. */
+  button.icon i { font-size: 16px; line-height: 1; }
+  button:not(.icon) i.ph { font-size: 14px; line-height: 1; margin-right: 6px; vertical-align: -1px; }
+
+  .btnrow { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btnrow button { flex: 1; min-width: 70px; padding: 6px 8px; }
+  /* Used inside .row to slot a button into column 2 — matches select height/width.
+     min-width:0 lets the button shrink rather than overflow if the label is long. */
+  button.ghost {
+    width: 100%; min-width: 0;
+    justify-content: flex-start;
+    display: inline-flex; align-items: center; gap: 6px;
+    overflow: hidden;
+  }
+  button.ghost span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* hints + about */
+  .hint { color: var(--text-dim); font-size: 11px; margin-top: 10px; line-height: 1.7; }
+  kbd {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font: 500 10px/1.4 var(--font-sans);
+    color: var(--text-muted);
+  }
+  details {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+  details summary {
+    cursor: pointer;
+    padding: 4px 0;
+    color: var(--text-dim);
+    user-select: none;
+    list-style: none;
+    display: flex; align-items: center; gap: 6px;
+    font-weight: 500;
+  }
+  details summary::before {
+    content: '›';
+    display: inline-block;
+    font-size: 14px; line-height: 1;
+    transition: transform .15s ease;
+    color: var(--text-dim);
+  }
+  details[open] summary::before { transform: rotate(90deg); }
+  details summary::-webkit-details-marker { display: none; }
+  details p { margin: 10px 0; line-height: 1.6; color: var(--text-muted); }
+  details code {
+    background: var(--panel-2);
+    padding: 1px 5px; border-radius: 3px;
+    font: 500 10.5px/1.4 var(--font-sans);
+    color: var(--text);
+  }
+  details b { color: var(--text); font-weight: 600; }
+  details .info {
+    margin: 14px 0;
+  }
+  details .info dt {
+    font: 600 10px/1.4 var(--font-sans);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--text-dim);
+    margin: 0 0 6px;
+  }
+  details .info dd {
+    margin: 4px 0;
+    line-height: 1.55;
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  details .info dd kbd { margin-right: 4px; }
+  details .credit {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 10.5px;
+    color: var(--text-dim);
+    letter-spacing: .01em;
+  }
+
+  /* ─── Mobile (≤720px) ─────────────────────────────────────────────────
+     The panel becomes a bottom sheet. Collapsed: a slim bar showing the
+     logo + tagline + an expand caret. Tapping anywhere on that bar (or the
+     caret) slides the sheet up to fill the viewport, scrollable internally
+     for the full control set. The stage occupies the area above. */
+  @media (max-width: 720px) {
+    .mobile-only { display: inline-flex; }
+
+    /* Single-column layout; stage on top, panel anchored to bottom. Use
+       `dvh` where supported so the bottom sheet doesn't jump when the
+       browser's URL bar shows/hides. Reserve panel-height + bottom inset
+       so the stage doesn't crowd the floating sheet. */
+    #app {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr 68px;
+      height: 100vh;
+      height: 100dvh;
+    }
+
+    #stage { min-height: 0; cursor: pointer; }             /* let the row collapse so the panel keeps its 64px; tap-to-cycle */
+    #gl { max-width: calc(100% - 24px); max-height: calc(100% - 24px); }
+
+    /* Panel: a floating card pinned to the bottom — the same 12px inset and
+       full 14px corner radius as desktop, just dropped to the bottom edge.
+       Morphs between 64px tall (collapsed, header only) and almost the full
+       viewport (expanded — top/bottom margin preserved). */
+    #panel {
+      position: fixed;
+      left: 12px; right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px));   /* clear iPhone home indicator */
+      margin: 0;
+      height: 56px;                                        /* drag-handle + logo + tight 14px padding (no tagline) */
+      max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px));
+      border-radius: 14px;
+      box-shadow: none;                                    /* dark-on-darker halo isn't useful on mobile; the inset + border carries the card look */
+      overflow: hidden;                                    /* lock scroll until expanded */
+      transition:
+        height 360ms cubic-bezier(.4, 0, .2, 1),
+        background 320ms cubic-bezier(.4, 0, .2, 1),
+        border-color 320ms cubic-bezier(.4, 0, .2, 1);
+      z-index: 5;
+    }
+    #panel.mobile-expanded {
+      height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px));
+      overflow-y: auto;                                    /* content scrolls inside */
+    }
+
+    /* In the collapsed state, the header is the sheet — the rest of the
+       panel is clipped. Play / flip / theme stay visible so the most-used
+       controls are always one tap away even with the sheet collapsed.
+       Only the caret button expands; the rest of the bar is non-interactive. */
+    #panel:not(.mobile-expanded) header {
+      border-bottom-color: transparent;
+    }
+    /* Without the tagline, the header simplifies to logo + icons. Right
+       padding is reduced so the optical inset matches the left: icon
+       buttons have ~7px of empty space inside their box, so 14px – 7px
+       = 7px of CSS padding lands the rightmost glyph at the same visual
+       distance from the edge as the `dott` glyph on the left. */
+    #panel header .sub { display: none; }
+    #panel header .header-actions { gap: 2px; }
+    #panel header { padding: 14px 7px 14px 14px; }
+
+    /* When expanded, the mobile toggle's caret rotates to point down. */
+    #panel.mobile-expanded #mobileToggle i { transform: rotate(180deg); }
+    #mobileToggle i { transition: transform 360ms cubic-bezier(.4, 0, .2, 1); }
+
+    /* Drag-handle pill removed — the caret button is the sole expand
+       affordance, and the pill suggested drag-to-collapse which isn't wired. */
+    #panel header::before { display: none; }
+
+    /* Hide the scrollbar — both engines — while keeping scroll behavior.
+       The bottom-fade gradient (kept enabled below) already signals there's
+       more content; a visible scrollbar fights the floating-card look. */
+    #panel { scrollbar-width: none; -ms-overflow-style: none; }
+    #panel::-webkit-scrollbar { display: none; }
+
+    /* Position the bottom-fade gradient as `position: fixed` on mobile.
+       `position: sticky; bottom: 0` is unreliable inside a fixed container
+       with rounded corners on some mobile WebKit builds — the gradient
+       simply doesn't render. Pinning it to the panel's bottom edge with
+       `position: fixed` gives the same visual without that dependency. */
+    #panel::after {
+      position: fixed;
+      left: 12px; right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      top: auto;
+      margin: 0;
+      width: auto;
+      z-index: 6;                                          /* above the panel's content (panel is z-index 5) */
+    }
+    /* Suppress the bottom-fade when collapsed — there's nothing to scroll
+       through, so the affordance is misleading. Only the expanded sheet
+       shows it. */
+    #panel:not(.mobile-expanded)::after { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="file-warn">
+  <h2>Open via the local server</h2>
+  <p>Chrome treats every <code>file://</code> URL as a separate origin, which blocks the playground from drawing video frames into the canvas. Run the bundled launcher and reload from <code>http://localhost</code>.</p>
+  <p>In Finder, double-click <code>serve.command</code> in the project folder. A browser tab will open automatically.</p>
+</div>
+<div id="app">
+  <div id="stage">
+    <canvas id="gl" width="800" height="800"></canvas>
+    <div id="drophint">Drop video, GIF, or image</div>
+    <div id="status">ready</div>
+  </div>
+
+  <aside id="panel">
+    <header>
+      <div>
+        <h1>dot<span class="tt">t</span></h1>
+        <div class="sub">halftone shader playground</div>
+      </div>
+      <div class="header-actions">
+        <button id="play" class="icon" title="Play / pause (space)"><i class="ph ph-pause"></i></button>
+        <button id="flipBtn" class="icon" title="Flip horizontally (face left / right)"><i class="ph ph-arrows-horizontal"></i></button>
+        <button id="themeBtn" class="icon" title="Toggle light / dark canvas"><i class="ph ph-moon"></i></button>
+        <button id="mobileToggle" class="icon mobile-only" title="Expand controls" aria-expanded="false"><i class="ph ph-caret-up"></i></button>
+      </div>
+    </header>
+
+    <section>
+      <h2>source</h2>
+      <div class="row">
+        <label>Demo</label>
+        <select id="demoSelect">
+          <option value="" disabled>Choose…</option>
+          <option value="ant">Ant</option>
+          <option value="astronaut">Astronaut</option>
+          <option value="bear" selected>Bear</option>
+          <option value="butterfly">Butterfly</option>
+          <option value="cat">Cat</option>
+          <option value="cowboy">Cowboy</option>
+          <option value="deer">Deer</option>
+          <option value="dog">Dog</option>
+          <option value="eagle">Eagle</option>
+          <option value="frog">Frog</option>
+          <option value="gorilla">Gorilla</option>
+          <option value="horse">Horse</option>
+          <option value="human">Human</option>
+          <option value="jellyfish">Jellyfish</option>
+          <option value="kangaroo">Kangaroo</option>
+          <option value="kid">Kid</option>
+          <option value="lion">Lion</option>
+          <option value="monkey">Monkey</option>
+          <option value="rabbit">Rabbit</option>
+          <option value="rhino">Rhino</option>
+          <option value="shark">Shark</option>
+          <option value="spinner">Spinner</option>
+          <option value="velociraptor">Velociraptor</option>
+        </select>
+        <span class="val"></span>
+      </div>
+      <div class="row">
+        <label>Upload</label>
+        <button id="fileBtn" class="ghost" title="Upload a file, or drop one onto the canvas"><i class="ph ph-upload-simple"></i><span>Upload</span></button>
+        <span class="val"></span>
+      </div>
+      <input type="file" id="file" accept="video/*,image/*,image/gif" style="display:none">
+    </section>
+
+    <section>
+      <h2>canvas</h2>
+      <div class="row">
+        <label>Resolution</label>
+        <select id="size">
+          <option value="512">512</option>
+          <option value="800" selected>800</option>
+          <option value="1024">1024</option>
+          <option value="1600">1600</option>
+        </select>
+        <span class="val"></span>
+      </div>
+      <div class="row"><label>Source size</label><input type="range" id="sourceSize" min="0.3" max="1" step="0.01" value="0.85"><span class="val">0.85</span></div>
+    </section>
+
+    <section>
+      <h2>pre-process</h2>
+      <div class="row"><label>Brightness</label><input type="range" id="brightness" min="-1" max="1" step="0.05" value="0.25"><span class="val">0.25</span></div>
+      <div class="row"><label>Contrast</label><input type="range" id="contrast" min="0" max="3" step="0.05" value="1.1"><span class="val">1.10</span></div>
+      <div class="row"><label>Gamma</label><input type="range" id="gamma" min="0.2" max="3" step="0.05" value="1.5"><span class="val">1.50</span></div>
+      <div class="row"><label>Blur</label><input type="range" id="blur" min="0" max="6" step="0.1" value="0"><span class="val">0.0</span></div>
+      <div class="row toggle"><label>Invert</label><input type="checkbox" id="invert"></div>
+    </section>
+
+    <section>
+      <h2>threshold</h2>
+      <div class="row">
+        <label>Mode</label>
+        <select id="threshMode">
+          <option value="0">Off (passthrough)</option>
+          <option value="1" selected>Hard</option>
+          <option value="2">Smooth</option>
+        </select>
+        <span class="val"></span>
+      </div>
+      <div class="row"><label>Level</label><input type="range" id="threshLevel" min="0" max="1" step="0.01" value="1"><span class="val">1.00</span></div>
+      <div class="row"><label>Softness</label><input type="range" id="threshSoft" min="0" max="0.5" step="0.01" value="0"><span class="val">0.00</span></div>
+    </section>
+
+    <section>
+      <h2>halftone</h2>
+      <div class="row">
+        <label>Mode</label>
+        <select id="dotMode">
+          <option value="0">Off</option>
+          <option value="1" selected>Binary (Muybridge)</option>
+          <option value="2">Variable (classic)</option>
+        </select>
+        <span class="val"></span>
+      </div>
+      <div class="row">
+        <label>Shape</label>
+        <select id="dotShape">
+          <option value="0" selected>Circle</option>
+          <option value="1">Square</option>
+          <option value="2">Diamond</option>
+          <option value="3">Cross</option>
+        </select>
+        <span class="val"></span>
+      </div>
+      <div class="row"><label>Cell size</label><input type="range" id="dotScale" min="2" max="60" step="1" value="15"><span class="val">15</span></div>
+      <div class="row"><label>Dot radius</label><input type="range" id="dotRadius" min="0.05" max="0.7" step="0.01" value="0.2"><span class="val">0.20</span></div>
+      <div class="row"><label>Edge soft</label><input type="range" id="dotEdge" min="0" max="0.3" step="0.01" value="0.00"><span class="val">0.00</span></div>
+      <div class="row"><label>Angle</label><input type="range" id="dotAngle" min="-45" max="45" step="0.5" value="0"><span class="val">0°</span></div>
+    </section>
+
+    <section>
+      <h2>mask</h2>
+      <div class="row">
+        <label>Shape</label>
+        <select id="maskShape">
+          <option value="0" selected>None</option>
+          <option value="1">Circle</option>
+          <option value="2">Rectangle</option>
+          <option value="3">Vignette</option>
+        </select>
+        <span class="val"></span>
+      </div>
+      <div class="row"><label>Size</label><input type="range" id="maskSize" min="0.1" max="1.2" step="0.01" value="0.9"><span class="val">0.9</span></div>
+      <div class="row"><label>Feather</label><input type="range" id="maskFeather" min="0" max="0.5" step="0.005" value="0.05"><span class="val">0.05</span></div>
+    </section>
+
+    <section>
+      <h2>color</h2>
+      <div class="row toggle"><label>Transparent</label><input type="checkbox" id="transparent" checked></div>
+      <div class="row color-pair">
+        <label>Background</label>
+        <input type="text" class="hex-input" id="bgColorHex" value="#E8E8E8" maxlength="7" spellcheck="false" autocomplete="off">
+        <input type="color" id="bgColor" value="#e8e8e8">
+      </div>
+      <div class="row color-pair">
+        <label>Foreground</label>
+        <input type="text" class="hex-input" id="fgColorHex" value="#101010" maxlength="7" spellcheck="false" autocomplete="off">
+        <input type="color" id="fgColor" value="#101010">
+      </div>
+    </section>
+
+    <section>
+      <h2>export</h2>
+      <div class="btnrow">
+        <button id="snap" title="Snapshot current frame as PNG"><i class="ph ph-image"></i>PNG</button>
+        <button id="svg" title="Snapshot current frame as scalable vector"><i class="ph ph-shapes"></i>SVG</button>
+        <button id="svganim" title="Export all frames as animated SVG (SMIL loop)"><i class="ph ph-arrows-clockwise"></i>Loop</button>
+      </div>
+      <div class="row toggle" title="When on, SVG fills with `currentColor` so embedded SVGs inherit the surrounding text color"><label>Inherit color</label><input type="checkbox" id="useCurrentColor"></div>
+      <details>
+        <summary>About</summary>
+        <p>A single WebGL fragment shader runs the visual stages — source, preprocess, threshold, halftone, mask, color. Animated GIF frames are decoded on the CPU via the WebCodecs <code>ImageDecoder</code> API. Everything stays local.</p>
+        <dl class="info">
+          <dt>Shortcuts</dt>
+          <dd><kbd>Space</kbd> play / pause</dd>
+          <dd><kbd>S</kbd> PNG snapshot</dd>
+          <dd>Drag and drop any file onto the canvas</dd>
+        </dl>
+        <dl class="info">
+          <dt>Exports</dt>
+          <dd><b>PNG</b> — current frame, raster, at canvas resolution</dd>
+          <dd><b>SVG</b> — current frame, vector, transparent background</dd>
+          <dd><b>Loop</b> — animated SVG cycling through every video / GIF frame</dd>
+          <dd><b>Inherit color</b> — exports use <code>currentColor</code> so the SVG picks up its parent's CSS <code>color</code></dd>
+        </dl>
+        <p class="credit">Created by Johnnie &amp; Claude</p>
+      </details>
+    </section>
+  </aside>
+</div>
+
+<!-- Hidden media elements. NOTE: animated GIFs only advance frames if the <img> is in
+     the render tree — display:none pauses them. We position off-screen instead. -->
+<video id="video" loop muted playsinline style="position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none"></video>
+<img id="image" style="position:fixed;left:-9999px;top:0;width:auto;height:auto;opacity:0;pointer-events:none">
+<canvas id="src" width="800" height="800" style="display:none"></canvas>
+
+
+<script>
+/* If the page was opened by double-clicking the HTML file, Chrome's file://
+   origin model blocks video → canvas → WebGL. Block the playground and show
+   the banner immediately so the user knows to run serve.command. */
+if (location.protocol === 'file:') {
+  document.body.classList.add('file-protocol');
+}
+
+/* ─────────────────────────── shader source ─────────────────────────── */
+const VS = `
+attribute vec2 a_pos;
+varying vec2 v_uv;
+void main(){
+  v_uv = a_pos * 0.5 + 0.5;
+  v_uv.y = 1.0 - v_uv.y;
+  gl_Position = vec4(a_pos, 0.0, 1.0);
+}`;
+
+const FS = `
+precision highp float;
+varying vec2 v_uv;
+
+uniform sampler2D u_tex;
+uniform vec2 u_texSize;     // source texture pixel size
+uniform vec2 u_outSize;     // output canvas pixel size
+uniform int  u_fit;         // 0 cover, 1 contain, 2 stretch
+uniform float u_srcAspect;
+uniform float u_sourceSize; // 0..1 — fraction of canvas the source occupies; outside is transparent safe area
+uniform int   u_flipX;      // 1 = mirror source horizontally (after fit + padding)
+
+// preprocess
+uniform float u_brightness;
+uniform float u_contrast;
+uniform float u_gamma;
+uniform float u_blur;
+uniform int   u_invert;
+
+// threshold
+uniform int   u_threshMode; // 0 off, 1 hard, 2 smooth
+uniform float u_threshLevel;
+uniform float u_threshSoft;
+
+// halftone
+uniform int   u_dotMode;    // 0 off, 1 binary, 2 variable
+uniform int   u_dotShape;   // 0 circle, 1 square, 2 diamond, 3 cross
+uniform float u_dotScale;   // pixels per cell
+uniform float u_dotRadius;  // base dot radius [0..0.7]
+uniform float u_dotEdge;    // edge softness
+uniform float u_dotAngle;   // radians
+
+// mask
+uniform int   u_maskShape;
+uniform float u_maskSize;
+uniform float u_maskFeather;
+
+// color
+uniform vec3 u_bg;
+uniform vec3 u_fg;
+uniform int  u_transparent;     // 1 = canvas alpha = ink (dots float); 0 = solid bg composite
+
+float luma(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
+
+vec2 rot(vec2 p, float a){ float c=cos(a),s=sin(a); return mat2(c,-s,s,c)*p; }
+
+// Map output uv → source uv. Two-stage: first scale into the active inner region
+// (sourceSize), then apply cover/contain/stretch fit to that.
+vec2 mapUV(vec2 uv){
+  // Centered scale by 1/sourceSize so the inner sourceSize-fraction of the canvas
+  // maps to source uv [0,1]; everything outside maps to <0 or >1 (the safe area).
+  float s = max(u_sourceSize, 0.001);
+  uv = (uv - 0.5) / s + 0.5;
+
+  vec2 finalUV;
+  if (u_fit == 2) {
+    finalUV = uv;
+  } else {
+    float outAR = u_outSize.x / u_outSize.y;
+    float srcAR = u_srcAspect;
+    vec2 scale = vec2(1.0);
+    if ((u_fit == 0 && srcAR > outAR) || (u_fit == 1 && srcAR < outAR)) {
+      scale.x = outAR / srcAR;
+    } else {
+      scale.y = srcAR / outAR;
+    }
+    finalUV = (uv - 0.5) * scale + 0.5;
+  }
+  if (u_flipX == 1) finalUV.x = 1.0 - finalUV.x;
+  return finalUV;
+}
+
+// Out-of-source samples return WHITE so blur near edges fades to "no ink" rather
+// than dark. The final alpha is still gated by inBounds below, so this is just for
+// clean edge fall-off.
+vec3 sampleSrc(vec2 uv){
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return vec3(1.0);
+  return texture2D(u_tex, uv).rgb;
+}
+
+// Cheap separable-ish blur: 9-tap box in screen px
+vec3 blurredSample(vec2 uv){
+  if (u_blur <= 0.0) return sampleSrc(uv);
+  vec2 px = u_blur / u_texSize;
+  vec3 acc = vec3(0.0);
+  // 3x3 box
+  for (int j=-1;j<=1;j++)
+    for (int i=-1;i<=1;i++)
+      acc += sampleSrc(uv + vec2(float(i), float(j)) * px);
+  return acc / 9.0;
+}
+
+float dotShape(vec2 cellUV, float radius){
+  // Bail when the cell has no dot — otherwise the AA band below straddles d=0 and
+  // produces a faint half-opacity ghost dot in every empty cell.
+  if (radius <= 0.0001) return 0.0;
+  // cellUV is in cell-units (range [-0.5, 0.5]); one output pixel is 1/u_dotScale
+  // in those units, so use that as a minimum edge width to guarantee 1-px AA on the
+  // smoothstep — even when the user sets edge soft to 0.
+  float aa = 1.0 / u_dotScale;
+  float edge = max(u_dotEdge, aa);
+  if (u_dotShape == 0) {            // circle
+    float d = length(cellUV);
+    return smoothstep(radius + edge, radius - edge, d);
+  } else if (u_dotShape == 1) {     // square
+    float d = max(abs(cellUV.x), abs(cellUV.y));
+    return smoothstep(radius + edge, radius - edge, d);
+  } else if (u_dotShape == 2) {     // diamond
+    float d = abs(cellUV.x) + abs(cellUV.y);
+    return smoothstep(radius + edge, radius - edge, d);
+  } else {                          // cross
+    float d = min(abs(cellUV.x), abs(cellUV.y));
+    return smoothstep(radius*0.3 + edge, radius*0.3 - edge, d);
+  }
+}
+
+void main(){
+  // 1. sample source with fit
+  vec2 uv = mapUV(v_uv);
+  vec3 col = blurredSample(uv);
+
+  // 2. preprocess
+  col = (col - 0.5) * u_contrast + 0.5 + u_brightness;
+  col = pow(max(col, 0.0), vec3(1.0 / u_gamma));
+  if (u_invert == 1) col = 1.0 - col;
+  float L = luma(col);
+
+  // 3. threshold
+  if (u_threshMode == 1) {
+    L = step(u_threshLevel, L);
+  } else if (u_threshMode == 2) {
+    L = smoothstep(u_threshLevel - u_threshSoft, u_threshLevel + u_threshSoft, L);
+  }
+
+  // 4. halftone
+  float ink = 1.0 - L; // ink coverage: dark source → 1
+  if (u_dotMode != 0) {
+    // pixel coords in output, rotated
+    vec2 p = rot(v_uv * u_outSize, u_dotAngle);
+    vec2 cell = p / u_dotScale;
+    vec2 cellUV = fract(cell) - 0.5;
+
+    float radius;
+    if (u_dotMode == 1) {
+      // binary: full dot if cell-center ink ≥ 0.5, else none
+      // sample ink at cell center for stability
+      vec2 centerPx = (floor(cell) + 0.5) * u_dotScale;
+      vec2 centerUV = mapUV(rot(centerPx, -u_dotAngle) / u_outSize);
+      vec3 cc = blurredSample(centerUV);
+      cc = (cc - 0.5) * u_contrast + 0.5 + u_brightness;
+      cc = pow(max(cc, 0.0), vec3(1.0 / u_gamma));
+      if (u_invert == 1) cc = 1.0 - cc;
+      float cL = luma(cc);
+      if (u_threshMode == 1)      cL = step(u_threshLevel, cL);
+      else if (u_threshMode == 2) cL = smoothstep(u_threshLevel - u_threshSoft, u_threshLevel + u_threshSoft, cL);
+      float cInk = 1.0 - cL;
+      radius = u_dotRadius * step(0.5, cInk);
+    } else {
+      // variable: radius ~ sqrt(ink)
+      radius = u_dotRadius * sqrt(clamp(ink, 0.0, 1.0)) * 1.4;
+    }
+    ink = dotShape(cellUV, radius);
+  }
+
+  // 5. mask
+  float mask = 1.0;
+  vec2 m = v_uv - 0.5;
+  if (u_maskShape == 1) {           // circle
+    float d = length(m);
+    mask = smoothstep(u_maskSize*0.5 + u_maskFeather, u_maskSize*0.5 - u_maskFeather, d);
+  } else if (u_maskShape == 2) {    // rectangle
+    float dx = abs(m.x), dy = abs(m.y);
+    float d = max(dx, dy);
+    mask = smoothstep(u_maskSize*0.5 + u_maskFeather, u_maskSize*0.5 - u_maskFeather, d);
+  } else if (u_maskShape == 3) {    // vignette (radial dim)
+    float d = length(m) / (u_maskSize * 0.7071);
+    mask = 1.0 - smoothstep(1.0 - u_maskFeather, 1.0, d);
+  }
+  ink *= mask;
+
+  // 6. compose. The safe area outside the central sourceSize-fraction is forced to
+  // alpha 0 regardless of pipeline — kills any ink that leaked across the boundary
+  // (e.g. when invert flips white-padding to "ink").
+  float half_s = u_sourceSize * 0.5;
+  float inBounds = step(0.5 - half_s, v_uv.x) * step(v_uv.x, 0.5 + half_s)
+                 * step(0.5 - half_s, v_uv.y) * step(v_uv.y, 0.5 + half_s);
+  float a = clamp(ink, 0.0, 1.0) * inBounds;
+  if (u_transparent == 1) {
+    gl_FragColor = vec4(u_fg, a);
+  } else {
+    gl_FragColor = vec4(mix(u_bg, u_fg, a), 1.0);   // bg fills safe area in opaque mode
+  }
+}`;
+
+/* ─────────────────────────── webgl plumbing ─────────────────────────── */
+const canvas = document.getElementById('gl');
+const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true, antialias: false });
+if (!gl) { document.body.textContent = 'WebGL not available in this browser.'; throw new Error('no webgl'); }
+
+function compile(src, type){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(s), src);
+    throw new Error('shader compile');
+  }
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(VS, gl.VERTEX_SHADER));
+gl.attachShader(prog, compile(FS, gl.FRAGMENT_SHADER));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+gl.clearColor(0, 0, 0, 0);   // canvas is always cleared to fully-transparent before each draw
+
+const quad = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+const a_pos = gl.getAttribLocation(prog, 'a_pos');
+gl.enableVertexAttribArray(a_pos);
+gl.vertexAttribPointer(a_pos, 2, gl.FLOAT, false, 0, 0);
+
+const tex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, tex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+const U = {};
+[
+  'u_tex','u_texSize','u_outSize','u_fit','u_srcAspect','u_sourceSize','u_flipX',
+  'u_brightness','u_contrast','u_gamma','u_blur','u_invert',
+  'u_threshMode','u_threshLevel','u_threshSoft',
+  'u_dotMode','u_dotShape','u_dotScale','u_dotRadius','u_dotEdge','u_dotAngle',
+  'u_maskShape','u_maskSize','u_maskFeather',
+  'u_bg','u_fg','u_transparent'
+].forEach(n => U[n] = gl.getUniformLocation(prog, n));
+
+/* ─────────────────────────── source management ─────────────────────────── */
+const video = document.getElementById('video');
+const image = document.getElementById('image');
+const srcCanvas = document.getElementById('src');
+const srcCtx = srcCanvas.getContext('2d', { willReadFrequently: false });
+
+let mode = 'gif';             // 'video' | 'image' | 'gif'
+let srcW = 800, srcH = 800;
+let srcAspect = 1;
+
+// GIF frame cache. Browsers pause animated GIFs in hidden <img>s, so we decode frames
+// ourselves with the WebCodecs ImageDecoder API and drive the loop on our own clock.
+let gifFrames = null;         // { frames: [{bitmap, duration_ms}], total_ms }
+let gifStartTime = 0;
+
+// Release GPU-resident bitmap memory when the frame cache is replaced. Browsers
+// hold the alpha/RGB pixel data outside the JS heap, so plain GC won't reclaim it.
+function disposeGifFrames(){
+  if (!gifFrames) return;
+  for (const f of gifFrames.frames) f.bitmap.close?.();
+  gifFrames = null;
+}
+
+async function decodeGif(blobOrDataUri) {
+  if (!('ImageDecoder' in window)) {
+    setStatus('ImageDecoder unsupported — GIF will be static');
+    return null;
+  }
+  let blob;
+  if (typeof blobOrDataUri === 'string') blob = await (await fetch(blobOrDataUri)).blob();
+  else blob = blobOrDataUri;
+  // ImageDecoder wants BufferSource or ReadableStream — Blob isn't accepted directly.
+  const buf = await blob.arrayBuffer();
+
+  const decoder = new ImageDecoder({ data: buf, type: 'image/gif' });
+  await decoder.tracks.ready;
+  const track = decoder.tracks.selectedTrack;
+  const count = track.frameCount;
+  const frames = [];
+  let total = 0;
+  for (let i = 0; i < count; i++) {
+    const result = await decoder.decode({ frameIndex: i });
+    // VideoFrame.duration is in microseconds. GIFs sometimes report null → default to 100ms.
+    const dur = result.image.duration ? result.image.duration / 1000 : 100;
+    const bitmap = await createImageBitmap(result.image);
+    result.image.close();
+    frames.push({ bitmap, duration: dur });
+    total += dur;
+  }
+  decoder.close();
+  return { frames, total };
+}
+
+async function loadGif(blobOrDataUri, label){
+  disposeGifFrames();
+  setStatus(`decoding ${label}…`);
+  try {
+    gifFrames = await decodeGif(blobOrDataUri);
+    if (gifFrames) {
+      gifStartTime = performance.now();
+      mode = 'gif';
+      const f0 = gifFrames.frames[0].bitmap;
+      fitSrcCanvas(f0.width, f0.height);
+      setStatus(`gif · ${label} · ${gifFrames.frames.length} frames`);
+    }
+  } catch (err) {
+    setStatus('gif decode failed: ' + err.message);
+  }
+}
+
+// Default placeholder source: the saved demo from localStorage (or Bear). Fade canvas in once the first frame is
+// decodable (loadeddata), with a safety timeout in case the video never loads.
+function markCanvasReady(){
+  if (!document.body.classList.contains('ready')) {
+    requestAnimationFrame(() => document.body.classList.add('ready'));
+  }
+}
+// Wire the ready-state listeners now so they're guaranteed to fire — the actual
+// source load happens later (after P + resolveFlip are declared) via loadDemo().
+video.addEventListener('loadeddata', markCanvasReady, { once: true });
+setTimeout(markCanvasReady, 1500);
+
+const statusEl = document.getElementById('status');
+function setStatus(s){ if (statusEl.textContent !== s) statusEl.textContent = s; }
+
+function fitSrcCanvas(w, h){
+  if (srcCanvas.width !== w || srcCanvas.height !== h){
+    srcCanvas.width = w; srcCanvas.height = h;
+  }
+  srcW = w; srcH = h; srcAspect = w / h;
+}
+
+function drawCurrentSourceToCanvas(){
+  if (mode === 'video') {
+    if (video.readyState >= 2) {
+      fitSrcCanvas(video.videoWidth, video.videoHeight);
+      srcCtx.drawImage(video, 0, 0);
+    }
+  } else if (mode === 'gif') {
+    if (gifFrames) {
+      // Find frame at current elapsed time within the loop.
+      const elapsed = (performance.now() - gifStartTime) % gifFrames.total;
+      let acc = 0, frame = gifFrames.frames[0];
+      for (const f of gifFrames.frames) {
+        if (acc + f.duration > elapsed) { frame = f; break; }
+        acc += f.duration;
+      }
+      fitSrcCanvas(frame.bitmap.width, frame.bitmap.height);
+      // Composite onto a white background — most GIFs (incl. the horse) have transparent
+      // background and we want the threshold pipeline to treat that as "light".
+      srcCtx.fillStyle = '#fff';
+      srcCtx.fillRect(0, 0, srcW, srcH);
+      srcCtx.drawImage(frame.bitmap, 0, 0);
+    }
+  } else if (mode === 'image') {
+    if (image.naturalWidth) {
+      fitSrcCanvas(image.naturalWidth, image.naturalHeight);
+      srcCtx.fillStyle = '#fff';
+      srcCtx.fillRect(0, 0, srcW, srcH);
+      srcCtx.drawImage(image, 0, 0);
+    }
+  }
+}
+
+let textureUploadFailed = false;
+function uploadTexture(){
+  // Skip upload when srcCanvas is 0×0 (video metadata not yet loaded).
+  if (srcCanvas.width === 0 || srcCanvas.height === 0) return;
+  try {
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, srcCanvas);
+    textureUploadFailed = false;
+  } catch (err) {
+    // Most common cause: srcCanvas tainted by a cross-origin video frame without
+    // CORS headers. Surface it in the status bar instead of failing silently.
+    if (!textureUploadFailed) {
+      textureUploadFailed = true;
+      setStatus(`texture upload failed: ${err.name || 'error'}`);
+      console.error('uploadTexture:', err);
+    }
+  }
+}
+
+/* ─────────────────────────── controls ─────────────────────────── */
+const P = {
+  brightness: 0, contrast: 1, gamma: 1, blur: 0.0, invert: 0,
+  threshMode: 1, threshLevel: 1, threshSoft: 0,
+  dotMode: 1, dotShape: 0, dotScale: 15, dotRadius: 0.2, dotEdge: 0, dotAngle: 0,
+  maskShape: 0, maskSize: 0.9, maskFeather: 0.05,
+  bg: [0.91, 0.91, 0.91], fg: [0.06, 0.06, 0.06], transparent: 1,
+  size: 800, fit: 1 /* contain — only branch reachable */, sourceSize: 0.85,
+  playing: true, theme: 'light',
+  flipX: 0, facingLeft: false,
+};
+
+function hexToRgb(h){
+  const n = parseInt(h.slice(1), 16);
+  return [((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255];
+}
+
+function bindRange(id, key, fmt = v => (+v).toFixed(2)){
+  const el = document.getElementById(id);
+  const val = el.parentElement.querySelector('.val');
+  const upd = () => { P[key] = parseFloat(el.value); val.textContent = fmt(el.value); };
+  el.addEventListener('input', upd); upd();
+}
+function bindSelect(id, key){
+  const el = document.getElementById(id);
+  // Coerce to number when the value looks numeric, leave as string otherwise. The
+  // empty-string check guards against placeholder <option value=""> which would
+  // otherwise coerce to 0 and silently overwrite numeric state.
+  const upd = () => {
+    const v = el.value;
+    P[key] = (v !== '' && !isNaN(+v)) ? +v : v;
+  };
+  el.addEventListener('change', upd); upd();
+}
+// Pairs a hex text input with the native colour picker for a single P[key]. The
+// two inputs stay in sync: typing a valid #RRGGBB updates the swatch, dragging the
+// swatch updates the text. Invalid hex flashes a danger border but doesn't mutate P.
+const HEX_RE = /^#?[0-9a-fA-F]{6}$/;
+function bindColorPair(textId, colorId, key){
+  const textEl = document.getElementById(textId);
+  const colorEl = document.getElementById(colorId);
+  const setP = (hex) => { P[key] = hexToRgb(hex); };
+
+  colorEl.addEventListener('input', () => {
+    textEl.value = colorEl.value.toUpperCase();
+    textEl.classList.remove('invalid');
+    setP(colorEl.value);
+  });
+  textEl.addEventListener('input', () => {
+    const raw = textEl.value.trim();
+    if (!HEX_RE.test(raw)) { textEl.classList.add('invalid'); return; }
+    textEl.classList.remove('invalid');
+    const hex = raw.startsWith('#') ? raw : '#' + raw;
+    colorEl.value = hex.toLowerCase();
+    setP(hex);
+  });
+  // Normalise displayed casing and seed P from the initial swatch value.
+  textEl.value = colorEl.value.toUpperCase();
+  setP(colorEl.value);
+}
+function bindCheck(id, key){
+  const el = document.getElementById(id);
+  const upd = () => { P[key] = el.checked ? 1 : 0; };
+  el.addEventListener('change', upd); upd();
+}
+
+bindRange('brightness', 'brightness');
+bindRange('contrast', 'contrast');
+bindRange('gamma', 'gamma');
+bindRange('blur', 'blur', v => (+v).toFixed(1));
+bindCheck('invert', 'invert');
+bindSelect('threshMode', 'threshMode');
+bindRange('threshLevel', 'threshLevel');
+bindRange('threshSoft', 'threshSoft');
+bindSelect('dotMode', 'dotMode');
+bindSelect('dotShape', 'dotShape');
+bindRange('dotScale', 'dotScale', v => (+v).toFixed(0));
+bindRange('dotRadius', 'dotRadius');
+bindRange('dotEdge', 'dotEdge');
+bindRange('dotAngle', 'dotAngle', v => `${(+v).toFixed(0)}°`);
+bindSelect('maskShape', 'maskShape');
+bindRange('maskSize', 'maskSize');
+bindRange('maskFeather', 'maskFeather');
+bindColorPair('bgColorHex', 'bgColor', 'bg');
+bindColorPair('fgColorHex', 'fgColor', 'fg');
+bindCheck('transparent', 'transparent');
+
+document.getElementById('size').addEventListener('change', e => { P.size = +e.target.value; resizeCanvas(); });
+bindRange('sourceSize', 'sourceSize');
+
+// Canvas is always 1:1. The drawing buffer is scaled by devicePixelRatio so
+// dots render at full Retina resolution; the shader still sees the *logical*
+// size via u_outSize so cell density doesn't change with DPR. Capped at 2 to
+// avoid 9× fragment counts on 3× displays.
+function resizeCanvas(){
+  const w = P.size;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = w * dpr; canvas.height = w * dpr;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+resizeCanvas();
+
+/* ─────────────────────────── source loading ─────────────────────────── */
+document.getElementById('file').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) loadFile(f);
+});
+document.getElementById('fileBtn').addEventListener('click', () => document.getElementById('file').click());
+
+// Track the object URL currently held by each media element so we can revoke it
+// when replaced — otherwise every file upload leaks the Blob.
+let videoBlobUrl = null, imageBlobUrl = null;
+function setBlobUrl(holder, url){
+  const prev = holder === 'video' ? videoBlobUrl : imageBlobUrl;
+  if (prev) URL.revokeObjectURL(prev);
+  if (holder === 'video') videoBlobUrl = url; else imageBlobUrl = url;
+}
+
+function loadFile(f){
+  if (f.type.startsWith('video/')) {
+    disposeGifFrames();                                // SVG ↻ no longer applies to a stale GIF
+    const url = URL.createObjectURL(f);
+    setBlobUrl('video', url);
+    video.src = url;
+    video.play().catch(()=>{});
+    mode = 'video';
+    setStatus(`video · ${f.name}`);
+  } else if (f.type === 'image/gif') {
+    loadGif(f, f.name);                                // decoder path, replaces gifFrames
+  } else if (f.type.startsWith('image/')) {
+    const url = URL.createObjectURL(f);
+    setBlobUrl('image', url);
+    // Attach load handler before setting src so a synchronous cache hit doesn't beat us.
+    image.addEventListener('load', () => {
+      mode = 'image';
+      disposeGifFrames();
+      setStatus(`image · ${f.name}`);
+    }, { once: true });
+    image.src = url;
+  }
+}
+
+// These four demos natively face left. The effective flip per source is the XOR of
+// this base flag with the global facingLeft toggle, so one click on the header swap
+// button flips everything together regardless of native orientation.
+const DEMO_NEEDS_FLIP = new Set(['eagle', 'lion', 'rabbit', 'shark']);
+function resolveFlip(demoName){
+  const base = demoName ? DEMO_NEEDS_FLIP.has(demoName) : false;
+  P.flipX = (base !== P.facingLeft) ? 1 : 0;
+}
+
+// Single source of truth for swapping demo videos. Used by both the dropdown change
+// handler and the initial-load path (which restores the user's last choice from
+// localStorage so refresh keeps the same animal on screen).
+const DEMO_STORAGE_KEY = 'dott:lastDemo';
+function loadDemo(name){
+  if (!name) return;
+  setBlobUrl('video', null);                            // demo URLs are normal URLs, not blobs
+  video.srcObject = null;
+  video.src = `assets/${name}.webm`;
+  if (P.playing) video.play().catch(()=>{});             // honour the paused-by-default reduced-motion path
+  mode = 'video';
+  disposeGifFrames();
+  resolveFlip(name);
+  setStatus(`demo · ${name}`);
+  try { localStorage.setItem(DEMO_STORAGE_KEY, name); } catch {}
+  const sel = document.getElementById('demoSelect');
+  if (sel && sel.value !== name) sel.value = name;
+}
+document.getElementById('demoSelect').addEventListener('change', e => loadDemo(e.target.value));
+
+// Initial demo: prefer last user choice (localStorage), else fall back to Bear.
+const VALID_DEMOS = ['ant','astronaut','bear','butterfly','cat','cowboy','deer','dog','eagle','frog','gorilla','horse','human','jellyfish','kangaroo','kid','lion','monkey','rabbit','rhino','shark','spinner','velociraptor'];
+let initialDemo = 'bear';
+try {
+  const stored = localStorage.getItem(DEMO_STORAGE_KEY);
+  if (stored && VALID_DEMOS.includes(stored)) initialDemo = stored;
+} catch {}
+
+// Respect `prefers-reduced-motion: reduce` at load — start paused with the
+// play icon showing, so users with motion sensitivity see a still frame and
+// opt into animation. Toggle remains fully interactive.
+if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  P.playing = false;
+  const icon = document.querySelector('#play i');
+  if (icon) icon.className = 'ph ph-play';
+}
+
+loadDemo(initialDemo);
+
+// Mobile tap-to-cycle: on touch-class viewports, tapping the stage advances
+// to the next demo in VALID_DEMOS, wrapping at the end. Gated to ≤720px so
+// it doesn't fight any desktop interactions (drag-drop, future click UI).
+(() => {
+  const stage = document.getElementById('stage');
+  const sel = document.getElementById('demoSelect');
+  const mq = window.matchMedia('(max-width: 720px)');
+  stage.addEventListener('click', () => {
+    if (!mq.matches) return;
+    const idx = VALID_DEMOS.indexOf(sel.value);
+    const next = VALID_DEMOS[(idx + 1) % VALID_DEMOS.length];          // -1 wraps to 0 — first demo when nothing matched
+    loadDemo(next);
+  });
+})();
+
+document.getElementById('flipBtn').addEventListener('click', () => {
+  P.facingLeft = !P.facingLeft;
+  const sel = document.getElementById('demoSelect');
+  resolveFlip(sel.value);   // null for uploaded files → just toggles
+});
+
+// Light / dark canvas. The stage gradient transitions via CSS (cubic-bezier(.4,0,.2,1), 320ms);
+// the WebGL fg/bg colors are interpolated in JS using the *same* curve (Newton-solved bezier)
+// over the *same* duration so every surface eases together — no visible stagger.
+const THEME_DUR = 320;
+function bezier(x1, y1, x2, y2){
+  // Returns t -> y for cubic-bezier with control points (x1,y1) and (x2,y2).
+  // Newton's method on x to recover the parameter, then evaluate y.
+  return function(x){
+    let p = x;
+    for (let i = 0; i < 6; i++) {
+      const cx = 3*(1-p)*(1-p)*p*x1 + 3*(1-p)*p*p*x2 + p*p*p;
+      const dx = 3*(1-p)*(1-p)*x1 + 6*(1-p)*p*(x2-x1) + 3*p*p*(1-x2);
+      if (Math.abs(dx) < 1e-6) break;
+      p -= (cx - x) / dx;
+    }
+    return 3*(1-p)*(1-p)*p*y1 + 3*(1-p)*p*p*y2 + p*p*p;
+  };
+}
+const themeEase = bezier(0.4, 0, 0.2, 1);
+
+// Theme: follow OS by default. Manual toggle writes to localStorage so the choice
+// persists across reloads and overrides the OS pref. Removing the saved choice
+// (e.g. via DevTools) lets the OS pref take over again.
+const THEME_STORAGE_KEY = 'dott:theme';
+const themeMedia = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+function systemPrefersDark(){ return !!themeMedia && themeMedia.matches; }
+function effectiveDark(){
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  if (saved === 'dark') return true;
+  if (saved === 'light') return false;
+  return systemPrefersDark();
+}
+
+let themeAnimId = 0;
+let themeTransitionTimer = 0;
+function applyTheme(theme, opts = {}){
+  // theme: 'dark' | 'light'. opts.persist: save user choice.
+  P.theme = theme;
+
+  // Enable the universal "transition every colour property" rule for the duration
+  // of the toggle so panel, text, borders, buttons, scrollbars, etc. all cross-fade
+  // in lockstep with body / stage / WebGL.
+  document.documentElement.classList.add('theme-transitioning');
+  clearTimeout(themeTransitionTimer);
+  themeTransitionTimer = setTimeout(() => {
+    document.documentElement.classList.remove('theme-transitioning');
+  }, THEME_DUR + 60);
+
+  document.documentElement.classList.toggle('theme-dark', theme === 'dark');
+  document.documentElement.classList.toggle('theme-light', theme === 'light');
+  if (opts.persist) localStorage.setItem(THEME_STORAGE_KEY, theme);
+
+  // Animate the WebGL fg/bg colours to match the canvas surface.
+  const targetFgHex = theme === 'dark' ? '#fafafa' : '#101010';
+  const targetBgHex = theme === 'dark' ? '#0a0a0c' : '#e8e8e8';
+  const targetFg = hexToRgb(targetFgHex);
+  const targetBg = hexToRgb(targetBgHex);
+  const fromFg = [P.fg[0], P.fg[1], P.fg[2]];
+  const fromBg = [P.bg[0], P.bg[1], P.bg[2]];
+  const start = performance.now();
+  const myId = ++themeAnimId;
+  function tick(now){
+    if (myId !== themeAnimId) return;
+    const u = Math.min(1, (now - start) / THEME_DUR);
+    const e = themeEase(u);
+    P.fg = [fromFg[0] + (targetFg[0]-fromFg[0])*e, fromFg[1] + (targetFg[1]-fromFg[1])*e, fromFg[2] + (targetFg[2]-fromFg[2])*e];
+    P.bg = [fromBg[0] + (targetBg[0]-fromBg[0])*e, fromBg[1] + (targetBg[1]-fromBg[1])*e, fromBg[2] + (targetBg[2]-fromBg[2])*e];
+    if (u < 1) requestAnimationFrame(tick);
+    else {
+      document.getElementById('fgColor').value = targetFgHex;
+      document.getElementById('bgColor').value = targetBgHex;
+      document.getElementById('fgColorHex').value = targetFgHex.toUpperCase();
+      document.getElementById('bgColorHex').value = targetBgHex.toUpperCase();
+    }
+  }
+  requestAnimationFrame(tick);
+
+  document.querySelector('#themeBtn i').className = theme === 'dark' ? 'ph ph-sun' : 'ph ph-moon';
+}
+
+// Manual toggle — persists.
+document.getElementById('themeBtn').addEventListener('click', () => {
+  applyTheme(P.theme === 'dark' ? 'light' : 'dark', { persist: true });
+});
+
+// Initial: saved override > OS preference.
+applyTheme(effectiveDark() ? 'dark' : 'light');
+
+// Live-follow OS changes only if user hasn't made a manual choice.
+if (themeMedia) themeMedia.addEventListener('change', () => {
+  if (!localStorage.getItem(THEME_STORAGE_KEY)) {
+    applyTheme(systemPrefersDark() ? 'dark' : 'light');
+  }
+});
+
+// Mobile bottom-sheet toggle. On screens ≤720px the panel collapses to a
+// 64px bar. Only the caret button expands / collapses the sheet — play,
+// flip, theme and any other header controls stay in-place and never affect
+// the sheet's state.
+(() => {
+  const panel = document.getElementById('panel');
+  const toggle = document.getElementById('mobileToggle');
+  toggle.addEventListener('click', () => {
+    const expanded = !panel.classList.contains('mobile-expanded');
+    panel.classList.toggle('mobile-expanded', expanded);
+    toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    toggle.title = expanded ? 'Collapse controls' : 'Expand controls';
+  });
+})();
+
+document.getElementById('play').addEventListener('click', e => togglePlay());
+function togglePlay(){
+  P.playing = !P.playing;
+  const icon = document.querySelector('#play i');
+  icon.className = P.playing ? 'ph ph-pause' : 'ph ph-play';
+  if (P.playing && mode === 'video') video.play().catch(()=>{});
+  else if (mode === 'video') video.pause();
+}
+
+/* drag & drop */
+const stage = document.getElementById('stage');
+['dragenter','dragover'].forEach(ev => stage.addEventListener(ev, e => { e.preventDefault(); stage.classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => stage.addEventListener(ev, e => { e.preventDefault(); stage.classList.remove('drag'); }));
+stage.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+
+/* keyboard */
+window.addEventListener('keydown', e => {
+  if (e.target.matches('input, select, textarea')) return;
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  else if (e.key === 's' || e.key === 'S') snapshot();
+});
+
+
+/* export */
+function snapshot(){
+  canvas.toBlob(b => {
+    const url = URL.createObjectURL(b);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dott-${Date.now()}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);     // browser already started the download
+  }, 'image/png');
+  setStatus('snapshot saved');
+}
+document.getElementById('snap').addEventListener('click', snapshot);
+
+/* ─── SVG export ─────────────────────────────────────────────────────
+   Mirror the shader pipeline on the CPU: render source → output-sized
+   buffer with fit + blur, sample at each rotated cell center, apply
+   preprocess + threshold, and emit a vector shape if the cell is "on".
+   The output matches the on-screen halftone but is infinitely scalable. */
+
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+function rgbCss(c){ return `rgb(${(c[0]*255)|0},${(c[1]*255)|0},${(c[2]*255)|0})`; }
+
+function drawSourceFitted(ctx, w, h){
+  // Source occupies central `sourceSize` fraction; the rest is safe margin (white here
+  // so it threshold-as-no-ink, just like in the shader).
+  const s = P.sourceSize;
+  const innerW = w * s, innerH = h * s;
+  const outAR = innerW / innerH, srcAR = srcAspect;
+  let dw, dh;
+  if (P.fit === 0) {                                      // cover (inside the inner box)
+    if (srcAR > outAR) { dh = innerH; dw = innerH * srcAR; }
+    else               { dw = innerW; dh = innerW / srcAR; }
+  } else if (P.fit === 1) {                               // contain
+    if (srcAR > outAR) { dw = innerW; dh = innerW / srcAR; }
+    else               { dh = innerH; dw = innerH * srcAR; }
+  } else {                                                // stretch
+    dw = innerW; dh = innerH;
+  }
+  const dx = (w - dw) / 2, dy = (h - dh) / 2;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, w, h);
+  if (P.flipX) {
+    ctx.save();
+    ctx.translate(w, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(srcCanvas, dx, dy, dw, dh);
+    ctx.restore();
+  } else {
+    ctx.drawImage(srcCanvas, dx, dy, dw, dh);
+  }
+}
+
+function computeShapes(w, h){
+  // Returns { shapes: [svgFragment, ...], count }
+  const tempC = document.createElement('canvas');
+  tempC.width = w; tempC.height = h;
+  const tctx = tempC.getContext('2d', { willReadFrequently: true });
+  if (P.blur > 0) tctx.filter = `blur(${P.blur}px)`;
+  drawSourceFitted(tctx, w, h);
+  tctx.filter = 'none';
+  const img = tctx.getImageData(0, 0, w, h).data;
+
+  const cellSize = P.dotScale;
+  const baseR = P.dotRadius * cellSize;
+  const aRad = P.dotAngle * Math.PI / 180;
+  const cosA = Math.cos(aRad), sinA = Math.sin(aRad);
+
+  // Bounds of output rectangle in the rotated cell grid space.
+  const rotPts = [[0,0],[w,0],[w,h],[0,h]].map(([x,y]) => [x*cosA + y*sinA, -x*sinA + y*cosA]);
+  const xs = rotPts.map(p=>p[0]), ys = rotPts.map(p=>p[1]);
+  const i0 = Math.floor(Math.min(...xs) / cellSize) - 1;
+  const i1 = Math.ceil (Math.max(...xs) / cellSize) + 1;
+  const j0 = Math.floor(Math.min(...ys) / cellSize) - 1;
+  const j1 = Math.ceil (Math.max(...ys) / cellSize) + 1;
+
+  const sampleLum = (x, y) => {
+    const px = Math.floor(x), py = Math.floor(y);
+    if (px < 0 || px >= w || py < 0 || py >= h) return 1;
+    const idx = (py * w + px) * 4;
+    let r = img[idx]/255, g = img[idx+1]/255, b = img[idx+2]/255;
+    r = (r - 0.5) * P.contrast + 0.5 + P.brightness;
+    g = (g - 0.5) * P.contrast + 0.5 + P.brightness;
+    b = (b - 0.5) * P.contrast + 0.5 + P.brightness;
+    r = Math.pow(Math.max(r,0), 1/P.gamma);
+    g = Math.pow(Math.max(g,0), 1/P.gamma);
+    b = Math.pow(Math.max(b,0), 1/P.gamma);
+    if (P.invert) { r = 1-r; g = 1-g; b = 1-b; }
+    return 0.2126*r + 0.7152*g + 0.0722*b;
+  };
+
+  const inMask = (cx, cy) => {
+    if (P.maskShape === 0 || P.maskShape === 3) return true;     // 'none' & vignette → no hard clip
+    const u = cx/w - 0.5, v = cy/h - 0.5;
+    if (P.maskShape === 1) return Math.hypot(u, v) < P.maskSize*0.5;
+    if (P.maskShape === 2) return Math.max(Math.abs(u), Math.abs(v)) < P.maskSize*0.5;
+    return true;
+  };
+
+  // Binary halftone = every dot has the same radius → factor it into <defs> + <use>.
+  // We used to factor uniform-radius shapes into <defs>+<use> for a ~20% size win,
+  // but Chrome blocks `<use href="#id"/>` references when the SVG is opened via
+  // file:// (treats each file:// URL as an isolated origin). Inline every shape
+  // instead so exports work in browsers, Figma, Illustrator, anywhere.
+  const angleDeg = +P.dotAngle.toFixed(1);
+  const emit = (cx, cy, r) => {
+    const ix = Math.round(cx), iy = Math.round(cy), rr = Math.round(r * 10) / 10;
+    if (P.dotShape === 0) return `<circle cx="${ix}" cy="${iy}" r="${rr}"/>`;
+    if (P.dotShape === 1) return `<rect x="${ix-rr}" y="${iy-rr}" width="${2*rr}" height="${2*rr}" transform="rotate(${angleDeg} ${ix} ${iy})"/>`;
+    if (P.dotShape === 2) {
+      const pts = `${ix},${(iy-rr).toFixed(1)} ${(ix+rr).toFixed(1)},${iy} ${ix},${(iy+rr).toFixed(1)} ${(ix-rr).toFixed(1)},${iy}`;
+      return `<polygon points="${pts}"/>`;
+    }
+    const t = Math.round(rr * 0.3 * 10) / 10;
+    return `<g transform="rotate(${angleDeg} ${ix} ${iy})"><rect x="${ix-rr}" y="${iy-t}" width="${2*rr}" height="${2*t}"/><rect x="${ix-t}" y="${iy-rr}" width="${2*t}" height="${2*rr}"/></g>`;
+  };
+
+  const shapes = [];
+  for (let j = j0; j < j1; j++) {
+    for (let i = i0; i < i1; i++) {
+      const cxr = (i + 0.5) * cellSize;
+      const cyr = (j + 0.5) * cellSize;
+      const cx = cxr * cosA - cyr * sinA;
+      const cy = cxr * sinA + cyr * cosA;
+      if (cx < 0 || cx >= w || cy < 0 || cy >= h) continue;
+      // Skip cells whose centers fall in the transparent safe area.
+      const halfS = P.sourceSize * 0.5;
+      if (cx/w < 0.5 - halfS || cx/w > 0.5 + halfS) continue;
+      if (cy/h < 0.5 - halfS || cy/h > 0.5 + halfS) continue;
+      if (!inMask(cx, cy)) continue;
+
+      const L = sampleLum(cx, cy);
+      let ink;
+      if (P.threshMode === 1)      ink = L < P.threshLevel ? 1 : 0;
+      else if (P.threshMode === 2) ink = 1 - clamp01((L - (P.threshLevel - P.threshSoft)) / (2*P.threshSoft));
+      else                         ink = 1 - L;
+
+      let radius;
+      if (P.dotMode === 1) { if (ink < 0.5) continue; radius = baseR; }
+      else if (P.dotMode === 2) { radius = baseR * Math.sqrt(Math.max(0, ink)) * 1.4; if (radius < 0.3) continue; }
+      else continue;
+
+      shapes.push(emit(cx, cy, radius));
+    }
+  }
+  return shapes;
+}
+
+function downloadBlob(text, filename, mime){
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+// Fill value for SVG exports. When "Inherit color" is on, the SVG uses
+// `currentColor` so an <img src=…> or inlined <svg> picks up the parent's CSS
+// `color` — handy for matching site typography. Otherwise we bake in the
+// current foreground color from the panel.
+const EXPORT_COLOR_KEY = 'dott:exportCurrentColor';
+const exportColorEl = document.getElementById('useCurrentColor');
+exportColorEl.checked = localStorage.getItem(EXPORT_COLOR_KEY) === '1';
+exportColorEl.addEventListener('change', () => {
+  localStorage.setItem(EXPORT_COLOR_KEY, exportColorEl.checked ? '1' : '0');
+});
+const exportFill = () => exportColorEl.checked ? 'currentColor' : rgbCss(P.fg);
+
+function exportSvg(){
+  if (P.dotMode === 0) { setStatus('SVG needs halftone on'); return; }
+  const w = P.size, h = P.size;   // logical, matches what the shader's cell grid uses
+  const shapes = computeShapes(w, h);
+  // viewBox alone is enough — drop width/height for a tighter root. Transparent (no bg rect).
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"><g fill="${exportFill()}">${shapes.join('')}</g></svg>`;
+  downloadBlob(svg, `dott-${Date.now()}.svg`, 'image/svg+xml');
+  setStatus(`svg · ${shapes.length} shapes · ${(svg.length/1024).toFixed(1)} KB`);
+}
+document.getElementById('svg').addEventListener('click', exportSvg);
+
+// For video sources (mp4/webm), animated SVG export extracts frames by seeking
+// through the video at a fixed cadence and capturing each into an ImageBitmap.
+// ~20 fps is a good balance: visually fluid in the SMIL output without exploding
+// file size. Capped at 80 total frames so very long clips don't blow up.
+async function extractVideoFrames(v, fps = 20, maxFrames = 80){
+  if (!v.duration || !isFinite(v.duration) || v.videoWidth === 0) return null;
+  const targetCount = Math.max(2, Math.min(maxFrames, Math.ceil(v.duration * fps)));
+  const dt = v.duration / targetCount;
+
+  const wasPaused = v.paused;
+  const savedTime = v.currentTime;
+  v.pause();
+
+  const tmp = document.createElement('canvas');
+  tmp.width = v.videoWidth; tmp.height = v.videoHeight;
+  const ctx = tmp.getContext('2d');
+
+  const out = [];
+  for (let i = 0; i < targetCount; i++) {
+    v.currentTime = i * dt;
+    await new Promise(r => v.addEventListener('seeked', r, { once: true }));
+    ctx.drawImage(v, 0, 0);
+    const bitmap = await createImageBitmap(tmp);
+    out.push({ bitmap, duration: dt * 1000 });           // ms per frame
+    if (i % 4 === 0) setStatus(`extracting ${i+1}/${targetCount} frames…`);
+  }
+
+  v.currentTime = savedTime;
+  if (!wasPaused) v.play().catch(()=>{});
+  return { frames: out, total: v.duration * 1000 };
+}
+
+async function exportSvgAnimated(){
+  if (P.dotMode === 0) { setStatus('SVG needs halftone on'); return; }
+
+  // Acquire a frames bundle from whichever source is current.
+  let bundle = null;
+  if (mode === 'gif' && gifFrames) {
+    bundle = gifFrames;
+  } else if (mode === 'video' && video.readyState >= 2) {
+    bundle = await extractVideoFrames(video);
+  }
+  if (!bundle || !bundle.frames.length) {
+    setStatus(`animated SVG needs a video or GIF (current: ${mode})`);
+    return;
+  }
+  setStatus('rendering animated SVG…');
+
+  const w = P.size, h = P.size;     // logical, matches the shader's cell grid
+  const frames = bundle.frames;
+  const total = bundle.total / 1000;             // seconds
+  const wasPlaying = P.playing;
+  P.playing = false;                                // freeze the live render loop while we paint frames
+
+  const allShapes = [];
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i];
+    fitSrcCanvas(f.bitmap.width, f.bitmap.height);
+    srcCtx.fillStyle = '#fff';
+    srcCtx.fillRect(0, 0, srcW, srcH);
+    srcCtx.drawImage(f.bitmap, 0, 0);
+    allShapes.push(computeShapes(w, h));
+    if (i % 4 === 0) await new Promise(r => setTimeout(r, 0));   // yield to keep UI alive
+  }
+
+  // Use CSS animations (not SMIL) — Chrome on file:// gives SMIL inconsistent
+  // playback, but CSS animations inside SVG run reliably across every modern
+  // viewer (Chrome, Safari, Firefox, Figma, Illustrator).
+  //
+  // Each frame group flashes "visible for one slot, hidden for the rest" via a
+  // shared keyframe (`flash`). animation-delay gives each frame its own slot.
+  // The first cycle uses fill-mode `backwards` so groups stay hidden before their
+  // animation starts (preventing all 80 frames being visible at t=0).
+  const frameDur = total / frames.length;            // seconds per frame
+  const visPct = (100 / frames.length).toFixed(4);   // slot width in %
+
+  let groups = '';
+  for (let i = 0; i < frames.length; i++) {
+    const delay = (i * frameDur).toFixed(3);
+    groups += `<g style="animation-delay:${delay}s">${allShapes[i].join('')}</g>`;
+  }
+
+  // CSS opacity starts at 0; the animation flashes opacity to 1 only at the start
+  // of each group's slot. With no fill-mode, groups stay at CSS opacity (0) until
+  // their delay elapses — no all-frames-visible at t=0.
+  const css = `g { fill: ${exportFill()}; opacity: 0; animation: flash ${total.toFixed(3)}s step-end infinite; }
+@keyframes flash { 0% { opacity: 1 } ${visPct}%, 100% { opacity: 0 } }`;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}"><style>${css}</style>${groups}</svg>`;
+
+  downloadBlob(svg, `dott-anim-${Date.now()}.svg`, 'image/svg+xml');
+  const totalShapes = allShapes.reduce((s, a) => s + a.length, 0);
+  setStatus(`svg ↻ · ${frames.length} frames · ${totalShapes} shapes · ${(svg.length/1024).toFixed(1)} KB`);
+  P.playing = wasPlaying;
+  gifStartTime = performance.now();                 // restart loop cleanly
+}
+document.getElementById('svganim').addEventListener('click', exportSvgAnimated);
+
+/* ─────────────────────────── render loop ─────────────────────────── */
+function render(){
+  if (P.playing) drawCurrentSourceToCanvas();
+  uploadTexture();
+
+  gl.uniform1i(U.u_tex, 0);
+  gl.uniform2f(U.u_texSize, srcW, srcH);
+  gl.uniform2f(U.u_outSize, P.size, P.size);  // logical size — DPR-scaled buffer doesn't change cell grid
+  gl.uniform1i(U.u_fit, P.fit);
+  gl.uniform1f(U.u_srcAspect, srcAspect);
+  gl.uniform1f(U.u_sourceSize, P.sourceSize);
+  gl.uniform1i(U.u_flipX, P.flipX);
+
+  gl.uniform1f(U.u_brightness, P.brightness);
+  gl.uniform1f(U.u_contrast,   P.contrast);
+  gl.uniform1f(U.u_gamma,      P.gamma);
+  gl.uniform1f(U.u_blur,       P.blur);
+  gl.uniform1i(U.u_invert,     P.invert);
+
+  gl.uniform1i(U.u_threshMode,  P.threshMode);
+  gl.uniform1f(U.u_threshLevel, P.threshLevel);
+  gl.uniform1f(U.u_threshSoft,  P.threshSoft);
+
+  gl.uniform1i(U.u_dotMode,   P.dotMode);
+  gl.uniform1i(U.u_dotShape,  P.dotShape);
+  gl.uniform1f(U.u_dotScale,  P.dotScale);
+  gl.uniform1f(U.u_dotRadius, P.dotRadius);
+  gl.uniform1f(U.u_dotEdge,   P.dotEdge);
+  gl.uniform1f(U.u_dotAngle,  P.dotAngle * Math.PI / 180);
+
+  gl.uniform1i(U.u_maskShape,   P.maskShape);
+  gl.uniform1f(U.u_maskSize,    P.maskSize);
+  gl.uniform1f(U.u_maskFeather, P.maskFeather);
+
+  gl.uniform3fv(U.u_bg, P.bg);
+  gl.uniform3fv(U.u_fg, P.fg);
+  gl.uniform1i(U.u_transparent, P.transparent);
+
+  gl.clear(gl.COLOR_BUFFER_BIT);                       // clearColor set once at init below
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  requestAnimationFrame(render);
+}
+render();
+
+/* ─── Scroll affordances on the side panel ──────────────────────────
+   Toggle classes so the CSS pseudo-element fades become visible at the
+   right edge. Runs on scroll + resize, plus once on init. */
+{
+  const panelEl = document.getElementById('panel');
+  function updateScrollFades(){
+    const max = panelEl.scrollHeight - panelEl.clientHeight;
+    const hasOverflow = max > 1;
+    const atTop = panelEl.scrollTop <= 1;
+    const atBot = panelEl.scrollTop >= max - 1;
+    panelEl.classList.toggle('not-at-top', hasOverflow && !atTop);
+    panelEl.classList.toggle('not-at-bot', hasOverflow && !atBot);
+  }
+  panelEl.addEventListener('scroll', updateScrollFades, { passive: true });
+  window.addEventListener('resize', updateScrollFades);
+  // Wait one frame so initial layout settles, then check.
+  requestAnimationFrame(updateScrollFades);
+}
+</script>
+</body>
+</html>
