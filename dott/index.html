@@ -706,9 +706,10 @@
     #panel header .sub { display: none; }
     #panel header { padding: 16px; }
 
-    /* When expanded, the mobile toggle's caret rotates to point down. */
-    #panel.mobile-expanded #mobileToggle i { transform: rotate(180deg); }
-    #mobileToggle i { transition: transform 360ms cubic-bezier(.4, 0, .2, 1); }
+    /* The mobile toggle uses the sliders icon for both states; the sheet's
+       visible position is itself the open/close signal, so no rotation
+       trickery is needed. The icon hints at "open the controls" which maps
+       directly to the slider-heavy panel content. */
 
     /* Drag-handle pill removed — the caret button is the sole expand
        affordance, and the pill suggested drag-to-collapse which isn't wired. */
@@ -764,7 +765,7 @@
         <button id="play" class="icon" title="Play / pause (space)"><i class="ph ph-pause"></i></button>
         <button id="flipBtn" class="icon" title="Flip horizontally (face left / right)"><i class="ph ph-arrows-horizontal"></i></button>
         <button id="themeBtn" class="icon" title="Toggle light / dark canvas"><i class="ph ph-moon"></i></button>
-        <button id="mobileToggle" class="icon mobile-only" title="Expand controls" aria-expanded="false"><i class="ph ph-caret-up"></i></button>
+        <button id="mobileToggle" class="icon mobile-only" title="Open controls" aria-expanded="false"><i class="ph ph-sliders-horizontal"></i></button>
       </div>
     </header>
 
@@ -1710,7 +1711,7 @@ if (themeMedia) themeMedia.addEventListener('change', () => {
     const expanded = !panel.classList.contains('mobile-expanded');
     panel.classList.toggle('mobile-expanded', expanded);
     toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-    toggle.title = expanded ? 'Collapse controls' : 'Expand controls';
+    toggle.title = expanded ? 'Close controls' : 'Open controls';
   });
 })();
 
