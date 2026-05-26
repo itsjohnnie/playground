@@ -215,16 +215,8 @@ const el = {
   demoToggle: document.getElementById("demo-toggle"),
   capture: document.getElementById("capture"),
   paper: document.getElementById("paper"),
+  paperStage: document.getElementById("paper-stage"),
   receiptEmpty: document.getElementById("receipt-empty"),
-  receiptContent: document.getElementById("receipt-content"),
-  receiptBorderTop: document.getElementById("receipt-border-top"),
-  receiptBorderBottom: document.getElementById("receipt-border-bottom"),
-  receiptBody: document.getElementById("receipt-body"),
-  receiptPrintedFooter: document.getElementById("receipt-printed-footer"),
-  receiptSub: document.getElementById("receipt-sub"),
-  receiptMode: document.getElementById("receipt-mode"),
-  receiptModel: document.getElementById("receipt-model"),
-  receiptTime: document.getElementById("receipt-time"),
   receiptError: document.getElementById("receipt-error"),
   settingsBtn: document.getElementById("settings-btn"),
   settingsModal: document.getElementById("settings-modal"),
@@ -474,7 +466,7 @@ async function capture() {
         image: state.image,
       });
     }
-    printPoem(poem, { demo });
+    appendPrint(poem, { demo, mode: state.mode, model: state.model });
   } catch (err) {
     console.error(err);
     showError(err.message || String(err));
@@ -561,53 +553,114 @@ function setStatus(level, text) {
 }
 
 // ─── print ────────────────────────────────────────────────────────────────
-function printPoem(text, { demo = false } = {}) {
+function appendPrint(text, { demo = false, mode, model } = {}) {
   el.receiptEmpty.hidden = true;
-  el.receiptContent.hidden = false;
 
   const now = new Date();
-  el.receiptSub.textContent = formatStamp(now) + (demo ? " · DEMO" : "");
-  el.receiptMode.textContent = state.mode;
-  el.receiptModel.textContent = demo ? "demo" : state.model.replace("claude-", "");
-  el.receiptTime.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-  // mono layout for receipt mode (preserves dot-leader alignment)
-  el.receiptBody.classList.toggle("mono", state.mode === "receipt");
-
-  // print order: top border → body → bottom border → footer
-  let cursor = 0.05;
-  cursor = renderAnimatedLines(el.receiptBorderTop, state.borderTop, cursor);
-  cursor = renderAnimatedLines(el.receiptBody, text, cursor + 0.08);
-  cursor = renderAnimatedLines(el.receiptBorderBottom, state.borderBottom, cursor + 0.08);
-  renderAnimatedLines(el.receiptPrintedFooter, state.footer, cursor + 0.12);
-
-  // Trigger the "paper emerging from the printer" animation: reset, force
-  // a reflow so the browser commits the collapsed state, then add the
-  // class so grid-template-rows transitions from 0fr → 1fr.
-  el.paper.classList.remove("printing");
-  void el.paper.offsetWidth;
-  requestAnimationFrame(() => {
-    el.paper.classList.add("printing");
-    // keep the freshly-printed paper in view as it extends
-    el.paper.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  });
+  const art = buildPrintArticle(text, { demo, mode, model, now });
+  el.paper.insertBefore(art, el.receiptError);
+  tickOut(art);
 }
 
-// Render text into the given element with per-line fade-in. Returns the
-// time cursor (seconds) at which the last line will have animated.
-function renderAnimatedLines(container, text, startDelay) {
-  container.innerHTML = "";
-  if (!text) return startDelay;
-  const lines = text.split("\n");
-  const perLine = 0.07;
-  lines.forEach((line, i) => {
-    const span = document.createElement("span");
-    span.className = "line";
-    span.textContent = line.length ? line : " ";
-    span.style.animationDelay = `${startDelay + i * perLine}s`;
-    container.appendChild(span);
+function buildPrintArticle(text, { demo, mode, model, now }) {
+  const art = document.createElement("article");
+  art.className = "print";
+
+  const head = document.createElement("header");
+  head.className = "print-head";
+  const title = document.createElement("div");
+  title.className = "print-title";
+  title.textContent = "POETRY CAMERA";
+  const sub = document.createElement("div");
+  sub.className = "print-sub";
+  sub.textContent = formatStamp(now) + (demo ? " · DEMO" : "");
+  head.append(title, sub);
+
+  const borderTop = document.createElement("pre");
+  borderTop.className = "print-border";
+  borderTop.textContent = state.borderTop;
+
+  const body = document.createElement("pre");
+  body.className = "print-body" + (mode === "receipt" ? " mono" : "");
+  body.textContent = text;
+
+  const borderBottom = document.createElement("pre");
+  borderBottom.className = "print-border";
+  borderBottom.textContent = state.borderBottom;
+
+  const foot = document.createElement("footer");
+  foot.className = "print-foot";
+  const meta = document.createElement("div");
+  meta.className = "print-meta";
+  const modeSpan = document.createElement("span");
+  modeSpan.textContent = mode;
+  const sep1 = document.createElement("span");
+  sep1.className = "meta-sep";
+  sep1.textContent = "·";
+  const modelSpan = document.createElement("span");
+  modelSpan.textContent = demo ? "demo" : model.replace("claude-", "");
+  const sep2 = document.createElement("span");
+  sep2.className = "meta-sep";
+  sep2.textContent = "·";
+  const timeSpan = document.createElement("span");
+  timeSpan.textContent = now.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
   });
-  return startDelay + lines.length * perLine;
+  meta.append(modeSpan, sep1, modelSpan, sep2, timeSpan);
+  const printedFooter = document.createElement("div");
+  printedFooter.className = "print-printed-footer";
+  printedFooter.textContent = state.footer;
+  foot.append(meta, printedFooter);
+
+  art.append(head, borderTop, body, borderBottom, foot);
+  return art;
+}
+
+// Thermal-printer feel: animate max-height in N discrete steps. ~75ms per
+// step is roughly the rate of a real thermal head. The text is already
+// rendered inside the article — the container just reveals more of it
+// with each step. No fade-ins, no easing curve. Just ticks.
+function tickOut(art) {
+  art.style.overflow = "hidden";
+  art.style.maxHeight = "0px";
+  art.style.transition = "none";
+
+  // Force reflow so the collapsed state commits before we measure.
+  void art.offsetHeight;
+  const target = art.scrollHeight;
+
+  // One step per line of body text (computed from the body's actual
+  // line-height) gives a faithful thermal-printer tick rate.
+  const body = art.querySelector(".print-body");
+  const lh = parseFloat(getComputedStyle(body).lineHeight) || 22;
+  const stepCount = Math.max(10, Math.ceil(target / lh));
+  const stepDurMs = 75;
+  const totalMs = stepCount * stepDurMs;
+
+  requestAnimationFrame(() => {
+    art.style.transition = `max-height ${totalMs}ms steps(${stepCount}, end)`;
+    art.style.maxHeight = target + "px";
+    autoScrollWhilePrinting(totalMs);
+  });
+
+  setTimeout(() => {
+    art.style.maxHeight = "";
+    art.style.transition = "";
+    art.style.overflow = "";
+  }, totalMs + 120);
+}
+
+// Pin the paper-stage scroll to the bottom for the duration of the print,
+// so the user watches the most recently-emerged line. They can scroll up
+// freely afterward.
+function autoScrollWhilePrinting(durMs) {
+  const start = performance.now();
+  function frame(t) {
+    el.paperStage.scrollTop = el.paperStage.scrollHeight;
+    if (t - start < durMs) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 }
 
 function formatStamp(d) {

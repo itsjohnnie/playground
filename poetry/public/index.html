@@ -102,11 +102,6 @@
         </div>
       </section>
 
-      <footer class="footer">
-        <span class="muted tiny">
-          the camera never keeps the photo. it keeps the poem.
-        </span>
-      </footer>
     </main>
 
     <!-- RIGHT: previewer (dark, full-height, fixed) -->
@@ -128,29 +123,7 @@
                 drop a photo, choose a mode, press capture.
               </p>
             </div>
-
-            <article class="receipt-content" id="receipt-content" hidden>
-              <div class="receipt-inner">
-                <header class="receipt-head">
-                  <div class="receipt-title">POETRY CAMERA</div>
-                  <div class="receipt-sub" id="receipt-sub">—</div>
-                </header>
-                <pre class="receipt-border receipt-border-top" id="receipt-border-top"></pre>
-                <pre class="receipt-body" id="receipt-body"></pre>
-                <pre class="receipt-border receipt-border-bottom" id="receipt-border-bottom"></pre>
-                <footer class="receipt-foot">
-                  <div class="receipt-meta">
-                    <span id="receipt-mode">—</span>
-                    <span class="meta-sep">·</span>
-                    <span id="receipt-model">—</span>
-                    <span class="meta-sep">·</span>
-                    <span id="receipt-time">—</span>
-                  </div>
-                  <div class="receipt-printed-footer" id="receipt-printed-footer">poetry.camera</div>
-                </footer>
-              </div>
-            </article>
-
+            <!-- each capture appends a .print article here -->
             <div class="receipt-error" id="receipt-error" hidden></div>
           </div>
         </div>

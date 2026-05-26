@@ -665,34 +665,30 @@ h1 {
   text-transform: uppercase;
 }
 
-/* ───── receipt content (the actual print) ─────
- * `display: grid` + `grid-template-rows: 0fr → 1fr` is the modern,
- * smooth way to animate a height-from-zero. The inner child has
- * overflow:hidden so it clips during the transition. While the grid
- * row expands, each line's own animation-delay reveals the text in
- * sequence, like a printer chunking out the paper.
+/* ───── print articles (one per capture) ─────
+ * Each capture appends an <article class="print"> to .paper. The text is
+ * already in place when appended; the animation is purely the article's
+ * max-height growing from 0 → its natural height with a `steps(N, end)`
+ * timing function — that's what gives it the jerky thermal-printer feel.
+ * No fade-ins; lines just become visible as the container reveals them,
+ * because they were always there.
  * ───────────────────────────────────────────── */
 
-.receipt-content {
-  display: grid;
-  grid-template-rows: 0fr;
-  width: 100%;
-}
-
-.paper.printing .receipt-content {
-  grid-template-rows: 1fr;
-  transition: grid-template-rows var(--print-dur) var(--ease);
-}
-
-.receipt-inner {
-  overflow: hidden;
-  min-height: 0;
+.print {
   font-family: var(--print);
+  /* JS sets max-height + transition inline at runtime */
 }
 
-.receipt-head { text-align: center; margin-bottom: 10px; }
+/* separator between consecutive prints — a paper-feed gap */
+.print + .print {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px dashed var(--hairline);
+}
 
-.receipt-title {
+.print-head { text-align: center; margin-bottom: 10px; }
+
+.print-title {
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 500;
@@ -700,7 +696,7 @@ h1 {
   color: var(--ink);
 }
 
-.receipt-sub {
+.print-sub {
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.18em;
@@ -709,7 +705,7 @@ h1 {
   text-transform: uppercase;
 }
 
-.receipt-border {
+.print-border {
   font-family: var(--print);
   font-size: 12.5px;
   line-height: 1.35;
@@ -718,10 +714,9 @@ h1 {
   white-space: pre;
   margin: 8px 0;
   letter-spacing: 0;
-  overflow-x: auto;
 }
 
-.receipt-body {
+.print-body {
   font-family: var(--print);
   font-size: 13.5px;
   line-height: 1.7;
@@ -730,19 +725,19 @@ h1 {
   color: var(--ink);
   text-align: center;
   padding: 4px 0;
-  min-height: 40px;
+  min-height: 22px;
   letter-spacing: 0.005em;
 }
 
-.receipt-body.mono {
+.print-body.mono {
   text-align: left;
   font-size: 12.5px;
   letter-spacing: -0.005em;
 }
 
-.receipt-foot { text-align: center; margin-top: 6px; }
+.print-foot { text-align: center; margin-top: 6px; }
 
-.receipt-meta {
+.print-meta {
   display: flex;
   justify-content: center;
   gap: 8px;
@@ -756,7 +751,7 @@ h1 {
 
 .meta-sep { opacity: 0.5; }
 
-.receipt-printed-footer {
+.print-printed-footer {
   font-family: var(--print);
   font-size: 12.5px;
   color: var(--ink);
@@ -775,29 +770,6 @@ h1 {
   margin: 14px 0;
   white-space: pre-wrap;
   text-align: left;
-}
-
-/* per-line fade-in during the print */
-.receipt-body .line,
-.receipt-border .line,
-.receipt-printed-footer .line {
-  display: block;
-  opacity: 0;
-  transform: translateY(2px);
-  animation: print-line 0.42s var(--ease) forwards;
-}
-
-@keyframes print-line {
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* a tiny shudder of the paper as printing begins */
-.paper.printing { animation: paper-shudder 0.45s var(--ease); }
-
-@keyframes paper-shudder {
-  0%   { transform: translateY(-2px); }
-  60%  { transform: translateY(0.5px); }
-  100% { transform: translateY(0); }
 }
 
 /* ───── footer (left col) ───── */
