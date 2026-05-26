@@ -18,6 +18,8 @@
   padding: 0;
 }
 
+[hidden] { display: none !important; }
+
 html,
 body {
   background: var(--paper);
@@ -561,21 +563,22 @@ h1 {
 }
 
 .receipt-body {
-  font-family: var(--serif);
-  font-size: 19px;
-  line-height: 1.55;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.65;
   white-space: pre-wrap;
   word-wrap: break-word;
   color: var(--ink);
   text-align: center;
   padding: 12px 0;
   min-height: 80px;
+  letter-spacing: 0.005em;
 }
 
+/* receipt mode is a tabular layout — left-aligned so dot-leaders line up */
 .receipt-body.mono {
-  font-family: var(--mono);
-  font-size: 13px;
   text-align: left;
+  font-size: 12.5px;
   letter-spacing: -0.005em;
 }
 

@@ -1,6 +1,7 @@
 // poetry camera / previewer
 // All state is in-browser. The image and the user's API key never leave the
-// page except for a single call to api.anthropic.com when "capture" runs.
+// page except for a single call to /api/poem (the local express server),
+// which in turn forwards to api.anthropic.com server-to-server.
 
 const STORAGE_KEY = "poetry-camera-prompts";
 const MODEL_STORAGE = "poetry-camera-model";
