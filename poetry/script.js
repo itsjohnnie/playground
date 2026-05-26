@@ -3,7 +3,6 @@
 // page except for a single call to api.anthropic.com when "capture" runs.
 
 const STORAGE_KEY = "poetry-camera-prompts";
-const API_KEY_STORAGE = "poetry-camera-api-key";
 const MODEL_STORAGE = "poetry-camera-model";
 const ACTIVE_MODE_STORAGE = "poetry-camera-active-mode";
 
@@ -186,9 +185,8 @@ const el = {
   settingsBtn: document.getElementById("settings-btn"),
   settingsModal: document.getElementById("settings-modal"),
   settingsClose: document.getElementById("settings-close"),
-  apiKey: document.getElementById("api-key"),
-  apiKeySave: document.getElementById("api-key-save"),
-  apiKeyClear: document.getElementById("api-key-clear"),
+  statusDot: document.getElementById("status-dot"),
+  statusText: document.getElementById("status-text"),
   resetAll: document.getElementById("reset-all"),
 };
 
@@ -197,6 +195,7 @@ renderModes();
 syncPrompt();
 el.model.value = state.model;
 updateCaptureLabel();
+checkServer();
 
 // ─── prompts storage ──────────────────────────────────────────────────────
 function loadPrompts() {
@@ -368,15 +367,6 @@ function updateCaptureLabel() {
 async function capture() {
   if (!state.image || state.loading) return;
   const demo = el.demoToggle.checked;
-  const apiKey = localStorage.getItem(API_KEY_STORAGE);
-
-  if (!demo && !apiKey) {
-    openSettings();
-    showError(
-      "no api key set. add one in settings, or flip the demo toggle to test the printout with a canned poem."
-    );
-    return;
-  }
 
   setLoading(true);
   hideError();
@@ -388,7 +378,6 @@ async function capture() {
       poem = DEMO_POEMS[state.mode];
     } else {
       poem = await callClaude({
-        apiKey,
         model: state.model,
         system: state.prompts[state.mode],
         image: state.image,
@@ -418,40 +407,39 @@ function setLoading(loading) {
   }
 }
 
-async function callClaude({ apiKey, model, system, image }) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 1024,
-      system,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: image.mediaType,
-                data: image.base64,
+async function callClaude({ model, system, image }) {
+  let res;
+  try {
+    res = await fetch("/api/poem", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1024,
+        system,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: image.mediaType,
+                  data: image.base64,
+                },
               },
-            },
-            {
-              type: "text",
-              text: "Write the poem.",
-            },
-          ],
-        },
-      ],
-    }),
-  });
+              { type: "text", text: "Write the poem." },
+            ],
+          },
+        ],
+      }),
+    });
+  } catch (e) {
+    throw new Error(
+      "couldn't reach the local server. is `npm start` running? (or flip demo on.)"
+    );
+  }
 
   if (!res.ok) {
     let detail = "";
@@ -461,7 +449,7 @@ async function callClaude({ apiKey, model, system, image }) {
     } catch {
       detail = await res.text();
     }
-    throw new Error(`anthropic api ${res.status}: ${detail}`);
+    throw new Error(`${res.status}: ${detail}`);
   }
 
   const data = await res.json();
@@ -472,6 +460,25 @@ async function callClaude({ apiKey, model, system, image }) {
     .trim();
   if (!text) throw new Error("empty response from claude.");
   return text;
+}
+
+async function checkServer() {
+  try {
+    const res = await fetch("/api/health", { cache: "no-store" });
+    if (!res.ok) throw new Error("bad status");
+    const data = await res.json();
+    if (data.hasKey) {
+      el.statusDot.className = "dot status-dot ok";
+      el.statusText.textContent = "connected · key loaded";
+    } else {
+      el.statusDot.className = "dot status-dot warn";
+      el.statusText.textContent = "server up, but ANTHROPIC_API_KEY is missing";
+    }
+  } catch {
+    el.statusDot.className = "dot status-dot error";
+    el.statusText.textContent =
+      "no server detected. run `npm start`, or use demo mode.";
+  }
 }
 
 // ─── printout ─────────────────────────────────────────────────────────────
@@ -525,8 +532,7 @@ function hideError() {
 // ─── settings modal ───────────────────────────────────────────────────────
 function openSettings() {
   el.settingsModal.hidden = false;
-  el.apiKey.value = localStorage.getItem(API_KEY_STORAGE) || "";
-  setTimeout(() => el.apiKey.focus(), 0);
+  checkServer();
 }
 
 function closeSettings() {
@@ -537,17 +543,6 @@ el.settingsBtn.addEventListener("click", openSettings);
 el.settingsClose.addEventListener("click", closeSettings);
 el.settingsModal.addEventListener("click", (e) => {
   if (e.target === el.settingsModal) closeSettings();
-});
-
-el.apiKeySave.addEventListener("click", () => {
-  const v = el.apiKey.value.trim();
-  if (v) localStorage.setItem(API_KEY_STORAGE, v);
-  closeSettings();
-});
-
-el.apiKeyClear.addEventListener("click", () => {
-  localStorage.removeItem(API_KEY_STORAGE);
-  el.apiKey.value = "";
 });
 
 el.resetAll.addEventListener("click", () => {

@@ -136,23 +136,16 @@
         <button class="ghost" id="settings-close" aria-label="Close">×</button>
       </header>
       <div class="modal-body">
-        <label class="field">
-          <span class="label">anthropic api key</span>
-          <input
-            id="api-key"
-            type="password"
-            placeholder="sk-ant-..."
-            autocomplete="off"
-            spellcheck="false"
-          />
+        <div class="field">
+          <span class="label">server</span>
+          <div id="server-status" class="server-status">
+            <span class="dot status-dot" id="status-dot"></span>
+            <span id="status-text" class="small">checking…</span>
+          </div>
           <span class="muted small">
-            stored locally in your browser. used only to call the anthropic api
-            directly from this page.
+            the api key lives in your <code>.env</code> file on the server. this
+            page calls <code>/api/poem</code>, which forwards to anthropic.
           </span>
-        </label>
-        <div class="field-row">
-          <button id="api-key-save" class="capture small">save</button>
-          <button id="api-key-clear" class="ghost small">clear</button>
         </div>
         <hr />
         <div class="field">
