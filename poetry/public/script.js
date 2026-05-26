@@ -1,114 +1,151 @@
 // poetry camera / previewer
-// All state is in-browser. The image and the user's API key never leave the
-// page except for a single call to /api/poem (the local express server),
-// which in turn forwards to api.anthropic.com server-to-server.
+// State and per-mode prompts live in localStorage. The image and prompt go
+// to /api/poem (the local express server), which forwards to Anthropic
+// server-to-server. The 32-char-per-line rule is the printer's invariant.
 
 const STORAGE_KEY = "poetry-camera-prompts";
 const MODEL_STORAGE = "poetry-camera-model";
 const ACTIVE_MODE_STORAGE = "poetry-camera-active-mode";
+const BORDER_TOP_STORAGE = "poetry-camera-border-top";
+const BORDER_BOTTOM_STORAGE = "poetry-camera-border-bottom";
+const FOOTER_STORAGE = "poetry-camera-footer";
+
+// ─── modes & per-mode default prompts ─────────────────────────────────────
+// One canonical printer rule shared by every mode: thermal paper is 32
+// characters wide. Keep prompts close to the camera's actual wording.
+
+const PRINTER_RULE =
+  "Each line must be no more than 32 characters wide. Output only the poem.";
 
 const DEFAULT_PROMPTS = {
-  haiku: `You are a poet looking through a camera viewfinder.
+  haiku:
+`haiku (5-7-5 syllable structure). Only write the one haiku, and nothing else.
 
-Write a single haiku (3 lines, 5–7–5 syllables) about this photograph.
-Use one concrete sensory image. Let the third line be a small turn.
-No title, no quotes, no commentary. Just the haiku.`,
+${PRINTER_RULE}`,
 
-  "free verse": `You are a contemplative poet looking through a camera viewfinder.
+  receipt:
+`itemized receipt, sarcastic and dry tone, 5-7 items. Be concise. Use dollar amounts to comical effect. Each receipt line is 32 letters wide, so pad any dollar amounts with the appropriate number of periods beforehand.`,
 
-Write a short free-verse poem (8–14 lines) about this photograph.
-Lean on specific, sensory detail over abstraction. Vary line lengths.
-Let one image carry the weight. End on a line that lingers.
-No title, no quotes, no commentary. Just the poem.`,
+  limerick:
+`limerick (AABBA rhyme scheme)
 
-  limerick: `You are a witty poet looking through a camera viewfinder.
+${PRINTER_RULE}`,
 
-Write a single limerick about this photograph: 5 lines, AABBA rhyme,
-anapestic meter, a small joke or twist by line five.
-No title, no quotes, no commentary. Just the limerick.`,
+  sonnet:
+`modern sonnet. do not use old english. 14 lines, iambic pentameter, ABAB CDCD EFEF GG rhyme scheme.
 
-  alliteration: `You are a poet obsessed with sound looking through a camera viewfinder.
+${PRINTER_RULE}`,
 
-Write a short alliterative poem (6–10 lines) about this photograph.
-Pick a consonant sound that fits the scene (soft "s" for water, hard "k"
-for stone, etc.) and let most stressed words in each line begin with it.
-Keep the imagery concrete.
-No title, no quotes, no commentary. Just the poem.`,
+  alliteration:
+`alliteration poem where each word starts with the same letter. Up to 4 lines total.
 
-  receipt: `You are a deadpan poet who prints receipts about moments.
+${PRINTER_RULE}`,
 
-Write a "receipt" itemizing what is in this photograph, as if a tiny
-thermal printer were tallying the scene. Format like a real receipt:
+  portrait:
+`portrait mode poem: prose poem, with line breaks at meaningful points, focusing on the person in the photo. what type of person might they be? what are they feeling in this moment? poem length should not exceed 12 lines.
 
-  - ALL CAPS for headers
-  - line items as: ITEM NAME .......... $price
-  - 2–8 items
-  - a SUBTOTAL, a wry TAX line, and a TOTAL
-  - a one-line printed "thank you" note at the bottom
+${PRINTER_RULE}`,
 
-Use a fixed line width of ~32 characters. Use dots to fill between the
-item name and the price. No title, no quotes, no commentary outside the
-receipt body. Just the receipt.`,
+  "free verse":
+`highly unusual and experimental free verse poem that uses fragments of phrases, unusual punctuation, artful spacing, etc. spaces should not exceed 12 spaces. poem length should not exceed 12 lines. do not write anything except the poem.
+
+Each line must be no more than 32 characters wide.`,
 };
 
-const MODES = Object.keys(DEFAULT_PROMPTS);
+const MODES = ["haiku", "receipt", "limerick", "sonnet", "alliteration", "portrait", "free verse"];
 
-// Canned poems used when "demo" is on or no API key is set. These exist so
-// the previewer can be exercised end-to-end without any network access.
+// ─── printer defaults: borders + footer ───────────────────────────────────
+// Verbatim from the camera. ≤32 chars per line. Whitespace is significant.
+
+const DEFAULT_BORDER_TOP =
+"`'. .'`'. .'`'. .'`'. .'`'. .'`\n   `     `     `     `     `";
+
+const DEFAULT_BORDER_BOTTOM =
+"   .     .     .     .     .   \n_.` `._.` `._.` `._.` `._.` `._";
+
+const DEFAULT_FOOTER = "poetry.camera";
+
+// ─── canned poems for demo mode — each ≤32 chars per line ─────────────────
 const DEMO_POEMS = {
-  haiku: `morning at the sill —
+  haiku:
+`morning at the sill —
 the cup forgets to be warm,
 remembers the light`,
 
-  "free verse": `Before the city wakes,
-the window keeps a small audience:
-one cup, one rim of steam,
-a rooftop softening into wheat.
-
-The radiator ticks like a second hand
-that nobody wound. Outside,
-a pigeon practices the same low note
-until it sounds like a word
-I almost remember.
-
-The cup cools without complaint.
-The light insists, anyway,
-on staying.`,
-
-  limerick: `A cup on a sill in the morning
-gave the rooftops a quiet adorning.
-   It steamed at the view,
-   said "I'm nearly through —
-the day is no longer in mourning."`,
-
-  alliteration: `Soft sun on a sill, a slow surrender —
-steam slips, settles, signs the silent glass.
-Somewhere a sparrow stitches sentences.
-The cup, still warm, says less and less.
-Streetlights surrender to a softer source.
-A whole city, slowly, starts to sigh awake.`,
-
-  receipt: `         POETRY CAMERA
-       — ONE QUIET MORNING —
-================================
+  receipt:
+`POETRY CAMERA · MORNING #047
+--------------------------------
 WINDOW LIGHT ............. $0.00
 ONE CUP, CERAMIC ......... $1.25
 STEAM, RISING ............ $0.40
-DISTANT ROOFTOPS ......... $0.75
+A FAINT ROOFTOP .......... $0.75
 ONE PIGEON, OFFSTAGE ..... $0.10
 SILENCE, GENEROUS ........ $0.00
 --------------------------------
 SUBTOTAL ................. $2.50
 TAX (TIME PASSING) ....... $0.30
-================================
-TOTAL .................... $2.80
+TOTAL .................... $2.80`,
 
-   THANK YOU FOR NOTICING.`,
+  limerick:
+`A cup on a sill in the morn
+left rooftops both quiet and worn.
+   It steamed at the view,
+   said "I'm nearly through —
+the day is no longer forlorn."`,
+
+  sonnet:
+`The morning lays its hand across
+the cup, the sill, the patient floor,
+and counts the steam as private cost
+of keeping silent one more hour.
+
+A pigeon practices its note,
+a small refrain it half-forgets,
+the city clears its hidden throat
+and pays its quiet morning debts.
+
+I have no errand to perform.
+The light arranges what it sees:
+the chair, the page, the gentle storm
+of small things settling by degrees.
+
+   The window keeps me, plain and true.
+   The poem is the morning's view.`,
+
+  alliteration:
+`soft sun settles, slow surrender —
+sparrows stitch a still suburban sky,
+steam slips skyward, sweet and slender,
+silence sings, the city sighs.`,
+
+  portrait:
+`he sits with his hands in pause,
+each finger a careful clause.
+
+there is light enough to see
+he is mostly remembering.
+
+he looks past the room
+the way a person looks
+when something inside them
+is still arriving.`,
+
+  "free verse":
+`     before
+the city — wakes,
+   the window keeps
+  one audience:
+   one cup. one rim
+        of steam.
+
+a pigeon practices.
+        practices.
+   one word
+        i almost
+   — remember.`,
 };
 
-// A small inline SVG, base64-encoded as image/svg+xml, used by "try a sample
-// image" so demo mode has something to look at. The poem isn't generated
-// from this image — it's just a placeholder so the dropzone isn't empty.
+// ─── sample SVG (used by "try a sample" so demo has something to look at) ─
 const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
   <defs>
     <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
@@ -149,21 +186,25 @@ const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300
 
 // ─── state ────────────────────────────────────────────────────────────────
 let state = {
-  image: null, // { dataUrl, mediaType, base64 }
+  image: null,
   mode: localStorage.getItem(ACTIVE_MODE_STORAGE) || "haiku",
   model: localStorage.getItem(MODEL_STORAGE) || "claude-sonnet-4-6",
   prompts: loadPrompts(),
+  borderTop: localStorage.getItem(BORDER_TOP_STORAGE) ?? DEFAULT_BORDER_TOP,
+  borderBottom: localStorage.getItem(BORDER_BOTTOM_STORAGE) ?? DEFAULT_BORDER_BOTTOM,
+  footer: localStorage.getItem(FOOTER_STORAGE) ?? DEFAULT_FOOTER,
   loading: false,
 };
 
 if (!MODES.includes(state.mode)) state.mode = "haiku";
 
-// ─── elements ─────────────────────────────────────────────────────────────
+// ─── element refs ─────────────────────────────────────────────────────────
 const el = {
   dropzone: document.getElementById("dropzone"),
   fileInput: document.getElementById("file-input"),
   preview: document.getElementById("preview"),
   clearBtn: document.getElementById("clear-btn"),
+  sampleBtn: document.getElementById("sample-btn"),
   modes: document.getElementById("modes"),
   prompt: document.getElementById("prompt"),
   promptModeLabel: document.getElementById("prompt-mode-label"),
@@ -171,13 +212,15 @@ const el = {
   promptChars: document.getElementById("prompt-chars"),
   resetPrompt: document.getElementById("reset-prompt"),
   model: document.getElementById("model"),
-  capture: document.getElementById("capture"),
   demoToggle: document.getElementById("demo-toggle"),
-  sampleBtn: document.getElementById("sample-btn"),
-  receipt: document.getElementById("receipt"),
+  capture: document.getElementById("capture"),
+  paper: document.getElementById("paper"),
   receiptEmpty: document.getElementById("receipt-empty"),
   receiptContent: document.getElementById("receipt-content"),
+  receiptBorderTop: document.getElementById("receipt-border-top"),
+  receiptBorderBottom: document.getElementById("receipt-border-bottom"),
   receiptBody: document.getElementById("receipt-body"),
+  receiptPrintedFooter: document.getElementById("receipt-printed-footer"),
   receiptSub: document.getElementById("receipt-sub"),
   receiptMode: document.getElementById("receipt-mode"),
   receiptModel: document.getElementById("receipt-model"),
@@ -188,6 +231,12 @@ const el = {
   settingsClose: document.getElementById("settings-close"),
   statusDot: document.getElementById("status-dot"),
   statusText: document.getElementById("status-text"),
+  statusPillDot: document.getElementById("status-pill-dot"),
+  statusPillText: document.getElementById("status-pill-text"),
+  borderTopInput: document.getElementById("border-top-input"),
+  borderBottomInput: document.getElementById("border-bottom-input"),
+  footerInput: document.getElementById("footer-input"),
+  printerReset: document.getElementById("printer-reset"),
   resetAll: document.getElementById("reset-all"),
 };
 
@@ -195,10 +244,13 @@ const el = {
 renderModes();
 syncPrompt();
 el.model.value = state.model;
+el.borderTopInput.value = state.borderTop;
+el.borderBottomInput.value = state.borderBottom;
+el.footerInput.value = state.footer;
 updateCaptureLabel();
 checkServer();
 
-// ─── prompts storage ──────────────────────────────────────────────────────
+// ─── prompts ──────────────────────────────────────────────────────────────
 function loadPrompts() {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
@@ -267,7 +319,7 @@ el.resetPrompt.addEventListener("click", () => {
   renderModes();
 });
 
-// ─── model select ─────────────────────────────────────────────────────────
+// ─── model ────────────────────────────────────────────────────────────────
 el.model.addEventListener("change", () => {
   state.model = el.model.value;
   localStorage.setItem(MODEL_STORAGE, state.model);
@@ -329,9 +381,7 @@ function loadSampleImage() {
 
 function loadImage(file) {
   if (file.size > 8 * 1024 * 1024) {
-    showError(
-      "image is over 8MB — anthropic's per-image limit. try a smaller one."
-    );
+    showError("image is over 8MB. try a smaller one.");
     return;
   }
   const reader = new FileReader();
@@ -355,13 +405,13 @@ function clearImage() {
   el.capture.disabled = true;
 }
 
-// ─── capture / api call ───────────────────────────────────────────────────
+// ─── capture ──────────────────────────────────────────────────────────────
 el.capture.addEventListener("click", capture);
 el.demoToggle.addEventListener("change", updateCaptureLabel);
 
 function updateCaptureLabel() {
-  const label = el.capture.querySelector(".capture-label");
   if (state.loading) return;
+  const label = el.capture.querySelector(".capture-label");
   label.textContent = el.demoToggle.checked ? "print demo" : "capture";
 }
 
@@ -375,8 +425,8 @@ async function capture() {
   try {
     let poem;
     if (demo) {
-      await sleep(450 + Math.random() * 350); // pretend to think
-      poem = DEMO_POEMS[state.mode];
+      await sleep(420 + Math.random() * 320);
+      poem = DEMO_POEMS[state.mode] || "(no demo for this mode yet)";
     } else {
       poem = await callClaude({
         model: state.model,
@@ -393,9 +443,7 @@ async function capture() {
   }
 }
 
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 function setLoading(loading) {
   state.loading = loading;
@@ -418,28 +466,17 @@ async function callClaude({ model, system, image }) {
         model,
         max_tokens: 1024,
         system,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: image.mediaType,
-                  data: image.base64,
-                },
-              },
-              { type: "text", text: "Write the poem." },
-            ],
-          },
-        ],
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } },
+            { type: "text", text: "Write the poem about this photograph." },
+          ],
+        }],
       }),
     });
   } catch (e) {
-    throw new Error(
-      "couldn't reach the local server. is `npm start` running? (or flip demo on.)"
-    );
+    throw new Error("couldn't reach the local server. is `npm start` running? (or flip demo on.)");
   }
 
   if (!res.ok) {
@@ -463,26 +500,27 @@ async function callClaude({ model, system, image }) {
   return text;
 }
 
+// ─── server status ────────────────────────────────────────────────────────
 async function checkServer() {
   try {
     const res = await fetch("/api/health", { cache: "no-store" });
     if (!res.ok) throw new Error("bad status");
     const data = await res.json();
-    if (data.hasKey) {
-      el.statusDot.className = "dot status-dot ok";
-      el.statusText.textContent = "connected · key loaded";
-    } else {
-      el.statusDot.className = "dot status-dot warn";
-      el.statusText.textContent = "server up, but ANTHROPIC_API_KEY is missing";
-    }
+    if (data.hasKey) setStatus("ok", "ready");
+    else setStatus("warn", "no key in .env");
   } catch {
-    el.statusDot.className = "dot status-dot error";
-    el.statusText.textContent =
-      "no server detected. run `npm start`, or use demo mode.";
+    setStatus("error", "no server");
   }
 }
 
-// ─── printout ─────────────────────────────────────────────────────────────
+function setStatus(level, text) {
+  if (el.statusDot) el.statusDot.className = "status-dot " + level;
+  if (el.statusText) el.statusText.textContent = text;
+  if (el.statusPillDot) el.statusPillDot.className = "status-pill-dot " + level;
+  if (el.statusPillText) el.statusPillText.textContent = text;
+}
+
+// ─── print ────────────────────────────────────────────────────────────────
 function printPoem(text, { demo = false } = {}) {
   el.receiptEmpty.hidden = true;
   el.receiptContent.hidden = false;
@@ -491,33 +529,43 @@ function printPoem(text, { demo = false } = {}) {
   el.receiptSub.textContent = formatStamp(now) + (demo ? " · DEMO" : "");
   el.receiptMode.textContent = state.mode;
   el.receiptModel.textContent = demo ? "demo" : state.model.replace("claude-", "");
-  el.receiptTime.textContent = now
-    .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  el.receiptTime.textContent = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-  // mono layout for receipt mode (it relies on fixed-width alignment)
+  // mono layout for receipt mode (preserves dot-leader alignment)
   el.receiptBody.classList.toggle("mono", state.mode === "receipt");
 
-  // animate line-by-line
-  el.receiptBody.innerHTML = "";
-  el.receipt.classList.remove("feeding");
-  void el.receipt.offsetWidth; // restart animation
-  el.receipt.classList.add("feeding");
+  // restart the paper-feed animation
+  el.paper.classList.remove("feeding");
+  void el.paper.offsetWidth;
+  el.paper.classList.add("feeding");
 
+  // print order: top border → body → bottom border → footer
+  let cursor = 0.05;
+  cursor = renderAnimatedLines(el.receiptBorderTop, state.borderTop, cursor);
+  cursor = renderAnimatedLines(el.receiptBody, text, cursor + 0.08);
+  cursor = renderAnimatedLines(el.receiptBorderBottom, state.borderBottom, cursor + 0.08);
+  renderAnimatedLines(el.receiptPrintedFooter, state.footer, cursor + 0.12);
+}
+
+// Render text into the given element with per-line fade-in. Returns the
+// time cursor (seconds) at which the last line will have animated.
+function renderAnimatedLines(container, text, startDelay) {
+  container.innerHTML = "";
+  if (!text) return startDelay;
   const lines = text.split("\n");
+  const perLine = 0.07;
   lines.forEach((line, i) => {
     const span = document.createElement("span");
     span.className = "line";
     span.textContent = line.length ? line : " ";
-    span.style.animationDelay = `${i * 0.09}s`;
-    el.receiptBody.appendChild(span);
+    span.style.animationDelay = `${startDelay + i * perLine}s`;
+    container.appendChild(span);
   });
+  return startDelay + lines.length * perLine;
 }
 
 function formatStamp(d) {
-  return d
-    .toISOString()
-    .replace("T", " · ")
-    .replace(/\..+/, "");
+  return d.toISOString().replace("T", " · ").replace(/\..+/, "");
 }
 
 function showError(msg) {
@@ -529,6 +577,34 @@ function hideError() {
   el.receiptError.hidden = true;
   el.receiptError.textContent = "";
 }
+
+// ─── printer settings (top/bottom border + footer) ────────────────────────
+el.borderTopInput.addEventListener("input", () => {
+  state.borderTop = el.borderTopInput.value;
+  localStorage.setItem(BORDER_TOP_STORAGE, state.borderTop);
+});
+
+el.borderBottomInput.addEventListener("input", () => {
+  state.borderBottom = el.borderBottomInput.value;
+  localStorage.setItem(BORDER_BOTTOM_STORAGE, state.borderBottom);
+});
+
+el.footerInput.addEventListener("input", () => {
+  state.footer = el.footerInput.value;
+  localStorage.setItem(FOOTER_STORAGE, state.footer);
+});
+
+el.printerReset.addEventListener("click", () => {
+  state.borderTop = DEFAULT_BORDER_TOP;
+  state.borderBottom = DEFAULT_BORDER_BOTTOM;
+  state.footer = DEFAULT_FOOTER;
+  localStorage.removeItem(BORDER_TOP_STORAGE);
+  localStorage.removeItem(BORDER_BOTTOM_STORAGE);
+  localStorage.removeItem(FOOTER_STORAGE);
+  el.borderTopInput.value = DEFAULT_BORDER_TOP;
+  el.borderBottomInput.value = DEFAULT_BORDER_BOTTOM;
+  el.footerInput.value = DEFAULT_FOOTER;
+});
 
 // ─── settings modal ───────────────────────────────────────────────────────
 function openSettings() {
@@ -553,9 +629,8 @@ el.resetAll.addEventListener("click", () => {
   renderModes();
 });
 
+// ─── keyboard ─────────────────────────────────────────────────────────────
 window.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !el.settingsModal.hidden) closeSettings();
-  if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !state.loading) {
-    capture();
-  }
+  if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !state.loading) capture();
 });

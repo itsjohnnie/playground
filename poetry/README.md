@@ -28,12 +28,20 @@ edit. The frontend is plain HTML/CSS/JS in this folder — no build step.
 
 ## Files
 
-- `server.js`         Express server + `/api/poem` proxy + `/api/health`
-- `index.html`        UI
-- `styles.css`        styles
-- `script.js`         frontend logic, prompts, modes, demo mode, server-status check
-- `package.json`      deps (`express`, `dotenv`) and `start` / `dev` scripts
-- `.env.example`      template for the key
+```
+poetry/
+├── server.js         Express server + /api/poem proxy + /api/health
+├── package.json      deps (express, dotenv) and start / dev scripts
+├── .env.example      template for the key
+├── public/
+│   ├── index.html    UI
+│   ├── styles.css    styles
+│   └── script.js     frontend logic, prompts, modes, demo mode
+└── README.md         this file
+```
+
+Static frontend is served from `public/` by `express.static`; everything else
+is the API. No build step.
 
 ## Endpoints
 
