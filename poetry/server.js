@@ -122,9 +122,12 @@ app.post("/api/poem", async (req, res) => {
         error: {
           message:
             `${msg}\n\n` +
-            `the server is using key  ${fp.prefix}…${fp.suffix}  (length ${fp.length}).\n` +
-            `check that .env matches your active key in the anthropic console,\n` +
-            `then restart the server (npm run sync doesn't auto-restart on .env edits).`,
+            `the server is using key  ${fp.prefix}…${fp.suffix}  (length ${fp.length}).\n\n` +
+            `the key string is well-formed, so anthropic is rejecting the value itself.\n` +
+            `open console.anthropic.com/settings/keys, find the key ending in ${fp.suffix},\n` +
+            `and either reactivate it or generate a new one. paste the new key into .env\n` +
+            `— if you're running \`npm run sync\` / \`npm run dev\`, the server will\n` +
+            `auto-restart when .env changes.`,
         },
       });
     }
