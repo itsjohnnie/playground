@@ -395,34 +395,41 @@ h1 {
 .controls-row { flex-direction: row; align-items: center; gap: 12px; flex-wrap: wrap; }
 .controls-left { display: flex; align-items: center; gap: 6px; }
 
-.select {
-  font-family: var(--mono);
-  font-size: 11.5px;
-  padding: 8px 30px 8px 11px;
-  border: 1px solid var(--hairline);
-  background: var(--paper-3);
+/* shared baseline for the three controls in the action row — same height,
+ * same radius, same font family. Distinction is in fill (capture is filled
+ * dark; select & toggle are outlined), not size. */
+.select,
+.toggle,
+.capture {
+  height: 42px;
   border-radius: 3px;
+  font-family: var(--mono);
+  border: 1px solid var(--hairline);
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.select {
+  font-size: 12px;
+  padding: 0 32px 0 13px;
+  background: var(--paper-3);
   color: var(--ink);
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%231a1714' stroke-width='1.2' fill='none' stroke-linecap='round'/></svg>");
   background-repeat: no-repeat;
-  background-position: right 11px center;
+  background-position: right 13px center;
 }
 
 .toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: 10.5px;
-  letter-spacing: 0.12em;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-2);
-  padding: 7px 10px;
-  border: 1px solid var(--hairline);
-  border-radius: 3px;
+  padding: 0 14px;
   cursor: pointer;
   user-select: none;
   background: var(--paper-3);
@@ -434,7 +441,7 @@ h1 {
 .toggle input {
   appearance: none;
   -webkit-appearance: none;
-  width: 11px; height: 11px;
+  width: 12px; height: 12px;
   border: 1px solid var(--ink-2);
   border-radius: 2px;
   display: inline-grid;
@@ -460,20 +467,16 @@ h1 {
 .capture {
   position: relative;
   flex: 1;
-  display: inline-flex;
-  align-items: center;
   justify-content: center;
   gap: 11px;
-  font-family: var(--mono);
   font-size: 11.5px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.22em;
-  padding: 13px 18px;
+  padding: 0 18px;
   background: var(--ink);
   color: var(--paper-3);
-  border: 1px solid var(--ink);
-  border-radius: 3px;
+  border-color: var(--ink);
   cursor: pointer;
   transition: transform 0.06s var(--ease), background 0.15s var(--ease);
   box-shadow: 0 1px 0 rgba(26, 23, 20, 0.25), 0 8px 20px -10px rgba(26, 23, 20, 0.4);
