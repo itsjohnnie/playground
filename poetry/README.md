@@ -23,8 +23,15 @@ cp .env.example .env      # then paste your sk-ant-... key
 npm start                 # → http://localhost:3000
 ```
 
-`npm run dev` does the same with `node --watch` so the server restarts on
-edit. The frontend is plain HTML/CSS/JS in this folder — no build step.
+### Three flavors of run
+
+| Command          | What it does                                                                                 |
+| ---------------- | -------------------------------------------------------------------------------------------- |
+| `npm start`      | Plain `node server.js`. No restart on file changes.                                          |
+| `npm run dev`    | `node --watch server.js`. Restarts when `server.js` changes (frontend hot-reloads via no-store headers). |
+| `npm run sync`   | Same as `dev`, **plus** polls `origin` every 5s and `git pull --ff-only`s when behind. Useful when changes are being pushed from another machine. |
+
+The frontend is plain HTML/CSS/JS in `public/` — no build step.
 
 ## Files
 
