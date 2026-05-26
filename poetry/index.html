@@ -37,6 +37,9 @@
             </div>
             <p class="dropzone-title">drop a photo</p>
             <p class="dropzone-sub">or click to choose · or paste</p>
+            <button id="sample-btn" type="button" class="ghost small sample-btn">
+              try a sample image
+            </button>
           </div>
           <img id="preview" class="preview" alt="" />
           <button id="clear-btn" class="clear" type="button" aria-label="Remove image" hidden>×</button>
@@ -74,6 +77,10 @@
             <option value="claude-opus-4-7">claude-opus-4-7</option>
             <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
           </select>
+          <label class="toggle" title="Skip the API. Print a canned poem for this mode.">
+            <input id="demo-toggle" type="checkbox" />
+            <span>demo</span>
+          </label>
           <button id="capture" class="capture" type="button" disabled>
             <span class="capture-label">capture</span>
             <span class="capture-shutter" aria-hidden="true"></span>

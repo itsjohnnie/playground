@@ -53,6 +53,100 @@ receipt body. Just the receipt.`,
 
 const MODES = Object.keys(DEFAULT_PROMPTS);
 
+// Canned poems used when "demo" is on or no API key is set. These exist so
+// the previewer can be exercised end-to-end without any network access.
+const DEMO_POEMS = {
+  haiku: `morning at the sill —
+the cup forgets to be warm,
+remembers the light`,
+
+  "free verse": `Before the city wakes,
+the window keeps a small audience:
+one cup, one rim of steam,
+a rooftop softening into wheat.
+
+The radiator ticks like a second hand
+that nobody wound. Outside,
+a pigeon practices the same low note
+until it sounds like a word
+I almost remember.
+
+The cup cools without complaint.
+The light insists, anyway,
+on staying.`,
+
+  limerick: `A cup on a sill in the morning
+gave the rooftops a quiet adorning.
+   It steamed at the view,
+   said "I'm nearly through —
+the day is no longer in mourning."`,
+
+  alliteration: `Soft sun on a sill, a slow surrender —
+steam slips, settles, signs the silent glass.
+Somewhere a sparrow stitches sentences.
+The cup, still warm, says less and less.
+Streetlights surrender to a softer source.
+A whole city, slowly, starts to sigh awake.`,
+
+  receipt: `         POETRY CAMERA
+       — ONE QUIET MORNING —
+================================
+WINDOW LIGHT ............. $0.00
+ONE CUP, CERAMIC ......... $1.25
+STEAM, RISING ............ $0.40
+DISTANT ROOFTOPS ......... $0.75
+ONE PIGEON, OFFSTAGE ..... $0.10
+SILENCE, GENEROUS ........ $0.00
+--------------------------------
+SUBTOTAL ................. $2.50
+TAX (TIME PASSING) ....... $0.30
+================================
+TOTAL .................... $2.80
+
+   THANK YOU FOR NOTICING.`,
+};
+
+// A small inline SVG, base64-encoded as image/svg+xml, used by "try a sample
+// image" so demo mode has something to look at. The poem isn't generated
+// from this image — it's just a placeholder so the dropzone isn't empty.
+const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#efe0c2"/>
+      <stop offset="0.6" stop-color="#d9b88e"/>
+      <stop offset="1" stop-color="#a67a52"/>
+    </linearGradient>
+    <linearGradient id="sill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a7158"/>
+      <stop offset="1" stop-color="#5a4636"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="#1f1a14"/>
+  <rect x="44" y="30" width="312" height="220" fill="url(#sky)"/>
+  <g stroke="#1f1a14" stroke-width="4" fill="none">
+    <rect x="44" y="30" width="312" height="220"/>
+    <line x1="200" y1="30" x2="200" y2="250"/>
+    <line x1="44" y1="150" x2="356" y2="150"/>
+  </g>
+  <g fill="#3b2e22" opacity="0.7">
+    <polygon points="44,200 90,170 130,200 170,175 200,200 44,200"/>
+    <polygon points="200,200 240,180 280,205 320,178 356,200 200,200"/>
+    <rect x="78" y="178" width="6" height="14"/>
+    <rect x="148" y="180" width="6" height="12"/>
+    <rect x="258" y="186" width="6" height="12"/>
+  </g>
+  <rect x="44" y="250" width="312" height="20" fill="url(#sill)"/>
+  <ellipse cx="170" cy="262" rx="34" ry="6" fill="#1f1a14" opacity="0.4"/>
+  <path d="M142 258 L148 286 Q170 294 192 286 L198 258 Z" fill="#eadcc0" stroke="#1f1a14" stroke-width="2"/>
+  <ellipse cx="170" cy="258" rx="28" ry="5" fill="#5a3a22"/>
+  <path d="M196 266 Q214 266 214 276 Q214 286 196 286" fill="none" stroke="#1f1a14" stroke-width="2"/>
+  <g stroke="#f7f4ee" stroke-width="2" fill="none" opacity="0.55">
+    <path d="M156 252 Q150 240 158 228 Q166 216 158 204"/>
+    <path d="M172 252 Q180 242 172 230 Q164 218 172 206"/>
+    <path d="M188 252 Q182 244 188 232 Q194 220 188 208"/>
+  </g>
+</svg>`;
+
 // ─── state ────────────────────────────────────────────────────────────────
 let state = {
   image: null, // { dataUrl, mediaType, base64 }
@@ -78,6 +172,8 @@ const el = {
   resetPrompt: document.getElementById("reset-prompt"),
   model: document.getElementById("model"),
   capture: document.getElementById("capture"),
+  demoToggle: document.getElementById("demo-toggle"),
+  sampleBtn: document.getElementById("sample-btn"),
   receipt: document.getElementById("receipt"),
   receiptEmpty: document.getElementById("receipt-empty"),
   receiptContent: document.getElementById("receipt-content"),
@@ -100,6 +196,7 @@ const el = {
 renderModes();
 syncPrompt();
 el.model.value = state.model;
+updateCaptureLabel();
 
 // ─── prompts storage ──────────────────────────────────────────────────────
 function loadPrompts() {
@@ -214,6 +311,22 @@ el.clearBtn.addEventListener("click", (e) => {
   clearImage();
 });
 
+el.sampleBtn.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  loadSampleImage();
+});
+
+function loadSampleImage() {
+  const base64 = btoa(SAMPLE_SVG);
+  const mediaType = "image/svg+xml";
+  const dataUrl = `data:${mediaType};base64,${base64}`;
+  state.image = { dataUrl, base64, mediaType, isSample: true };
+  el.preview.src = dataUrl;
+  el.dropzone.classList.add("has-image");
+  el.capture.disabled = false;
+}
+
 function loadImage(file) {
   if (file.size > 8 * 1024 * 1024) {
     showError(
@@ -244,13 +357,24 @@ function clearImage() {
 
 // ─── capture / api call ───────────────────────────────────────────────────
 el.capture.addEventListener("click", capture);
+el.demoToggle.addEventListener("change", updateCaptureLabel);
+
+function updateCaptureLabel() {
+  const label = el.capture.querySelector(".capture-label");
+  if (state.loading) return;
+  label.textContent = el.demoToggle.checked ? "print demo" : "capture";
+}
 
 async function capture() {
   if (!state.image || state.loading) return;
+  const demo = el.demoToggle.checked;
   const apiKey = localStorage.getItem(API_KEY_STORAGE);
-  if (!apiKey) {
+
+  if (!demo && !apiKey) {
     openSettings();
-    showError("add your anthropic api key in settings to capture.");
+    showError(
+      "no api key set. add one in settings, or flip the demo toggle to test the printout with a canned poem."
+    );
     return;
   }
 
@@ -258,13 +382,19 @@ async function capture() {
   hideError();
 
   try {
-    const poem = await callClaude({
-      apiKey,
-      model: state.model,
-      system: state.prompts[state.mode],
-      image: state.image,
-    });
-    printPoem(poem);
+    let poem;
+    if (demo) {
+      await sleep(450 + Math.random() * 350); // pretend to think
+      poem = DEMO_POEMS[state.mode];
+    } else {
+      poem = await callClaude({
+        apiKey,
+        model: state.model,
+        system: state.prompts[state.mode],
+        image: state.image,
+      });
+    }
+    printPoem(poem, { demo });
   } catch (err) {
     console.error(err);
     showError(err.message || String(err));
@@ -273,13 +403,19 @@ async function capture() {
   }
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 function setLoading(loading) {
   state.loading = loading;
   el.capture.classList.toggle("loading", loading);
   el.capture.disabled = loading || !state.image;
-  el.capture.querySelector(".capture-label").textContent = loading
-    ? "printing"
-    : "capture";
+  if (loading) {
+    el.capture.querySelector(".capture-label").textContent = "printing";
+  } else {
+    updateCaptureLabel();
+  }
 }
 
 async function callClaude({ apiKey, model, system, image }) {
@@ -339,14 +475,14 @@ async function callClaude({ apiKey, model, system, image }) {
 }
 
 // ─── printout ─────────────────────────────────────────────────────────────
-function printPoem(text) {
+function printPoem(text, { demo = false } = {}) {
   el.receiptEmpty.hidden = true;
   el.receiptContent.hidden = false;
 
   const now = new Date();
-  el.receiptSub.textContent = formatStamp(now);
+  el.receiptSub.textContent = formatStamp(now) + (demo ? " · DEMO" : "");
   el.receiptMode.textContent = state.mode;
-  el.receiptModel.textContent = state.model.replace("claude-", "");
+  el.receiptModel.textContent = demo ? "demo" : state.model.replace("claude-", "");
   el.receiptTime.textContent = now
     .toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
