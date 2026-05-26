@@ -57,11 +57,16 @@ function localChanges() {
   }
 }
 
-console.log(tag("starting server with --watch…"));
-const server = spawn("node", ["--watch", serverPath], {
-  stdio: "inherit",
-  cwd: poetryDir,
-});
+console.log(tag("starting server with --watch (server.js + .env)…"));
+const server = spawn(
+  "node",
+  [
+    "--watch-path", serverPath,
+    "--watch-path", resolve(poetryDir, ".env"),
+    serverPath,
+  ],
+  { stdio: "inherit", cwd: poetryDir }
+);
 
 server.on("exit", (code) => {
   if (code !== 0 && code !== null) {

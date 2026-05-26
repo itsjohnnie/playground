@@ -6,7 +6,7 @@
   "description": "A local previewer for poetry.camera — upload an image, edit per-mode prompts, print a poem.",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js",
+    "dev": "node --watch-path server.js --watch-path .env server.js",
     "sync": "node sync.mjs"
   },
   "engines": {
