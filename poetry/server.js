@@ -24,7 +24,18 @@ if (!process.env.ANTHROPIC_API_KEY) {
 }
 
 app.use(express.json({ limit: "12mb" }));
-app.use(express.static(path.join(__dirname, "public")));
+
+// Local-dev tool — never let the browser cache HTML/CSS/JS. Without this,
+// edits during a session can be invisible until a hard refresh.
+app.use(
+  express.static(path.join(__dirname, "public"), {
+    etag: false,
+    lastModified: false,
+    setHeaders(res) {
+      res.set("Cache-Control", "no-store, max-age=0");
+    },
+  })
+);
 
 app.get("/api/health", (_req, res) => {
   res.json({
