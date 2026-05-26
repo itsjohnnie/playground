@@ -1,35 +1,48 @@
 /* ───────────────────────────────────────────────────────────────────────────
  * poetry camera / previewer
- * refined editorial · cream paper · ink black · three considered typefaces:
- *   - Fraunces       — display, italic notes
- *   - JetBrains Mono — instrument labels, UI
- *   - Courier Prime  — printed poem body (reads as printed, not rendered)
+ *
+ * Page-level grid: controls on the left, dark previewer panel fixed on the
+ * right (50vw, full-viewport-height, 2rem radius). The paper "emerges"
+ * from the printer slot via a grid-template-rows transition while each
+ * printed line fades in sequentially. The paper's bottom is clipped into
+ * an irregular zigzag; the dark panel behind shows through the negative
+ * space, which IS the torn-paper effect (no extra shadow needed).
+ *
+ * Typefaces:
+ *   Fraunces       — display, italic notes
+ *   JetBrains Mono — UI instrument labels
+ *   Courier Prime  — the printed poem (reads as printed, not rendered)
  * ─────────────────────────────────────────────────────────────────────────── */
 
 :root {
   /* paper / ink */
-  --paper:     #f3eee2;
-  --paper-2:   #ebe4d3;
-  --paper-3:   #fbf8ed;   /* receipt paper, slightly brighter */
-  --ink:       #1a1714;
-  --ink-2:     #4a4540;
-  --muted:     #8a847a;
-  --hairline:  #d7d0bf;
-  --hairline-strong: #b7afa0;
-  --inset:     rgba(26, 23, 20, 0.04);
+  --paper:        #f3eee2;
+  --paper-2:      #ebe4d3;
+  --paper-3:      #fbf8ed;   /* the receipt paper */
+  --ink:          #1a1714;
+  --ink-2:        #4a4540;
+  --muted:        #8a847a;
+  --hairline:     #d7d0bf;
+  --hairline-2:   #b7afa0;
+
+  /* dark previewer */
+  --tray-1:       #1c1815;
+  --tray-2:       #0c0a08;
+  --tray-edge:    rgba(255, 255, 255, 0.04);
 
   /* status */
-  --ok:        #4f6e3a;
-  --warn:      #8a6520;
-  --error:     #9a3a2a;
+  --ok:           #4f6e3a;
+  --warn:         #8a6520;
+  --error:        #9a3a2a;
 
   /* type */
-  --display:   "Fraunces", "Iowan Old Style", Georgia, serif;
-  --mono:      "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --print:     "Courier Prime", "Courier New", ui-monospace, monospace;
+  --display:      "Fraunces", "Iowan Old Style", Georgia, serif;
+  --mono:         "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --print:        "Courier Prime", "Courier New", ui-monospace, monospace;
 
   /* motion */
-  --ease:      cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease:         cubic-bezier(0.2, 0.7, 0.2, 1);
+  --print-dur:    1.7s;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -46,7 +59,6 @@ html, body {
   text-rendering: optimizeLegibility;
 }
 
-/* subtle paper texture — barely-there grain so the background isn't dead */
 body {
   background-image:
     radial-gradient(rgba(26, 23, 20, 0.022) 1px, transparent 1px),
@@ -55,13 +67,54 @@ body {
   background-position: 0 0, 1px 2px;
 }
 
-/* ───── frame: full-width, generous lateral padding ───── */
-.frame {
-  width: 100%;
-  padding: 28px 40px 56px;
+/* ───── page-level grid ───── */
+.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 50vw;
+  align-items: start;
 }
 
-/* ───── masthead ───── */
+/* left column — scrolls naturally */
+.frame {
+  padding: 28px 40px 56px;
+  min-height: 100vh;
+}
+
+/* right column — fixed, full viewport, dark, 2rem radius */
+.previewer {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  padding: 1.5rem 1.5rem 1.5rem 0;
+}
+
+.previewer-frame {
+  height: 100%;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.05) 0%, transparent 55%),
+    linear-gradient(180deg, var(--tray-1) 0%, var(--tray-2) 100%);
+  border-radius: 2rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 -1px 0 rgba(0,0,0,0.6),
+    0 24px 60px -20px rgba(0,0,0,0.4);
+}
+
+@media (max-width: 980px) {
+  .page { grid-template-columns: 1fr; }
+  .frame { padding: 24px 20px 24px; min-height: 0; }
+  .previewer {
+    position: static;
+    height: 80vh;
+    padding: 0 16px 24px;
+  }
+}
+
+/* ───── masthead (in the left column) ───── */
 .masthead {
   display: flex;
   align-items: center;
@@ -69,23 +122,15 @@ body {
   padding-bottom: 18px;
   margin-bottom: 32px;
   border-bottom: 1px solid var(--hairline);
-}
-
-.masthead-left {
-  display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.masthead-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+.masthead-left { display: flex; align-items: center; gap: 12px; }
+.masthead-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 
 .brand-dot {
-  width: 8px;
-  height: 8px;
+  width: 8px; height: 8px;
   border-radius: 50%;
   background: var(--ink);
   box-shadow: 0 0 0 3px var(--paper-2);
@@ -103,12 +148,7 @@ h1 {
 }
 
 .brand { color: var(--ink); }
-
-.brand-sep {
-  color: var(--hairline-strong);
-  font-weight: 400;
-}
-
+.brand-sep { color: var(--hairline-2); font-weight: 400; }
 .brand-sub {
   color: var(--ink-2);
   font-style: italic;
@@ -116,7 +156,6 @@ h1 {
   font-variation-settings: "opsz" 12, "SOFT" 100;
 }
 
-/* status pill in masthead */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -141,29 +180,9 @@ h1 {
 .status-pill-dot.warn { background: var(--warn); }
 .status-pill-dot.error { background: var(--error); }
 
-/* ───── stage / columns ───── */
-.stage {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  gap: 40px;
-  align-items: start;
-}
+/* ───── controls / cards ───── */
+.controls { display: flex; flex-direction: column; gap: 20px; }
 
-@media (max-width: 980px) {
-  .frame { padding: 24px 20px 48px; }
-  .stage { grid-template-columns: 1fr; gap: 28px; }
-  .col-previewer { position: static !important; }
-}
-
-.col { display: flex; flex-direction: column; gap: 24px; }
-
-/* right column sticks while you scroll long prompts */
-.col-previewer {
-  position: sticky;
-  top: 24px;
-}
-
-/* ───── cards ───── */
 .card {
   background: var(--paper-3);
   border: 1px solid var(--hairline);
@@ -176,7 +195,6 @@ h1 {
 
 .card.stack { display: flex; flex-direction: column; gap: 18px; }
 
-/* ───── labels / typography helpers ───── */
 .label {
   font-family: var(--mono);
   font-size: 10.5px;
@@ -195,7 +213,7 @@ h1 {
 }
 
 .muted { color: var(--muted); }
-.tiny { font-size: 11px; line-height: 1.55; }
+.tiny  { font-size: 11px; line-height: 1.55; }
 .small { font-size: 12px; }
 
 .row { display: flex; flex-direction: column; gap: 9px; }
@@ -209,14 +227,10 @@ h1 {
   justify-content: center;
   aspect-ratio: 16 / 10;
   width: 100%;
-  border: 1px dashed var(--hairline-strong);
+  border: 1px dashed var(--hairline-2);
   border-radius: 3px;
   background:
-    repeating-linear-gradient(
-      0deg,
-      var(--paper-2) 0 1px,
-      transparent 1px 4px
-    ),
+    repeating-linear-gradient(0deg, var(--paper-2) 0 1px, transparent 1px 4px),
     var(--paper-3);
   cursor: pointer;
   overflow: hidden;
@@ -224,11 +238,7 @@ h1 {
 }
 
 .dropzone:hover { border-color: var(--ink-2); }
-
-.dropzone.dragover {
-  border-color: var(--ink);
-  background: var(--paper-2);
-}
+.dropzone.dragover { border-color: var(--ink); background: var(--paper-2); }
 
 .dropzone-empty {
   display: flex;
@@ -246,10 +256,7 @@ h1 {
   font-variation-settings: "opsz" 14;
 }
 
-.dropzone-title em {
-  font-style: italic;
-  font-weight: 400;
-}
+.dropzone-title em { font-style: italic; font-weight: 400; }
 
 .dropzone-sub {
   font-family: var(--mono);
@@ -260,23 +267,17 @@ h1 {
 
 .sample-btn {
   margin-top: 6px;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--hairline) !important;
   background: var(--paper-3) !important;
   padding: 5px 10px !important;
 }
 
 .sample-btn:hover {
-  border-color: var(--ink-2);
+  border-color: var(--ink-2) !important;
   background: var(--paper-2) !important;
 }
 
-/* aperture — six refined rings + an iris */
-.aperture {
-  position: relative;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 2px;
-}
+.aperture { position: relative; width: 44px; height: 44px; margin-bottom: 2px; }
 
 .aperture span {
   position: absolute;
@@ -291,11 +292,7 @@ h1 {
 .aperture span:nth-child(3) { transform: scale(0.64) rotate(120deg); }
 .aperture span:nth-child(4) { transform: scale(0.46); }
 .aperture span:nth-child(5) { transform: scale(0.28) rotate(45deg); }
-.aperture span:nth-child(6) {
-  transform: scale(0.12);
-  background: var(--ink);
-  opacity: 1;
-}
+.aperture span:nth-child(6) { transform: scale(0.12); background: var(--ink); opacity: 1; }
 
 .preview {
   display: none;
@@ -331,42 +328,34 @@ h1 {
 
 .clear:hover { background: rgba(26, 23, 20, 0.92); }
 
-/* ───── mode pills ───── */
-.modes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+/* ───── mode dropdown (full-width) ───── */
+.select-wrap {
+  position: relative;
+  width: 100%;
 }
 
-.mode {
+.mode-select {
+  width: 100%;
   font-family: var(--mono);
-  font-size: 11.5px;
+  font-size: 13px;
   letter-spacing: 0.02em;
-  text-transform: lowercase;
-  padding: 6px 11px;
+  padding: 11px 36px 11px 14px;
   border: 1px solid var(--hairline);
   background: var(--paper-3);
-  color: var(--ink-2);
-  border-radius: 999px;
-  cursor: pointer;
-  transition: all 0.12s var(--ease);
-}
-
-.mode:hover {
-  border-color: var(--ink-2);
+  border-radius: 3px;
   color: var(--ink);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  text-transform: lowercase;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%231a1714' stroke-width='1.2' fill='none' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  transition: border-color 0.15s var(--ease);
 }
 
-.mode.active {
-  background: var(--ink);
-  color: var(--paper-3);
-  border-color: var(--ink);
-}
-
-.mode.edited::after {
-  content: " ·";
-  opacity: 0.6;
-}
+.mode-select:hover { border-color: var(--ink-2); }
+.mode-select:focus { outline: none; border-color: var(--ink); }
 
 /* ───── prompt editor ───── */
 .prompt {
@@ -381,9 +370,8 @@ h1 {
   resize: vertical;
   min-height: 130px;
   outline: none;
-  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
   width: 100%;
-  /* subtle ruled-paper feel */
+  transition: border-color 0.15s var(--ease), box-shadow 0.15s var(--ease);
   background-image:
     linear-gradient(
       to bottom,
@@ -401,24 +389,11 @@ h1 {
   box-shadow: 0 0 0 3px rgba(26, 23, 20, 0.04);
 }
 
-.prompt-meta {
-  display: flex;
-  justify-content: space-between;
-  padding: 0 2px;
-}
+.prompt-meta { display: flex; justify-content: space-between; padding: 0 2px; }
 
 /* ───── action row ───── */
-.controls-row {
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
-}
-
-.controls-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+.controls-row { flex-direction: row; align-items: center; gap: 12px; flex-wrap: wrap; }
+.controls-left { display: flex; align-items: center; gap: 6px; }
 
 .select {
   font-family: var(--mono);
@@ -450,8 +425,8 @@ h1 {
   border-radius: 3px;
   cursor: pointer;
   user-select: none;
-  transition: all 0.12s var(--ease);
   background: var(--paper-3);
+  transition: all 0.12s var(--ease);
 }
 
 .toggle:hover { color: var(--ink); border-color: var(--ink-2); }
@@ -467,11 +442,7 @@ h1 {
   cursor: pointer;
 }
 
-.toggle input:checked {
-  background: var(--ink);
-  border-color: var(--ink);
-}
-
+.toggle input:checked { background: var(--ink); border-color: var(--ink); }
 .toggle input:checked::after {
   content: "";
   width: 4px; height: 7px;
@@ -486,7 +457,6 @@ h1 {
   border-color: var(--ink);
 }
 
-/* primary action — capture */
 .capture {
   position: relative;
   flex: 1;
@@ -542,7 +512,6 @@ h1 {
   100%    { content: "..."; }
 }
 
-/* ───── ghost buttons ───── */
 .ghost {
   font-family: var(--mono);
   font-size: 11.5px;
@@ -561,168 +530,124 @@ h1 {
 .ghost.tiny  { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
 
 /* ───────── PREVIEWER (right column) ─────────
- * A small machine that prints. Header is a printer "lip" with a slot;
- * the paper feeds out underneath, ending in a realistic zigzag tear.
+ * Dark "tray" containing a printer housing at the top and the paper that
+ * emerges underneath. The paper's bottom is clipped into a zigzag; the
+ * dark tray shows through the negative space, which is the realistic
+ * torn-paper edge (no extra shadow shape needed).
  * ─────────────────────────────────────────── */
 
-.printer {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  max-width: 440px;
-  margin: 0 auto;
-}
-
 .printer-housing {
-  background:
-    linear-gradient(180deg, #2a2622 0%, #1c1815 100%);
-  border-radius: 6px 6px 0 0;
-  padding: 8px 14px 12px;
   position: relative;
-  box-shadow:
-    inset 0 -1px 0 rgba(0,0,0,0.6),
-    0 2px 0 rgba(26, 23, 20, 0.06);
+  height: 42px;
+  flex-shrink: 0;
+  background:
+    linear-gradient(180deg, #2d2925 0%, #181410 100%);
+  border-bottom: 1px solid #000;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.printer-housing::before {
-  content: "POETRY CAMERA · printer";
-  display: block;
+.printer-label {
   font-family: var(--mono);
   font-size: 9px;
-  letter-spacing: 0.32em;
-  color: rgba(255, 255, 255, 0.42);
-  text-align: center;
-  margin-bottom: 6px;
+  letter-spacing: 0.36em;
+  color: rgba(255, 255, 255, 0.36);
+  text-transform: uppercase;
 }
 
-.printer-lip {
-  position: relative;
-  height: 12px;
-  border-radius: 2px;
-  background:
-    linear-gradient(180deg, #0d0a08 0%, #1c1714 100%);
-  box-shadow:
-    inset 0 1px 1px rgba(0,0,0,0.8),
-    inset 0 -1px 0 rgba(255,255,255,0.04);
-  overflow: hidden;
-}
-
-/* the actual printer slot — paper comes out here */
 .printer-slot {
   position: absolute;
-  top: 50%;
-  left: 10%;
-  right: 10%;
-  height: 2px;
+  left: 14%;
+  right: 14%;
+  bottom: 0;
+  height: 3px;
   background: #000;
-  transform: translateY(-50%);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.9),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  border-radius: 1px;
 }
 
-/* the paper sheet that slides out from under the printer */
+.paper-stage {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 24px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* a faint warm ambient glow just under the slot — the printer's heat */
+  background:
+    radial-gradient(ellipse 60% 80px at 50% 0%, rgba(255, 215, 170, 0.04) 0%, transparent 70%);
+}
+
 .paper {
-  position: relative;
+  width: 100%;
+  max-width: 360px;
   background: var(--paper-3);
-  margin-top: 0;
-  padding: 26px 28px 0;
-  min-height: 400px;
-  box-shadow:
-    0 1px 0 rgba(26, 23, 20, 0.05),
-    0 18px 36px -22px rgba(26, 23, 20, 0.25),
-    inset 0 1px 0 rgba(26, 23, 20, 0.08);
+  padding: 24px 22px 24px;
+  position: relative;
   background-image:
     repeating-linear-gradient(
       0deg,
       rgba(26, 23, 20, 0.012) 0 2px,
       transparent 2px 4px
     );
-  /* slight curl shadow at the top edge */
+  /* zigzag tear at the bottom — the dark tray shows through the teeth */
+  clip-path: polygon(
+    0% 0%, 100% 0%,
+    100% calc(100% - 10px),
+    98% calc(100% - 4px),
+    96% calc(100% - 13px),
+    94% calc(100% - 7px),
+    91.5% calc(100% - 16px),
+    88.5% calc(100% - 6px),
+    85.5% calc(100% - 14px),
+    82.5% calc(100% - 4px),
+    79% calc(100% - 12px),
+    75.5% calc(100% - 8px),
+    72% calc(100% - 17px),
+    68.5% calc(100% - 5px),
+    65% calc(100% - 13px),
+    61% calc(100% - 6px),
+    57% calc(100% - 16px),
+    53% calc(100% - 4px),
+    49% calc(100% - 11px),
+    45.5% calc(100% - 7px),
+    42% calc(100% - 15px),
+    38% calc(100% - 5px),
+    34% calc(100% - 13px),
+    30% calc(100% - 6px),
+    26% calc(100% - 16px),
+    22.5% calc(100% - 4px),
+    19% calc(100% - 12px),
+    15.5% calc(100% - 8px),
+    12% calc(100% - 15px),
+    9% calc(100% - 5px),
+    6% calc(100% - 13px),
+    3% calc(100% - 7px),
+    0% calc(100% - 10px)
+  );
 }
 
-.paper-inner {
-  padding-bottom: 36px;
-}
-
-/* ───── realistic paper tear (zigzag bottom) ─────
- * Use clip-path to chew the bottom edge into an irregular zigzag.
- * A second pseudo-element underneath casts a soft drop shadow that
- * follows the same shape.
- * ────────────────────────────────────────────── */
-.paper {
-  --tear:
-    polygon(
-      0% 0%, 100% 0%,
-      100% calc(100% - 10px),
-      98% calc(100% - 4px),
-      96% calc(100% - 13px),
-      94% calc(100% - 7px),
-      91.5% calc(100% - 16px),
-      88.5% calc(100% - 6px),
-      85.5% calc(100% - 14px),
-      82.5% calc(100% - 4px),
-      79% calc(100% - 12px),
-      75.5% calc(100% - 8px),
-      72% calc(100% - 17px),
-      68.5% calc(100% - 5px),
-      65% calc(100% - 13px),
-      61% calc(100% - 6px),
-      57% calc(100% - 16px),
-      53% calc(100% - 4px),
-      49% calc(100% - 11px),
-      45.5% calc(100% - 7px),
-      42% calc(100% - 15px),
-      38% calc(100% - 5px),
-      34% calc(100% - 13px),
-      30% calc(100% - 6px),
-      26% calc(100% - 16px),
-      22.5% calc(100% - 4px),
-      19% calc(100% - 12px),
-      15.5% calc(100% - 8px),
-      12% calc(100% - 15px),
-      9% calc(100% - 5px),
-      6% calc(100% - 13px),
-      3% calc(100% - 7px),
-      0% calc(100% - 10px)
-    );
-  clip-path: var(--tear);
-}
-
-/* shadow that follows the tear — sits behind the paper */
-.paper-tear {
-  position: absolute;
-  left: 0; right: 0;
-  bottom: -6px;
-  height: 20px;
-  pointer-events: none;
-  background: rgba(26, 23, 20, 0.18);
-  filter: blur(4px);
-  clip-path: var(--tear);
-  z-index: -1;
-}
-
-/* hide the placeholder svg — kept in markup in case we want it later */
-.paper-tear svg { display: none; }
-
-/* ───── empty / placeholder state ───── */
+/* empty placeholder — the paper sitting idle in the printer */
 .receipt-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 360px;
+  min-height: 320px;
   text-align: center;
   gap: 14px;
   color: var(--muted);
+  padding-bottom: 14px;
 }
 
-.empty-mark {
-  display: inline-flex;
-  gap: 5px;
-}
-
+.empty-mark { display: inline-flex; gap: 5px; }
 .empty-mark span {
   width: 4px; height: 4px;
-  background: var(--hairline-strong);
+  background: var(--hairline-2);
   border-radius: 50%;
 }
 
@@ -731,7 +656,6 @@ h1 {
   font-size: 20px;
   color: var(--ink-2);
 }
-
 .empty-title em { font-style: italic; font-weight: 400; }
 
 .empty-sub {
@@ -741,15 +665,32 @@ h1 {
   text-transform: uppercase;
 }
 
-/* ───── receipt content ───── */
+/* ───── receipt content (the actual print) ─────
+ * `display: grid` + `grid-template-rows: 0fr → 1fr` is the modern,
+ * smooth way to animate a height-from-zero. The inner child has
+ * overflow:hidden so it clips during the transition. While the grid
+ * row expands, each line's own animation-delay reveals the text in
+ * sequence, like a printer chunking out the paper.
+ * ───────────────────────────────────────────── */
+
 .receipt-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  width: 100%;
+}
+
+.paper.printing .receipt-content {
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--print-dur) var(--ease);
+}
+
+.receipt-inner {
+  overflow: hidden;
+  min-height: 0;
   font-family: var(--print);
 }
 
-.receipt-head {
-  text-align: center;
-  margin-bottom: 12px;
-}
+.receipt-head { text-align: center; margin-bottom: 10px; }
 
 .receipt-title {
   font-family: var(--mono);
@@ -768,7 +709,6 @@ h1 {
   text-transform: uppercase;
 }
 
-/* borders are rendered as <pre>; preserve whitespace exactly */
 .receipt-border {
   font-family: var(--print);
   font-size: 12.5px;
@@ -783,28 +723,24 @@ h1 {
 
 .receipt-body {
   font-family: var(--print);
-  font-size: 14.5px;
+  font-size: 13.5px;
   line-height: 1.7;
   white-space: pre-wrap;
   word-wrap: break-word;
   color: var(--ink);
   text-align: center;
   padding: 4px 0;
-  min-height: 60px;
+  min-height: 40px;
   letter-spacing: 0.005em;
 }
 
-/* receipt mode is tabular — left-aligned so dot leaders line up */
 .receipt-body.mono {
   text-align: left;
   font-size: 12.5px;
   letter-spacing: -0.005em;
 }
 
-.receipt-foot {
-  text-align: center;
-  margin-top: 6px;
-}
+.receipt-foot { text-align: center; margin-top: 6px; }
 
 .receipt-meta {
   display: flex;
@@ -822,9 +758,9 @@ h1 {
 
 .receipt-printed-footer {
   font-family: var(--print);
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--ink);
-  margin-top: 10px;
+  margin-top: 8px;
   letter-spacing: 0.02em;
 }
 
@@ -836,35 +772,37 @@ h1 {
   color: var(--error);
   padding: 11px 13px;
   border-radius: 3px;
-  margin-top: 14px;
+  margin: 14px 0;
   white-space: pre-wrap;
   text-align: left;
 }
 
-/* line-by-line print animation */
+/* per-line fade-in during the print */
 .receipt-body .line,
-.receipt-border .line {
+.receipt-border .line,
+.receipt-printed-footer .line {
   display: block;
   opacity: 0;
-  transform: translateY(3px);
-  animation: print 0.42s var(--ease) forwards;
+  transform: translateY(2px);
+  animation: print-line 0.42s var(--ease) forwards;
 }
 
-@keyframes print {
+@keyframes print-line {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* gentle paper feed when a print starts */
-.paper.feeding { animation: feed 0.5s var(--ease); }
+/* a tiny shudder of the paper as printing begins */
+.paper.printing { animation: paper-shudder 0.45s var(--ease); }
 
-@keyframes feed {
-  0%   { transform: translateY(-5px); }
+@keyframes paper-shudder {
+  0%   { transform: translateY(-2px); }
+  60%  { transform: translateY(0.5px); }
   100% { transform: translateY(0); }
 }
 
-/* ───── footer ───── */
+/* ───── footer (left col) ───── */
 .footer {
-  margin-top: 56px;
+  margin-top: 40px;
   padding-top: 18px;
   border-top: 1px solid var(--hairline);
   text-align: center;
@@ -881,7 +819,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 100;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   padding: 20px;
@@ -924,11 +862,7 @@ h1 {
   gap: 18px;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
+.field { display: flex; flex-direction: column; gap: 7px; }
 
 .mono-input {
   font-family: var(--print);
@@ -955,10 +889,7 @@ h1 {
 
 .text-input:focus { border-color: var(--ink-2); }
 
-.field-row {
-  display: flex;
-  gap: 8px;
-}
+.field-row { display: flex; gap: 8px; }
 
 .server-status {
   display: inline-flex;

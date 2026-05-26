@@ -205,7 +205,7 @@ const el = {
   preview: document.getElementById("preview"),
   clearBtn: document.getElementById("clear-btn"),
   sampleBtn: document.getElementById("sample-btn"),
-  modes: document.getElementById("modes"),
+  modeSelect: document.getElementById("mode-select"),
   prompt: document.getElementById("prompt"),
   promptModeLabel: document.getElementById("prompt-mode-label"),
   promptStatus: document.getElementById("prompt-status"),
@@ -249,6 +249,7 @@ el.borderBottomInput.value = state.borderBottom;
 el.footerInput.value = state.footer;
 updateCaptureLabel();
 checkServer();
+tryLoadDefaultImage();
 
 // ─── prompts ──────────────────────────────────────────────────────────────
 function loadPrompts() {
@@ -270,23 +271,19 @@ function isEdited(mode) {
   return state.prompts[mode] !== DEFAULT_PROMPTS[mode];
 }
 
-// ─── modes ────────────────────────────────────────────────────────────────
+// ─── modes (full-width dropdown) ──────────────────────────────────────────
 function renderModes() {
-  el.modes.innerHTML = "";
+  el.modeSelect.innerHTML = "";
   for (const mode of MODES) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.role = "radio";
-    btn.className = "mode";
-    btn.textContent = mode;
-    btn.dataset.mode = mode;
-    if (mode === state.mode) btn.classList.add("active");
-    if (isEdited(mode)) btn.classList.add("edited");
-    btn.setAttribute("aria-checked", mode === state.mode);
-    btn.addEventListener("click", () => setMode(mode));
-    el.modes.appendChild(btn);
+    const opt = document.createElement("option");
+    opt.value = mode;
+    opt.textContent = mode + (isEdited(mode) ? "  ·  edited" : "");
+    if (mode === state.mode) opt.selected = true;
+    el.modeSelect.appendChild(opt);
   }
 }
+
+el.modeSelect.addEventListener("change", () => setMode(el.modeSelect.value));
 
 function setMode(mode) {
   state.mode = mode;
@@ -370,6 +367,15 @@ el.sampleBtn.addEventListener("click", (e) => {
 });
 
 function loadSampleImage() {
+  // Prefer the real sample.jpg sitting in public/ if it exists; fall back
+  // to the inline SVG so something always shows up.
+  fetch("/sample.jpg", { cache: "no-store" })
+    .then((r) => (r.ok ? r.blob() : Promise.reject()))
+    .then(blobToImage)
+    .catch(() => useInlineSampleSvg());
+}
+
+function useInlineSampleSvg() {
   const base64 = btoa(SAMPLE_SVG);
   const mediaType = "image/svg+xml";
   const dataUrl = `data:${mediaType};base64,${base64}`;
@@ -377,6 +383,40 @@ function loadSampleImage() {
   el.preview.src = dataUrl;
   el.dropzone.classList.add("has-image");
   el.capture.disabled = false;
+}
+
+function blobToImage(blob) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const [meta, base64] = dataUrl.split(",");
+      state.image = {
+        dataUrl,
+        base64,
+        mediaType: blob.type || "image/jpeg",
+        isSample: true,
+      };
+      el.preview.src = dataUrl;
+      el.dropzone.classList.add("has-image");
+      el.capture.disabled = false;
+      resolve();
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+// On page load, if public/sample.jpg exists, drop it into the dropzone so
+// the previewer has something to look at from the first paint. Silent on
+// missing — the dropzone just stays empty.
+async function tryLoadDefaultImage() {
+  if (state.image) return;
+  try {
+    const r = await fetch("/sample.jpg", { cache: "no-store" });
+    if (!r.ok) return;
+    const blob = await r.blob();
+    await blobToImage(blob);
+  } catch {}
 }
 
 function loadImage(file) {
@@ -534,17 +574,23 @@ function printPoem(text, { demo = false } = {}) {
   // mono layout for receipt mode (preserves dot-leader alignment)
   el.receiptBody.classList.toggle("mono", state.mode === "receipt");
 
-  // restart the paper-feed animation
-  el.paper.classList.remove("feeding");
-  void el.paper.offsetWidth;
-  el.paper.classList.add("feeding");
-
   // print order: top border → body → bottom border → footer
   let cursor = 0.05;
   cursor = renderAnimatedLines(el.receiptBorderTop, state.borderTop, cursor);
   cursor = renderAnimatedLines(el.receiptBody, text, cursor + 0.08);
   cursor = renderAnimatedLines(el.receiptBorderBottom, state.borderBottom, cursor + 0.08);
   renderAnimatedLines(el.receiptPrintedFooter, state.footer, cursor + 0.12);
+
+  // Trigger the "paper emerging from the printer" animation: reset, force
+  // a reflow so the browser commits the collapsed state, then add the
+  // class so grid-template-rows transitions from 0fr → 1fr.
+  el.paper.classList.remove("printing");
+  void el.paper.offsetWidth;
+  requestAnimationFrame(() => {
+    el.paper.classList.add("printing");
+    // keep the freshly-printed paper in view as it extends
+    el.paper.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
 }
 
 // Render text into the given element with per-line fade-in. Returns the

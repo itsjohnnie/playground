@@ -13,29 +13,29 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="frame">
-    <header class="masthead">
-      <div class="masthead-left">
-        <span class="brand-dot" aria-hidden="true"></span>
-        <h1>
-          <span class="brand">poetry camera</span>
-          <span class="brand-sep">/</span>
-          <span class="brand-sub">previewer</span>
-        </h1>
-      </div>
-      <div class="masthead-right">
-        <span class="status-pill" id="status-pill" title="server status">
-          <span class="status-pill-dot" id="status-pill-dot"></span>
-          <span id="status-pill-text">connecting</span>
-        </span>
-        <a class="ghost" href="https://poetry.camera" target="_blank" rel="noopener">poetry.camera ↗</a>
-        <button id="settings-btn" class="ghost" aria-label="Settings">settings</button>
-      </div>
-    </header>
+  <div class="page">
+    <!-- LEFT: controls -->
+    <main class="frame">
+      <header class="masthead">
+        <div class="masthead-left">
+          <span class="brand-dot" aria-hidden="true"></span>
+          <h1>
+            <span class="brand">poetry camera</span>
+            <span class="brand-sep">/</span>
+            <span class="brand-sub">previewer</span>
+          </h1>
+        </div>
+        <div class="masthead-right">
+          <span class="status-pill" id="status-pill" title="server status">
+            <span class="status-pill-dot" id="status-pill-dot"></span>
+            <span id="status-pill-text">connecting</span>
+          </span>
+          <a class="ghost" href="https://poetry.camera" target="_blank" rel="noopener">poetry.camera ↗</a>
+          <button id="settings-btn" class="ghost" aria-label="Settings">settings</button>
+        </div>
+      </header>
 
-    <section class="stage">
-      <!-- LEFT: controls -->
-      <aside class="col col-controls">
+      <section class="controls">
         <div class="card">
           <label class="dropzone" id="dropzone" for="file-input">
             <input id="file-input" type="file" accept="image/*" hidden />
@@ -58,7 +58,9 @@
         <div class="card stack">
           <div class="row mode-row">
             <span class="label">mode</span>
-            <div class="modes" id="modes" role="radiogroup" aria-label="Poem mode"></div>
+            <div class="select-wrap">
+              <select id="mode-select" class="mode-select" aria-label="Poem mode"></select>
+            </div>
           </div>
 
           <div class="row prompt-row">
@@ -98,28 +100,37 @@
             </button>
           </div>
         </div>
-      </aside>
+      </section>
 
-      <!-- RIGHT: previewer -->
-      <section class="col col-previewer">
-        <div class="printer">
-          <div class="printer-housing">
-            <div class="printer-lip" aria-hidden="true">
-              <span class="printer-slot"></span>
-            </div>
-          </div>
+      <footer class="footer">
+        <span class="muted tiny">
+          the camera never keeps the photo. it keeps the poem.
+        </span>
+      </footer>
+    </main>
+
+    <!-- RIGHT: previewer (dark, full-height, fixed) -->
+    <aside class="previewer">
+      <div class="previewer-frame">
+        <div class="printer-housing" aria-hidden="true">
+          <span class="printer-label">POETRY CAMERA · printer</span>
+          <span class="printer-slot"></span>
+        </div>
+
+        <div class="paper-stage" id="paper-stage">
           <div class="paper" id="paper">
-            <div class="paper-inner">
-              <div class="receipt-empty" id="receipt-empty">
-                <div class="empty-mark" aria-hidden="true">
-                  <span></span><span></span><span></span>
-                </div>
-                <p class="empty-title"><em>no print yet</em></p>
-                <p class="empty-sub muted">
-                  drop a photo, choose a mode, press capture.
-                </p>
+            <div class="receipt-empty" id="receipt-empty">
+              <div class="empty-mark" aria-hidden="true">
+                <span></span><span></span><span></span>
               </div>
-              <article class="receipt-content" id="receipt-content" hidden>
+              <p class="empty-title"><em>no print yet</em></p>
+              <p class="empty-sub muted">
+                drop a photo, choose a mode, press capture.
+              </p>
+            </div>
+
+            <article class="receipt-content" id="receipt-content" hidden>
+              <div class="receipt-inner">
                 <header class="receipt-head">
                   <div class="receipt-title">POETRY CAMERA</div>
                   <div class="receipt-sub" id="receipt-sub">—</div>
@@ -137,29 +148,15 @@
                   </div>
                   <div class="receipt-printed-footer" id="receipt-printed-footer">poetry.camera</div>
                 </footer>
-              </article>
-              <div class="receipt-error" id="receipt-error" hidden></div>
-            </div>
-            <div class="paper-tear" aria-hidden="true">
-              <svg viewBox="0 0 800 20" preserveAspectRatio="none">
-                <defs>
-                  <filter id="paper-tear-shadow" x="-2%" y="-50%" width="104%" height="200%">
-                    <feGaussianBlur stdDeviation="1.2" />
-                  </filter>
-                </defs>
-              </svg>
-            </div>
+              </div>
+            </article>
+
+            <div class="receipt-error" id="receipt-error" hidden></div>
           </div>
         </div>
-      </section>
-    </section>
-
-    <footer class="footer">
-      <span class="muted tiny">
-        the camera never keeps the photo. it keeps the poem.
-      </span>
-    </footer>
-  </main>
+      </div>
+    </aside>
+  </div>
 
   <!-- Settings modal -->
   <div class="modal" id="settings-modal" hidden>
@@ -197,7 +194,7 @@
 
         <section class="field">
           <span class="label">footer</span>
-          <input id="footer-input" class="text-input" type="text" spellcheck="false" />
+          <input id="footer-input" class="text-input" type="text" maxlength="32" spellcheck="false" />
           <span class="muted tiny">prints out at the bottom of every printout. max 32 characters.</span>
         </section>
 
