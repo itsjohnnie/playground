@@ -216,7 +216,7 @@ const el = {
   capture: document.getElementById("capture"),
   paper: document.getElementById("paper"),
   paperStage: document.getElementById("paper-stage"),
-  receiptEmpty: document.getElementById("receipt-empty"),
+  paperReady: document.getElementById("paper-ready"),
   receiptError: document.getElementById("receipt-error"),
   settingsBtn: document.getElementById("settings-btn"),
   settingsModal: document.getElementById("settings-modal"),
@@ -554,11 +554,13 @@ function setStatus(level, text) {
 
 // ─── print ────────────────────────────────────────────────────────────────
 function appendPrint(text, { demo = false, mode, model } = {}) {
-  el.receiptEmpty.hidden = true;
+  // Hide the dim "ready" hint that lives in the dark area. From now on,
+  // the printer panel shows paper.
+  el.paperReady.hidden = true;
 
   const now = new Date();
   const art = buildPrintArticle(text, { demo, mode, model, now });
-  el.paper.insertBefore(art, el.receiptError);
+  el.paper.appendChild(art);
   tickOut(art);
 }
 

@@ -113,19 +113,18 @@
         </div>
 
         <div class="paper-stage" id="paper-stage">
-          <div class="paper" id="paper">
-            <div class="receipt-empty" id="receipt-empty">
-              <div class="empty-mark" aria-hidden="true">
-                <span></span><span></span><span></span>
-              </div>
-              <p class="empty-title"><em>no print yet</em></p>
-              <p class="empty-sub muted">
-                drop a photo, choose a mode, press capture.
-              </p>
-            </div>
-            <!-- each capture appends a .print article here -->
-            <div class="receipt-error" id="receipt-error" hidden></div>
+          <!-- empty state lives in the dark area, NOT on the paper -->
+          <div class="paper-ready" id="paper-ready" aria-hidden="true">
+            <div class="ready-mark"><span></span><span></span><span></span></div>
+            <p class="ready-title">ready</p>
+            <p class="ready-sub">capture to print.</p>
           </div>
+
+          <!-- the paper strip — invisible when no prints inside; each capture
+               appends a .print which ticks the paper out of the slot -->
+          <div class="paper" id="paper"></div>
+
+          <div class="receipt-error" id="receipt-error" hidden></div>
         </div>
       </div>
     </aside>
