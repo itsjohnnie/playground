@@ -57,7 +57,8 @@ jobs:
             [ -e "$f" ] && cp "$f" _site/
           done
           for d in ascii cc dithered dots dott generative-ui haiku jitter \
-                   liquid liquid-glass-icon mask orb os pretext sizzle toaster; do
+                   liquid liquid-glass-icon mask orb os poetry pretext sizzle \
+                   toaster; do
             if [ -d "$d" ]; then
               mkdir -p "_site/$d"
               cp -r "$d/." "_site/$d/"
