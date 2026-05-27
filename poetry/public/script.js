@@ -96,9 +96,26 @@ line 7: 4 spaces, then "+" then 22 "-" then "+"
 then one blank line. then 4-5 lowercase lines (max 30 chars each) listing properties, half-life, and what it reacts with. scientific but melancholy.
 
 ${PRINTER_RULE}`,
+
+  dictionary:
+`invent a single new word that names the exact feeling, mood, or scene in the photo. format as a real dictionary entry, each on its own line, in this order: headword in all caps; pronunciation guide between forward slashes; part of speech abbreviated and lowercase ("n.", "v.", "adj."); a numbered definition (one sentence). then one blank line. then one example sentence in quotation marks using the word naturally. do not write anything except the entry.
+
+Sample output (photo of a dog watching its owner leave for work):
+
+GLINTLORN
+/ˈɡlɪnt.lɔːrn/
+n.
+1. the small, helpless ache of being watched by something you must leave behind.
+
+"she felt the glintlorn in the rearview mirror long after the house was out of sight."
+
+NOTES:
+- The pronunciation guide between forward slashes is the ONE exception to the ASCII rule — use IPA Unicode characters there (e.g. /ˈɡlɪnt.lɔːrn/). Headword, definition, and example use plain ASCII only.
+- The definition and example sentence may be longer than 37 characters — they wrap naturally on the paper.
+- No markdown, no code blocks. Output ONLY the entry — no preamble, no commentary.`,
 };
 
-const MODES = ["haiku", "receipt", "limerick", "sonnet", "alliteration", "portrait", "free verse", "constellation", "periodic element"];
+const MODES = ["haiku", "receipt", "limerick", "sonnet", "alliteration", "portrait", "free verse", "constellation", "periodic element", "dictionary"];
 
 // ─── printer defaults: borders + footer ───────────────────────────────────
 // Verbatim from the camera. ≤37 chars per line. Whitespace is significant.
@@ -220,6 +237,14 @@ a pigeon practices.
   childhood bedroom. reacts
   violently with photographs.
   do not store near mothers.`,
+
+  dictionary:
+`GLINTLORN
+/ˈɡlɪnt.lɔːrn/
+n.
+1. the small, helpless ache of being watched by something you must leave behind.
+
+"she felt the glintlorn in the rearview mirror long after the house was out of sight."`,
 };
 
 // ─── sample SVG (used by "try a sample" so demo has something to look at) ─
@@ -353,7 +378,10 @@ function renderModes() {
   for (const mode of MODES) {
     const opt = document.createElement("option");
     opt.value = mode;
-    opt.textContent = displayMode(mode);
+    // Native <select> options don't accept per-character CSS styling,
+    // so visual "dimming" is done via punctuation: lowercase "(edited)"
+    // in parens reads as secondary metadata next to the capitalized name.
+    opt.textContent = displayMode(mode) + (isEdited(mode) ? "  (edited)" : "");
     if (mode === state.mode) opt.selected = true;
     el.modeSelect.appendChild(opt);
   }
