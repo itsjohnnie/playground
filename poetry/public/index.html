@@ -59,7 +59,25 @@
           <div class="row mode-row">
             <span class="label">mode</span>
             <div class="select-wrap">
-              <select id="mode-select" class="mode-select" aria-label="Poem mode"></select>
+              <button
+                type="button"
+                id="mode-select"
+                class="mode-select"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                aria-label="Poem mode"
+              >
+                <span class="mode-select-name" id="mode-select-name">Haiku</span>
+                <span class="mode-select-tag muted" id="mode-select-tag" hidden>(edited)</span>
+                <span class="mode-select-chevron" aria-hidden="true"></span>
+              </button>
+              <div
+                id="mode-menu"
+                class="mode-menu"
+                role="listbox"
+                aria-labelledby="mode-select"
+                hidden
+              ></div>
             </div>
           </div>
 

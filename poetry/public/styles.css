@@ -328,7 +328,11 @@ h1 {
 
 .clear:hover { background: rgba(26, 23, 20, 0.92); }
 
-/* ───── mode dropdown (full-width) ───── */
+/* ───── mode dropdown (custom — full-width) ─────
+ * Custom popover instead of <select> so the "(edited)" tag can be
+ * styled separately as dimmed metadata next to the mode name. Native
+ * <option> elements don't accept per-character CSS.
+ * ─────────────────────────────────────────────── */
 .select-wrap {
   position: relative;
   width: 100%;
@@ -336,26 +340,98 @@ h1 {
 
 .mode-select {
   width: 100%;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--mono);
   font-size: 13px;
   letter-spacing: 0.02em;
-  padding: 11px 36px 11px 14px;
+  padding: 0 14px;
   border: 1px solid var(--hairline);
   background: var(--paper-3);
   border-radius: 3px;
   color: var(--ink);
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  text-transform: lowercase;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%231a1714' stroke-width='1.2' fill='none' stroke-linecap='round'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 14px center;
+  text-align: left;
   transition: border-color 0.15s var(--ease);
 }
 
 .mode-select:hover { border-color: var(--ink-2); }
-.mode-select:focus { outline: none; border-color: var(--ink); }
+.mode-select:focus-visible { outline: none; border-color: var(--ink); }
+.mode-select[aria-expanded="true"] { border-color: var(--ink); }
+
+.mode-select-name { color: var(--ink); }
+.mode-select-tag  { font-size: 11.5px; color: var(--muted); }
+
+.mode-select-chevron {
+  margin-left: auto;
+  width: 10px;
+  height: 6px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%231a1714' stroke-width='1.2' fill='none' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: center;
+  transition: transform 0.15s var(--ease);
+}
+
+.mode-select[aria-expanded="true"] .mode-select-chevron {
+  transform: rotate(180deg);
+}
+
+.mode-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--paper-3);
+  border: 1px solid var(--hairline);
+  border-radius: 3px;
+  padding: 4px 0;
+  z-index: 20;
+  max-height: 60vh;
+  overflow-y: auto;
+  box-shadow:
+    0 1px 0 rgba(26, 23, 20, 0.04),
+    0 12px 28px -10px rgba(26, 23, 20, 0.25);
+}
+
+.mode-menu-item {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 14px 9px 22px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s var(--ease);
+}
+
+.mode-menu-item:hover { background: var(--paper-2); }
+.mode-menu-item.active { background: var(--paper-2); }
+
+/* small dot to the left of the active item */
+.mode-menu-item.active::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translateY(-50%);
+}
+
+.mode-menu-item-tag {
+  font-size: 11px;
+  color: var(--muted);
+}
 
 /* ───── prompt editor ───── */
 .prompt {

@@ -308,6 +308,9 @@ const el = {
   clearBtn: document.getElementById("clear-btn"),
   sampleBtn: document.getElementById("sample-btn"),
   modeSelect: document.getElementById("mode-select"),
+  modeSelectName: document.getElementById("mode-select-name"),
+  modeSelectTag: document.getElementById("mode-select-tag"),
+  modeMenu: document.getElementById("mode-menu"),
   prompt: document.getElementById("prompt"),
   promptModeLabel: document.getElementById("prompt-mode-label"),
   promptStatus: document.getElementById("prompt-status"),
@@ -374,20 +377,73 @@ function displayMode(mode) {
 }
 
 function renderModes() {
-  el.modeSelect.innerHTML = "";
+  // Update the trigger button (current selection + edited tag)
+  el.modeSelectName.textContent = displayMode(state.mode);
+  el.modeSelectTag.hidden = !isEdited(state.mode);
+
+  // Rebuild the popover menu
+  el.modeMenu.innerHTML = "";
   for (const mode of MODES) {
-    const opt = document.createElement("option");
-    opt.value = mode;
-    // Native <select> options don't accept per-character CSS styling,
-    // so visual "dimming" is done via punctuation: lowercase "(edited)"
-    // in parens reads as secondary metadata next to the capitalized name.
-    opt.textContent = displayMode(mode) + (isEdited(mode) ? "  (edited)" : "");
-    if (mode === state.mode) opt.selected = true;
-    el.modeSelect.appendChild(opt);
+    const item = document.createElement("button");
+    item.type = "button";
+    item.role = "option";
+    item.className = "mode-menu-item";
+    item.dataset.mode = mode;
+    if (mode === state.mode) {
+      item.classList.add("active");
+      item.setAttribute("aria-selected", "true");
+    } else {
+      item.setAttribute("aria-selected", "false");
+    }
+
+    const name = document.createElement("span");
+    name.className = "mode-menu-item-name";
+    name.textContent = displayMode(mode);
+    item.appendChild(name);
+
+    if (isEdited(mode)) {
+      const tag = document.createElement("span");
+      tag.className = "mode-menu-item-tag";
+      tag.textContent = "(edited)";
+      item.appendChild(tag);
+    }
+
+    item.addEventListener("click", () => {
+      setMode(mode);
+      closeModeMenu();
+    });
+    el.modeMenu.appendChild(item);
   }
 }
 
-el.modeSelect.addEventListener("change", () => setMode(el.modeSelect.value));
+function openModeMenu() {
+  el.modeMenu.hidden = false;
+  el.modeSelect.setAttribute("aria-expanded", "true");
+}
+
+function closeModeMenu() {
+  el.modeMenu.hidden = true;
+  el.modeSelect.setAttribute("aria-expanded", "false");
+}
+
+function toggleModeMenu() {
+  if (el.modeMenu.hidden) openModeMenu();
+  else closeModeMenu();
+}
+
+el.modeSelect.addEventListener("click", (e) => {
+  e.stopPropagation();
+  toggleModeMenu();
+});
+
+// Outside click closes the menu. Clicks on the trigger or inside the
+// menu are handled by their own listeners, so this only fires for
+// genuine outside clicks.
+document.addEventListener("click", (e) => {
+  if (el.modeMenu.hidden) return;
+  if (el.modeSelect.contains(e.target) || el.modeMenu.contains(e.target)) return;
+  closeModeMenu();
+});
 
 function setMode(mode) {
   state.mode = mode;
@@ -939,6 +995,9 @@ el.resetAll.addEventListener("click", () => {
 
 // ─── keyboard ─────────────────────────────────────────────────────────────
 window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !el.settingsModal.hidden) closeSettings();
+  if (e.key === "Escape") {
+    if (!el.modeMenu.hidden) closeModeMenu();
+    else if (!el.settingsModal.hidden) closeSettings();
+  }
   if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && !state.loading) capture();
 });
