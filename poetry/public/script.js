@@ -582,7 +582,9 @@ function appendPrint(text, { demo = false, mode, model } = {}) {
 
   const now = new Date();
   const art = buildPrintArticle(cleanText, { demo, mode, model, now });
-  el.paper.appendChild(art);
+  // Prepend: new paper emerges from the slot at the top of the strip,
+  // shoving older prints down — same as a real thermal printer.
+  el.paper.prepend(art);
   tickOut(art);
 }
 
@@ -735,13 +737,13 @@ function tickOut(art) {
   }, totalMs + 120);
 }
 
-// Pin the paper-stage scroll to the bottom for the duration of the print,
-// so the user watches the most recently-emerged line. They can scroll up
-// freely afterward.
+// Pin the paper-stage scroll to the TOP for the duration of the print,
+// so the user is always watching the slot — where the newest paper is
+// emerging. They can scroll down freely afterward to see older prints.
 function autoScrollWhilePrinting(durMs) {
   const start = performance.now();
   function frame(t) {
-    el.paperStage.scrollTop = el.paperStage.scrollHeight;
+    el.paperStage.scrollTop = 0;
     if (t - start < durMs) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
