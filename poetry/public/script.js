@@ -119,18 +119,18 @@ the cup forgets to be warm,
 remembers the light`,
 
   receipt:
-`POETRY CAMERA · MORNING #047
---------------------------------
-WINDOW LIGHT ............. $0.00
-ONE CUP, CERAMIC ......... $1.25
-STEAM, RISING ............ $0.40
-A FAINT ROOFTOP .......... $0.75
-ONE PIGEON, OFFSTAGE ..... $0.10
-SILENCE, GENEROUS ........ $0.00
---------------------------------
-SUBTOTAL ................. $2.50
-TAX (TIME PASSING) ....... $0.30
-TOTAL .................... $2.80`,
+`POETRY CAMERA - MORNING NO. 047
+-------------------------------------
+WINDOW LIGHT....................$0.00
+ONE CUP, CERAMIC................$1.25
+STEAM, RISING...................$0.40
+A FAINT ROOFTOP.................$0.75
+ONE PIGEON, OFFSTAGE............$0.10
+SILENCE, GENEROUS...............$0.00
+-------------------------------------
+SUBTOTAL........................$2.50
+TAX (TIME PASSING)..............$0.30
+TOTAL...........................$2.80`,
 
   limerick:
 `A cup on a sill in the morn
@@ -341,12 +341,19 @@ function isEdited(mode) {
 }
 
 // ─── modes (full-width dropdown) ──────────────────────────────────────────
+
+// Sentence case: capitalize first letter of the whole label only.
+// "free verse" → "Free verse"; "periodic element" → "Periodic element".
+function displayMode(mode) {
+  return mode.charAt(0).toUpperCase() + mode.slice(1);
+}
+
 function renderModes() {
   el.modeSelect.innerHTML = "";
   for (const mode of MODES) {
     const opt = document.createElement("option");
     opt.value = mode;
-    opt.textContent = mode + (isEdited(mode) ? "  ·  edited" : "");
+    opt.textContent = displayMode(mode);
     if (mode === state.mode) opt.selected = true;
     el.modeSelect.appendChild(opt);
   }
@@ -365,7 +372,7 @@ function setMode(mode) {
 function syncPrompt() {
   const text = state.prompts[state.mode];
   el.prompt.value = text;
-  el.promptModeLabel.textContent = state.mode;
+  el.promptModeLabel.textContent = displayMode(state.mode);
   el.promptChars.textContent = text.length;
   el.promptStatus.textContent = isEdited(state.mode) ? "edited" : "default";
 }
@@ -723,7 +730,7 @@ function buildPrintArticle(text, { demo, mode, model, now }) {
   const meta = document.createElement("div");
   meta.className = "print-meta";
   const modeSpan = document.createElement("span");
-  modeSpan.textContent = mode;
+  modeSpan.textContent = displayMode(mode);
   const sep1 = document.createElement("span");
   sep1.className = "meta-sep";
   sep1.textContent = "·";
