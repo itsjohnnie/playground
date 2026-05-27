@@ -1,7 +1,7 @@
 // poetry camera / previewer
 // State and per-mode prompts live in localStorage. The image and prompt go
 // to /api/poem (the local express server), which forwards to Anthropic
-// server-to-server. The 32-char-per-line rule is the printer's invariant.
+// server-to-server. The 37-char-per-line rule is the printer's invariant.
 
 const STORAGE_KEY = "poetry-camera-prompts";
 const MODEL_STORAGE = "poetry-camera-model";
@@ -11,12 +11,12 @@ const BORDER_BOTTOM_STORAGE = "poetry-camera-border-bottom";
 const FOOTER_STORAGE = "poetry-camera-footer";
 
 // ─── modes & per-mode default prompts ─────────────────────────────────────
-// One canonical printer rule shared by every mode: thermal paper is 32
+// One canonical printer rule shared by every mode: thermal paper is 37
 // characters wide, no markdown, ASCII only. This is the same set of
 // constraints Poetry Camera uses internally — the model needs both the
 // rule AND a concrete example to honor it consistently.
 
-const PRINTER_RULE = `Output plain ASCII only (characters 32-126: space through tilde). No Unicode: no box-drawing, blocks, arrows, bullets, moon symbols, or fancy quotes. Every line must be 32 characters or fewer — count each character including leading spaces. Preserve all internal whitespace. Do not wrap in markdown or code blocks.
+const PRINTER_RULE = `Output plain ASCII only (characters 32-126: space through tilde). No Unicode: no box-drawing, blocks, arrows, bullets, moon symbols, or fancy quotes. Every line must be 37 characters or fewer — count each character including leading spaces. Preserve all internal whitespace. Do not wrap in markdown or code blocks.
 
 Output ONLY the poem itself — no title, no preamble, no commentary like "Here is your poem:".`;
 
@@ -29,24 +29,30 @@ ${PRINTER_RULE}`,
   receipt:
 `Write an itemized receipt about this photograph. Tone: sarcastic, dry, deadpan. 5-7 line items. Use dollar amounts to comical effect.
 
-FORMAT — copy this exactly. EVERY LINE IS EXACTLY 32 CHARACTERS WIDE. The price is right-aligned to column 32; periods fill the gap between the item name (UPPERCASE) and the price.
+FORMAT — copy this exactly. EVERY LINE IS EXACTLY 37 CHARACTERS WIDE. The price is right-aligned to column 37; periods fill the gap between the item name (UPPERCASE) and the price.
 
-WINDOW LIGHT...............$0.00
-ONE CUP, CERAMIC...........$1.25
-EXISTENTIAL DREAD..........FREE
-SUBTOTAL...................$1.25
-TAX (TIME PASSING).........$0.30
-TOTAL......................$1.55
+WINDOW LIGHT....................$0.00
+ONE CUP, CERAMIC................$1.25
+EXISTENTIAL DREAD................FREE
+SUBTOTAL........................$1.25
+TAX (TIME PASSING)..............$0.30
+TOTAL...........................$1.55
 
-HARD CONSTRAINT: keep item names SHORT so the full line — name + dots + $price — fits in 32 characters. If a name would overflow, ABBREVIATE it before you write it. Examples:
+HARD CONSTRAINT: keep item names SHORT so the full line — name + dots + $price — fits in 37 characters. If a name would overflow, ABBREVIATE it before you write it. Examples:
   "NATURAL LIGHTING (PURCHASED)" → "BOUGHT LIGHT"
   "CONFIDENCE THAT SCREAMS HIRE ME" → "HIRE-ME ENERGY"
   "STRATEGICALLY PLACED PLANTS" → "STAGED PLANTS"
 Never break a single item across two lines. Never let dots or a price spill to a second line.
 
-End with one short, wry note (also <= 32 chars per line).
+End with one short, wry note (also <= 37 chars per line).
 
-${PRINTER_RULE}`,
+STRICT OUTPUT RULES:
+- Every line MUST be 37 characters wide or less. Count carefully.
+- ASCII only. NO markdown of any kind: no # headers, no *italic*, no
+  **bold**, no \`code\`, no --- separators, no > quotes, no bullets.
+- Output ONLY the poem text. No title, no preamble, no commentary,
+  no "Here is your poem:" — just the poem itself.
+- Use straight quotes (") not curly ("). Use straight apostrophes (').`,
 
   limerick:
 `Write one limerick about this photograph. AABBA rhyme. 5 lines.
@@ -74,12 +80,12 @@ ${PRINTER_RULE}`,
 ${PRINTER_RULE}`,
 
   constellation:
-`invent a new constellation based on the photo. exactly 32 chars wide per line. lines 1-7: each line is exactly 32 characters of spaces with 1-2 "." dots placed at varied column positions to suggest a scattered star field. NEVER let a line exceed 32 chars — count the trailing spaces too, or simply let lines end naturally (no trailing spaces past the last dot is also fine). then one blank line. then "THE [INVENTED NAME]" in caps, indented to roughly center — the name should be specific to the photo and slightly mundane. then 3-4 lowercase lines describing the myth or first sighting, max 30 chars each line, quiet and melancholy.
+`invent a new constellation based on the photo. exactly 37 chars wide per line. lines 1-7: each line is exactly 37 characters of spaces with 1-2 "." dots placed at varied column positions to suggest a scattered star field. NEVER let a line exceed 37 chars — count the trailing spaces too, or simply let lines end naturally (no trailing spaces past the last dot is also fine). then one blank line. then "THE [INVENTED NAME]" in caps, indented to roughly center — the name should be specific to the photo and slightly mundane. then 3-4 lowercase lines describing the myth or first sighting, max 35 chars each line, quiet and melancholy.
 
 ${PRINTER_RULE}`,
 
   "periodic element":
-`a new element discovered in the photo. exactly 32 chars wide. structure exactly as follows:
+`a new element discovered in the photo. exactly 37 chars wide. structure exactly as follows:
 line 1: 4 spaces, then "+" then 22 "-" then "+" (= 28 chars total)
 line 2: 4 spaces, then "| " then atomic number (pad to 3 chars left-aligned) then 12 spaces then atomic mass like "284.7" (5 chars right-aligned) then " |" (= 28 chars)
 line 3: 4 spaces, then "|" then 22 spaces then "|"
@@ -95,7 +101,7 @@ ${PRINTER_RULE}`,
 const MODES = ["haiku", "receipt", "limerick", "sonnet", "alliteration", "portrait", "free verse", "constellation", "periodic element"];
 
 // ─── printer defaults: borders + footer ───────────────────────────────────
-// Verbatim from the camera. ≤32 chars per line. Whitespace is significant.
+// Verbatim from the camera. ≤37 chars per line. Whitespace is significant.
 
 const DEFAULT_BORDER_TOP =
 "`'. .'`'. .'`'. .'`'. .'`'. .'`\n   `     `     `     `     `";
@@ -105,7 +111,7 @@ const DEFAULT_BORDER_BOTTOM =
 
 const DEFAULT_FOOTER = "poetry.camera";
 
-// ─── canned poems for demo mode — each ≤32 chars per line ─────────────────
+// ─── canned poems for demo mode — each ≤37 chars per line ─────────────────
 const DEMO_POEMS = {
   haiku:
 `morning at the sill —
