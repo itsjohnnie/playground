@@ -655,7 +655,7 @@
       height: 100dvh;
     }
 
-    #stage { min-height: 0; cursor: pointer; }             /* let the row collapse so the panel keeps its 64px; tap-to-cycle */
+    #stage { min-height: 0; cursor: pointer; }             /* let the row collapse so the panel keeps its 50px; tap-to-cycle */
     /* Move the status pill to the top-center on mobile, clearing the iPhone
        notch with safe-area-inset-top. The bottom is reserved for the floating
        sheet, and the top-left/right are reserved for any future controls. */
@@ -669,14 +669,14 @@
 
     /* Panel: a floating card pinned to the bottom — the same 12px inset and
        full 14px corner radius as desktop, just dropped to the bottom edge.
-       Morphs between 64px tall (collapsed, header only) and almost the full
+       Morphs between 50px tall (collapsed, header only) and almost the full
        viewport (expanded — top/bottom margin preserved). */
     #panel {
       position: fixed;
       left: 12px; right: 12px;
       bottom: calc(12px + env(safe-area-inset-bottom, 0px));   /* clear iPhone home indicator */
       margin: 0;
-      height: 62px;                                        /* h1 line-height (30px) + 16px top/bottom padding — fits content exactly */
+      height: 50px;                                        /* 30px content row + 10px top/bottom padding — fits content exactly */
       max-height: calc(100dvh - 24px - env(safe-area-inset-bottom, 0px) - env(safe-area-inset-top, 0px));
       border-radius: 14px;
       box-shadow: none;                                    /* dark-on-darker halo isn't useful on mobile; the inset + border carries the card look */
@@ -699,12 +699,12 @@
     #panel:not(.mobile-expanded) header {
       border-bottom-color: transparent;
     }
-    /* Without the tagline, the header simplifies to logo + icons. Even 16px
-       padding all around for a balanced, slightly tighter mobile-specific
-       block. Icon-button spacing inherits the desktop 6px gap — comfortable
-       for thumb taps and consistent with the rest of the UI. */
+    /* Without the tagline, the header simplifies to logo + icons. Tighter
+       10px top/bottom padding (16px sides) keeps the collapsed sheet compact —
+       the 30px content row still has comfortable breathing room. Icon-button
+       spacing inherits the desktop 6px gap — fine for thumb taps. */
     #panel header .sub { display: none; }
-    #panel header { padding: 16px; }
+    #panel header { padding: 10px 16px; }
 
     /* The mobile toggle uses the sliders icon for both states; the sheet's
        visible position is itself the open/close signal, so no rotation
