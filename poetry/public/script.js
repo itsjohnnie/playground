@@ -109,10 +109,13 @@ n.
 
 "she felt the glintlorn in the rearview mirror long after the house was out of sight."
 
+CRITICAL — DO NOT PREAMBLE:
+The very FIRST character of your response must be the first letter of the HEADWORD. Do NOT write "Here's the entry:", "I appreciate your interest", "Let me create...", or any acknowledgment. Do NOT explain that you're following instructions. Just produce the entry.
+
 NOTES:
 - The pronunciation guide between forward slashes is the ONE exception to the ASCII rule — use IPA Unicode characters there (e.g. /ˈɡlɪnt.lɔːrn/). Headword, definition, and example use plain ASCII only.
 - The definition and example sentence may be longer than 37 characters — they wrap naturally on the paper.
-- No markdown, no code blocks. Output ONLY the entry — no preamble, no commentary.`,
+- No markdown, no code blocks.`,
 };
 
 const MODES = ["haiku", "receipt", "limerick", "sonnet", "alliteration", "portrait", "free verse", "constellation", "periodic element", "dictionary"];
@@ -670,7 +673,11 @@ async function callClaude({ model, system, image }) {
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } },
-            { type: "text", text: "Write the poem about this photograph." },
+            // Generic trigger. The actual task lives in the system prompt;
+            // anything specific here (e.g. "write a poem") makes the model
+            // preamble when the system asks for non-poem output like a
+            // receipt or a dictionary entry.
+            { type: "text", text: "This photograph. Apply your instructions above. Output ONLY the result — no preamble, no explanation, no acknowledgment. Your first character is the first character of the output." },
           ],
         }],
       }),
