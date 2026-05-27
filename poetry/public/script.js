@@ -42,7 +42,13 @@ SUBTOTAL...................$1.25
 TAX (TIME PASSING).........$0.30
 TOTAL......................$1.55
 
-End with one short, wry note (also <= 32 chars per line). Keep item names short so the whole line fits.
+HARD CONSTRAINT: keep item names SHORT so the full line — name + dots + $price — fits in 32 characters. If a name would overflow, ABBREVIATE it before you write it. Examples:
+  "NATURAL LIGHTING (PURCHASED)" → "BOUGHT LIGHT"
+  "CONFIDENCE THAT SCREAMS HIRE ME" → "HIRE-ME ENERGY"
+  "STRATEGICALLY PLACED PLANTS" → "STAGED PLANTS"
+Never break a single item across two lines. Never let dots or a price spill to a second line.
+
+End with one short, wry note (also <= 32 chars per line).
 
 ${PRINTER_RULE}`,
 

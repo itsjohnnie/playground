@@ -638,10 +638,10 @@ h1 {
  * strip's bottom, so it always tracks the last print's edge. */
 .paper {
   width: 100%;
-  /* Sized to ~32ch of Courier Prime + breathing room — same shape as
-   * a real ~80mm thermal receipt slip. Content beyond 32 chars (which
-   * the model is instructed not to produce) wraps cleanly. */
-  max-width: 296px;
+  /* Sized to fit ~32ch of Courier Prime comfortably, with a small
+   * buffer for the occasional overshoot the model produces. Same shape
+   * as a real ~80mm thermal receipt slip. */
+  max-width: 324px;
   position: relative;
   /* zigzag tear at the bottom — the dark tray shows through the teeth */
   clip-path: polygon(
