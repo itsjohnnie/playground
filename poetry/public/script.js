@@ -629,7 +629,8 @@ function appendPrint(text, { demo = false, mode, model } = {}) {
   // the printer panel shows paper.
   el.paperReady.hidden = true;
 
-  const cleanText = sanitizeOutput(text);
+  let cleanText = sanitizeOutput(text);
+  if (mode === "receipt") cleanText = alignReceiptLines(cleanText);
 
   const now = new Date();
   const art = buildPrintArticle(cleanText, { demo, mode, model, now });
@@ -637,6 +638,36 @@ function appendPrint(text, { demo = false, mode, model } = {}) {
   // shoving older prints down — same as a real thermal printer.
   el.paper.prepend(art);
   tickOut(art);
+}
+
+// Visual width of the paper in Courier Prime characters at the current
+// .print-body font-size. Matches .paper max-width: 324px with
+// .print-inner padding: 18px each side. If you change the paper width,
+// update this so dot-leader alignment in receipt mode tracks it.
+const RECEIPT_PAPER_CHARS = 37;
+
+// For receipt mode only — any line that's NAME....$PRICE gets its dot
+// leader recomputed so the whole line ends exactly at the right edge
+// of the paper. The model produces leaders of varying length; this
+// makes every price land in a clean right column.
+function alignReceiptLines(text) {
+  return text.split("\n").map((line) => {
+    // $-prefixed numeric price ($0.00, $1,234.56, etc.)
+    let m = line.match(/^(.*?)\.+(\$[\d,]+(?:\.\d+)?)\s*$/);
+    if (m) {
+      const [, name, price] = m;
+      const need = RECEIPT_PAPER_CHARS - name.length - price.length;
+      if (need >= 2) return name + ".".repeat(need) + price;
+    }
+    // Uppercase word value (FREE, PRICELESS, $PRICELESS, etc.)
+    m = line.match(/^(.*?)\.+(\$?[A-Z]{3,})\s*$/);
+    if (m) {
+      const [, name, value] = m;
+      const need = RECEIPT_PAPER_CHARS - name.length - value.length;
+      if (need >= 2) return name + ".".repeat(need) + value;
+    }
+    return line;
+  }).join("\n");
 }
 
 // Strip any markdown the model might leak even with a "no markdown"
