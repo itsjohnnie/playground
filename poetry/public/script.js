@@ -619,25 +619,29 @@ function buildPrintArticle(text, { demo, mode, model, now }) {
   return art;
 }
 
-// Thermal-printer feel: animate max-height in N discrete steps. ~75ms per
-// step is roughly the rate of a real thermal head. The text is already
-// rendered inside the article — the container just reveals more of it
-// with each step. No fade-ins, no easing curve. Just ticks.
+// Thermal-printer mechanics:
+//   one tick = paper advances by one line-height + print head fires once.
+//   the text on that newly-revealed line is already on the paper; the
+//   container just exposes it. No easing — discrete steps. Between ticks,
+//   nothing moves.
+//
+//   pace: ~8 ticks/sec (120ms per tick) — real thermal printers run
+//   around 6–10 lines/sec.
 function tickOut(art) {
   art.style.overflow = "hidden";
   art.style.maxHeight = "0px";
   art.style.transition = "none";
 
-  // Force reflow so the collapsed state commits before we measure.
+  // force reflow so the collapsed state commits before we measure
   void art.offsetHeight;
   const target = art.scrollHeight;
 
-  // One step per line of body text (computed from the body's actual
-  // line-height) gives a faithful thermal-printer tick rate.
+  // one tick advances the box by the body's line-height — that's what
+  // gives "one tick = one line of text" alignment.
   const body = art.querySelector(".print-body");
   const lh = parseFloat(getComputedStyle(body).lineHeight) || 22;
-  const stepCount = Math.max(10, Math.ceil(target / lh));
-  const stepDurMs = 75;
+  const stepCount = Math.max(8, Math.ceil(target / lh));
+  const stepDurMs = 120;
   const totalMs = stepCount * stepDurMs;
 
   requestAnimationFrame(() => {
