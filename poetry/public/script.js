@@ -12,44 +12,64 @@ const FOOTER_STORAGE = "poetry-camera-footer";
 
 // ─── modes & per-mode default prompts ─────────────────────────────────────
 // One canonical printer rule shared by every mode: thermal paper is 32
-// characters wide. Keep prompts close to the camera's actual wording.
+// characters wide, no markdown, ASCII only. This is the same set of
+// constraints Poetry Camera uses internally — the model needs both the
+// rule AND a concrete example to honor it consistently.
 
-const PRINTER_RULE =
-  "Each line must be no more than 32 characters wide. Output only the poem.";
+const PRINTER_RULE = `STRICT OUTPUT RULES:
+- Every line MUST be 32 characters wide or less. Count carefully.
+- ASCII only. NO markdown of any kind: no # headers, no *italic*, no
+  **bold**, no \`code\`, no --- separators, no > quotes, no bullets.
+- Output ONLY the poem text. No title, no preamble, no commentary,
+  no "Here is your poem:" — just the poem itself.
+- Use straight quotes (") not curly ("). Use straight apostrophes (').`;
 
 const DEFAULT_PROMPTS = {
   haiku:
-`haiku (5-7-5 syllable structure). Only write the one haiku, and nothing else.
+`Write one haiku about this photograph (5-7-5 syllable structure). Three lines, nothing else.
 
 ${PRINTER_RULE}`,
 
   receipt:
-`itemized receipt, sarcastic and dry tone, 5-7 items. Be concise. Use dollar amounts to comical effect. Each receipt line is 32 letters wide, so pad any dollar amounts with the appropriate number of periods beforehand.`,
+`Write an itemized receipt about this photograph. Tone: sarcastic, dry, deadpan. 5-7 line items. Use dollar amounts to comical effect.
+
+FORMAT — copy this exactly. EVERY LINE IS EXACTLY 32 CHARACTERS WIDE. The price is right-aligned to column 32; periods fill the gap between the item name (UPPERCASE) and the price.
+
+WINDOW LIGHT...............$0.00
+ONE CUP, CERAMIC...........$1.25
+EXISTENTIAL DREAD..........FREE
+SUBTOTAL...................$1.25
+TAX (TIME PASSING).........$0.30
+TOTAL......................$1.55
+
+End with one short, wry note (also <= 32 chars per line). Keep item names short so the whole line fits.
+
+${PRINTER_RULE}`,
 
   limerick:
-`limerick (AABBA rhyme scheme)
+`Write one limerick about this photograph. AABBA rhyme. 5 lines.
 
 ${PRINTER_RULE}`,
 
   sonnet:
-`modern sonnet. do not use old english. 14 lines, iambic pentameter, ABAB CDCD EFEF GG rhyme scheme.
+`Write one modern sonnet about this photograph. Plain modern English (no thee/thou). 14 lines, iambic pentameter, ABAB CDCD EFEF GG rhyme.
 
 ${PRINTER_RULE}`,
 
   alliteration:
-`alliteration poem where each word starts with the same letter. Up to 4 lines total.
+`Write a short alliteration poem about this photograph. Every meaningful word starts with the same letter. Up to 4 lines.
 
 ${PRINTER_RULE}`,
 
   portrait:
-`portrait mode poem: prose poem, with line breaks at meaningful points, focusing on the person in the photo. what type of person might they be? what are they feeling in this moment? poem length should not exceed 12 lines.
+`Write a portrait-mode poem about this photograph. Prose poem with line breaks at meaningful points. Focus on the person: who they might be, what they're feeling in this moment. Up to 12 lines.
 
 ${PRINTER_RULE}`,
 
   "free verse":
-`highly unusual and experimental free verse poem that uses fragments of phrases, unusual punctuation, artful spacing, etc. spaces should not exceed 12 spaces. poem length should not exceed 12 lines. do not write anything except the poem.
+`Write a highly unusual, experimental free-verse poem about this photograph. Use fragments, unusual punctuation, artful spacing. No more than 12 spaces in a single run. Up to 12 lines.
 
-Each line must be no more than 32 characters wide.`,
+${PRINTER_RULE}`,
 };
 
 const MODES = ["haiku", "receipt", "limerick", "sonnet", "alliteration", "portrait", "free verse"];

@@ -678,6 +678,37 @@ h1 {
  * below the slot until you capture */
 .paper:empty { display: none; }
 
+/* during a print, the bottom edge is a CLEAN print-head boundary —
+ * not a torn edge. A thermal printer's paper has no zigzag while the
+ * head is firing; the tear is a thing the user does afterward.
+ * The .printing class is added by JS for the animation duration and
+ * removed when all in-flight tickOut() calls complete. */
+.paper.printing {
+  clip-path: none;
+}
+
+/* a thin "print head" line that sits right at the bottom of the
+ * growing strip — gives a visual cue that ink is being laid down
+ * exactly at this boundary on each tick. */
+.paper.printing::after {
+  content: "";
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 0;
+  height: 1.5px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(26, 23, 20, 0.45) 18%,
+    rgba(26, 23, 20, 0.55) 50%,
+    rgba(26, 23, 20, 0.45) 82%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
 /* ───── print articles (one per capture) ─────
  * Each capture appends an <article class="print"> to .paper. The text is
  * already in place when appended; the animation is purely the article's
