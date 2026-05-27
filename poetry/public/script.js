@@ -578,10 +578,28 @@ function appendPrint(text, { demo = false, mode, model } = {}) {
   // the printer panel shows paper.
   el.paperReady.hidden = true;
 
+  const cleanText = sanitizeOutput(text);
+
   const now = new Date();
-  const art = buildPrintArticle(text, { demo, mode, model, now });
+  const art = buildPrintArticle(cleanText, { demo, mode, model, now });
   el.paper.appendChild(art);
   tickOut(art);
+}
+
+// Strip any markdown the model might leak even with a "no markdown"
+// instruction — defense-in-depth alongside the prompt. The receipt
+// surface only renders plain text + ASCII.
+function sanitizeOutput(text) {
+  return String(text)
+    .replace(/^#{1,6}\s+/gm, "")            // # headers
+    .replace(/^-{3,}\s*$/gm, "")            // --- separators
+    .replace(/^\*{3,}\s*$/gm, "")           // *** separators
+    .replace(/^>\s+/gm, "")                 // > quotes
+    .replace(/\*\*([^*\n]+)\*\*/g, "$1")    // **bold**
+    .replace(/\*([^*\n]+)\*/g, "$1")        // *italic*
+    .replace(/`+([^`\n]+)`+/g, "$1")        // `code`
+    .replace(/\n{3,}/g, "\n\n")             // collapse runs of blanks
+    .trim();
 }
 
 function buildPrintArticle(text, { demo, mode, model, now }) {
@@ -635,28 +653,54 @@ function buildPrintArticle(text, { demo, mode, model, now }) {
   printedFooter.textContent = state.footer;
   foot.append(meta, printedFooter);
 
-  art.append(head, borderTop, body, borderBottom, foot);
+  // Everything that's visible-text lives in .print-inner so we can
+  // translateY it during the print animation.
+  const inner = document.createElement("div");
+  inner.className = "print-inner";
+  inner.append(head, borderTop, body, borderBottom, foot);
+  art.append(inner);
   return art;
 }
 
-// Thermal-printer mechanics:
-//   one tick = paper advances by one line-height + print head fires once.
-//   the text on that newly-revealed line is already on the paper; the
-//   container just exposes it. No easing — discrete steps. Between ticks,
-//   nothing moves.
+// Thermal-printer mechanics — text moves WITH the paper.
 //
-//   pace: ~8 ticks/sec (120ms per tick) — real thermal printers run
-//   around 6–10 lines/sec.
+// One tick = paper advances by one line-height + print head fires once.
+// Both the OUTER (paper extending downward via max-height) and the
+// INNER (text translating downward via translateY) animate in lock-step
+// with the same `steps(N, end)` timing. Result: each tick reveals a new
+// line at the TOP of the visible strip (just under the slot) and shoves
+// every previously-printed line down by one line-height. The text is
+// physically attached to the paper.
+//
+// Pace: ~8 ticks/sec (120ms per tick) — real thermal printers run
+// around 6–10 lines/sec.
+
+let activePrintCount = 0;
+
 function tickOut(art) {
-  art.style.overflow = "hidden";
-  art.style.maxHeight = "0px";
+  const inner = art.querySelector(".print-inner");
+
+  // Measure the natural height of the content (inner is in flow, so the
+  // outer's scrollHeight equals the inner's height).
+  art.style.maxHeight = "none";
+  art.style.overflow = "visible";
+  inner.style.transform = "none";
+  inner.style.transition = "none";
   art.style.transition = "none";
 
-  // force reflow so the collapsed state commits before we measure
   void art.offsetHeight;
   const target = art.scrollHeight;
 
-  // one tick advances the box by the body's line-height — that's what
+  // Collapse to initial state. Inner is translated UP by its full
+  // height so its BOTTOM aligns with the outer's BOTTOM (which is at
+  // y=0 since max-height=0). Outer clips everything.
+  art.style.overflow = "hidden";
+  art.style.maxHeight = "0px";
+  inner.style.transform = `translateY(-${target}px)`;
+
+  void art.offsetHeight;
+
+  // One tick advances the box by the body's line-height — that's what
   // gives "one tick = one line of text" alignment.
   const body = art.querySelector(".print-body");
   const lh = parseFloat(getComputedStyle(body).lineHeight) || 22;
@@ -664,16 +708,30 @@ function tickOut(art) {
   const stepDurMs = 120;
   const totalMs = stepCount * stepDurMs;
 
+  // Mark the strip as printing so the zigzag tear is hidden and the
+  // print-head hairline shows. Removed when all in-flight ticks finish.
+  activePrintCount++;
+  el.paper.classList.add("printing");
+
   requestAnimationFrame(() => {
-    art.style.transition = `max-height ${totalMs}ms steps(${stepCount}, end)`;
+    const timing = `${totalMs}ms steps(${stepCount}, end)`;
+    art.style.transition = `max-height ${timing}`;
+    inner.style.transition = `transform ${timing}`;
     art.style.maxHeight = target + "px";
+    inner.style.transform = "translateY(0)";
     autoScrollWhilePrinting(totalMs);
   });
 
   setTimeout(() => {
+    // Clean up so future layout isn't constrained.
     art.style.maxHeight = "";
     art.style.transition = "";
     art.style.overflow = "";
+    inner.style.transform = "";
+    inner.style.transition = "";
+
+    activePrintCount = Math.max(0, activePrintCount - 1);
+    if (activePrintCount === 0) el.paper.classList.remove("printing");
   }, totalMs + 120);
 }
 

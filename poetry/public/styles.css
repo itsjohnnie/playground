@@ -584,7 +584,10 @@ h1 {
   /* faint warm ambient glow just under the slot — the printer's heat */
   background:
     radial-gradient(ellipse 60% 80px at 50% 0%, rgba(255, 215, 170, 0.04) 0%, transparent 70%);
+  /* hide the scrollbar chrome — keep scrolling, lose the visual noise */
+  scrollbar-width: none;
 }
+.paper-stage::-webkit-scrollbar { display: none; }
 
 /* empty state — sits in the dark area, NOT on a paper card. When the
  * first print is appended this is hidden by JS. */
@@ -721,14 +724,29 @@ h1 {
 .print {
   font-family: var(--print);
   background: var(--paper-3);
-  padding: 22px 22px 18px;
   background-image:
     repeating-linear-gradient(
       0deg,
       rgba(26, 23, 20, 0.012) 0 2px,
       transparent 2px 4px
     );
-  /* JS sets max-height + transition inline at runtime */
+  /* The outer is what JS animates (max-height + steps()). It's
+   * position: relative so the inner can anchor to its bottom. */
+  position: relative;
+  overflow: hidden;
+}
+
+/* Inner stays in normal flow (so the outer can measure its natural
+ * height). During an animation, JS sets translateY on the inner so its
+ * BOTTOM tracks the outer's growing bottom — that's what makes
+ * previously-emerged lines translate downward each tick. New lines
+ * appear at the top (just under the slot) and push older lines down.
+ * That's "text moves with the paper" as the user watches it come out.
+ * After the animation, both translateY and max-height are cleared. */
+.print-inner {
+  padding: 22px 22px 18px;
+  position: relative;
+  will-change: transform;
 }
 
 /* the LAST print pays for the zigzag tear space on the strip's bottom */
