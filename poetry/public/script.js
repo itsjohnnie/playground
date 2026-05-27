@@ -16,13 +16,9 @@ const FOOTER_STORAGE = "poetry-camera-footer";
 // constraints Poetry Camera uses internally — the model needs both the
 // rule AND a concrete example to honor it consistently.
 
-const PRINTER_RULE = `STRICT OUTPUT RULES:
-- Every line MUST be 32 characters wide or less. Count carefully.
-- ASCII only. NO markdown of any kind: no # headers, no *italic*, no
-  **bold**, no \`code\`, no --- separators, no > quotes, no bullets.
-- Output ONLY the poem text. No title, no preamble, no commentary,
-  no "Here is your poem:" — just the poem itself.
-- Use straight quotes (") not curly ("). Use straight apostrophes (').`;
+const PRINTER_RULE = `Output plain ASCII only (characters 32-126: space through tilde). No Unicode: no box-drawing, blocks, arrows, bullets, moon symbols, or fancy quotes. Every line must be 32 characters or fewer — count each character including leading spaces. Preserve all internal whitespace. Do not wrap in markdown or code blocks.
+
+Output ONLY the poem itself — no title, no preamble, no commentary like "Here is your poem:".`;
 
 const DEFAULT_PROMPTS = {
   haiku:
@@ -76,9 +72,27 @@ ${PRINTER_RULE}`,
 `Write a highly unusual, experimental free-verse poem about this photograph. Use fragments, unusual punctuation, artful spacing. No more than 12 spaces in a single run. Up to 12 lines.
 
 ${PRINTER_RULE}`,
+
+  constellation:
+`invent a new constellation based on the photo. exactly 32 chars wide per line. lines 1-7: each line is exactly 32 characters of spaces with 1-2 "." dots placed at varied column positions to suggest a scattered star field. NEVER let a line exceed 32 chars — count the trailing spaces too, or simply let lines end naturally (no trailing spaces past the last dot is also fine). then one blank line. then "THE [INVENTED NAME]" in caps, indented to roughly center — the name should be specific to the photo and slightly mundane. then 3-4 lowercase lines describing the myth or first sighting, max 30 chars each line, quiet and melancholy.
+
+${PRINTER_RULE}`,
+
+  "periodic element":
+`a new element discovered in the photo. exactly 32 chars wide. structure exactly as follows:
+line 1: 4 spaces, then "+" then 22 "-" then "+" (= 28 chars total)
+line 2: 4 spaces, then "| " then atomic number (pad to 3 chars left-aligned) then 12 spaces then atomic mass like "284.7" (5 chars right-aligned) then " |" (= 28 chars)
+line 3: 4 spaces, then "|" then 22 spaces then "|"
+line 4: 4 spaces, then "|" then 10 spaces then 2-letter Symbol then 10 spaces then "|"
+line 5: 4 spaces, then "|" then 22 spaces then "|"
+line 6: 4 spaces, then "|" then center an invented lowercase one-word name in 22 spaces then "|"
+line 7: 4 spaces, then "+" then 22 "-" then "+"
+then one blank line. then 4-5 lowercase lines (max 30 chars each) listing properties, half-life, and what it reacts with. scientific but melancholy.
+
+${PRINTER_RULE}`,
 };
 
-const MODES = ["haiku", "receipt", "limerick", "sonnet", "alliteration", "portrait", "free verse"];
+const MODES = ["haiku", "receipt", "limerick", "sonnet", "alliteration", "portrait", "free verse", "constellation", "periodic element"];
 
 // ─── printer defaults: borders + footer ───────────────────────────────────
 // Verbatim from the camera. ≤32 chars per line. Whitespace is significant.
@@ -158,7 +172,7 @@ is still arriving.`,
 
   "free verse":
 `     before
-the city — wakes,
+the city - wakes,
    the window keeps
   one audience:
    one cup. one rim
@@ -168,7 +182,38 @@ a pigeon practices.
         practices.
    one word
         i almost
-   — remember.`,
+   - remember.`,
+
+  constellation:
+`   .
+              .
+                       .
+        .       .
+                  .
+   .
+                          .
+
+   THE TWO LIARS
+
+   first sighted on a wednesday
+   in someone's backyard, when
+   the joke was not actually
+   that funny.`,
+
+  "periodic element":
+`    +----------------------+
+    | 119            284.7 |
+    |                      |
+    |          Hm          |
+    |                      |
+    |       homesium       |
+    +----------------------+
+
+  silvery, stable in absence.
+  half-life equal to one
+  childhood bedroom. reacts
+  violently with photographs.
+  do not store near mothers.`,
 };
 
 // ─── sample SVG (used by "try a sample" so demo has something to look at) ─
