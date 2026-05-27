@@ -638,7 +638,10 @@ h1 {
  * strip's bottom, so it always tracks the last print's edge. */
 .paper {
   width: 100%;
-  max-width: 360px;
+  /* Sized to ~32ch of Courier Prime + breathing room — same shape as
+   * a real ~80mm thermal receipt slip. Content beyond 32 chars (which
+   * the model is instructed not to produce) wraps cleanly. */
+  max-width: 296px;
   position: relative;
   /* zigzag tear at the bottom — the dark tray shows through the teeth */
   clip-path: polygon(
@@ -744,7 +747,7 @@ h1 {
  * That's "text moves with the paper" as the user watches it come out.
  * After the animation, both translateY and max-height are cleared. */
 .print-inner {
-  padding: 22px 22px 18px;
+  padding: 20px 18px 16px;
   position: relative;
   will-change: transform;
 }
