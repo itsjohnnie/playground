@@ -38,7 +38,10 @@
   /* type */
   --display:      "Fraunces", "Iowan Old Style", Georgia, serif;
   --mono:         "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --print:        "Courier Prime", "Courier New", ui-monospace, monospace;
+  /* JetBrains Mono is also the print face — same family as UI, but the
+   * .print-* elements disable anti-aliasing and add a hairline ink
+   * shadow to read as actually-printed rather than rendered. */
+  --print:        "JetBrains Mono", "Courier Prime", ui-monospace, monospace;
 
   /* motion */
   --ease:         cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -813,6 +816,32 @@ h1 {
    * position: relative so the inner can anchor to its bottom. */
   position: relative;
   overflow: hidden;
+}
+
+/* "freshly printed" treatment: aliased glyph edges + a hairline ink
+ * shadow so each character reads as struck onto paper rather than
+ * rendered crisp by the OS. Applies to every text-bearing descendant
+ * of .print — header, borders, body, footer.
+ *
+ * -webkit-font-smoothing: none → disables sub-pixel AA on Chrome/Safari
+ *   (most visible difference on macOS)
+ * font-smooth: never        → standards equivalent (limited support)
+ * text-shadow: tiny offset  → fakes the thermal head leaving a slight
+ *   wet edge below each character */
+.print,
+.print * {
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: never;
+}
+
+.print-title,
+.print-sub,
+.print-border,
+.print-body,
+.print-printed-footer,
+.print-meta {
+  text-shadow: 0 0.4px 0 currentColor;
 }
 
 /* Inner stays in normal flow (so the outer can measure its natural
