@@ -252,19 +252,31 @@
 
     /* ============================== state */
 
-    const DAY_CYCLE_S = 240;                 // full day in demo mode
     const params = new URLSearchParams(location.search);
     let mode = 'demo';                       // 'demo' | 'video'
     if (params.get('ui') === '0') {
         deck.style.display = 'none';
         sheet.style.display = 'none';
     }
-    let day = parseFloat(params.get('day') ?? daySlider.value) || 0;
+
+    // the sky mirrors YOUR time of day unless overridden via ?day=
+    const localDay = () => {
+        const d = new Date();
+        return (d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds()) / 86400;
+    };
+    let day = params.has('day')
+        ? (parseFloat(params.get('day')) || 0)
+        : localDay();
     let autoCycle = params.get('auto') !== '0';
     daySlider.value = day;
 
-    // cabin lights: warm interior glow, eased on/off
-    let lights = params.get('lights') === '1';
+    // cabin lights follow the OS theme (light mode = lights on),
+    // overridable via the ☾/☀ button or ?lights=
+    const prefersLight = window.matchMedia('(prefers-color-scheme: light)');
+    let lightsOverridden = params.has('lights');
+    let lights = lightsOverridden
+        ? params.get('lights') === '1'
+        : prefersLight.matches;
     let cabOn = lights ? 1 : 0;
     let scrubbing = false;
     let lastT = performance.now();
@@ -484,7 +496,7 @@
 
         if (mode === 'demo') {
             if (autoCycle && !scrubbing) {
-                day = (day + dt / DAY_CYCLE_S) % 1;
+                day = localDay();   // track the viewer's actual time
                 daySlider.value = day.toFixed(4);
             }
             gl.uniform1f(uTime, now / 1000);
@@ -659,9 +671,12 @@
     deck.dataset.mode = 'demo';
     sheet.dataset.mode = 'demo';
 
-    // bundled footage — plays only when chosen; demo is the placeholder
+    // bundled footage — plays only when chosen; demo is the placeholder.
+    // The webm weighs a third of the mp4, so prefer it where supported.
+    const canWebm = document.createElement('video')
+        .canPlayType('video/webm') !== '';
     const BUILTIN = [
-        { label: 'video', url: 'video-1.mp4' },
+        { label: 'video', url: canWebm ? 'video-1.webm' : 'video-1.mp4' },
     ];
     BUILTIN.forEach((v, i) => {
         const chip = addChip(v.label, (btn) => showVideo(v.url, btn));
@@ -705,6 +720,9 @@
     window.addEventListener('pointerup', () => { scrubbing = false; });
     daySlider.addEventListener('input', () => {
         day = parseFloat(daySlider.value);
+        // scrubbing is a manual override — stop tracking local time
+        autoCycle = false;
+        autoBtn.classList.remove('active');
     });
     autoBtn.classList.toggle('active', autoCycle);
     autoBtn.addEventListener('click', () => {
@@ -720,9 +738,17 @@
     }
     lightsBtn.addEventListener('click', () => {
         lights = !lights;
+        lightsOverridden = true;
         renderLightsBtn();
     });
     renderLightsBtn();
+
+    // follow live OS theme changes until the user takes over
+    prefersLight.addEventListener('change', (e) => {
+        if (lightsOverridden) return;
+        lights = e.matches;
+        renderLightsBtn();
+    });
 
     /* settings sheet */
     settingsBtn.addEventListener('click', () => {
