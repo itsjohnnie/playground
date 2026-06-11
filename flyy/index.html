@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>flyy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="cabin">
+        <div class="airframe">
+        <div class="beam-shaft" aria-hidden="true"></div>
+        <div class="cast" aria-hidden="true"></div>
+        <div class="wall-texture" aria-hidden="true"></div>
+
+        <section class="porthole" aria-label="Airplane window">
+            <div class="wedge-outer" aria-hidden="true"></div>
+            <div class="bezel">
+                <div class="wedge" aria-hidden="true"></div>
+                <div class="reveal" aria-hidden="true"></div>
+                <div class="glass">
+                    <canvas id="sky" width="540" height="760"></canvas>
+                    <video id="feed" muted loop playsinline preload="auto" hidden></video>
+                    <video id="feed2" muted loop playsinline preload="auto" hidden></video>
+                    <div class="pane" aria-hidden="true"></div>
+                    <div class="etch" aria-hidden="true">CRYSTALVUE COATED DO NOT POLISH</div>
+                    <div class="breather" aria-hidden="true"></div>
+                    <div class="micro" aria-hidden="true"></div>
+                    <div class="glare" aria-hidden="true"></div>
+                    <div class="shade" id="shade" tabindex="0" role="slider"
+                         aria-label="Window shade" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="shade-lip"><span></span></div>
+                    </div>
+                    <div class="shade-grab" aria-hidden="true"></div>
+                </div>
+            </div>
+        </section>
+        </div>
+
+        <div class="sheet" id="sheet">
+            <div class="sheet-section">
+                <h2>source</h2>
+                <div class="chips" id="chips"></div>
+                <label class="chip chip-add" title="Upload flight videos">
+                    upload video
+                    <input type="file" id="file" accept="video/*" multiple hidden>
+                </label>
+            </div>
+            <div class="sheet-section" id="daybar">
+                <h2>time of day</h2>
+                <div class="timerow">
+                    <input type="range" id="day" min="0" max="1" step="0.001" value="0.42"
+                           aria-label="Time of day">
+                    <button id="auto" class="tog active" type="button">auto</button>
+                </div>
+            </div>
+        </div>
+
+        <nav class="dock" id="deck" aria-label="flyy controls">
+            <h1 class="brand">fly<span class="tt">y</span></h1>
+            <div class="dock-actions">
+                <button id="lights" class="icon" type="button"
+                        title="Cabin lights" aria-pressed="false"><i class="ph ph-moon"></i></button>
+                <button id="settingsBtn" class="icon" type="button"
+                        title="Settings" aria-expanded="false"><i class="ph ph-sliders-horizontal"></i></button>
+            </div>
+        </nav>
+
+        <div class="drop-hint" aria-hidden="true"><span>drop flight video</span></div>
+        <div class="grain" aria-hidden="true"></div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
