@@ -26,21 +26,27 @@
     --spill-x: 64%;
     --spill-y: 62%;
 
-    /* --- geometry --- */
+    /* --- geometry ---
+       One construction for EVERY browser: uniform pixel gaps on all
+       sides and outer radius = inner radius + gap, derived from the
+       glass outward, so the rings stay concentric everywhere. */
     --wbase: min(88vw, 58vh);
     --ww: min(calc(var(--wbase) + 64px), 94vw);  /* width, widened a touch   */
     --wh: calc(var(--wbase) / 0.72);             /* height (portrait)        */
-    --r-outer: calc(var(--ww) * 0.30);
-    --r-bezel: calc(var(--ww) * 0.27);
-    --r-reveal: calc(var(--ww) * 0.285);
-    --r-glass: calc(var(--ww) * 0.26);
+    --g-bezel: calc(var(--ww) * 0.045);   /* recess → bezel     */
+    --g-reveal: calc(var(--ww) * 0.115);  /* bezel → reveal     */
+    --g-glass: calc(var(--ww) * 0.14);    /* bezel → glass      */
+    /* circular fallback (no corner-shape, e.g. iOS): proportionally
+       tighter radius that visually approximates the squircle */
+    --r-glass: calc(var(--ww) * 0.25);
+    --r-reveal: calc(var(--r-glass) + var(--g-glass) - var(--g-reveal));
+    --r-bezel: calc(var(--r-glass) + var(--g-glass));
+    --r-outer: calc(var(--r-bezel) + var(--g-bezel));
     --lip-h: clamp(26px, calc(var(--wh) * 0.05), 40px);
 }
 
-/* superellipse corners — true aircraft-window geometry. Every ring keeps
-   the SAME distance from the next at all points: uniform pixel gaps on
-   all sides, and outer radius = inner radius + gap, derived from the
-   glass outward. Browsers without corner-shape keep the classic look. */
+/* superellipse corners — true aircraft-window geometry where
+   supported; radius opens up to half the glass width */
 @supports (corner-shape: squircle) {
     .porthole,
     .porthole::before,
@@ -58,18 +64,8 @@
     }
 
     :root {
-        --g-bezel: calc(var(--ww) * 0.045);   /* recess → bezel     */
-        --g-reveal: calc(var(--ww) * 0.115);  /* bezel → reveal     */
-        --g-glass: calc(var(--ww) * 0.14);    /* bezel → glass      */
         --r-glass: calc(var(--ww) * 0.315);   /* max: half its width */
-        --r-reveal: calc(var(--r-glass) + var(--g-glass) - var(--g-reveal));
-        --r-bezel: calc(var(--r-glass) + var(--g-glass));
-        --r-outer: calc(var(--r-bezel) + var(--g-bezel));
     }
-
-    .bezel { inset: var(--g-bezel); }
-    .reveal { inset: var(--g-reveal); }
-    .glass { inset: var(--g-glass); }
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -261,7 +257,7 @@ body.idle { cursor: none; }
    cast by the window reveal — the photo's signature detail */
 .bezel {
     position: absolute;
-    inset: 4.5%;
+    inset: var(--g-bezel);
     border-radius: var(--r-bezel);
     background:
         linear-gradient(178deg,
@@ -313,7 +309,7 @@ body.idle { cursor: none; }
    what makes the glass read as deeply set into the fuselage */
 .reveal {
     position: absolute;
-    inset: 11% 13%;
+    inset: var(--g-reveal);
     border-radius: var(--r-reveal);
     background: conic-gradient(from calc(var(--beam) - var(--cone) - 24deg)
             at var(--sun-x, 50%) var(--sun-y, 30%),
@@ -330,7 +326,7 @@ body.idle { cursor: none; }
 /* the window itself */
 .glass {
     position: absolute;
-    inset: 13.5% 15.5%;
+    inset: var(--g-glass);
     border-radius: var(--r-glass);
     background: #000;
     overflow: hidden;
@@ -520,7 +516,7 @@ body.idle { cursor: none; }
         color-mix(in srgb, var(--shade-fill) 20%, black) 100%);
 }
 
-.shade.glide { transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1); }
+.shade.glide { transition: transform 1.1s cubic-bezier(0.3, 0.9, 0.32, 1); }
 
 .shade:active { cursor: grabbing; }
 
