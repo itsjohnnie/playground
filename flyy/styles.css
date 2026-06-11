@@ -554,6 +554,62 @@ body.idle { cursor: none; }
 
 .shade-grab:active { cursor: grabbing; }
 
+/* ============================== neighbor windows
+   Two more portholes in the row, shades pulled down, each centered
+   on a screen edge so only its inner half peeks in. Purely
+   decorative: no light enters them and nothing responds to input. */
+
+.porthole.neighbor {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    /* permanently closed */
+    --shade: 1;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.neighbor-left { left: calc(var(--ww) * -0.5); }
+.neighbor-right { right: calc(var(--ww) * -0.5); }
+
+/* closed windows admit no sun: no rim bloom, recess stays in shadow */
+.neighbor::before { content: none; }
+
+.neighbor .reveal {
+    background: color-mix(in srgb, var(--deep-sh) 80%, black);
+}
+
+.neighbor .shade { cursor: default; }
+
+/* subtle vignette: each window falls away into the periphery,
+   deepening toward the screen edge it's clipped by — relaxes
+   under cabin light like every other shadow */
+.neighbor::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    z-index: 9;
+    pointer-events: none;
+}
+
+/* only the inner half is on screen, so the falloff runs from the
+   element's midpoint (the screen edge) to its inner edge */
+.neighbor-left::after {
+    background: linear-gradient(90deg,
+        rgba(0, 0, 0, calc(0.42 * var(--soft, 1))) 48%, transparent 96%);
+}
+
+.neighbor-right::after {
+    background: linear-gradient(270deg,
+        rgba(0, 0, 0, calc(0.42 * var(--soft, 1))) 48%, transparent 96%);
+}
+
+/* no room for them beside the main window on narrow screens */
+@media (max-width: 1100px) {
+    .porthole.neighbor { display: none; }
+}
+
 /* ============================== dock + settings sheet
    The bottom nav follows dott's design language: a floating card
    with the wordmark on the left and an icon cluster on the right. */
