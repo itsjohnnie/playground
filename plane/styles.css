@@ -1,0 +1,741 @@
+/* ============================================================
+   plane — porthole
+   The entire cabin is lit by runtime CSS custom properties.
+   app.js samples the pixels of whatever is playing inside the
+   window (video or shader sky) and writes the palette below,
+   so the wall, bezel, beam and glow always match the footage —
+   day flight, golden hour, or night.
+   ============================================================ */
+
+:root {
+    /* --- live palette (written by app.js every frame) --- */
+    --wall: rgb(15, 16, 19);                 /* cabin wall, lit by ambient   */
+    --bezel-lit: rgb(214, 211, 204);         /* surround, sun-struck side    */
+    --bezel-sh: rgb(82, 82, 84);             /* surround, shadow side        */
+    --deep-lit: rgb(120, 119, 117);          /* recess ring, lit             */
+    --deep-sh: rgb(38, 39, 41);              /* recess ring, shadow          */
+    --shade-fill: rgb(186, 184, 178);        /* plastic shade                */
+    --spill: rgba(150, 178, 210, 0.28);      /* light pooling on the wall    */
+    --band: rgba(140, 168, 200, 0.14);       /* hard directional wall light  */
+    --glow: rgba(150, 185, 220, 0.30);       /* glass halo / top light leak  */
+    --etch-a: 0.16;                          /* etched-text visibility       */
+    --tex-a: 0.5;                            /* wall texture visibility      */
+    --beam: 112deg;                          /* sun direction across cabin   */
+    --cone: 50deg;                           /* light wedge half-angle —
+                                                widens as the shade opens   */
+    --spill-x: 64%;
+    --spill-y: 62%;
+
+    /* --- geometry --- */
+    --wbase: min(88vw, 58vh);
+    --ww: min(calc(var(--wbase) + 64px), 94vw);  /* width, widened a touch   */
+    --wh: calc(var(--wbase) / 0.72);             /* height (portrait)        */
+    --r-outer: calc(var(--ww) * 0.30);
+    --r-bezel: calc(var(--ww) * 0.27);
+    --r-reveal: calc(var(--ww) * 0.285);
+    --r-glass: calc(var(--ww) * 0.26);
+    --lip-h: clamp(26px, calc(var(--wh) * 0.05), 40px);
+}
+
+/* superellipse corners — true aircraft-window geometry. Every ring keeps
+   the SAME distance from the next at all points: uniform pixel gaps on
+   all sides, and outer radius = inner radius + gap, derived from the
+   glass outward. Browsers without corner-shape keep the classic look. */
+@supports (corner-shape: squircle) {
+    .porthole,
+    .porthole::before,
+    .bezel,
+    .wedge-outer,
+    .wedge,
+    .reveal,
+    .glass,
+    .glass::after,
+    .pane,
+    .cast {
+        /* between round (1) and squircle (2): the continuous
+           curve of a stamped acrylic porthole */
+        corner-shape: superellipse(1.5);
+    }
+
+    :root {
+        --g-bezel: calc(var(--ww) * 0.045);   /* recess → bezel     */
+        --g-reveal: calc(var(--ww) * 0.115);  /* bezel → reveal     */
+        --g-glass: calc(var(--ww) * 0.14);    /* bezel → glass      */
+        --r-glass: calc(var(--ww) * 0.315);   /* max: half its width */
+        --r-reveal: calc(var(--r-glass) + var(--g-glass) - var(--g-reveal));
+        --r-bezel: calc(var(--r-glass) + var(--g-glass));
+        --r-outer: calc(var(--r-bezel) + var(--g-bezel));
+    }
+
+    .bezel { inset: var(--g-bezel); }
+    .reveal { inset: var(--g-reveal); }
+    .glass { inset: var(--g-glass); }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+    font-family: 'Overpass', sans-serif;
+    background: #08090b;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body.idle { cursor: none; }
+
+/* ============================== cabin wall */
+
+.cabin {
+    position: relative;
+    height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--wall);
+}
+
+/* perforated trim-panel texture: staggered rows like real acoustic
+   panels — subtle everywhere, brightest where the light lands */
+.wall-texture {
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle, rgba(0, 0, 0, 0.28) 0.7px, transparent 1.3px),
+        radial-gradient(circle, rgba(0, 0, 0, 0.18) 0.7px, transparent 1.3px);
+    background-size: 9px 9px, 9px 9px;
+    background-position: 0 0, 4.5px 4.5px;
+    opacity: var(--tex-a);
+    /* perforations read where the light lands — follow the cast patch */
+    -webkit-mask-image: radial-gradient(50% 46%
+        at calc(50% + var(--cast-x, 60px)) calc(46% + var(--cast-y, 50px)),
+        black, rgba(0, 0, 0, 0.3) 78%);
+    mask-image: radial-gradient(50% 46%
+        at calc(50% + var(--cast-x, 60px)) calc(46% + var(--cast-y, 50px)),
+        black, rgba(0, 0, 0, 0.3) 78%);
+    pointer-events: none;
+}
+
+/* the light shaft: a clipped, near-parallel cone anchored at the
+   window opening, traveling along the beam. Light enters through
+   the window and goes nowhere else. The blur lives on the wrapper
+   so the clip-path edges stay feathered. */
+.beam-shaft {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    width: calc(var(--ww) * 0.80);
+    height: calc(var(--wh) * 1.6);
+    transform-origin: 50% 0;
+    transform: translateX(-50%) rotate(calc(var(--beam) + 180deg));
+    filter: blur(calc(var(--ww) * 0.09));
+    pointer-events: none;
+}
+
+.beam-shaft::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* starts at the window's width, expands only by penumbra */
+    clip-path: polygon(10% 0, 90% 0, 98% 100%, 2% 100%);
+    /* progressive falloff along the length… */
+    background: linear-gradient(180deg,
+        var(--cast) 0%,
+        color-mix(in srgb, var(--cast) 60%, transparent) 38%,
+        color-mix(in srgb, var(--cast) 24%, transparent) 68%,
+        transparent 94%);
+    /* …and feathered sides, so it melts into the cast patch */
+    -webkit-mask-image: linear-gradient(90deg, transparent, black 24% 76%, transparent);
+    mask-image: linear-gradient(90deg, transparent, black 24% 76%, transparent);
+}
+
+/* the window's own shape, projected onto the cabin by incoming light:
+   a stretched, blurred rounded-rect that drifts away from the sun */
+.cast {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    width: calc(var(--ww) * 0.92);
+    height: calc(var(--wh) * 0.92);
+    border-radius: var(--r-glass);
+    background: var(--cast, var(--spill));
+    transform: translate(-50%, -50%)
+               translate(var(--cast-x, 60px), var(--cast-y, 50px))
+               scale(1.25, 1.35);
+    filter: blur(calc(var(--ww) * 0.10));
+    opacity: 0.85;
+    pointer-events: none;
+}
+
+/* sun glare blooming on the glass — behind the shade, so the cover
+   slides over it and reveals it as it opens */
+.glare {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+        radial-gradient(circle calc(var(--ww) * 0.28)
+            at var(--sun-gx, 70%) var(--sun-gy, 30%),
+            rgba(255, 250, 242, 0.85),
+            rgba(255, 248, 235, 0.22) 55%,
+            transparent 75%),
+        radial-gradient(circle calc(var(--ww) * 0.55)
+            at var(--sun-gx, 70%) var(--sun-gy, 30%),
+            rgba(255, 250, 240, 0.25), transparent 70%);
+    opacity: var(--glare-a, 0);
+    mix-blend-mode: screen;
+    filter: blur(8px);
+    z-index: 5;
+    pointer-events: none;
+}
+
+/* cabin vignette */
+.cabin::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(125% 105% at 50% 45%, transparent 38%, var(--vig, rgba(0, 0, 0, 0.7)) 100%);
+    pointer-events: none;
+}
+
+/* carries engine vibration + turbulence so the UI stays still */
+.airframe {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    will-change: transform;
+}
+
+/* ============================== porthole */
+
+.porthole {
+    position: relative;
+    width: var(--ww);
+    height: var(--wh);
+    border-radius: var(--r-outer);
+    /* recessed cutout in the fuselage panel, split by the sun */
+    /* base is shadow; the lit wedge lives on .wedge-outer, clipped
+       to below the exposed aperture */
+    background: var(--deep-sh);
+    /* --soft relaxes structural shadows under cabin light: a lit room
+       fills its own shadows with bounce light */
+    box-shadow:
+        0 0 0 1px rgba(0, 0, 0, calc(0.5 * var(--soft, 1))),
+        0 34px 90px -22px rgba(0, 0, 0, calc(0.75 * var(--soft, 1))),
+        inset 0 8px 22px rgba(0, 0, 0, calc(0.5 * var(--soft, 1))),
+        inset 0 -2px 10px rgba(255, 255, 255, 0.05);
+    z-index: 1;
+}
+
+/* bloom tracing the window outline on its sunlit side — the glow
+   emanates from the opening itself, like the reference */
+.porthole::before {
+    content: '';
+    position: absolute;
+    inset: -1.5%;
+    border-radius: inherit;
+    box-shadow:
+        0 0 calc(var(--ww) * 0.10) calc(var(--ww) * 0.015) var(--glow),
+        0 0 calc(var(--ww) * 0.30) calc(var(--ww) * 0.06) var(--spill);
+    -webkit-mask-image: conic-gradient(from calc(var(--beam) - 90deg)
+            at var(--sun-x, 50%) var(--sun-y, 30%),
+        transparent 0deg, black 32deg, black 148deg, transparent 180deg, transparent 360deg),
+        linear-gradient(180deg,
+            transparent calc(var(--ap, 13%) - 4%), black calc(var(--ap, 13%) + 7%));
+    -webkit-mask-composite: source-in;
+    mask-image: conic-gradient(from calc(var(--beam) - 90deg)
+            at var(--sun-x, 50%) var(--sun-y, 30%),
+        transparent 0deg, black 32deg, black 148deg, transparent 180deg, transparent 360deg),
+        linear-gradient(180deg,
+            transparent calc(var(--ap, 13%) - 4%), black calc(var(--ap, 13%) + 7%));
+    mask-composite: intersect;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* wide white plastic surround, with a crisp diagonal shadow
+   cast by the window reveal — the photo's signature detail */
+.bezel {
+    position: absolute;
+    inset: 4.5%;
+    border-radius: var(--r-bezel);
+    background:
+        linear-gradient(178deg,
+            rgba(0, 0, 0, 0.18) 0%, transparent 12%,
+            transparent 80%, rgba(0, 0, 0, 0.22) 100%),
+        linear-gradient(var(--bezel-sh), var(--bezel-sh));
+    box-shadow:
+        inset 0 2px 6px rgba(255, 255, 255, 0.14),
+        inset 0 -5px 14px rgba(0, 0, 0, calc(0.3 * var(--soft, 1))),
+        0 3px 8px rgba(0, 0, 0, calc(0.45 * var(--soft, 1)));
+}
+
+/* the lit wedges: light fans from the sun through the EXPOSED part
+   of the opening — masked so nothing above the cover's bottom edge
+   (the aperture line) ever receives window light */
+.wedge-outer,
+.wedge {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(180deg,
+        transparent calc(var(--ap, 13%) - 3%), black calc(var(--ap, 13%) + 6%));
+    mask-image: linear-gradient(180deg,
+        transparent calc(var(--ap, 13%) - 3%), black calc(var(--ap, 13%) + 6%));
+}
+
+.wedge-outer {
+    background: conic-gradient(from calc(var(--beam) - var(--cone) - 20deg)
+            at var(--sun-x, 50%) var(--sun-y, 30%),
+        transparent 0deg,
+        var(--deep-lit) 20deg,
+        var(--deep-lit) calc(20deg + var(--cone) * 2),
+        transparent calc(40deg + var(--cone) * 2),
+        transparent 360deg);
+}
+
+.wedge {
+    background: conic-gradient(from calc(var(--beam) - var(--cone) - 18deg)
+            at var(--sun-x, 50%) var(--sun-y, 30%),
+        transparent 0deg,
+        var(--bezel-lit) 18deg,
+        var(--bezel-lit) calc(18deg + var(--cone) * 2),
+        transparent calc(36deg + var(--cone) * 2),
+        transparent 360deg);
+}
+
+/* sloped inner reveal between the surround and the glass —
+   what makes the glass read as deeply set into the fuselage */
+.reveal {
+    position: absolute;
+    inset: 11% 13%;
+    border-radius: var(--r-reveal);
+    background: conic-gradient(from calc(var(--beam) - var(--cone) - 24deg)
+            at var(--sun-x, 50%) var(--sun-y, 30%),
+        color-mix(in srgb, var(--deep-sh) 80%, black) 0deg,
+        color-mix(in srgb, var(--deep-lit) 85%, white 10%) 24deg,
+        color-mix(in srgb, var(--deep-lit) 85%, white 10%) calc(24deg + var(--cone) * 2),
+        color-mix(in srgb, var(--deep-sh) 80%, black) calc(48deg + var(--cone) * 2),
+        color-mix(in srgb, var(--deep-sh) 80%, black) 360deg);
+    box-shadow:
+        inset 0 4px 10px rgba(0, 0, 0, calc(0.55 * var(--soft, 1))),
+        0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+/* the window itself */
+.glass {
+    position: absolute;
+    inset: 13.5% 15.5%;
+    border-radius: var(--r-glass);
+    background: #000;
+    overflow: hidden;
+    /* dual-pane depth */
+    box-shadow:
+        inset 0 0 0 2px rgba(255, 255, 255, 0.05),
+        inset 0 0 26px 8px rgba(0, 0, 0, 0.6),
+        inset 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+/* the frame's overhang casts onto whatever fills the opening —
+   glass or closed shade — so this shadow sits above both */
+.glass::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    z-index: 8;
+    pointer-events: none;
+    box-shadow:
+        inset 0 10px 18px -6px rgba(0, 0, 0, calc(0.55 * var(--soft, 1))),
+        inset 0 3px 6px rgba(0, 0, 0, calc(0.35 * var(--soft, 1))),
+        inset 0 0 14px 2px rgba(0, 0, 0, calc(0.22 * var(--soft, 1)));
+}
+
+.glass > canvas,
+.glass > video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* display:block above would defeat the hidden attribute */
+.glass > canvas[hidden],
+.glass > video[hidden] { display: none; }
+
+/* head parallax: the scene shifts slightly behind the aperture,
+   over-scaled so its edges never show */
+.glass > canvas,
+.glass > video {
+    transform: translate3d(var(--par-x, 0px), var(--par-y, 0px), 0) scale(1.07);
+}
+
+/* reflections + smudges on the inner pane */
+.pane {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    z-index: 4;
+    background:
+        linear-gradient(115deg,
+            transparent 28%,
+            rgba(255, 255, 255, 0.06) 36%,
+            transparent 45%,
+            transparent 58%,
+            rgba(255, 255, 255, 0.03) 65%,
+            transparent 71%),
+        radial-gradient(110% 40% at 50% -22%, var(--glow), transparent 60%);
+    box-shadow:
+        inset 0 0 30px 5px rgba(0, 0, 0, 0.38),
+        inset 0 8px 16px -6px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+}
+
+/* mirror-image coating label, as seen from inside */
+.etch {
+    position: absolute;
+    z-index: 4;
+    top: 4.5%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    transform: scaleX(-1);
+    font-size: clamp(4px, calc(var(--ww) * 0.019), 8px);
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, var(--etch-a));
+    pointer-events: none;
+}
+
+/* bleed hole at the bottom of the outer pane */
+.breather {
+    position: absolute;
+    z-index: 4;
+    bottom: 6.5%;
+    left: 50%;
+    width: 7px;
+    height: 7px;
+    margin-left: -3.5px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 32%,
+        rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.12) 45%, rgba(0, 0, 0, 0.4) 100%);
+    filter: blur(0.4px);
+    pointer-events: none;
+}
+
+/* glass wear: hairline scratches broken into worn segments, frost by
+   the breather and lower corners, dust specks — reads only in light */
+.micro {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    z-index: 5;
+    pointer-events: none;
+    opacity: var(--micro-a, 0.4);
+    background:
+        radial-gradient(18% 9% at 50% 96%, rgba(255, 255, 255, 0.09), transparent 70%),
+        radial-gradient(26% 15% at 5% 93%, rgba(255, 255, 255, 0.06), transparent 70%),
+        radial-gradient(26% 15% at 95% 93%, rgba(255, 255, 255, 0.06), transparent 70%),
+        radial-gradient(1.5px 1.5px at 23% 31%, rgba(255, 255, 255, 0.18), transparent 100%),
+        radial-gradient(1px 1px at 71% 18%, rgba(255, 255, 255, 0.15), transparent 100%),
+        radial-gradient(1.5px 1.5px at 56% 64%, rgba(255, 255, 255, 0.12), transparent 100%),
+        radial-gradient(1px 1px at 38% 82%, rgba(255, 255, 255, 0.14), transparent 100%),
+        repeating-linear-gradient(37deg,
+            transparent 0 9px, rgba(255, 255, 255, 0.04) 9px 9.6px, transparent 9.6px 23px),
+        repeating-linear-gradient(-24deg,
+            transparent 0 14px, rgba(255, 255, 255, 0.028) 14px 14.5px, transparent 14.5px 37px);
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.05' numOctaves='3'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.05' numOctaves='3'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='0.9'/%3E%3C/svg%3E");
+    -webkit-mask-size: 280px;
+    mask-size: 280px;
+    mask-mode: luminance;
+}
+
+/* ============================== window shade */
+
+.shade {
+    position: absolute;
+    inset: 0;
+    /* flat panel — the glass's overflow clip gives it the window shape */
+    border-radius: 0;
+    /* --shade: 0 open … 1 closed (set by app.js). The grab handle on the
+       shade's bottom edge rides with it: at the bottom when closed, parked
+       and "locked in" under the slit when lifted fully open */
+    transform: translateY(calc((var(--shade, 0) - 1) * (100% - var(--lip-h))));
+    will-change: transform;
+    /* matte plastic: fine stipple grain, a soft pool of cabin light
+       upper-center, and edges falling away into shadow */
+    background:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.11'/%3E%3C/svg%3E"),
+        radial-gradient(85% 60% at 50% 30%,
+            rgba(255, 255, 255, var(--shade-pool, 0.06)), transparent 75%),
+        radial-gradient(130% 105% at 50% 45%,
+            transparent 55%, rgba(0, 0, 0, calc(0.30 * var(--soft, 1))) 100%),
+        linear-gradient(180deg,
+            color-mix(in srgb, var(--shade-fill) 76%, black) 0%,
+            var(--shade-fill) 14%,
+            color-mix(in srgb, var(--shade-fill) 96%, white) 48%,
+            var(--shade-fill) 82%,
+            color-mix(in srgb, var(--shade-fill) 72%, black) 100%);
+    background-size: 160px, 100%, 100%, 100%;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, calc(0.45 * var(--soft, 1)));
+    cursor: grab;
+    touch-action: none;
+    z-index: 6;
+    outline: none;
+}
+
+.shade:focus-visible { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 0 0 2px rgba(255, 255, 255, 0.35); }
+
+/* viewer-eye-line parallax, panel stays edge-to-edge: lifting reveals
+   a sliver of the underside; pulling down reveals the top face */
+.shade::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: var(--face-t, 0px);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--shade-fill) 88%, white) 0%,
+        color-mix(in srgb, var(--shade-fill) 96%, white) 100%);
+}
+
+.shade::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: var(--face-b, 0px);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--shade-fill) 38%, black) 0%,
+        color-mix(in srgb, var(--shade-fill) 20%, black) 100%);
+}
+
+.shade.glide { transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1); }
+
+.shade:active { cursor: grabbing; }
+
+/* small oval grab tab at the bottom center, like the real thing */
+.shade-lip {
+    position: absolute;
+    left: 50%;
+    bottom: 2%;
+    transform: translateX(-50%);
+    width: 24%;
+    height: clamp(14px, calc(var(--wh) * 0.028), 22px);
+    border-radius: 50%;
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--shade-fill) 90%, white) 0%,
+        var(--shade-fill) 55%,
+        color-mix(in srgb, var(--shade-fill) 78%, black) 100%);
+    box-shadow:
+        0 2px 5px rgba(0, 0, 0, 0.35),
+        inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+.shade-lip span { display: none; }
+
+/* invisible strip at the top of the glass: pull the hidden shade down */
+.shade-grab {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 13%;
+    z-index: 7;
+    cursor: grab;
+    touch-action: none;
+}
+
+.shade-grab:active { cursor: grabbing; }
+
+/* ============================== control deck */
+
+.deck {
+    position: fixed;
+    bottom: clamp(14px, 3vh, 30px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: max-content;
+    max-width: min(96vw, 860px);
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 9px 12px;
+    border-radius: 14px;
+    background: rgba(10, 11, 13, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    z-index: 10;
+}
+
+body.idle .deck {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+    pointer-events: none;
+}
+
+.chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 9px;
+    padding: 2px 14px 0;     /* slight top nudge: Overpass sits high */
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chip:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+.chip.active {
+    background: rgba(255, 255, 255, 0.92);
+    color: #101113;
+    border-color: transparent;
+}
+
+.chip-add { color: rgba(255, 255, 255, 0.5); }
+
+/* time-of-day controls (demo flight only) */
+
+.daybar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    height: 30px;
+    padding-left: 12px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.deck[data-mode="demo"] .daybar { display: flex; }
+
+.daybar .lab {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+    padding-top: 1px;
+}
+
+.daybar input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: clamp(90px, 18vw, 160px);
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+}
+
+.daybar input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #fff;
+    border: none;
+}
+
+.daybar input[type="range"]::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #fff;
+    border: none;
+}
+
+.tog {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 30px;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.35);
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 9px;
+    padding: 2px 12px 0;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.tog.active { color: #fff; border-color: rgba(255, 255, 255, 0.5); }
+
+.tog.lights {
+    width: 34px;
+    padding: 3px 0 0;   /* optical: nudge the ☾/☀ glyph down to center */
+    font-size: 15px;
+    line-height: 1;
+}
+
+/* ============================== drop hint + grain */
+
+.drop-hint {
+    position: fixed;
+    inset: 14px;
+    border: 2px dashed rgba(255, 255, 255, 0.35);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8, 9, 11, 0.6);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 20;
+}
+
+.drop-hint span {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+body.dropping .drop-hint { opacity: 1; }
+
+.grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    z-index: 15;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+}
+
+@media (max-height: 540px) {
+    :root { --ww: min(64vw, 58vh); }
+}

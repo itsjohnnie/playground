@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>plane — porthole</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main class="cabin">
+        <div class="airframe">
+        <div class="beam-shaft" aria-hidden="true"></div>
+        <div class="cast" aria-hidden="true"></div>
+        <div class="wall-texture" aria-hidden="true"></div>
+
+        <section class="porthole" aria-label="Airplane window">
+            <div class="wedge-outer" aria-hidden="true"></div>
+            <div class="bezel">
+                <div class="wedge" aria-hidden="true"></div>
+                <div class="reveal" aria-hidden="true"></div>
+                <div class="glass">
+                    <canvas id="sky" width="540" height="760"></canvas>
+                    <video id="feed" muted loop playsinline preload="auto" hidden></video>
+                    <video id="feed2" muted loop playsinline preload="auto" hidden></video>
+                    <div class="pane" aria-hidden="true"></div>
+                    <div class="etch" aria-hidden="true">CRYSTALVUE COATED DO NOT POLISH</div>
+                    <div class="breather" aria-hidden="true"></div>
+                    <div class="micro" aria-hidden="true"></div>
+                    <div class="glare" aria-hidden="true"></div>
+                    <div class="shade" id="shade" tabindex="0" role="slider"
+                         aria-label="Window shade" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="shade-lip"><span></span></div>
+                    </div>
+                    <div class="shade-grab" aria-hidden="true"></div>
+                </div>
+            </div>
+        </section>
+        </div>
+
+        <footer class="deck" id="deck">
+            <div class="chips" id="chips"></div>
+            <label class="chip chip-add" title="Upload flight videos">
+                upload video
+                <input type="file" id="file" accept="video/*" multiple hidden>
+            </label>
+            <div class="daybar" id="daybar">
+                <span class="lab">time</span>
+                <input type="range" id="day" min="0" max="1" step="0.001" value="0.42"
+                       aria-label="Time of day">
+                <button id="auto" class="tog active" type="button">auto</button>
+            </div>
+            <button id="lights" class="tog lights" type="button"
+                    title="Cabin lights" aria-pressed="false">☾</button>
+        </footer>
+
+        <div class="drop-hint" aria-hidden="true"><span>drop flight video</span></div>
+        <div class="grain" aria-hidden="true"></div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
