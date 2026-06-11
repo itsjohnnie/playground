@@ -25,6 +25,8 @@
     const daySlider = document.getElementById('day');
     const autoBtn = document.getElementById('auto');
     const lightsBtn = document.getElementById('lights');
+    const sheet = document.getElementById('sheet');
+    const settingsBtn = document.getElementById('settingsBtn');
 
     /* ============================== demo sky (WebGL) */
 
@@ -253,7 +255,10 @@
     const DAY_CYCLE_S = 240;                 // full day in demo mode
     const params = new URLSearchParams(location.search);
     let mode = 'demo';                       // 'demo' | 'video'
-    if (params.get('ui') === '0') deck.style.display = 'none';
+    if (params.get('ui') === '0') {
+        deck.style.display = 'none';
+        sheet.style.display = 'none';
+    }
     let day = parseFloat(params.get('day') ?? daySlider.value) || 0;
     let autoCycle = params.get('auto') !== '0';
     daySlider.value = day;
@@ -600,6 +605,7 @@
         cancelFade();
         mode = 'demo';
         deck.dataset.mode = 'demo';
+        sheet.dataset.mode = 'demo';
         videos.forEach((v) => { v.pause(); v.hidden = true; });
         skyCanvas.hidden = false;
         setActiveChip(chip);
@@ -609,6 +615,7 @@
         cancelFade();
         mode = 'video';
         deck.dataset.mode = 'video';
+        sheet.dataset.mode = 'video';
         skyCanvas.hidden = true;
         videos.forEach((v) => { v.hidden = false; });
         if (videos[act].dataset.url !== url) {
@@ -650,6 +657,7 @@
     const demoChip = addChip('demo', (btn) => showDemo(btn));
     demoChip.classList.add('active');
     deck.dataset.mode = 'demo';
+    sheet.dataset.mode = 'demo';
 
     // bundled footage — plays only when chosen; demo is the placeholder
     const BUILTIN = [
@@ -706,7 +714,7 @@
 
     /* cabin lights toggle */
     function renderLightsBtn() {
-        lightsBtn.textContent = lights ? '☀' : '☾';
+        lightsBtn.firstElementChild.className = lights ? 'ph ph-sun' : 'ph ph-moon';
         lightsBtn.classList.toggle('active', lights);
         lightsBtn.setAttribute('aria-pressed', lights);
     }
@@ -715,6 +723,13 @@
         renderLightsBtn();
     });
     renderLightsBtn();
+
+    /* settings sheet */
+    settingsBtn.addEventListener('click', () => {
+        const open = sheet.classList.toggle('open');
+        settingsBtn.classList.toggle('active', open);
+        settingsBtn.setAttribute('aria-expanded', open);
+    });
 
     /* ============================== window shade */
 

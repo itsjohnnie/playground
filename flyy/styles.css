@@ -558,23 +558,23 @@ body.idle { cursor: none; }
 
 .shade-grab:active { cursor: grabbing; }
 
-/* ============================== control deck */
+/* ============================== dock + settings sheet
+   The bottom nav follows dott's design language: a floating card
+   with the wordmark on the left and an icon cluster on the right. */
 
-.deck {
+.dock {
     position: fixed;
-    bottom: clamp(14px, 3vh, 30px);
     left: 50%;
     transform: translateX(-50%);
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    width: min(420px, calc(100vw - 24px));
+    height: 50px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    width: max-content;
-    max-width: min(96vw, 860px);
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 9px 12px;
+    justify-content: space-between;
+    padding: 10px 16px;
     border-radius: 14px;
-    background: rgba(10, 11, 13, 0.55);
+    background: rgba(13, 14, 16, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.09);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
@@ -582,13 +582,94 @@ body.idle { cursor: none; }
     z-index: 10;
 }
 
-body.idle .deck {
+body.idle .dock,
+body.idle .sheet {
     opacity: 0;
     transform: translateX(-50%) translateY(8px);
     pointer-events: none;
 }
 
-.chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.brand {
+    margin: 0;
+    font-family: 'Google Sans Flex', 'Overpass', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: #fafafa;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* tuck the double-y so it reads as one ligature-like form */
+.brand .tt { margin-left: -0.06em; }
+
+.dock-actions { display: flex; gap: 6px; }
+
+button.icon {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.75);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, transform 0.12s;
+}
+
+button.icon:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+button.icon:active { transform: scale(0.92); }
+button.icon.active { color: #fff; background: rgba(255, 255, 255, 0.12); }
+button.icon i { font-size: 16px; line-height: 1; }
+
+/* settings sheet: a matching card floating above the dock */
+.sheet {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%) translateY(6px);
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px) + 58px);
+    width: min(420px, calc(100vw - 24px));
+    border-radius: 14px;
+    background: rgba(13, 14, 16, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 10;
+}
+
+.sheet.open {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+}
+
+.sheet-section {
+    padding: 14px 16px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.sheet-section:last-child { border-bottom: none; }
+
+.sheet-section h2 {
+    margin: 0 0 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+#sheet[data-mode="video"] #daybar { display: none; }
+
+.timerow { display: flex; align-items: center; gap: 10px; }
+
+.chips { display: inline-flex; gap: 8px; flex-wrap: wrap; }
 
 .chip {
     display: inline-flex;
@@ -624,37 +705,17 @@ body.idle .deck {
 
 /* time-of-day controls (demo flight only) */
 
-.daybar {
-    display: none;
-    align-items: center;
-    gap: 10px;
-    height: 30px;
-    padding-left: 12px;
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.deck[data-mode="demo"] .daybar { display: flex; }
-
-.daybar .lab {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.4);
-    padding-top: 1px;
-}
-
-.daybar input[type="range"] {
+.timerow input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
-    width: clamp(90px, 18vw, 160px);
+    flex: 1;
     height: 3px;
     border-radius: 2px;
     background: rgba(255, 255, 255, 0.2);
     cursor: pointer;
 }
 
-.daybar input[type="range"]::-webkit-slider-thumb {
+.timerow input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 13px;
     height: 13px;
@@ -663,7 +724,7 @@ body.idle .deck {
     border: none;
 }
 
-.daybar input[type="range"]::-moz-range-thumb {
+.timerow input[type="range"]::-moz-range-thumb {
     width: 13px;
     height: 13px;
     border-radius: 50%;
@@ -691,13 +752,6 @@ body.idle .deck {
 }
 
 .tog.active { color: #fff; border-color: rgba(255, 255, 255, 0.5); }
-
-.tog.lights {
-    width: 34px;
-    padding: 3px 0 0;   /* optical: nudge the ☾/☀ glyph down to center */
-    font-size: 15px;
-    line-height: 1;
-}
 
 /* ============================== drop hint + grain */
 
@@ -736,6 +790,15 @@ body.dropping .drop-hint { opacity: 1; }
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
 }
 
+/* ============================== responsive */
+
+@media (max-width: 720px) {
+    /* clear the dock so the window never sits under it */
+    .airframe { padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+    :root { --wbase: min(86vw, 52vh); }
+}
+
 @media (max-height: 540px) {
-    :root { --ww: min(64vw, 58vh); }
+    :root { --wbase: min(60vw, 56vh); }
+    .airframe { padding-bottom: 0; }
 }
