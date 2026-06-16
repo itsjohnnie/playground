@@ -391,11 +391,19 @@
                     // Segmented "stacked shapes": each cell is a self-contained
                     // gradient that runs A->B, then a SHARP cut at the boundary
                     // (a sawtooth, not a smooth repeat) — so each shape clearly
-                    // ends and the next begins. The smooth displacement staggers
-                    // the cuts so the shapes grow / shift progressively, and each
-                    // cell gets a small hue offset for variety.
-                    float s   = fract(field);
-                    float seg = floor(field);
+                    // ends and the next begins.
+                    //
+                    // Variable heights: a low-frequency warp makes the tiling
+                    // coordinate P advance faster / slower along the flute, so the
+                    // integer crossings (cell boundaries) bunch up or spread out
+                    // -> some shapes short, some tall. The warp drifts per flute
+                    // (center) and slowly in time, so heights vary organically
+                    // yet still progressively from one flute to the next. (Kept
+                    // below rp in slope so P stays monotonic = clean cuts.)
+                    float warp = 0.38 * sin(along * TAU + center * 5.0 + t * 0.25);
+                    float P    = along * rp + warp + disp;
+                    float s    = fract(P);
+                    float seg  = floor(P);
                     lab = colorCycle(s * 0.9 + seg * 0.12 + t * 0.03 + aud * 0.8);
                     bright = pow(clamp(1.0 - s, 0.0, 1.0), 0.8); // bright base -> dark top
                     bright *= smoothstep(1.0, 0.94, s);          // thin dark gap = the cut
