@@ -379,21 +379,38 @@
                 float disp = sin(a * 0.8) * 0.30
                            + sin(a * 1.6 + 1.3) * 0.07;
 
-                // The shared gradient: colour traverses the palette (OKLab) and
-                // a brightness envelope opens from black up to full colour.
-                // 'along * rp' tiles the gradient into rp stacked modules (A->B,
-                // then A->B again); the displacement is added at a *fixed* scale
-                // (not multiplied by rp) so the per-flute offset stays smooth and
-                // the modules stagger into a progressive 3D staircase. Audio adds
-                // a global phase surge so every module pulses with sound.
+                // 'along * rp' tiles the flute into rp cells; the displacement is
+                // added at a *fixed* scale (not multiplied by rp) so the per-flute
+                // offset stays smooth and the cells stagger progressively.
                 float rp = u_repeat;
                 float field = along * rp + disp;
-                float colorPhase  = field * 0.85 + t * 0.03 + aud * 0.8;
-                float brightPhase = field * TAU * 0.5 - 0.2 + aud * 3.0;
-                vec3 lab = colorCycle(colorPhase);
-                float bright = 0.5 + 0.5 * cos(brightPhase);
-                bright = pow(clamp(bright, 0.0, 1.0), 1.2);
-                bright = clamp(bright * (1.0 + aud * 0.6), 0.0, 1.0);
+
+                vec3 lab;
+                float bright;
+                if (rp > 1.5) {
+                    // Segmented "stacked shapes": each cell is a self-contained
+                    // gradient that runs A->B, then a SHARP cut at the boundary
+                    // (a sawtooth, not a smooth repeat) — so each shape clearly
+                    // ends and the next begins. The smooth displacement staggers
+                    // the cuts so the shapes grow / shift progressively, and each
+                    // cell gets a small hue offset for variety.
+                    float s   = fract(field);
+                    float seg = floor(field);
+                    lab = colorCycle(s * 0.9 + seg * 0.12 + t * 0.03 + aud * 0.8);
+                    bright = pow(clamp(1.0 - s, 0.0, 1.0), 0.8); // bright base -> dark top
+                    bright *= smoothstep(1.0, 0.94, s);          // thin dark gap = the cut
+                    bright = clamp(bright * (1.0 + aud * 0.6), 0.0, 1.0);
+                } else {
+                    // Smooth single gradient — the progressive-curve look. The
+                    // brightness envelope opens from black up to full colour and
+                    // audio adds a global phase surge so the field pulses.
+                    float colorPhase  = field * 0.85 + t * 0.03 + aud * 0.8;
+                    float brightPhase = field * TAU * 0.5 - 0.2 + aud * 3.0;
+                    lab = colorCycle(colorPhase);
+                    bright = 0.5 + 0.5 * cos(brightPhase);
+                    bright = pow(clamp(bright, 0.0, 1.0), 1.2);
+                    bright = clamp(bright * (1.0 + aud * 0.6), 0.0, 1.0);
+                }
                 vec3 color = linearToSrgb(oklabToLinear(lab * bright));
 
                 // Interleaved-gradient-noise dither, animated, to dissolve any
