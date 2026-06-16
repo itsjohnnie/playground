@@ -18,13 +18,30 @@
             position: fixed;
             inset: 0;
             -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+            cursor: pointer;
         }
         canvas {
             display: block;
             width: 100%;
             height: 100%;
         }
-        /* Fallback shown only if WebGL is unavailable */
+        .hint {
+            position: fixed;
+            left: 50%;
+            bottom: max(1.5rem, env(safe-area-inset-bottom));
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.55);
+            font: 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            pointer-events: none;
+            transition: opacity 0.8s ease;
+            mix-blend-mode: difference;
+        }
+        .hint.gone { opacity: 0; }
         .fallback {
             position: fixed;
             inset: 0;
@@ -40,6 +57,7 @@
 </head>
 <body>
     <canvas id="gl"></canvas>
+    <div class="hint" id="hint">tap to shuffle colors</div>
     <div class="fallback" id="fallback">Your browser doesn't support WebGL, so these waves can't render.</div>
 
     <script>
@@ -59,71 +77,86 @@
             void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
         `;
 
+        // Fluted-glass model: the screen is sliced into well-defined vertical
+        // (or horizontal) flutes. Each flute samples one shared gradient, but
+        // shifted along its length by a *quantized* offset. That offset varies
+        // as a slow wave from flute to flute, so the gradient's contours bend
+        // into the stepped chevron / arch seams — like a gradient seen through
+        // fluted glass.
         const fragSrc = `
             precision highp float;
 
             uniform vec2  u_res;
             uniform float u_time;
-            uniform float u_vertical;   // 1.0 = vertical bands, 0.0 = horizontal
+            uniform float u_vertical;   // 1.0 = vertical flutes, 0.0 = horizontal
+            uniform float u_bands;      // number of flutes
             uniform vec3  u_colors[5];
+            uniform float u_paletteMix; // 0..1 crossfade between old and new palette
+            uniform vec3  u_prevColors[5];
 
-            // Smooth circular blend across the 5 harmonious colors.
+            const float TAU = 6.28318530718;
+            const float PI  = 3.14159265359;
+
+            // Smooth circular blend across 5 colors, crossfading old -> new set.
             vec3 colorCycle(float t) {
                 float p = fract(t) * 5.0;
                 vec3 col = vec3(0.0);
                 float wsum = 0.0;
                 for (int i = 0; i < 5; i++) {
                     float d = abs(p - float(i));
-                    d = min(d, 5.0 - d);          // wrap around the loop
-                    float w = max(0.0, 1.0 - d);  // triangular weight
-                    col += u_colors[i] * w;
+                    d = min(d, 5.0 - d);
+                    float w = max(0.0, 1.0 - d);
+                    vec3 c = mix(u_prevColors[i], u_colors[i], u_paletteMix);
+                    col += c * w;
                     wsum += w;
                 }
                 return col / wsum;
             }
 
-            // Cheap hash for dithering the gradient.
             float hash(vec2 p) {
                 return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
             }
 
-            const float TAU = 6.28318530718;
-
             void main() {
                 vec2 uv = gl_FragCoord.xy / u_res.xy;
 
-                // Axis perpendicular to the bands (the bands repeat along this),
-                // and the axis that runs parallel to them (the waves travel here).
-                float axis  = mix(uv.y, uv.x, u_vertical);
-                float along = mix(uv.x, uv.y, u_vertical);
+                // 'across' runs perpendicular to the flutes; 'along' runs down
+                // each flute (this is the gradient + displacement axis).
+                float across = mix(uv.y, uv.x, u_vertical);
+                float along  = mix(uv.x, uv.y, u_vertical);
 
-                // The base color slowly rotates through the palette.
-                vec3 baseColor = colorCycle(u_time * 0.04);
+                float t = u_time;
 
-                // Layered sine shifts give the bands their wavy, drifting motion.
-                float wave =
-                      sin(along * TAU * 1.3 + u_time * 0.55) * 0.060
-                    + sin(along * TAU * 0.6 - u_time * 0.37) * 0.045
-                    + sin(along * TAU * 2.4 + u_time * 0.22) * 0.018;
+                // Which flute are we in, and where within it (0..1).
+                float idx    = floor(across * u_bands);
+                float center = (idx + 0.5) / u_bands;
+                float fpos   = across * u_bands - idx;
 
-                float bands = 11.0;
-                float phase = (axis + wave) * bands;
+                // Per-flute displacement. Uses the flute *center*, so it is
+                // constant across each flute -> a hard step between neighbours
+                // = the staircase look. Layered sines make it drift like waves.
+                float disp =
+                      sin(center * TAU * 1.0 + t * 0.40) * 0.24
+                    + sin(center * TAU * 1.7 - t * 0.27) * 0.13
+                    + sin(center * TAU * 0.5 + t * 0.13) * 0.30;
 
-                // 0..1 banded ramp; shaped so it sits dark, then opens up to color.
-                float s = 0.5 + 0.5 * sin(phase * TAU);
-                float darkness = pow(s, 2.3);
+                float q = along + disp;
 
-                // Dark bands fade from (near) black up to the live palette color.
-                vec3 color = baseColor * (1.0 - darkness);
+                // The shared gradient: colour traverses the palette while the
+                // brightness envelope opens from near-black up to full colour.
+                vec3 col = colorCycle(q * 0.85 + t * 0.03);
+                float bright = 0.5 + 0.5 * cos(q * TAU * 0.5 - 0.2);
+                bright = pow(clamp(bright, 0.0, 1.0), 1.35);
+                vec3 color = col * bright;
 
-                // Gentle vignette for depth toward the edges.
-                vec2 c = uv - 0.5;
-                float vig = 1.0 - dot(c, c) * 0.55;
-                color *= vig;
+                // Glassy slat shading: a touch brighter mid-flute, with a thin
+                // dark groove at each edge so the flutes always read as bands.
+                float lens   = sin(fpos * PI);
+                float groove = smoothstep(0.0, 0.05, fpos) * smoothstep(1.0, 0.95, fpos);
+                color *= (0.86 + 0.14 * lens) * mix(0.55, 1.0, groove);
 
-                // Tiny dither to keep the smooth gradients banding-free on phones.
-                float n = (hash(gl_FragCoord.xy + fract(u_time)) - 0.5) / 255.0;
-                color += n;
+                // Tiny dither to keep the gradients smooth on phone screens.
+                color += (hash(gl_FragCoord.xy + fract(t)) - 0.5) / 255.0;
 
                 gl_FragColor = vec4(color, 1.0);
             }
@@ -153,12 +186,15 @@
         gl.enableVertexAttribArray(loc);
         gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 
-        const uRes      = gl.getUniformLocation(program, 'u_res');
-        const uTime     = gl.getUniformLocation(program, 'u_time');
-        const uVertical = gl.getUniformLocation(program, 'u_vertical');
-        const uColors   = gl.getUniformLocation(program, 'u_colors');
+        const uRes        = gl.getUniformLocation(program, 'u_res');
+        const uTime       = gl.getUniformLocation(program, 'u_time');
+        const uVertical   = gl.getUniformLocation(program, 'u_vertical');
+        const uBands      = gl.getUniformLocation(program, 'u_bands');
+        const uColors     = gl.getUniformLocation(program, 'u_colors');
+        const uPrevColors = gl.getUniformLocation(program, 'u_prevColors');
+        const uPalMix     = gl.getUniformLocation(program, 'u_paletteMix');
 
-        // ---- Palette: 5 harmonious colors, fresh every refresh --------------
+        // ---- Palette: 5 harmonious colors, fresh on load and on every tap ----
         function hslToRgb(h, s, l) {
             h = (h % 360 + 360) % 360 / 360;
             const a = s * Math.min(l, 1 - l);
@@ -171,31 +207,66 @@
 
         function makePalette() {
             const baseHue = Math.random() * 360;
-            // Total hue spread across the five colors — kept in the analogous /
-            // split-complementary range so the set always reads as harmonious.
-            const spread = 70 + Math.random() * 110;     // 70deg .. 180deg
-            const sat = 0.62 + Math.random() * 0.23;     // vivid but not neon
+            // Hue spread kept in the analogous / split-complementary range so
+            // the set always reads as harmonious.
+            const spread = 70 + Math.random() * 110;
+            const sat = 0.62 + Math.random() * 0.23;
             const colors = [];
             for (let i = 0; i < 5; i++) {
-                const t = i / 4;                          // 0 .. 1
-                const hue = baseHue + (t - 0.5) * spread;
-                // Slight lightness arc keeps depth between neighbours.
-                const light = 0.48 + Math.sin(t * Math.PI) * 0.12;
+                const tt = i / 4;
+                const hue = baseHue + (tt - 0.5) * spread;
+                const light = 0.48 + Math.sin(tt * Math.PI) * 0.12;
                 colors.push(...hslToRgb(hue, sat, light));
             }
-            return colors;
+            return new Float32Array(colors);
         }
-        gl.uniform3fv(uColors, new Float32Array(makePalette()));
 
-        // ---- Orientation: vertical bands on wide screens, horizontal on tall
+        let currentPalette = makePalette();
+        let prevPalette = currentPalette;
+        let mixStart = -1;                 // timestamp (s) when a crossfade began
+        const MIX_DUR = 1.1;               // seconds to crossfade palettes
+        gl.uniform3fv(uColors, currentPalette);
+        gl.uniform3fv(uPrevColors, currentPalette);
+        gl.uniform1f(uPalMix, 1.0);
+
+        function shuffleColors() {
+            prevPalette = currentPalette;
+            currentPalette = makePalette();
+            gl.uniform3fv(uPrevColors, prevPalette);
+            gl.uniform3fv(uColors, currentPalette);
+            mixStart = (performance.now() - start) / 1000;
+        }
+
+        // ---- Tap / click anywhere to shuffle the palette --------------------
+        const hint = document.getElementById('hint');
+        let hintGone = false;
+        function onTap(e) {
+            // Avoid double-firing (touchend + the click it synthesizes).
+            if (e.cancelable) e.preventDefault();
+            if (!hintGone) { hint.classList.add('gone'); hintGone = true; }
+            shuffleColors();
+        }
+        window.addEventListener('pointerdown', onTap, { passive: false });
+        // Fallback for browsers without Pointer Events.
+        if (!window.PointerEvent) {
+            window.addEventListener('touchstart', onTap, { passive: false });
+            window.addEventListener('mousedown', onTap);
+        }
+        // Auto-hide the hint after a few seconds even if untouched.
+        setTimeout(() => { if (!hintGone) hint.classList.add('gone'); }, 4500);
+
+        // ---- Orientation + flute count --------------------------------------
         let vertical = 1.0;
-        function updateOrientation() {
-            // Portrait (taller than wide → typically a phone) gets horizontal
-            // bands; landscape / desktop gets vertical bands.
+        let bands = 24;
+        function updateLayout() {
+            // Portrait (taller than wide) -> horizontal flutes (phones);
+            // landscape / desktop -> vertical flutes.
             vertical = window.innerWidth >= window.innerHeight ? 1.0 : 0.0;
+            // Keep flute width roughly constant (~46 CSS px) across devices.
+            const acrossPx = vertical ? window.innerWidth : window.innerHeight;
+            bands = Math.max(10, Math.min(40, Math.round(acrossPx / 46)));
         }
 
-        // ---- Sizing ---------------------------------------------------------
         function resize() {
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
             const w = Math.floor(window.innerWidth * dpr);
@@ -205,7 +276,7 @@
                 canvas.height = h;
             }
             gl.viewport(0, 0, w, h);
-            updateOrientation();
+            updateLayout();
         }
         window.addEventListener('resize', resize);
         window.addEventListener('orientationchange', resize);
@@ -214,9 +285,17 @@
         // ---- Render loop ----------------------------------------------------
         const start = performance.now();
         function frame(now) {
+            const t = (now - start) / 1000;
+            let mix = 1.0;
+            if (mixStart >= 0) {
+                mix = Math.min(1.0, (t - mixStart) / MIX_DUR);
+                mix = mix * mix * (3.0 - 2.0 * mix); // smoothstep
+            }
             gl.uniform2f(uRes, canvas.width, canvas.height);
-            gl.uniform1f(uTime, (now - start) / 1000);
+            gl.uniform1f(uTime, t);
             gl.uniform1f(uVertical, vertical);
+            gl.uniform1f(uBands, bands);
+            gl.uniform1f(uPalMix, mix);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
             requestAnimationFrame(frame);
         }
