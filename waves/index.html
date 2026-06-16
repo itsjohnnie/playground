@@ -240,6 +240,12 @@
                 </div>
             </div>
             <div class="ctl-row">
+                <div class="ctl-head"><h2>Repeat</h2></div>
+                <button type="button" class="tog" id="repeatTog">
+                    <span class="dot"></span><i class="ph ph-stack"></i>Stacked modules
+                </button>
+            </div>
+            <div class="ctl-row">
                 <div class="ctl-head"><h2>Microphone</h2></div>
                 <button type="button" class="tog" id="micTog">
                     <span class="dot"></span><i class="ph ph-microphone"></i>React to sound
@@ -286,6 +292,8 @@
             uniform vec3  u_prevColors[5];
             uniform sampler2D u_audioTex; // per-band frequency energy (1D)
             uniform float u_audioOn;      // 0/1 mic reactivity
+            uniform float u_audioLevel;   // overall mic loudness (moves all bars)
+            uniform float u_repeat;       // gradient repeats per flute (stacked modules)
 
             const float TAU = 6.28318530718;
             const float PI  = 3.14159265359;
@@ -353,31 +361,37 @@
                 float idx    = floor(across * u_bands);
                 float center = (idx + 0.5) / u_bands;
 
-                // Mic reactivity: each flute reads its own frequency band from
-                // the audio texture (low-mids spread across the flutes).
+                // Mic reactivity: a strong global term (overall loudness) moves
+                // *every* flute together, plus a smaller per-flute frequency term
+                // for texture — so the whole field pumps, not just a few bars.
                 float aud = 0.0;
                 if (u_audioOn > 0.5) {
-                    aud = texture2D(u_audioTex, vec2(clamp(center * 0.72, 0.0, 1.0), 0.5)).r;
-                    aud = aud * aud;
+                    float band = texture2D(u_audioTex, vec2(clamp(center * 0.55, 0.0, 1.0), 0.5)).r;
+                    aud = u_audioLevel * 0.7 + band * 0.3;
                 }
 
-                // Per-flute displacement. Uses the flute *center*, so it is
-                // constant across each flute -> a hard step between neighbours
-                // = the staircase look. Layered sines make it drift like waves.
-                // Amplitudes are kept moderate so neighbouring flutes never jump
-                // to wildly different parts of the gradient (which reads choppy).
-                float disp =
-                      sin(center * TAU * 1.0 + t * 0.40) * 0.17
-                    + sin(center * TAU * 1.7 - t * 0.27) * 0.09
-                    + sin(center * TAU * 0.5 + t * 0.13) * 0.20;
+                // Per-flute displacement. A smooth, low-frequency travelling wave
+                // so the shift from one flute to its neighbour is always small
+                // and *progressive* — the steps trace a clean curve rather than
+                // jumping around independently. Both terms drift at the same rate
+                // so the whole curve moves as one.
+                float a = center * TAU - t * 0.22;
+                float disp = sin(a * 0.8) * 0.30
+                           + sin(a * 1.6 + 1.3) * 0.07;
 
-                float q = along + disp + aud * 0.5;
-
-                // The shared gradient: colour traverses the palette (in OKLab)
-                // while the brightness envelope opens from black up to full
-                // colour. Scaling OKLab toward 0 fades cleanly to true black.
-                vec3 lab = colorCycle(q * 0.85 + t * 0.03);
-                float bright = 0.5 + 0.5 * cos(q * TAU * 0.5 - 0.2);
+                // The shared gradient: colour traverses the palette (OKLab) and
+                // a brightness envelope opens from black up to full colour.
+                // 'along * rp' tiles the gradient into rp stacked modules (A->B,
+                // then A->B again); the displacement is added at a *fixed* scale
+                // (not multiplied by rp) so the per-flute offset stays smooth and
+                // the modules stagger into a progressive 3D staircase. Audio adds
+                // a global phase surge so every module pulses with sound.
+                float rp = u_repeat;
+                float field = along * rp + disp;
+                float colorPhase  = field * 0.85 + t * 0.03 + aud * 0.8;
+                float brightPhase = field * TAU * 0.5 - 0.2 + aud * 3.0;
+                vec3 lab = colorCycle(colorPhase);
+                float bright = 0.5 + 0.5 * cos(brightPhase);
                 bright = pow(clamp(bright, 0.0, 1.0), 1.2);
                 bright = clamp(bright * (1.0 + aud * 0.6), 0.0, 1.0);
                 vec3 color = linearToSrgb(oklabToLinear(lab * bright));
@@ -423,6 +437,8 @@
         const uPalMix     = gl.getUniformLocation(program, 'u_paletteMix');
         const uAudioTex   = gl.getUniformLocation(program, 'u_audioTex');
         const uAudioOn    = gl.getUniformLocation(program, 'u_audioOn');
+        const uAudioLevel = gl.getUniformLocation(program, 'u_audioLevel');
+        const uRepeat     = gl.getUniformLocation(program, 'u_repeat');
 
         // ---- Audio texture (per-band frequency energy) ----------------------
         const AUDIO_BINS = 128;
@@ -438,6 +454,8 @@
                       gl.LUMINANCE, gl.UNSIGNED_BYTE, audioData);
         gl.uniform1i(uAudioTex, 0);
         gl.uniform1f(uAudioOn, 0.0);
+        gl.uniform1f(uAudioLevel, 0.0);
+        gl.uniform1f(uRepeat, 1.0);
 
         // ---- Palette: 5 harmonious colors, fresh on load and on every tap ----
         // Rather than rolling raw-random hues (which can land on unbalanced
@@ -533,9 +551,20 @@
             updateLayout();
         });
 
+        // ---- Repeat / stacked modules ---------------------------------------
+        const repeatTog = document.getElementById('repeatTog');
+        const REPEAT_COUNT = 5;     // gradient modules per flute when stacked
+        let repeat = 1.0;
+        repeatTog.addEventListener('click', () => {
+            const on = repeat === 1.0;
+            repeat = on ? REPEAT_COUNT : 1.0;
+            repeatTog.classList.toggle('active', on);
+        });
+
         // ---- Microphone reactivity ------------------------------------------
         const micTog = document.getElementById('micTog');
         let audioOn = false;
+        let audioLevel = 0.0;       // smoothed overall loudness (fast attack)
         let audioCtx, analyser, micStream, freqBuf;
 
         async function toggleMic() {
@@ -638,6 +667,17 @@
                 gl.bindTexture(gl.TEXTURE_2D, audioTex);
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, AUDIO_BINS, 1, 0,
                               gl.LUMINANCE, gl.UNSIGNED_BYTE, audioData);
+
+                // Overall loudness from the low-mid bins (where music lives).
+                // Fast attack / slow release gives a punchy beat-pump that drives
+                // every flute together.
+                let sum = 0;
+                const n = Math.min(freqBuf.length, 48);
+                for (let i = 1; i < n; i++) sum += freqBuf[i];
+                const lvl = sum / ((n - 1) * 255);
+                audioLevel = lvl > audioLevel ? lvl : audioLevel + (lvl - audioLevel) * 0.12;
+            } else if (audioLevel > 0.001) {
+                audioLevel += (0 - audioLevel) * 0.2;
             }
 
             gl.uniform2f(uRes, canvas.width, canvas.height);
@@ -645,6 +685,8 @@
             gl.uniform1f(uVertical, vertical);
             gl.uniform1f(uBands, bands);
             gl.uniform1f(uPalMix, mix);
+            gl.uniform1f(uRepeat, repeat);
+            gl.uniform1f(uAudioLevel, audioLevel);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
             requestAnimationFrame(frame);
         }
