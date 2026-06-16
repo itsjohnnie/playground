@@ -361,13 +361,14 @@
                 float idx    = floor(across * u_bands);
                 float center = (idx + 0.5) / u_bands;
 
-                // Mic reactivity: a strong global term (overall loudness) moves
-                // *every* flute together, plus a smaller per-flute frequency term
-                // for texture — so the whole field pumps, not just a few bars.
-                float aud = 0.0;
+                // Mic now drives the *size* of the shapes (not their colour): a
+                // strong global loudness term grows every shape together, plus a
+                // smaller per-flute frequency term so each bar also reacts to its
+                // own band.
+                float vol = 0.0;
                 if (u_audioOn > 0.5) {
                     float band = texture2D(u_audioTex, vec2(clamp(center * 0.55, 0.0, 1.0), 0.5)).r;
-                    aud = u_audioLevel * 0.7 + band * 0.3;
+                    vol = u_audioLevel * 0.8 + band * 0.4;
                 }
 
                 // Per-flute "reach": a smooth, progressive wave across the flutes
@@ -378,7 +379,8 @@
                 // variation reads as the rising / curving heights above it.
                 float wave  = 0.5 + 0.5 * sin(center * TAU * 0.8 - t * 0.22)
                                   + 0.18 * sin(center * TAU * 1.6 + 1.3 - t * 0.22);
-                float reach = mix(0.55, 1.75, clamp(wave, 0.0, 1.0));
+                // Louder -> smaller reach -> the lit shapes grow (bigger when loud).
+                float reach = mix(0.55, 1.75, clamp(wave, 0.0, 1.0)) / (1.0 + vol * 2.0);
 
                 float rp = u_repeat;
 
@@ -394,21 +396,18 @@
                     float P    = along * rp * reach + warp;
                     float s    = fract(P);
                     float seg  = floor(P);
-                    lab = colorCycle(s * 0.9 + seg * 0.12 + t * 0.03 + aud * 0.8);
+                    lab = colorCycle(s * 0.9 + seg * 0.12 + t * 0.03);
                     bright = pow(clamp(1.0 - s, 0.0, 1.0), 0.8); // bright base -> dark top
                     bright *= smoothstep(1.0, 0.94, s);          // thin dark gap = the cut
-                    bright = clamp(bright * (1.0 + aud * 0.6), 0.0, 1.0);
                 } else {
                     // Smooth single gradient, anchored: bright at the baseline,
-                    // receding along the flute at the per-flute reach. Audio adds
-                    // a global phase surge so the field pulses with sound.
+                    // receding along the flute at the per-flute reach.
                     float phase = along * reach;
-                    float colorPhase  = phase * 0.9 + t * 0.03 + aud * 0.8;
-                    float brightPhase = phase * TAU * 0.5 - 0.2 + aud * 3.0;
+                    float colorPhase  = phase * 0.9 + t * 0.03;
+                    float brightPhase = phase * TAU * 0.5 - 0.2;
                     lab = colorCycle(colorPhase);
                     bright = 0.5 + 0.5 * cos(brightPhase);
                     bright = pow(clamp(bright, 0.0, 1.0), 1.2);
-                    bright = clamp(bright * (1.0 + aud * 0.6), 0.0, 1.0);
                 }
                 vec3 color = linearToSrgb(oklabToLinear(lab * bright));
 
