@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#000000">
     <title>Banded Gradient Waves</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
     <style>
         :root { color-scheme: dark; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -13,6 +17,7 @@
             height: 100%;
             overflow: hidden;
             background: #000;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
         body {
             position: fixed;
@@ -21,37 +26,13 @@
             -webkit-user-select: none;
             user-select: none;
             touch-action: manipulation;
-            cursor: pointer;
         }
         canvas {
             display: block;
             width: 100%;
             height: 100%;
+            cursor: pointer;
         }
-        .hint {
-            position: fixed;
-            left: 50%;
-            bottom: max(1.5rem, env(safe-area-inset-bottom));
-            transform: translateX(-50%);
-            padding: 9px 16px;
-            border-radius: 999px;
-            color: #fff;
-            /* A low-opacity white wash + backdrop blur reads as a light
-               version of whatever gradient sits behind it, and the soft
-               shadow keeps the text legible across every palette. */
-            background: rgba(255, 255, 255, 0.12);
-            border: 1px solid rgba(255, 255, 255, 0.20);
-            -webkit-backdrop-filter: blur(14px) saturate(1.3);
-            backdrop-filter: blur(14px) saturate(1.3);
-            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
-            font: 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            white-space: nowrap;
-            pointer-events: none;
-            transition: opacity 0.8s ease;
-        }
-        .hint.gone { opacity: 0; }
         .fallback {
             position: fixed;
             inset: 0;
@@ -59,16 +40,213 @@
             align-items: center;
             justify-content: center;
             color: #888;
-            font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
             text-align: center;
             padding: 2rem;
+        }
+
+        /* =================================================================
+           Responsive controls — a bottom dock on mobile, a side panel on
+           desktop. Same markup; the media query re-flows it.
+           ================================================================= */
+
+        /* ---- Mobile-first: bottom dock ---------------------------------- */
+        .panel {
+            position: fixed;
+            left: 0; right: 0;
+            margin-inline: auto;
+            bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+            width: min(420px, calc(100vw - 24px));
+            z-index: 20;
+            transition: opacity 0.4s ease;
+        }
+        .panel-bar {
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px 10px 18px;
+            border-radius: 16px;
+            background: rgba(13, 14, 16, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            -webkit-backdrop-filter: blur(16px) saturate(1.4);
+            backdrop-filter: blur(16px) saturate(1.4);
+        }
+        .brand { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; color: #fafafa; }
+        .actions { display: flex; gap: 4px; }
+
+        button.icon {
+            width: 34px; height: 34px;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            color: rgba(255, 255, 255, 0.78);
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, transform 0.12s;
+        }
+        button.icon:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+        button.icon:active { transform: scale(0.9); }
+        button.icon.active { color: #fff; background: rgba(255, 255, 255, 0.14); }
+        button.icon i { font-size: 17px; line-height: 1; }
+
+        /* the controls — a floating sheet above the dock on mobile */
+        .controls {
+            position: fixed;
+            left: 0; right: 0;
+            margin-inline: auto;
+            bottom: calc(14px + env(safe-area-inset-bottom, 0px) + 62px);
+            width: min(420px, calc(100vw - 24px));
+            border-radius: 16px;
+            background: rgba(13, 14, 16, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            -webkit-backdrop-filter: blur(16px) saturate(1.4);
+            backdrop-filter: blur(16px) saturate(1.4);
+            opacity: 0;
+            transform: translateY(8px);
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            z-index: 19;
+        }
+        .controls.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+        .ctl-row { padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+        .ctl-row:last-child { border-bottom: none; }
+        .ctl-head {
+            display: flex; align-items: baseline; justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .ctl-head h2 {
+            font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+            text-transform: uppercase; color: rgba(255, 255, 255, 0.42);
+        }
+        .ctl-head .val {
+            font-size: 12px; font-weight: 600; color: #fff;
+            font-variant-numeric: tabular-nums;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            width: 100%; height: 4px; border-radius: 999px;
+            background: rgba(255, 255, 255, 0.18); cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: #fff; border: none;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px; height: 18px; border: none; border-radius: 50%;
+            background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .seg { display: flex; gap: 6px; }
+        .seg button, .tog {
+            flex: 1; height: 34px;
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            font-family: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+            color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px; cursor: pointer;
+            transition: color 0.15s, border-color 0.15s, background 0.15s;
+        }
+        .seg button i, .tog i { font-size: 15px; }
+        .seg button:hover, .tog:hover { color: rgba(255, 255, 255, 0.8); }
+        .seg button.active, .tog.active {
+            color: #fff; background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.45);
+        }
+        .tog { width: 100%; }
+        .tog .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+        .tog.active .dot { background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+
+        /* idle: tuck the controls away when the user is inactive */
+        body.idle .panel { opacity: 0; pointer-events: none; }
+
+        /* ---- Desktop: a side panel ------------------------------------- */
+        @media (min-width: 760px) {
+            .panel {
+                left: 18px; right: auto; margin: 0;
+                top: 50%; bottom: auto;
+                transform: translateY(-50%);
+                width: 268px;
+                display: flex; flex-direction: column;
+                border-radius: 18px;
+                overflow: hidden;
+                background: rgba(13, 14, 16, 0.62);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                -webkit-backdrop-filter: blur(16px) saturate(1.4);
+                backdrop-filter: blur(16px) saturate(1.4);
+            }
+            .panel-bar {
+                height: 56px;
+                background: transparent;
+                border: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 0;
+                -webkit-backdrop-filter: none;
+                backdrop-filter: none;
+            }
+            /* on desktop the controls live inside the panel, always visible */
+            .controls {
+                position: static;
+                width: auto; margin: 0; left: auto; right: auto; bottom: auto;
+                opacity: 1; transform: none; pointer-events: auto;
+                background: transparent;
+                border: none; border-radius: 0;
+                -webkit-backdrop-filter: none;
+                backdrop-filter: none;
+            }
+            .mobile-only { display: none; }
         }
     </style>
 </head>
 <body>
     <canvas id="gl"></canvas>
-    <div class="hint" id="hint">tap to shuffle colors</div>
     <div class="fallback" id="fallback">Your browser doesn't support WebGL, so these waves can't render.</div>
+
+    <aside class="panel" id="panel" aria-label="waves controls">
+        <div class="panel-bar">
+            <span class="brand">waves</span>
+            <div class="actions">
+                <button id="shuffleBtn" class="icon" type="button" title="Shuffle colors" aria-label="Shuffle colors">
+                    <i class="ph ph-shuffle"></i>
+                </button>
+                <button id="settingsBtn" class="icon mobile-only" type="button" title="Settings" aria-label="Settings" aria-expanded="false">
+                    <i class="ph ph-sliders-horizontal"></i>
+                </button>
+            </div>
+        </div>
+        <div class="controls" id="controls">
+            <div class="ctl-row">
+                <div class="ctl-head">
+                    <h2>Bands</h2>
+                    <span class="val" id="bandsVal">16</span>
+                </div>
+                <input type="range" id="bandsRange" min="4" max="48" step="1" value="16" aria-label="Number of bands">
+            </div>
+            <div class="ctl-row">
+                <div class="ctl-head"><h2>Direction</h2></div>
+                <div class="seg" id="dirSeg">
+                    <button type="button" data-dir="v"><i class="ph ph-columns"></i>Vertical</button>
+                    <button type="button" data-dir="h"><i class="ph ph-rows"></i>Horizontal</button>
+                </div>
+            </div>
+            <div class="ctl-row">
+                <div class="ctl-head"><h2>Microphone</h2></div>
+                <button type="button" class="tog" id="micTog">
+                    <span class="dot"></span><i class="ph ph-microphone"></i>React to sound
+                </button>
+            </div>
+        </div>
+    </aside>
 
     <script>
     (function () {
@@ -92,7 +270,8 @@
         // shifted along its length by a *quantized* offset. That offset varies
         // as a slow wave from flute to flute, so the gradient's contours bend
         // into the stepped chevron / arch seams — like a gradient seen through
-        // fluted glass.
+        // fluted glass. When the mic is on, each flute also reacts to its own
+        // frequency band, sampled from an audio texture.
         const fragSrc = `
             precision highp float;
 
@@ -105,6 +284,8 @@
             uniform vec3  u_colors[5];
             uniform float u_paletteMix; // 0..1 crossfade between old and new palette
             uniform vec3  u_prevColors[5];
+            uniform sampler2D u_audioTex; // per-band frequency energy (1D)
+            uniform float u_audioOn;      // 0/1 mic reactivity
 
             const float TAU = 6.28318530718;
             const float PI  = 3.14159265359;
@@ -172,6 +353,14 @@
                 float idx    = floor(across * u_bands);
                 float center = (idx + 0.5) / u_bands;
 
+                // Mic reactivity: each flute reads its own frequency band from
+                // the audio texture (low-mids spread across the flutes).
+                float aud = 0.0;
+                if (u_audioOn > 0.5) {
+                    aud = texture2D(u_audioTex, vec2(clamp(center * 0.72, 0.0, 1.0), 0.5)).r;
+                    aud = aud * aud;
+                }
+
                 // Per-flute displacement. Uses the flute *center*, so it is
                 // constant across each flute -> a hard step between neighbours
                 // = the staircase look. Layered sines make it drift like waves.
@@ -182,7 +371,7 @@
                     + sin(center * TAU * 1.7 - t * 0.27) * 0.09
                     + sin(center * TAU * 0.5 + t * 0.13) * 0.20;
 
-                float q = along + disp;
+                float q = along + disp + aud * 0.5;
 
                 // The shared gradient: colour traverses the palette (in OKLab)
                 // while the brightness envelope opens from black up to full
@@ -190,6 +379,7 @@
                 vec3 lab = colorCycle(q * 0.85 + t * 0.03);
                 float bright = 0.5 + 0.5 * cos(q * TAU * 0.5 - 0.2);
                 bright = pow(clamp(bright, 0.0, 1.0), 1.2);
+                bright = clamp(bright * (1.0 + aud * 0.6), 0.0, 1.0);
                 vec3 color = linearToSrgb(oklabToLinear(lab * bright));
 
                 // Interleaved-gradient-noise dither, animated, to dissolve any
@@ -231,6 +421,23 @@
         const uColors     = gl.getUniformLocation(program, 'u_colors');
         const uPrevColors = gl.getUniformLocation(program, 'u_prevColors');
         const uPalMix     = gl.getUniformLocation(program, 'u_paletteMix');
+        const uAudioTex   = gl.getUniformLocation(program, 'u_audioTex');
+        const uAudioOn    = gl.getUniformLocation(program, 'u_audioOn');
+
+        // ---- Audio texture (per-band frequency energy) ----------------------
+        const AUDIO_BINS = 128;
+        const audioData = new Uint8Array(AUDIO_BINS);
+        const audioTex = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, audioTex);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, AUDIO_BINS, 1, 0,
+                      gl.LUMINANCE, gl.UNSIGNED_BYTE, audioData);
+        gl.uniform1i(uAudioTex, 0);
+        gl.uniform1f(uAudioOn, 0.0);
 
         // ---- Palette: 5 harmonious colors, fresh on load and on every tap ----
         // Rather than rolling raw-random hues (which can land on unbalanced
@@ -241,11 +448,6 @@
         const rand = (a, b) => a + Math.random() * (b - a);
         const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 
-        // Each scheme is a set of relative hue offsets (degrees) for the 5
-        // stops, ordered to traverse smoothly, plus a relative weight. The
-        // analogous / monochrome family dominates; bolder split/complement
-        // schemes show up occasionally for variety. OKLab blends the wider
-        // jumps through a graceful low-chroma bridge.
         const SCHEMES = [
             { w: 2, jitter: 9, hues: [0, 0, 0, 0, 0] },              // monochrome
             { w: 3, jitter: 5, hues: [-22, -11, 0, 11, 22] },        // analogous, tight
@@ -256,7 +458,6 @@
         ];
         const SCHEME_BAG = SCHEMES.flatMap((s) => Array(s.w).fill(s));
 
-        // OKLCH -> OKLab (the shader consumes OKLab).
         function oklch(L, C, hueDeg) {
             const h = (hueDeg * Math.PI) / 180;
             return [L, C * Math.cos(h), C * Math.sin(h)];
@@ -265,13 +466,12 @@
         function makePalette() {
             const scheme = SCHEME_BAG[(Math.random() * SCHEME_BAG.length) | 0];
             const baseHue = Math.random() * 360;
-            const chroma = rand(0.11, 0.17);   // shared chroma, kept in sRGB gamut
-            const baseL = rand(0.62, 0.72);    // perceptual lightness
+            const chroma = rand(0.11, 0.17);
+            const baseL = rand(0.62, 0.72);
             const lab = [];
             for (let i = 0; i < 5; i++) {
                 const tt = i / 4;
                 const hue = baseHue + scheme.hues[i] + rand(-scheme.jitter, scheme.jitter);
-                // Gentle lightness arch + small per-stop chroma variance.
                 const L = clamp(baseL + Math.sin(tt * Math.PI) * 0.10, 0, 1);
                 const C = chroma * rand(0.9, 1.1);
                 lab.push(...oklch(L, C, hue));
@@ -281,8 +481,8 @@
 
         let currentPalette = makePalette();
         let prevPalette = currentPalette;
-        let mixStart = -1;                 // timestamp (s) when a crossfade began
-        const MIX_DUR = 1.1;               // seconds to crossfade palettes
+        let mixStart = -1;
+        const MIX_DUR = 1.1;
         gl.uniform3fv(uColors, currentPalette);
         gl.uniform3fv(uPrevColors, currentPalette);
         gl.uniform1f(uPalMix, 1.0);
@@ -295,35 +495,115 @@
             mixStart = (performance.now() - start) / 1000;
         }
 
-        // ---- Tap / click anywhere to shuffle the palette --------------------
-        const hint = document.getElementById('hint');
-        let hintGone = false;
-        function onTap(e) {
-            // Avoid double-firing (touchend + the click it synthesizes).
-            if (e.cancelable) e.preventDefault();
-            if (!hintGone) { hint.classList.add('gone'); hintGone = true; }
-            shuffleColors();
-        }
-        window.addEventListener('pointerdown', onTap, { passive: false });
-        // Fallback for browsers without Pointer Events.
-        if (!window.PointerEvent) {
-            window.addEventListener('touchstart', onTap, { passive: false });
-            window.addEventListener('mousedown', onTap);
-        }
-        // Auto-hide the hint after a few seconds even if untouched.
-        setTimeout(() => { if (!hintGone) hint.classList.add('gone'); }, 4500);
-
-        // ---- Orientation + flute count --------------------------------------
+        // ---- Layout: orientation + flute count (auto, with manual override) -
+        let userVertical = null;   // null = auto (by aspect ratio)
+        let userBands = null;      // null = auto (16 desktop / 12 mobile)
         let vertical = 1.0;
-        let bands = 24;
+        let bands = 16;
+
+        const bandsRange = document.getElementById('bandsRange');
+        const bandsVal = document.getElementById('bandsVal');
+        const dirSeg = document.getElementById('dirSeg');
+
+        function autoVertical() {
+            return window.innerWidth >= window.innerHeight ? 1.0 : 0.0;
+        }
+        function syncControls() {
+            bandsRange.value = bands;
+            bandsVal.textContent = bands;
+            dirSeg.querySelectorAll('button').forEach((b) => {
+                const isV = b.dataset.dir === 'v';
+                b.classList.toggle('active', (vertical === 1.0) === isV);
+            });
+        }
         function updateLayout() {
-            // Portrait (taller than wide) -> horizontal flutes (phones);
-            // landscape / desktop -> vertical flutes.
-            vertical = window.innerWidth >= window.innerHeight ? 1.0 : 0.0;
-            // Fixed band counts: 16 on desktop (landscape), 12 on mobile.
-            bands = vertical ? 16 : 12;
+            vertical = userVertical !== null ? userVertical : autoVertical();
+            bands = userBands !== null ? userBands : (vertical ? 16 : 12);
+            syncControls();
         }
 
+        bandsRange.addEventListener('input', () => {
+            userBands = parseInt(bandsRange.value, 10);
+            updateLayout();
+        });
+        dirSeg.addEventListener('click', (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            userVertical = btn.dataset.dir === 'v' ? 1.0 : 0.0;
+            updateLayout();
+        });
+
+        // ---- Microphone reactivity ------------------------------------------
+        const micTog = document.getElementById('micTog');
+        let audioOn = false;
+        let audioCtx, analyser, micStream, freqBuf;
+
+        async function toggleMic() {
+            if (!audioOn) {
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+                    await audioCtx.resume();
+                    const src = audioCtx.createMediaStreamSource(micStream);
+                    analyser = audioCtx.createAnalyser();
+                    analyser.fftSize = 256;                 // -> 128 frequency bins
+                    analyser.smoothingTimeConstant = 0.82;
+                    src.connect(analyser);
+                    freqBuf = new Uint8Array(analyser.frequencyBinCount);
+                    audioOn = true;
+                    micTog.classList.add('active');
+                    gl.uniform1f(uAudioOn, 1.0);
+                } catch (err) {
+                    console.warn('Microphone unavailable:', err);
+                    audioOn = false;
+                    micTog.classList.remove('active');
+                }
+            } else {
+                audioOn = false;
+                micTog.classList.remove('active');
+                gl.uniform1f(uAudioOn, 0.0);
+                if (micStream) micStream.getTracks().forEach((tr) => tr.stop());
+                micStream = null;
+            }
+        }
+        micTog.addEventListener('click', toggleMic);
+
+        // ---- Dock / panel behaviour -----------------------------------------
+        const panel = document.getElementById('panel');
+        const controls = document.getElementById('controls');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+
+        // On mobile the settings button toggles the floating controls sheet.
+        // (On desktop the controls live inside the side panel and this button
+        // is hidden by CSS.)
+        settingsBtn.addEventListener('click', () => {
+            const open = controls.classList.toggle('open');
+            settingsBtn.classList.toggle('active', open);
+            settingsBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        shuffleBtn.addEventListener('click', () => {
+            shuffleColors();
+            shuffleBtn.classList.add('active');
+            setTimeout(() => shuffleBtn.classList.remove('active'), 180);
+        });
+        // Tap the artwork itself to shuffle too.
+        canvas.addEventListener('pointerdown', () => shuffleColors());
+
+        // Idle: tuck the panel away when inactive (kept up while a sheet is open).
+        let idleTimer;
+        function unidle() {
+            document.body.classList.remove('idle');
+            clearTimeout(idleTimer);
+            idleTimer = setTimeout(() => {
+                if (!controls.classList.contains('open')) document.body.classList.add('idle');
+            }, 4000);
+        }
+        ['pointermove', 'pointerdown', 'touchstart', 'keydown'].forEach((ev) =>
+            window.addEventListener(ev, unidle, { passive: true }));
+        unidle();
+
+        // ---- Sizing ---------------------------------------------------------
         function resize() {
             const dpr = Math.min(window.devicePixelRatio || 1, 2);
             const w = Math.floor(window.innerWidth * dpr);
@@ -346,8 +626,20 @@
             let mix = 1.0;
             if (mixStart >= 0) {
                 mix = Math.min(1.0, (t - mixStart) / MIX_DUR);
-                mix = mix * mix * (3.0 - 2.0 * mix); // smoothstep
+                mix = mix * mix * (3.0 - 2.0 * mix);
             }
+
+            if (audioOn && analyser) {
+                analyser.getByteFrequencyData(freqBuf);
+                for (let i = 0; i < AUDIO_BINS; i++) {
+                    audioData[i] = freqBuf[Math.min(freqBuf.length - 1, i)];
+                }
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, audioTex);
+                gl.texImage2D(gl.TEXTURE_2D, 0, gl.LUMINANCE, AUDIO_BINS, 1, 0,
+                              gl.LUMINANCE, gl.UNSIGNED_BYTE, audioData);
+            }
+
             gl.uniform2f(uRes, canvas.width, canvas.height);
             gl.uniform1f(uTime, t);
             gl.uniform1f(uVertical, vertical);
