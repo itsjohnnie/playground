@@ -370,38 +370,28 @@
                     aud = u_audioLevel * 0.7 + band * 0.3;
                 }
 
-                // Per-flute displacement. A smooth, low-frequency travelling wave
-                // so the shift from one flute to its neighbour is always small
-                // and *progressive* — the steps trace a clean curve rather than
-                // jumping around independently. Both terms drift at the same rate
-                // so the whole curve moves as one.
-                float a = center * TAU - t * 0.22;
-                float disp = sin(a * 0.8) * 0.30
-                           + sin(a * 1.6 + 1.3) * 0.07;
+                // Per-flute "reach": a smooth, progressive wave across the flutes
+                // (slowly animated) that sets how far the gradient travels along
+                // each flute. The gradient is ANCHORED at along == 0 — the left
+                // edge for horizontal flutes, the bottom for vertical ones — so
+                // every flute shares one clean straight baseline, and the reach
+                // variation reads as the rising / curving heights above it.
+                float wave  = 0.5 + 0.5 * sin(center * TAU * 0.8 - t * 0.22)
+                                  + 0.18 * sin(center * TAU * 1.6 + 1.3 - t * 0.22);
+                float reach = mix(0.55, 1.75, clamp(wave, 0.0, 1.0));
 
-                // 'along * rp' tiles the flute into rp cells; the displacement is
-                // added at a *fixed* scale (not multiplied by rp) so the per-flute
-                // offset stays smooth and the cells stagger progressively.
                 float rp = u_repeat;
-                float field = along * rp + disp;
 
                 vec3 lab;
                 float bright;
                 if (rp > 1.5) {
-                    // Segmented "stacked shapes": each cell is a self-contained
-                    // gradient that runs A->B, then a SHARP cut at the boundary
-                    // (a sawtooth, not a smooth repeat) — so each shape clearly
-                    // ends and the next begins.
-                    //
-                    // Variable heights: a low-frequency warp makes the tiling
-                    // coordinate P advance faster / slower along the flute, so the
-                    // integer crossings (cell boundaries) bunch up or spread out
-                    // -> some shapes short, some tall. The warp drifts per flute
-                    // (center) and slowly in time, so heights vary organically
-                    // yet still progressively from one flute to the next. (Kept
-                    // below rp in slope so P stays monotonic = clean cuts.)
-                    float warp = 0.08 * rp * sin(along * TAU + center * 5.0 + t * 0.25);
-                    float P    = along * rp + warp + disp;
+                    // Segmented "stacked shapes", anchored at the baseline. Cells
+                    // grow from along == 0; 'reach' sets how many stack up each
+                    // flute (so their heights vary), and a warp that vanishes at
+                    // the anchor adds within-flute height variation without moving
+                    // the baseline. A SHARP cut ends each shape.
+                    float warp = 0.04 * rp * along * sin(along * TAU * 1.3 + center * 5.0 + t * 0.25);
+                    float P    = along * rp * reach + warp;
                     float s    = fract(P);
                     float seg  = floor(P);
                     lab = colorCycle(s * 0.9 + seg * 0.12 + t * 0.03 + aud * 0.8);
@@ -409,11 +399,12 @@
                     bright *= smoothstep(1.0, 0.94, s);          // thin dark gap = the cut
                     bright = clamp(bright * (1.0 + aud * 0.6), 0.0, 1.0);
                 } else {
-                    // Smooth single gradient — the progressive-curve look. The
-                    // brightness envelope opens from black up to full colour and
-                    // audio adds a global phase surge so the field pulses.
-                    float colorPhase  = field * 0.85 + t * 0.03 + aud * 0.8;
-                    float brightPhase = field * TAU * 0.5 - 0.2 + aud * 3.0;
+                    // Smooth single gradient, anchored: bright at the baseline,
+                    // receding along the flute at the per-flute reach. Audio adds
+                    // a global phase surge so the field pulses with sound.
+                    float phase = along * reach;
+                    float colorPhase  = phase * 0.9 + t * 0.03 + aud * 0.8;
+                    float brightPhase = phase * TAU * 0.5 - 0.2 + aud * 3.0;
                     lab = colorCycle(colorPhase);
                     bright = 0.5 + 0.5 * cos(brightPhase);
                     bright = pow(clamp(bright, 0.0, 1.0), 1.2);
