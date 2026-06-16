@@ -47,6 +47,7 @@
             font: 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             letter-spacing: 0.08em;
             text-transform: uppercase;
+            white-space: nowrap;
             pointer-events: none;
             transition: opacity 0.8s ease;
         }
@@ -99,26 +100,51 @@
             uniform float u_time;
             uniform float u_vertical;   // 1.0 = vertical flutes, 0.0 = horizontal
             uniform float u_bands;      // number of flutes
+            // Palettes are supplied in OKLab so every blend is perceptually
+            // uniform — no muddy mid-tones or uneven brightness like RGB/HSL.
             uniform vec3  u_colors[5];
             uniform float u_paletteMix; // 0..1 crossfade between old and new palette
             uniform vec3  u_prevColors[5];
 
             const float TAU = 6.28318530718;
 
-            // Smooth circular blend across 5 colors, crossfading old -> new set.
+            // Smooth circular blend across 5 OKLab colors, crossfading the old
+            // palette into the new one. Returns an OKLab triplet.
             vec3 colorCycle(float t) {
                 float p = fract(t) * 5.0;
-                vec3 col = vec3(0.0);
+                vec3 lab = vec3(0.0);
                 float wsum = 0.0;
                 for (int i = 0; i < 5; i++) {
                     float d = abs(p - float(i));
                     d = min(d, 5.0 - d);
                     float w = max(0.0, 1.0 - d);
                     vec3 c = mix(u_prevColors[i], u_colors[i], u_paletteMix);
-                    col += c * w;
+                    lab += c * w;
                     wsum += w;
                 }
-                return col / wsum;
+                return lab / wsum;
+            }
+
+            // OKLab -> linear sRGB -> gamma-encoded sRGB.
+            vec3 oklabToLinear(vec3 lab) {
+                float l_ = lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z;
+                float m_ = lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z;
+                float s_ = lab.x - 0.0894841775 * lab.y - 1.2914855480 * lab.z;
+                float l = l_ * l_ * l_;
+                float m = m_ * m_ * m_;
+                float s = s_ * s_ * s_;
+                return vec3(
+                     4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+                    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+                    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+                );
+            }
+
+            vec3 linearToSrgb(vec3 c) {
+                c = clamp(c, 0.0, 1.0);
+                return mix(12.92 * c,
+                           1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055,
+                           step(0.0031308, c));
             }
 
             float hash(vec2 p) {
@@ -149,12 +175,13 @@
 
                 float q = along + disp;
 
-                // The shared gradient: colour traverses the palette while the
-                // brightness envelope opens from near-black up to full colour.
-                vec3 col = colorCycle(q * 0.85 + t * 0.03);
+                // The shared gradient: colour traverses the palette (in OKLab)
+                // while the brightness envelope opens from black up to full
+                // colour. Scaling OKLab toward 0 fades cleanly to true black.
+                vec3 lab = colorCycle(q * 0.85 + t * 0.03);
                 float bright = 0.5 + 0.5 * cos(q * TAU * 0.5 - 0.2);
                 bright = pow(clamp(bright, 0.0, 1.0), 1.35);
-                vec3 color = col * bright;
+                vec3 color = linearToSrgb(oklabToLinear(lab * bright));
 
                 // Tiny dither to keep the gradients smooth on phone screens.
                 color += (hash(gl_FragCoord.xy + fract(t)) - 0.5) / 255.0;
@@ -206,20 +233,34 @@
             return [f(0), f(8), f(4)];
         }
 
+        // sRGB -> OKLab so the shader can blend colors perceptually.
+        function srgbToOklab(r, g, b) {
+            const lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+            r = lin(r); g = lin(g); b = lin(b);
+            const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+            const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+            const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+            return [
+                0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+                1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+                0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
+            ];
+        }
+
         function makePalette() {
             const baseHue = Math.random() * 360;
             // Hue spread kept in the analogous / split-complementary range so
             // the set always reads as harmonious.
             const spread = 70 + Math.random() * 110;
             const sat = 0.62 + Math.random() * 0.23;
-            const colors = [];
+            const lab = [];
             for (let i = 0; i < 5; i++) {
                 const tt = i / 4;
                 const hue = baseHue + (tt - 0.5) * spread;
                 const light = 0.48 + Math.sin(tt * Math.PI) * 0.12;
-                colors.push(...hslToRgb(hue, sat, light));
+                lab.push(...srgbToOklab(...hslToRgb(hue, sat, light)));
             }
-            return new Float32Array(colors);
+            return new Float32Array(lab);
         }
 
         let currentPalette = makePalette();
@@ -263,13 +304,8 @@
             // Portrait (taller than wide) -> horizontal flutes (phones);
             // landscape / desktop -> vertical flutes.
             vertical = window.innerWidth >= window.innerHeight ? 1.0 : 0.0;
-            if (vertical) {
-                // Desktop: keep flute width roughly constant (~46 CSS px).
-                bands = Math.max(10, Math.min(40, Math.round(window.innerWidth / 46)));
-            } else {
-                // Mobile (portrait): a fixed, chunkier set of bars.
-                bands = 12;
-            }
+            // Fixed band counts: 16 on desktop (landscape), 12 on mobile.
+            bands = vertical ? 16 : 12;
         }
 
         function resize() {
