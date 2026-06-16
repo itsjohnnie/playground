@@ -58,7 +58,7 @@ jobs:
           done
           for d in ascii cc dithered dots dott flyy generative-ui haiku jitter \
                    liquid liquid-glass-icon mask orb os poetry pretext sizzle \
-                   toaster; do
+                   toaster waves; do
             if [ -d "$d" ]; then
               mkdir -p "_site/$d"
               cp -r "$d/." "_site/$d/"

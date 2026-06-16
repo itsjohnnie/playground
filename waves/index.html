@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>Banded Gradient Waves</title>
+    <style>
+        :root { color-scheme: dark; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+        body {
+            position: fixed;
+            inset: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* Fallback shown only if WebGL is unavailable */
+        .fallback {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+            font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            text-align: center;
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gl"></canvas>
+    <div class="fallback" id="fallback">Your browser doesn't support WebGL, so these waves can't render.</div>
+
+    <script>
+    (function () {
+        const canvas = document.getElementById('gl');
+        const gl = canvas.getContext('webgl', { antialias: true, premultipliedAlpha: false })
+                || canvas.getContext('experimental-webgl');
+
+        if (!gl) {
+            document.getElementById('fallback').style.display = 'flex';
+            return;
+        }
+
+        // ---- Shaders --------------------------------------------------------
+        const vertSrc = `
+            attribute vec2 a_pos;
+            void main() { gl_Position = vec4(a_pos, 0.0, 1.0); }
+        `;
+
+        const fragSrc = `
+            precision highp float;
+
+            uniform vec2  u_res;
+            uniform float u_time;
+            uniform float u_vertical;   // 1.0 = vertical bands, 0.0 = horizontal
+            uniform vec3  u_colors[5];
+
+            // Smooth circular blend across the 5 harmonious colors.
+            vec3 colorCycle(float t) {
+                float p = fract(t) * 5.0;
+                vec3 col = vec3(0.0);
+                float wsum = 0.0;
+                for (int i = 0; i < 5; i++) {
+                    float d = abs(p - float(i));
+                    d = min(d, 5.0 - d);          // wrap around the loop
+                    float w = max(0.0, 1.0 - d);  // triangular weight
+                    col += u_colors[i] * w;
+                    wsum += w;
+                }
+                return col / wsum;
+            }
+
+            // Cheap hash for dithering the gradient.
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+            }
+
+            const float TAU = 6.28318530718;
+
+            void main() {
+                vec2 uv = gl_FragCoord.xy / u_res.xy;
+
+                // Axis perpendicular to the bands (the bands repeat along this),
+                // and the axis that runs parallel to them (the waves travel here).
+                float axis  = mix(uv.y, uv.x, u_vertical);
+                float along = mix(uv.x, uv.y, u_vertical);
+
+                // The base color slowly rotates through the palette.
+                vec3 baseColor = colorCycle(u_time * 0.04);
+
+                // Layered sine shifts give the bands their wavy, drifting motion.
+                float wave =
+                      sin(along * TAU * 1.3 + u_time * 0.55) * 0.060
+                    + sin(along * TAU * 0.6 - u_time * 0.37) * 0.045
+                    + sin(along * TAU * 2.4 + u_time * 0.22) * 0.018;
+
+                float bands = 11.0;
+                float phase = (axis + wave) * bands;
+
+                // 0..1 banded ramp; shaped so it sits dark, then opens up to color.
+                float s = 0.5 + 0.5 * sin(phase * TAU);
+                float darkness = pow(s, 2.3);
+
+                // Dark bands fade from (near) black up to the live palette color.
+                vec3 color = baseColor * (1.0 - darkness);
+
+                // Gentle vignette for depth toward the edges.
+                vec2 c = uv - 0.5;
+                float vig = 1.0 - dot(c, c) * 0.55;
+                color *= vig;
+
+                // Tiny dither to keep the smooth gradients banding-free on phones.
+                float n = (hash(gl_FragCoord.xy + fract(u_time)) - 0.5) / 255.0;
+                color += n;
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        function compile(type, src) {
+            const sh = gl.createShader(type);
+            gl.shaderSource(sh, src);
+            gl.compileShader(sh);
+            if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(sh));
+            }
+            return sh;
+        }
+
+        const program = gl.createProgram();
+        gl.attachShader(program, compile(gl.VERTEX_SHADER, vertSrc));
+        gl.attachShader(program, compile(gl.FRAGMENT_SHADER, fragSrc));
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        // Full-screen triangle.
+        const buf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+        const loc = gl.getAttribLocation(program, 'a_pos');
+        gl.enableVertexAttribArray(loc);
+        gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+        const uRes      = gl.getUniformLocation(program, 'u_res');
+        const uTime     = gl.getUniformLocation(program, 'u_time');
+        const uVertical = gl.getUniformLocation(program, 'u_vertical');
+        const uColors   = gl.getUniformLocation(program, 'u_colors');
+
+        // ---- Palette: 5 harmonious colors, fresh every refresh --------------
+        function hslToRgb(h, s, l) {
+            h = (h % 360 + 360) % 360 / 360;
+            const a = s * Math.min(l, 1 - l);
+            const f = (n) => {
+                const k = (n + h * 12) % 12;
+                return l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
+            };
+            return [f(0), f(8), f(4)];
+        }
+
+        function makePalette() {
+            const baseHue = Math.random() * 360;
+            // Total hue spread across the five colors — kept in the analogous /
+            // split-complementary range so the set always reads as harmonious.
+            const spread = 70 + Math.random() * 110;     // 70deg .. 180deg
+            const sat = 0.62 + Math.random() * 0.23;     // vivid but not neon
+            const colors = [];
+            for (let i = 0; i < 5; i++) {
+                const t = i / 4;                          // 0 .. 1
+                const hue = baseHue + (t - 0.5) * spread;
+                // Slight lightness arc keeps depth between neighbours.
+                const light = 0.48 + Math.sin(t * Math.PI) * 0.12;
+                colors.push(...hslToRgb(hue, sat, light));
+            }
+            return colors;
+        }
+        gl.uniform3fv(uColors, new Float32Array(makePalette()));
+
+        // ---- Orientation: vertical bands on wide screens, horizontal on tall
+        let vertical = 1.0;
+        function updateOrientation() {
+            // Portrait (taller than wide → typically a phone) gets horizontal
+            // bands; landscape / desktop gets vertical bands.
+            vertical = window.innerWidth >= window.innerHeight ? 1.0 : 0.0;
+        }
+
+        // ---- Sizing ---------------------------------------------------------
+        function resize() {
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const w = Math.floor(window.innerWidth * dpr);
+            const h = Math.floor(window.innerHeight * dpr);
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+            }
+            gl.viewport(0, 0, w, h);
+            updateOrientation();
+        }
+        window.addEventListener('resize', resize);
+        window.addEventListener('orientationchange', resize);
+        resize();
+
+        // ---- Render loop ----------------------------------------------------
+        const start = performance.now();
+        function frame(now) {
+            gl.uniform2f(uRes, canvas.width, canvas.height);
+            gl.uniform1f(uTime, (now - start) / 1000);
+            gl.uniform1f(uVertical, vertical);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+    })();
+    </script>
+</body>
+</html>
