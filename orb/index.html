@@ -7,98 +7,246 @@
     <script type="importmap">
     {
         "imports": {
-            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-            "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.webgpu.js",
-            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+            "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"
         }
     }
     </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
             overflow: hidden;
             background: #000;
             width: 100%;
             height: 100%;
         }
-        #canvas-container {
+        #canvas {
             position: fixed;
-            top: 0;
-            left: 0;
+            inset: 0;
             width: 100vw;
             height: 100vh;
-        }
-        #canvas {
-            width: 100%;
-            height: 100%;
-            transform: scale(1.75);
-            transform-origin: center center;
+            display: block;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <div id="canvas-container">
-        <canvas id="canvas"></canvas>
-    </div>
+    <canvas id="canvas"></canvas>
 
     <script type="module">
-        // Override MouseEvent BEFORE loading the library
-        const fakeMouseEvent = new Proxy(MouseEvent, {
-            construct(target, args) {
-                const event = new target(...args)
-                // Force mouse position to be far off-screen
-                Object.defineProperty(event, 'clientX', { value: -99999, writable: false })
-                Object.defineProperty(event, 'clientY', { value: -99999, writable: false })
-                return event
-            }
-        })
-
-        import TubesCursor from "https://cdn.jsdelivr.net/npm/threejs-components@0.0.19/build/cursors/tubes1.min.js"
+        import * as THREE from "three"
 
         const canvas = document.getElementById('canvas')
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
-        // Make canvas completely invisible to mouse
-        canvas.style.pointerEvents = 'none'
+        const scene = new THREE.Scene()
+        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
 
-        const app = TubesCursor(canvas, {
-            tubes: {
-                colors: ["#f967fb", "#53bc28", "#6958d5"],
-                lights: {
-                    intensity: 200,
-                    colors: ["#83f36e", "#fe8a2e", "#ff008a", "#60aed5"]
-                }
-            },
-            sleepRadiusX: 0,
-            sleepRadiusY: 0,
-            sleepTimeScale1: 1,
-            sleepTimeScale2: 1
-        })
-
-        // Create an overlay to block mouse from reaching canvas
-        const overlay = document.createElement('div')
-        overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1000; pointer-events: auto;'
-        document.body.appendChild(overlay)
-
-        // Keep canvas below overlay
-        canvas.style.zIndex = '-1'
-
-        document.body.addEventListener('click', () => {
-            const colors = randomColors(3)
-            const lightsColors = randomColors(4)
-            console.log(colors, lightsColors)
-            app.tubes.setColors(colors)
-            app.tubes.setLightsColors(lightsColors)
-        })
-
-        function randomColors (count) {
-            return new Array(count)
-                .fill(0)
-                .map(() => "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'))
+        const hexToVec3 = (hex) => {
+            const c = new THREE.Color(hex)
+            return new THREE.Vector3(c.r, c.g, c.b)
         }
+
+        const uniforms = {
+            uTime:       { value: 0 },
+            uResolution: { value: new THREE.Vector2() },
+            uMouse:      { value: new THREE.Vector2(0, 0) },
+            uColorA:     { value: hexToVec3('#ff4fd8') },
+            uColorB:     { value: hexToVec3('#6958d5') },
+            uColorC:     { value: hexToVec3('#4fc8ff') },
+        }
+
+        const material = new THREE.ShaderMaterial({
+            uniforms,
+            vertexShader: /* glsl */`
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = vec4(position.xy, 0.0, 1.0);
+                }
+            `,
+            fragmentShader: /* glsl */`
+                precision highp float;
+                varying vec2 vUv;
+
+                uniform float uTime;
+                uniform vec2  uResolution;
+                uniform vec2  uMouse;
+                uniform vec3  uColorA;
+                uniform vec3  uColorB;
+                uniform vec3  uColorC;
+
+                const float R = 1.0;          // orb radius
+                const float IOR = 1.28;        // glass index of refraction
+                const int   STEPS = 44;        // volumetric march steps
+
+                float hash(vec3 p) {
+                    p = fract(p * 0.3183099 + 0.1);
+                    p *= 17.0;
+                    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+                }
+
+                float noise(vec3 x) {
+                    vec3 i = floor(x);
+                    vec3 f = fract(x);
+                    f = f * f * (3.0 - 2.0 * f);
+                    return mix(mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
+                                   mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+                               mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                                   mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+                }
+
+                float fbm(vec3 p) {
+                    float v = 0.0;
+                    float a = 0.5;
+                    mat3 m = mat3( 0.00,  0.80,  0.60,
+                                  -0.80,  0.36, -0.48,
+                                  -0.60, -0.48,  0.64);
+                    for (int i = 0; i < 4; i++) {
+                        v += a * noise(p);
+                        p = m * p * 2.02;
+                        a *= 0.5;
+                    }
+                    return v;
+                }
+
+                // returns near/far intersection distances, or -1 on miss
+                vec2 sphere(vec3 ro, vec3 rd, float r) {
+                    float b = dot(ro, rd);
+                    float c = dot(ro, ro) - r * r;
+                    float h = b * b - c;
+                    if (h < 0.0) return vec2(-1.0);
+                    h = sqrt(h);
+                    return vec2(-b - h, -b + h);
+                }
+
+                void main() {
+                    vec2 uv = (gl_FragCoord.xy * 2.0 - uResolution.xy) / uResolution.y;
+
+                    vec3 ro = vec3(0.0, 0.0, 3.2);
+                    vec3 rd = normalize(vec3(uv, -2.4));
+
+                    float t = uTime * 0.16;
+                    // gentle rotation of the internal flow, nudged by the mouse
+                    float yaw = t * 0.5 + uMouse.x * 0.6;
+                    mat3 rot = mat3(cos(yaw), 0.0, sin(yaw),
+                                    0.0,      1.0, 0.0,
+                                   -sin(yaw), 0.0, cos(yaw));
+
+                    vec3 col = vec3(0.0);
+
+                    vec2 hit = sphere(ro, rd, R);
+                    if (hit.x > 0.0) {
+                        vec3 pIn = ro + rd * hit.x;
+                        vec3 n   = normalize(pIn);
+                        vec3 v   = -rd;
+
+                        // fresnel (Schlick)
+                        float fres = pow(1.0 - max(dot(n, v), 0.0), 5.0);
+                        fres = mix(0.03, 1.0, fres);
+
+                        // refract the ray as it enters the glass
+                        vec3 rr = refract(rd, n, 1.0 / IOR);
+
+                        // march the volume from entry to exit
+                        float span = (hit.y - hit.x) * 0.92;
+                        float dt   = span / float(STEPS);
+                        vec3  p    = pIn;
+                        vec4  acc  = vec4(0.0);
+
+                        for (int i = 0; i < STEPS; i++) {
+                            vec3 q = rot * p;
+                            // domain-warp the noise for a roiling, smoky motion
+                            vec3 warp = vec3(noise(q * 1.6 + vec3(0.0, t, 0.0)),
+                                             noise(q * 1.6 + vec3(t, 0.0, 5.0)),
+                                             noise(q * 1.6 + vec3(9.0, t, 0.0)));
+                            float d = fbm(q * 2.0 + warp * 1.4 + vec3(0.0, -t * 0.6, 0.0));
+
+                            float rad  = length(p) / R;
+                            float core = smoothstep(0.95, 0.05, rad);     // denser toward center
+                            float dens = core * smoothstep(0.42, 0.78, d) * 0.85;
+
+                            // color the smoke through the palette
+                            vec3 sc = mix(uColorA, uColorB, smoothstep(0.25, 0.7, d));
+                            sc = mix(sc, uColorC, smoothstep(0.5, 0.95, fbm(q * 1.1 - t)));
+
+                            vec4 samp = vec4(sc, dens);
+                            samp.rgb *= samp.a;
+                            acc += samp * (1.0 - acc.a);
+                            if (acc.a > 0.98) break;
+
+                            p += rr * dt;
+                        }
+
+                        vec3 smoke = acc.rgb;
+
+                        // glossy glass shell
+                        vec3 lightDir = normalize(vec3(0.6 + uMouse.x, 0.85, 0.5));
+                        vec3 hlf  = normalize(lightDir + v);
+                        float spec = pow(max(dot(n, hlf), 0.0), 90.0);
+                        vec3 reflTint = vec3(0.55, 0.65, 0.85);
+
+                        col  = smoke;
+                        col  = mix(col, reflTint, fres * 0.22);   // rim reflection
+                        col += fres * 0.14 * reflTint;            // fresnel rim glow
+                        col += spec * 1.4;                        // sharp glossy highlight
+                    } else {
+                        // soft colored halo around the orb
+                        float b = dot(ro, rd);
+                        float perp = sqrt(max(dot(ro, ro) - b * b, 0.0));
+                        float halo = exp(-max(perp - R, 0.0) * 5.0);
+                        vec3 haloCol = mix(uColorA, uColorC, 0.5);
+                        col += haloCol * halo * 0.35;
+                    }
+
+                    // tonemap + gamma
+                    col = col / (col + vec3(1.0));
+                    col = pow(col, vec3(1.0 / 2.2));
+
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `,
+        })
+
+        const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material)
+        scene.add(quad)
+
+        function resize() {
+            const w = window.innerWidth
+            const h = window.innerHeight
+            renderer.setSize(w, h, false)
+            const dpr = renderer.getPixelRatio()
+            uniforms.uResolution.value.set(w * dpr, h * dpr)
+        }
+        window.addEventListener('resize', resize)
+        resize()
+
+        // mouse gently steers the flow + light
+        const targetMouse = new THREE.Vector2(0, 0)
+        window.addEventListener('pointermove', (e) => {
+            targetMouse.set(
+                (e.clientX / window.innerWidth) * 2 - 1,
+                -((e.clientY / window.innerHeight) * 2 - 1)
+            )
+        })
+
+        // click to recolor the smoke
+        const randHex = () =>
+            "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')
+        window.addEventListener('click', () => {
+            uniforms.uColorA.value.copy(hexToVec3(randHex()))
+            uniforms.uColorB.value.copy(hexToVec3(randHex()))
+            uniforms.uColorC.value.copy(hexToVec3(randHex()))
+        })
+
+        const clock = new THREE.Clock()
+        function animate() {
+            uniforms.uTime.value = clock.getElapsedTime()
+            uniforms.uMouse.value.lerp(targetMouse, 0.04)
+            renderer.render(scene, camera)
+            requestAnimationFrame(animate)
+        }
+        animate()
     </script>
 </body>
 </html>
