@@ -304,13 +304,8 @@
             // Portrait (taller than wide) -> horizontal flutes (phones);
             // landscape / desktop -> vertical flutes.
             vertical = window.innerWidth >= window.innerHeight ? 1.0 : 0.0;
-            if (vertical) {
-                // Desktop: keep flute width roughly constant (~46 CSS px).
-                bands = Math.max(10, Math.min(40, Math.round(window.innerWidth / 46)));
-            } else {
-                // Mobile (portrait): a fixed, chunkier set of bars.
-                bands = 12;
-            }
+            // Fixed band counts: 16 on desktop (landscape), 12 on mobile.
+            bands = vertical ? 16 : 12;
         }
 
         function resize() {
