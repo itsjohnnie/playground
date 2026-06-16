@@ -233,42 +233,48 @@
         const uPalMix     = gl.getUniformLocation(program, 'u_paletteMix');
 
         // ---- Palette: 5 harmonious colors, fresh on load and on every tap ----
-        function hslToRgb(h, s, l) {
-            h = (h % 360 + 360) % 360 / 360;
-            const a = s * Math.min(l, 1 - l);
-            const f = (n) => {
-                const k = (n + h * 12) % 12;
-                return l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)));
-            };
-            return [f(0), f(8), f(4)];
-        }
+        // Rather than rolling raw-random hues (which can land on unbalanced
+        // sets), we roll a color-harmony *scheme*, then randomize within it.
+        // Every palette is harmonious by construction, yet varied. Colors are
+        // built in OKLCH (perceptual hue / chroma / lightness) so the stops are
+        // perceptually even — no stop reads brighter or muddier than its peers.
+        const rand = (a, b) => a + Math.random() * (b - a);
+        const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 
-        // sRGB -> OKLab so the shader can blend colors perceptually.
-        function srgbToOklab(r, g, b) {
-            const lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-            r = lin(r); g = lin(g); b = lin(b);
-            const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
-            const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
-            const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
-            return [
-                0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
-                1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
-                0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s,
-            ];
+        // Each scheme is a set of relative hue offsets (degrees) for the 5
+        // stops, ordered to traverse smoothly, plus a relative weight. The
+        // analogous / monochrome family dominates; bolder split/complement
+        // schemes show up occasionally for variety. OKLab blends the wider
+        // jumps through a graceful low-chroma bridge.
+        const SCHEMES = [
+            { w: 2, jitter: 9, hues: [0, 0, 0, 0, 0] },              // monochrome
+            { w: 3, jitter: 5, hues: [-22, -11, 0, 11, 22] },        // analogous, tight
+            { w: 3, jitter: 6, hues: [-50, -25, 0, 25, 50] },        // analogous, wide
+            { w: 2, jitter: 6, hues: [0, 18, 37, 57, 78] },          // analogous drift
+            { w: 1, jitter: 5, hues: [-16, 0, 16, 150, 166] },       // split-complementary
+            { w: 1, jitter: 5, hues: [-14, 0, 14, 180, 194] },       // complementary
+        ];
+        const SCHEME_BAG = SCHEMES.flatMap((s) => Array(s.w).fill(s));
+
+        // OKLCH -> OKLab (the shader consumes OKLab).
+        function oklch(L, C, hueDeg) {
+            const h = (hueDeg * Math.PI) / 180;
+            return [L, C * Math.cos(h), C * Math.sin(h)];
         }
 
         function makePalette() {
+            const scheme = SCHEME_BAG[(Math.random() * SCHEME_BAG.length) | 0];
             const baseHue = Math.random() * 360;
-            // Hue spread kept in the analogous / split-complementary range so
-            // the set always reads as harmonious.
-            const spread = 70 + Math.random() * 110;
-            const sat = 0.62 + Math.random() * 0.23;
+            const chroma = rand(0.11, 0.17);   // shared chroma, kept in sRGB gamut
+            const baseL = rand(0.62, 0.72);    // perceptual lightness
             const lab = [];
             for (let i = 0; i < 5; i++) {
                 const tt = i / 4;
-                const hue = baseHue + (tt - 0.5) * spread;
-                const light = 0.48 + Math.sin(tt * Math.PI) * 0.12;
-                lab.push(...srgbToOklab(...hslToRgb(hue, sat, light)));
+                const hue = baseHue + scheme.hues[i] + rand(-scheme.jitter, scheme.jitter);
+                // Gentle lightness arch + small per-stop chroma variance.
+                const L = clamp(baseL + Math.sin(tt * Math.PI) * 0.10, 0, 1);
+                const C = chroma * rand(0.9, 1.1);
+                lab.push(...oklch(L, C, hue));
             }
             return new Float32Array(lab);
         }
