@@ -8,7 +8,6 @@
     {
         "imports": {
             "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-            "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.webgpu.js",
             "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
         }
     }
@@ -17,129 +16,300 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
             overflow: hidden;
-            background: #000;
             width: 100%;
             height: 100%;
+            background: #000;
         }
-        #stage {
+        #bg {
             position: fixed;
             inset: 0;
-            display: grid;
-            place-items: center;
-            background: radial-gradient(circle at 50% 45%, #05060a 0%, #000 70%);
+            background: radial-gradient(circle at 50% 46%, #0a0b12 0%, #050509 45%, #000 78%);
+            z-index: -1;
         }
-
-        /* the glass ball */
-        #orb {
-            position: relative;
-            width: min(74vmin, 720px);
-            height: min(74vmin, 720px);
-            border-radius: 50%;
-            overflow: hidden;
-            isolation: isolate;
-            box-shadow:
-                0 0 90px 14px rgba(90, 120, 255, 0.16),   /* outer glow */
-                0 10px 60px 0 rgba(0, 0, 0, 0.6),          /* drop */
-                inset 0 0 70px 14px rgba(0, 0, 0, 0.9),    /* fresnel edge darkening */
-                inset 0 10px 34px rgba(255, 255, 255, 0.05);
-        }
-
-        /* the glowing contents, softened into vapor and confined to the ball */
-        #canvas {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 100vw;
-            height: 100vh;
-            transform: translate(-50%, -50%) scale(1.35);
-            filter: blur(2px) saturate(1.15) brightness(1.05);
-            /* fade the vapor before it reaches the glass so it looks suspended inside */
-            -webkit-mask: radial-gradient(circle at 50% 50%, #000 42%, rgba(0,0,0,0.35) 60%, transparent 72%);
-                    mask: radial-gradient(circle at 50% 50%, #000 42%, rgba(0,0,0,0.35) 60%, transparent 72%);
-        }
-
-        /* fresnel rim ring */
-        #orb::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            background: radial-gradient(circle at 50% 50%,
-                transparent 58%,
-                rgba(120, 150, 255, 0.08) 80%,
-                rgba(190, 210, 255, 0.28) 96%,
-                rgba(255, 255, 255, 0.35) 100%);
-            pointer-events: none;
-            z-index: 2;
-        }
-
-        /* glossy specular highlight */
-        #orb::after {
-            content: '';
-            position: absolute;
-            top: 7%;
-            left: 16%;
-            width: 48%;
-            height: 32%;
-            background: radial-gradient(closest-side,
-                rgba(255, 255, 255, 0.55),
-                rgba(255, 255, 255, 0));
-            filter: blur(7px);
-            transform: rotate(-20deg);
-            mix-blend-mode: screen;
-            pointer-events: none;
-            z-index: 3;
-        }
+        #canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: pointer; }
     </style>
 </head>
 <body>
-    <div id="stage">
-        <div id="orb">
-            <canvas id="canvas"></canvas>
-        </div>
-    </div>
+    <div id="bg"></div>
+    <canvas id="canvas"></canvas>
 
     <script type="module">
-        // Force the cursor far off-screen so the tubes idle at center, inside the orb
-        const fakeMouseEvent = new Proxy(MouseEvent, {
-            construct(target, args) {
-                const event = new target(...args)
-                Object.defineProperty(event, 'clientX', { value: -99999, writable: false })
-                Object.defineProperty(event, 'clientY', { value: -99999, writable: false })
-                return event
-            }
-        })
-
-        import TubesCursor from "https://cdn.jsdelivr.net/npm/threejs-components@0.0.19/build/cursors/tubes1.min.js"
+        import * as THREE from "three"
+        import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js"
+        import { RenderPass }     from "three/addons/postprocessing/RenderPass.js"
+        import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
+        import { OutputPass }      from "three/addons/postprocessing/OutputPass.js"
+        import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js"
 
         const canvas = document.getElementById('canvas')
-        canvas.style.pointerEvents = 'none'
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+        renderer.setSize(innerWidth, innerHeight)
+        renderer.toneMapping = THREE.ACESFilmicToneMapping
+        renderer.toneMappingExposure = 1.0
 
-        const app = TubesCursor(canvas, {
-            tubes: {
-                colors: ["#4f8fff", "#ff3b6b", "#9b6bff"],
-                lights: {
-                    intensity: 220,
-                    colors: ["#5fa8ff", "#ff4f8b", "#7d5cff", "#36e0ff"]
-                }
-            },
-            sleepRadiusX: 0,
-            sleepRadiusY: 0,
-            sleepTimeScale1: 1,
-            sleepTimeScale2: 1
-        })
+        const scene = new THREE.Scene()
+        const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 100)
+        camera.position.set(0, 0, 4.2)
 
-        // click anywhere to recolor the vapor
-        document.body.addEventListener('click', () => {
-            app.tubes.setColors(randomColors(3))
-            app.tubes.setLightsColors(randomColors(4))
-        })
+        // environment for realistic glass reflections
+        const pmrem = new THREE.PMREMGenerator(renderer)
+        scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
 
-        function randomColors (count) {
-            return new Array(count)
-                .fill(0)
-                .map(() => "#" + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0'))
+        const group = new THREE.Group()
+        scene.add(group)
+
+        // ---- palette ----
+        const palette = {
+            a: new THREE.Color('#3a86ff'),
+            b: new THREE.Color('#ff2e63'),
+            c: new THREE.Color('#9d4edd'),
         }
+
+        // ---------------------------------------------------------------
+        //  Energy filaments — GPU particles flowing along a curl field
+        // ---------------------------------------------------------------
+        const COUNT = 16000
+        const R = 1.0
+        const positions = new Float32Array(COUNT * 3)
+        const seeds = new Float32Array(COUNT)
+        const scales = new Float32Array(COUNT)
+        for (let i = 0; i < COUNT; i++) {
+            // uniform distribution inside a sphere
+            const u = Math.random(), v = Math.random(), w = Math.random()
+            const r = R * Math.cbrt(u)
+            const theta = Math.acos(2 * v - 1)
+            const phi = 2 * Math.PI * w
+            positions[i * 3]     = r * Math.sin(theta) * Math.cos(phi)
+            positions[i * 3 + 1] = r * Math.cos(theta)
+            positions[i * 3 + 2] = r * Math.sin(theta) * Math.sin(phi)
+            seeds[i] = Math.random()
+            scales[i] = 0.5 + Math.random() * 1.5
+        }
+        const geo = new THREE.BufferGeometry()
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+        geo.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1))
+        geo.setAttribute('aScale', new THREE.BufferAttribute(scales, 1))
+
+        const particleUniforms = {
+            uTime:   { value: 0 },
+            uPixel:  { value: renderer.getPixelRatio() },
+            uPulse:  { value: 0 },
+            uColorA: { value: palette.a },
+            uColorB: { value: palette.b },
+            uColorC: { value: palette.c },
+        }
+
+        const particles = new THREE.Points(geo, new THREE.ShaderMaterial({
+            uniforms: particleUniforms,
+            transparent: true,
+            depthWrite: false,
+            depthTest: false,
+            blending: THREE.AdditiveBlending,
+            vertexShader: /* glsl */`
+                uniform float uTime;
+                uniform float uPixel;
+                uniform float uPulse;
+                attribute float aSeed;
+                attribute float aScale;
+                varying float vEnergy;
+                varying float vSeed;
+
+                // --- Ashima 3D simplex noise ---
+                vec4 permute(vec4 x){ return mod(((x*34.0)+1.0)*x, 289.0); }
+                vec4 taylorInvSqrt(vec4 r){ return 1.79284291400159 - 0.85373472095314 * r; }
+                float snoise(vec3 v){
+                    const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+                    const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+                    vec3 i  = floor(v + dot(v, C.yyy));
+                    vec3 x0 = v - i + dot(i, C.xxx);
+                    vec3 g = step(x0.yzx, x0.xyz);
+                    vec3 l = 1.0 - g;
+                    vec3 i1 = min(g.xyz, l.zxy);
+                    vec3 i2 = max(g.xyz, l.zxy);
+                    vec3 x1 = x0 - i1 + C.xxx;
+                    vec3 x2 = x0 - i2 + C.yyy;
+                    vec3 x3 = x0 - D.yyy;
+                    i = mod(i, 289.0);
+                    vec4 p = permute(permute(permute(
+                              i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                            + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                            + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+                    float n_ = 1.0/7.0;
+                    vec3 ns = n_ * D.wyz - D.xzx;
+                    vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+                    vec4 x_ = floor(j * ns.z);
+                    vec4 y_ = floor(j - 7.0 * x_);
+                    vec4 x = x_ * ns.x + ns.yyyy;
+                    vec4 y = y_ * ns.x + ns.yyyy;
+                    vec4 h = 1.0 - abs(x) - abs(y);
+                    vec4 b0 = vec4(x.xy, y.xy);
+                    vec4 b1 = vec4(x.zw, y.zw);
+                    vec4 s0 = floor(b0)*2.0 + 1.0;
+                    vec4 s1 = floor(b1)*2.0 + 1.0;
+                    vec4 sh = -step(h, vec4(0.0));
+                    vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+                    vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+                    vec3 p0 = vec3(a0.xy, h.x);
+                    vec3 p1 = vec3(a0.zw, h.y);
+                    vec3 p2 = vec3(a1.xy, h.z);
+                    vec3 p3 = vec3(a1.zw, h.w);
+                    vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
+                    p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+                    vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                    m = m * m;
+                    return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+                }
+                vec3 snoiseVec3(vec3 x){
+                    return vec3(snoise(x),
+                                snoise(vec3(x.y - 19.1, x.z + 33.4, x.x + 47.2)),
+                                snoise(vec3(x.z + 74.2, x.x - 124.5, x.y + 99.4)));
+                }
+                vec3 curl(vec3 p){
+                    const float e = 0.12;
+                    vec3 dx = vec3(e,0.0,0.0), dy = vec3(0.0,e,0.0), dz = vec3(0.0,0.0,e);
+                    vec3 px0 = snoiseVec3(p-dx), px1 = snoiseVec3(p+dx);
+                    vec3 py0 = snoiseVec3(p-dy), py1 = snoiseVec3(p+dy);
+                    vec3 pz0 = snoiseVec3(p-dz), pz1 = snoiseVec3(p+dz);
+                    float x = py1.z - py0.z - pz1.y + pz0.y;
+                    float y = pz1.x - pz0.x - px1.z + px0.z;
+                    float z = px1.y - px0.y - py1.x + py0.x;
+                    return normalize(vec3(x,y,z) / (2.0*e));
+                }
+
+                void main(){
+                    vSeed = aSeed;
+                    vec3 p = position;
+                    float t = uTime * 0.12;
+
+                    // advect along curl noise (two octaves) for flowing filaments
+                    vec3 c1 = curl(p * 1.1 + vec3(0.0, t, 0.0));
+                    p += c1 * (0.42 + uPulse * 0.35);
+                    vec3 c2 = curl(p * 2.6 - vec3(t * 0.7));
+                    p += c2 * 0.14;
+
+                    vEnergy = clamp(length(c1) * 0.6 + aSeed * 0.5, 0.0, 1.0);
+
+                    // keep the swarm inside the glass
+                    float rr = length(p);
+                    float lim = 0.96 + uPulse * 0.04;
+                    if (rr > lim) p *= lim / rr;
+
+                    vec4 mv = modelViewMatrix * vec4(p, 1.0);
+                    gl_Position = projectionMatrix * mv;
+                    gl_PointSize = aScale * (1.6 + uPulse) * uPixel * (90.0 / -mv.z);
+                }
+            `,
+            fragmentShader: /* glsl */`
+                precision highp float;
+                uniform vec3 uColorA;
+                uniform vec3 uColorB;
+                uniform vec3 uColorC;
+                varying float vEnergy;
+                varying float vSeed;
+
+                void main(){
+                    vec2 uv = gl_PointCoord - 0.5;
+                    float d = length(uv);
+                    if (d > 0.5) discard;
+                    // soft glowing dot with a hot core
+                    float glow = smoothstep(0.5, 0.0, d);
+                    float core = pow(glow, 4.0);
+
+                    vec3 col = mix(uColorA, uColorB, smoothstep(0.0, 0.7, vSeed));
+                    col = mix(col, uColorC, smoothstep(0.45, 1.0, vEnergy));
+                    col += core * 0.6;                       // white-hot center
+                    col *= 1.4 + vEnergy * 1.6;              // HDR for bloom
+
+                    float alpha = glow * (0.35 + vEnergy * 0.65);
+                    gl_FragColor = vec4(col * alpha, alpha);
+                }
+            `,
+        }))
+        group.add(particles)
+
+        // ---------------------------------------------------------------
+        //  The glass shell — physically based, refractive, iridescent
+        // ---------------------------------------------------------------
+        const glass = new THREE.Mesh(
+            new THREE.IcosahedronGeometry(R, 12),
+            new THREE.MeshPhysicalMaterial({
+                transmission: 1.0,
+                thickness: 1.4,
+                ior: 1.45,
+                roughness: 0.02,
+                metalness: 0.0,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.02,
+                iridescence: 1.0,
+                iridescenceIOR: 1.3,
+                iridescenceThicknessRange: [120, 420],
+                envMapIntensity: 1.2,
+                attenuationColor: new THREE.Color('#202840'),
+                attenuationDistance: 3.0,
+                specularIntensity: 1.0,
+            })
+        )
+        group.add(glass)
+
+        // a directional glint to read as a hard glass highlight
+        const key = new THREE.DirectionalLight(0xffffff, 2.0)
+        key.position.set(-2, 3, 3)
+        scene.add(key)
+
+        // ---------------------------------------------------------------
+        //  Post — bloom for the neon glow
+        // ---------------------------------------------------------------
+        const composer = new EffectComposer(renderer)
+        composer.addPass(new RenderPass(scene, camera))
+        const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.9, 0.55, 0.0)
+        composer.addPass(bloom)
+        composer.addPass(new OutputPass())
+
+        // ---------------------------------------------------------------
+        //  Interaction
+        // ---------------------------------------------------------------
+        const target = new THREE.Vector2(0, 0)
+        const tilt = new THREE.Vector2(0, 0)
+        addEventListener('pointermove', (e) => {
+            target.set((e.clientX / innerWidth) * 2 - 1, (e.clientY / innerHeight) * 2 - 1)
+        })
+
+        let pulse = 0
+        addEventListener('click', () => {
+            palette.a.setHSL(Math.random(), 0.85, 0.6)
+            palette.b.setHSL(Math.random(), 0.85, 0.6)
+            palette.c.setHSL(Math.random(), 0.85, 0.6)
+            pulse = 1.0
+        })
+
+        addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight
+            camera.updateProjectionMatrix()
+            renderer.setSize(innerWidth, innerHeight)
+            composer.setSize(innerWidth, innerHeight)
+            bloom.setSize(innerWidth, innerHeight)
+        })
+
+        const clock = new THREE.Clock()
+        function animate(){
+            requestAnimationFrame(animate)
+            const dt = clock.getDelta()
+            particleUniforms.uTime.value = clock.elapsedTime
+
+            pulse *= 0.94
+            particleUniforms.uPulse.value = pulse
+
+            tilt.lerp(target, 0.05)
+            group.rotation.y = tilt.x * 0.6 + clock.elapsedTime * 0.04
+            group.rotation.x = tilt.y * 0.4
+            camera.position.x = tilt.x * 0.4
+            camera.position.y = -tilt.y * 0.3
+            camera.lookAt(0, 0, 0)
+
+            composer.render()
+        }
+        animate()
     </script>
 </body>
 </html>
