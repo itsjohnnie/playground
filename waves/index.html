@@ -95,7 +95,6 @@
             uniform vec3  u_prevColors[5];
 
             const float TAU = 6.28318530718;
-            const float PI  = 3.14159265359;
 
             // Smooth circular blend across 5 colors, crossfading old -> new set.
             vec3 colorCycle(float t) {
@@ -127,10 +126,9 @@
 
                 float t = u_time;
 
-                // Which flute are we in, and where within it (0..1).
+                // Which flute are we in.
                 float idx    = floor(across * u_bands);
                 float center = (idx + 0.5) / u_bands;
-                float fpos   = across * u_bands - idx;
 
                 // Per-flute displacement. Uses the flute *center*, so it is
                 // constant across each flute -> a hard step between neighbours
@@ -148,12 +146,6 @@
                 float bright = 0.5 + 0.5 * cos(q * TAU * 0.5 - 0.2);
                 bright = pow(clamp(bright, 0.0, 1.0), 1.35);
                 vec3 color = col * bright;
-
-                // Glassy slat shading: a touch brighter mid-flute, with a thin
-                // dark groove at each edge so the flutes always read as bands.
-                float lens   = sin(fpos * PI);
-                float groove = smoothstep(0.0, 0.05, fpos) * smoothstep(1.0, 0.95, fpos);
-                color *= (0.86 + 0.14 * lens) * mix(0.55, 1.0, groove);
 
                 // Tiny dither to keep the gradients smooth on phone screens.
                 color += (hash(gl_FragCoord.xy + fract(t)) - 0.5) / 255.0;
@@ -262,9 +254,13 @@
             // Portrait (taller than wide) -> horizontal flutes (phones);
             // landscape / desktop -> vertical flutes.
             vertical = window.innerWidth >= window.innerHeight ? 1.0 : 0.0;
-            // Keep flute width roughly constant (~46 CSS px) across devices.
-            const acrossPx = vertical ? window.innerWidth : window.innerHeight;
-            bands = Math.max(10, Math.min(40, Math.round(acrossPx / 46)));
+            if (vertical) {
+                // Desktop: keep flute width roughly constant (~46 CSS px).
+                bands = Math.max(10, Math.min(40, Math.round(window.innerWidth / 46)));
+            } else {
+                // Mobile (portrait): a fixed, chunkier set of bars.
+                bands = 12;
+            }
         }
 
         function resize() {
