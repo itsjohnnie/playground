@@ -400,7 +400,7 @@
                     // (center) and slowly in time, so heights vary organically
                     // yet still progressively from one flute to the next. (Kept
                     // below rp in slope so P stays monotonic = clean cuts.)
-                    float warp = 0.38 * sin(along * TAU + center * 5.0 + t * 0.25);
+                    float warp = 0.08 * rp * sin(along * TAU + center * 5.0 + t * 0.25);
                     float P    = along * rp + warp + disp;
                     float s    = fract(P);
                     float seg  = floor(P);
@@ -578,7 +578,7 @@
 
         // ---- Repeat / stacked modules ---------------------------------------
         const repeatTog = document.getElementById('repeatTog');
-        const REPEAT_COUNT = 5;     // gradient modules per flute when stacked
+        const REPEAT_COUNT = 3;     // gradient modules per flute when stacked (few, large shapes)
         let repeat = 1.0;
         repeatTog.addEventListener('click', () => {
             const on = repeat === 1.0;
@@ -658,8 +658,13 @@
         unidle();
 
         // ---- Sizing ---------------------------------------------------------
+        // Phones have very dense displays; rendering the heavy fragment shader at
+        // full 2x+ there is the main GPU cost. Cap the pixel ratio lower on
+        // touch devices — the dither hides the difference but it cuts the pixel
+        // count (and GPU load) substantially.
+        const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
         function resize() {
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const dpr = Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.5 : 2);
             const w = Math.floor(window.innerWidth * dpr);
             const h = Math.floor(window.innerHeight * dpr);
             if (canvas.width !== w || canvas.height !== h) {
@@ -713,9 +718,16 @@
             gl.uniform1f(uRepeat, repeat);
             gl.uniform1f(uAudioLevel, audioLevel);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
+            // Don't keep the GPU busy when the page isn't visible (saves battery);
+            // the loop is restarted on visibilitychange.
+            if (document.hidden) { running = false; return; }
             requestAnimationFrame(frame);
         }
+        let running = true;
         requestAnimationFrame(frame);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && !running) { running = true; requestAnimationFrame(frame); }
+        });
     })();
     </script>
 </body>
