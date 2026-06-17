@@ -23,6 +23,7 @@
     --nav-bg: rgba(236, 232, 225, 0.82);
     --accent: #1b1a17;
     --shadow-ground: rgba(40, 35, 28, 0.30);
+    --label: #1a1a18;
   }
   html[data-theme="dark"] {
     --bg: #121110;
@@ -34,6 +35,7 @@
     --nav-bg: rgba(18, 17, 16, 0.82);
     --accent: #efece5;
     --shadow-ground: rgba(0, 0, 0, 0.55);
+    --label: #fafafa;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -127,7 +129,7 @@
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1;
-    color: #fafafa;
+    color: var(--label);
   }
   .watch-model {
     font-family: "Inter", sans-serif;
@@ -135,7 +137,7 @@
     font-size: 10.5px;
     letter-spacing: 0.26em;
     text-transform: uppercase;
-    color: #fafafa;
+    color: var(--label);
     opacity: 0.6;
   }
 
@@ -326,8 +328,8 @@
   @media (min-width: 760px) {
     .panel {
       right: 20px; left: auto; margin: 0;
-      top: 50%; bottom: auto;
-      transform: translateY(-50%);
+      top: max(20px, env(safe-area-inset-top)); bottom: auto;
+      transform: none;
       width: 256px;
       display: flex; flex-direction: column;
       border-radius: 18px;
@@ -825,14 +827,14 @@ function bellross() {
   let bars = "", numerals = "", ticks = "";
   for (let h = 0; h < 12; h++) {
     const ang = h * 30, card = cardinals.includes(h);
-    const outer = 117, len = card ? 12 : 24;
+    const outer = 121, len = card ? 12 : 24;
     const [cx, cy] = P(ang, outer - len / 2);
     bars += `<rect x="${(cx-2.8).toFixed(1)}" y="${(cy-len/2).toFixed(1)}" width="5.6" height="${len}" rx="1"
       fill="${lume}" transform="rotate(${ang} ${cx.toFixed(1)} ${cy.toFixed(1)})"/>`;
   }
   const nums = { 0: "12", 3: "3", 6: "6", 9: "9" };
   for (const h in nums) {
-    const [x, y] = P(h * 30, 80);
+    const [x, y] = P(h * 30, 83);
     // render "12" with a capital I so the 1 is a plain bar like the watch;
     // aria-label keeps it readable as "12"
     const glyph = nums[h] === "12" ? "I2" : nums[h];
@@ -843,7 +845,7 @@ function bellross() {
   for (let i = 0; i < 60; i++) {
     if (i % 5 === 0) continue;
     const ang = i * 6;
-    const [x1, y1] = P(ang, 120), [x2, y2] = P(ang, 117);
+    const [x1, y1] = P(ang, 124), [x2, y2] = P(ang, 121);
     ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${lume}" stroke-width="0.6" opacity="0.85"/>`;
   }
 
@@ -873,11 +875,11 @@ function bellross() {
       <radialGradient id="br-screw-b" cx="36%" cy="32%" r="75%">
         <stop offset="0" stop-color="#cfd3d7"/><stop offset=".55" stop-color="#969ba0"/><stop offset="1" stop-color="#5e6367"/>
       </radialGradient>
-      <path id="br-swiss" d="${arc(101, 206, 154, 0)}"/>
+      <path id="br-swiss" d="${arc(105, 206, 154, 0)}"/>
     </defs>
     <rect x="16" y="16" width="268" height="268" rx="40" fill="url(#br-case)"/>
     <rect x="16" y="16" width="268" height="268" rx="40" fill="none" stroke="#2c2e24" stroke-width="1.5"/>
-    ${[[46,46],[254,46],[46,254],[254,254]].map(([x,y])=>{
+    ${[[40,40],[260,40],[40,260],[260,260]].map(([x,y])=>{
       const grad = y < 150 ? "br-screw-t" : "br-screw-b";   // top screws lit lighter
       const slot = (x-150)*(y-150) > 0 ? 45 : -45;           // slot aligned toward centre
       return `<circle cx="${x}" cy="${y}" r="11.5" fill="#1f201a"/>
@@ -887,9 +889,9 @@ function bellross() {
     <rect x="280" y="138" width="14" height="24" rx="2" fill="#1c1d16"/>
     ${Array.from({length:5}).map((_,k)=>`<line x1="${281+k*2.8}" y1="139" x2="${281+k*2.8}" y2="161" stroke="#3a3b2e" stroke-width="0.8"/>`).join("")}
     <!-- round bezel nearly filling the square; only corners show behind it -->
-    <circle cx="150" cy="150" r="131" fill="#41442f"/>
-    <circle cx="150" cy="150" r="123" fill="url(#br-dial)"/>
-    <circle cx="150" cy="150" r="123" fill="none" stroke="#23241c" stroke-width="1"/>
+    <circle cx="150" cy="150" r="135" fill="#41442f"/>
+    <circle cx="150" cy="150" r="127" fill="url(#br-dial)"/>
+    <circle cx="150" cy="150" r="127" fill="none" stroke="#23241c" stroke-width="1"/>
     ${ticks}${bars}${numerals}
     <!-- Bell & Ross logo: tight, large, circled ampersand pushed up -->
     <text x="137" y="119" font-family="${sans}" font-weight="500" font-size="15" fill="${lume}" text-anchor="end">Bell</text>
@@ -928,7 +930,7 @@ function braun() {
   let track = "";
   for (let i = 0; i < 60; i++) {
     const ang = i * 6, maj = i % 5 === 0;
-    const [x1, y1] = P(ang, 134), [x2, y2] = P(ang, 129);
+    const [x1, y1] = P(ang, 134), [x2, y2] = P(ang, 124);
     track += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${ink}" stroke-width="${maj ? 1.15 : 0.85}"/>`;
   }
   // thin Arabic numerals 1–12
@@ -941,7 +943,7 @@ function braun() {
 
   // the real Braun wordmark, traced from Braun_Logo.svg (native 399x169);
   // its nested transforms are preserved and wrapped to sit on the dial
-  const wordmark = `<g transform="translate(125 82) scale(0.125)" fill="#1f1f1f">
+  const wordmark = `<g transform="translate(128 84) scale(0.11)" fill="#1f1f1f">
     <g transform="matrix(0.45094353,0,0,0.45094353,357.14835,54.396579)">
       <g transform="translate(35.43305,35.421298)">
         <path d="m -755.77392,173.4791 c -12.04864,0 -25.61009,0 -25.61009,0 l 0,-78.863135 c 0,0 13.15304,0 25.61009,0 17.54966,0 25.67707,13.084765 25.67707,36.501805 0,32.15511 -9.75185,42.36133 -25.67707,42.36133 m -25.61009,-193.281256 c 0,0 12.93505,0 24.98369,0 12.89698,0 23.33563,9.490523 23.33563,35.636407 0,26.422971 -12.06309,35.562868 -23.33563,35.562868 -12.45705,0 -24.98369,0 -24.98369,0 l 0,-71.199275 z m 68.34437,89.829696 0,-0.216679 c 10.15369,-7.126756 26.38488,-19.384199 26.38488,-58.777682 0,-50.89846 -26.55691,-73.950437 -62.43232,-73.950437 -12.15239,0 -78.34836,0 -78.34836,0 l 0,279.487818 c 0,0 43.66533,0 77.93864,0 44.17223,0 65.6825,-32.74473 65.6825,-81.53156 0,-45.515639 -17.85563,-58.084311 -29.22534,-65.01146 z"/>
@@ -965,13 +967,23 @@ function braun() {
         <stop offset="0" stop-color="#000" stop-opacity="0.42"/>
         <stop offset="0.45" stop-color="#000" stop-opacity="0"/>
       </linearGradient>
+      <linearGradient id="braun-crown" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#edf0f2"/><stop offset=".5" stop-color="#aeb3b8"/><stop offset="1" stop-color="#787d82"/>
+      </linearGradient>
     </defs>
+    <!-- knurled crown emerging from behind the case at 3 o'clock -->
+    <g>
+      <rect x="282" y="147" width="9" height="6" rx="1.2" fill="url(#braun-crown)" stroke="#74787d" stroke-width="0.5"/>
+      <rect x="289" y="141.5" width="11" height="17" rx="2.6" fill="url(#braun-crown)" stroke="#6f7479" stroke-width="0.7"/>
+      ${Array.from({length:7}).map((_,k)=>`<line x1="${(290.6+k*1.2).toFixed(1)}" y1="142.6" x2="${(290.6+k*1.2).toFixed(1)}" y2="157.4" stroke="#6d7176" stroke-width="0.45" opacity="0.7"/>`).join("")}
+    </g>
+    <g transform="translate(150 150) scale(0.92) translate(-150 -150)">
     <circle cx="150" cy="150" r="149" fill="url(#braun-case)"/>
     <circle cx="150" cy="150" r="140" fill="#d8dadd"/>
     <circle cx="150" cy="150" r="137" fill="#efefed"/>
-    <circle cx="150" cy="150" r="110" fill="url(#braun-dial)"/>
-    <circle cx="150" cy="150" r="110" fill="none" stroke="rgba(0,0,0,0.14)" stroke-width="1"/>
-    <circle cx="150" cy="150" r="108.8" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="0.8"/>
+    <circle cx="150" cy="150" r="121" fill="url(#braun-dial)"/>
+    <circle cx="150" cy="150" r="121" fill="none" stroke="rgba(0,0,0,0.14)" stroke-width="1"/>
+    <circle cx="150" cy="150" r="119.8" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="0.8"/>
     <circle cx="150" cy="150" r="137" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
     ${track}${numerals}
     ${wordmark}
@@ -983,8 +995,6 @@ function braun() {
       <text x="150" y="207.8" font-family="Inter, sans-serif" font-weight="500" font-size="8.5" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
       <rect x="144.3" y="196.9" width="11.4" height="16.2" rx="1.1" fill="url(#braun-date-sh)"/>
     </g>
-    <!-- crown -->
-    <rect x="286" y="144" width="11" height="12" rx="2" fill="url(#braun-case)" stroke="#7d8186" stroke-width="0.6"/>
     <g class="hands">
       <rect class="hand h-hour" x="147.5" y="88" width="5" height="70" rx="1" fill="${ink}"/>
       <rect class="hand h-min" x="148.25" y="46" width="3.5" height="112" rx="1" fill="${ink}"/>
@@ -994,6 +1004,7 @@ function braun() {
         <circle cx="150" cy="167" r="2.6" fill="${yellow}"/>
       </g>
       ${centerCap(ink, 3)}
+    </g>
     </g>
   </svg>`;
 }
