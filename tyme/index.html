@@ -653,7 +653,7 @@ function tissot() {
   for (let h = 0; h < 12; h++) {
     if (h === 3) continue;
     const ang = h * 30;
-    const [x, y] = P(ang, 92);
+    const [x, y] = P(ang, 99);
     if (h === 0) {
       for (const off of [-4, 4])
         markers += `<rect x="${(x+off-1.6).toFixed(1)}" y="${(y-9).toFixed(1)}" width="3.2" height="20" rx="0.6"
@@ -664,6 +664,17 @@ function tissot() {
     }
   }
   const baton = (len, w) => `<rect x="${(150-w/2).toFixed(2)}" y="${150-len}" width="${w}" height="${len+12}" rx="${w/2}"`;
+  // squircle (superellipse) — the PRX's smooth cushion case
+  const squircle = (r, n) => {
+    let d = "";
+    for (let i = 0; i <= 72; i++) {
+      const t = (i / 72) * 2 * Math.PI, ct = Math.cos(t), st = Math.sin(t);
+      const x = 150 + r * Math.sign(ct) * Math.pow(Math.abs(ct), 2 / n);
+      const y = 150 + r * Math.sign(st) * Math.pow(Math.abs(st), 2 / n);
+      d += (i === 0 ? "M" : "L") + x.toFixed(2) + " " + y.toFixed(2) + " ";
+    }
+    return d + "Z";
+  };
 
   return `<svg viewBox="0 0 300 300">${steelDefs('prx')}
     <defs>
@@ -676,27 +687,27 @@ function tissot() {
       <pattern id="prx-waffle" width="6" height="6" patternUnits="userSpaceOnUse">
         <path d="M0 0 H6 M0 0 V6" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>
       </pattern>
-      <clipPath id="prx-clip"><circle cx="150" cy="150" r="110"/></clipPath>
+      <clipPath id="prx-clip"><circle cx="150" cy="150" r="117"/></clipPath>
     </defs>
     <!-- integrated PRX bracelet: end-links emerging top & bottom -->
     <g stroke="#71777d" stroke-width="0.8">
-      <path d="M84 0 L216 0 L223 36 L77 36 Z" fill="url(#steel-prx)"/>
-      <path d="M77 264 L223 264 L216 300 L84 300 Z" fill="url(#steel-prx)"/>
+      <path d="M88 0 L212 0 L206 32 L94 32 Z" fill="url(#steel-prx)"/>
+      <path d="M94 268 L206 268 L212 300 L88 300 Z" fill="url(#steel-prx)"/>
     </g>
     <g stroke="#80868c" stroke-width="1" opacity="0.85" stroke-linecap="round">
-      <line x1="116" y1="0" x2="120" y2="36"/><line x1="184" y1="0" x2="180" y2="36"/>
-      <line x1="116" y1="300" x2="120" y2="264"/><line x1="184" y1="300" x2="180" y2="264"/>
-      <line x1="90" y1="17" x2="210" y2="17"/><line x1="90" y1="283" x2="210" y2="283"/>
+      <line x1="122" y1="0" x2="125" y2="32"/><line x1="178" y1="0" x2="175" y2="32"/>
+      <line x1="122" y1="300" x2="125" y2="268"/><line x1="178" y1="300" x2="175" y2="268"/>
+      <line x1="98" y1="15" x2="202" y2="15"/><line x1="98" y1="285" x2="202" y2="285"/>
     </g>
-    <!-- angular cushion case + thin polished bezel -->
-    <rect x="24" y="24" width="252" height="252" rx="52" fill="url(#steel-prx)"/>
-    <rect x="24" y="24" width="252" height="252" rx="52" fill="none" stroke="#71777d" stroke-width="1"/>
-    <rect x="36" y="36" width="228" height="228" rx="46" fill="#9fa6ad"/>
     <!-- crown at 3 -->
-    <rect x="272" y="143" width="10" height="14" rx="1.5" fill="url(#steel-prx)" stroke="#71777d" stroke-width="0.6"/>
-    <circle cx="150" cy="150" r="116" fill="#c4cace"/>
-    <circle cx="150" cy="150" r="110" fill="url(#prx-dial)"/>
-    <circle cx="150" cy="150" r="110" fill="url(#prx-waffle)" clip-path="url(#prx-clip)"/>
+    <rect x="278" y="143" width="11" height="14" rx="1.5" fill="url(#steel-prx)" stroke="#71777d" stroke-width="0.6"/>
+    ${[0,1,2].map(k=>`<line x1="${280+k*3}" y1="144" x2="${280+k*3}" y2="156" stroke="#9aa6b0" stroke-width="0.5"/>`).join("")}
+    <!-- smooth cushion case + thin polished bezel + large dial -->
+    <path d="${squircle(132, 3.1)}" fill="url(#steel-prx)" stroke="#71777d" stroke-width="1"/>
+    <path d="${squircle(126, 3.1)}" fill="#aab1b8"/>
+    <circle cx="150" cy="150" r="123" fill="#cdd2d6"/>
+    <circle cx="150" cy="150" r="117" fill="url(#prx-dial)"/>
+    <circle cx="150" cy="150" r="117" fill="url(#prx-waffle)" clip-path="url(#prx-clip)"/>
     ${markers}
     <text x="150" y="100" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="3" fill="#eef3f7" text-anchor="middle">TISSOT</text>
     <text x="150" y="111" font-family="${sans}" font-weight="400" font-size="5.4" letter-spacing="2.4" fill="#c4d2e2" text-anchor="middle">1853</text>
@@ -752,10 +763,16 @@ function timex() {
   const sword = (len, w) => `M150 ${150-len} L${150-w} ${150-len*0.62} L${150-w*0.45} ${150+13} L${150+w*0.45} ${150+13} L${150+w} ${150-len*0.62} Z`;
 
   return `<svg viewBox="0 0 300 300">${steelDefs('tx')}
-    <circle cx="150" cy="150" r="149" fill="url(#steel-tx)"/>
-    <circle cx="150" cy="150" r="133" fill="#9aa0a6"/>
-    <circle cx="150" cy="150" r="129" fill="#0c0c0d"/>
-    <circle cx="150" cy="150" r="129" fill="none" stroke="#2a2a2b" stroke-width="1"/>
+    <!-- knurled crown at ~3:30 -->
+    <g transform="rotate(15 150 150)">
+      <rect x="287" y="145" width="6" height="10" fill="#9aa0a6"/>
+      <rect x="292" y="141" width="9" height="18" rx="2" fill="url(#steel-tx)" stroke="#7f858b" stroke-width="0.6"/>
+      ${[0,1,2,3].map(k=>`<line x1="${294+k*2}" y1="142.5" x2="${294+k*2}" y2="157.5" stroke="#7f858b" stroke-width="0.5"/>`).join("")}
+    </g>
+    <circle cx="150" cy="150" r="143" fill="url(#steel-tx)"/>
+    <circle cx="150" cy="150" r="128" fill="#9aa0a6"/>
+    <circle cx="150" cy="150" r="124" fill="#0c0c0d"/>
+    <circle cx="150" cy="150" r="124" fill="none" stroke="#2a2a2b" stroke-width="1"/>
     ${ring}${numerals}
     <text x="150" y="97" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="1.5" fill="${lume}" text-anchor="middle">TIMEX</text>
     <text x="150" y="108" font-family="${sans}" font-weight="500" font-size="8.5" letter-spacing="2.6" fill="${lume}" text-anchor="middle">EXPEDITION</text>
