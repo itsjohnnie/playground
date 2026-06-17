@@ -571,14 +571,14 @@ function speedmaster() {
   let markers = "";
   for (const h of [1,2,3,4,5,7,8,9,10,11]) {
     const ang = h * 30;
-    const [x, y] = P(ang, 96);
-    markers += `<rect x="${(x-2.6).toFixed(2)}" y="${(y-12).toFixed(2)}" width="5.2" height="24" rx="1"
+    const [x, y] = P(ang, 97);
+    markers += `<rect x="${(x-2.6).toFixed(2)}" y="${(y-10.5).toFixed(2)}" width="5.2" height="21" rx="1"
       fill="${lume}" stroke="#8c8c8c" stroke-width="0.5" transform="rotate(${ang} ${x.toFixed(2)} ${y.toFixed(2)})"/>`;
   }
-  markers += `<rect x="143" y="44" width="4.2" height="23" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>
-              <rect x="152.8" y="44" width="4.2" height="23" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
+  markers += `<rect x="143" y="46" width="4.2" height="21" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>
+              <rect x="152.8" y="46" width="4.2" height="21" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
   // 6 o'clock baton — shorter so it clears the 12-hour subdial below it
-  markers += `<rect x="147.4" y="238" width="5.2" height="20" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
+  markers += `<rect x="147.4" y="239" width="5.2" height="19" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
 
   // ---- minute / second track on the dial: fine 1/5 railroad, longer at
   //      the minutes, longest every five ----
@@ -608,14 +608,17 @@ function speedmaster() {
       s += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Sora, sans-serif" font-size="8.5" fill="#dcdcdc"
         text-anchor="middle" dominant-baseline="central">${n.t}</text>`;
     }
-    const [hx, hy] = P(0, R - 6, cx, cy), [tx, ty] = P(180, 5, cx, cy);
-    s += `<line x1="${tx.toFixed(2)}" y1="${ty.toFixed(2)}" x2="${hx.toFixed(2)}" y2="${hy.toFixed(2)}" stroke="${lume}" stroke-width="1.2"/>
-          <circle cx="${cx}" cy="${cy}" r="1.6" fill="#cfcfcf"/>`;
+    // reset hand: a thicker pointed arrow on a circular metallic hub
+    const tip = cy - (R - 5), tail = cy + 7, hw = 1.7;
+    s += `<path d="M${cx} ${tip.toFixed(1)} L${(cx+hw).toFixed(1)} ${(cy-2).toFixed(1)} L${(cx+hw).toFixed(1)} ${tail.toFixed(1)} L${(cx-hw).toFixed(1)} ${tail.toFixed(1)} L${(cx-hw).toFixed(1)} ${(cy-2).toFixed(1)} Z"
+        fill="${lume}" stroke="#8c8c8c" stroke-width="0.4"/>
+      <circle cx="${cx}" cy="${cy}" r="3.1" fill="#d6d6d6" stroke="#9a9a9a" stroke-width="0.4"/>
+      <circle cx="${cx}" cy="${cy}" r="1.1" fill="#4f4f4f"/>`;
     return s;
   }
-  const subSec = subdial(97, 150, 31, 60, 5, [{t:"60",a:0},{t:"20",a:120},{t:"40",a:240}]);
-  const subMin = subdial(203, 150, 31, 30, 5, [{t:"30",a:0},{t:"10",a:120},{t:"20",a:240}]);
-  const subHr  = subdial(150, 203, 31, 12, 1, [{t:"12",a:0},{t:"3",a:90},{t:"6",a:180},{t:"9",a:270}]);
+  const subSec = subdial(100, 150, 31, 60, 5, [{t:"60",a:0},{t:"20",a:120},{t:"40",a:240}]);
+  const subMin = subdial(200, 150, 31, 30, 5, [{t:"30",a:0},{t:"10",a:120},{t:"20",a:240}]);
+  const subHr  = subdial(150, 200, 31, 12, 1, [{t:"12",a:0},{t:"3",a:90},{t:"6",a:180},{t:"9",a:270}]);
 
   // the real Omega logo (Ω + OMEGA wordmark), traced from Omega_Logo.svg
   // — native viewBox 254x135, recoloured from crimson to the dial's lume
