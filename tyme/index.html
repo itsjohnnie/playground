@@ -509,8 +509,8 @@ function santos() {
     <text x="150" y="104" font-family="Fraunces, serif" font-size="11" fill="#2c3c66" text-anchor="middle" letter-spacing="0.5">Cartier</text>
     <text x="150" y="198" font-family="Fraunces, serif" font-size="7.5" fill="#6a6a6a" text-anchor="middle" letter-spacing="1.5">AUTOMATIC</text>
     <g class="hands">
-      <path class="hand h-hour" d="${sword(58, 5)}" fill="${blue}"/>
-      <path class="hand h-min" d="${sword(82, 4.2)}" fill="${blue}"/>
+      <path class="hand h-hour" d="${sword(66, 5)}" fill="${blue}"/>
+      <path class="hand h-min" d="${sword(94, 4.2)}" fill="${blue}"/>
       ${centerCap(blue, 3.5)}
     </g>
     <!-- crown w/ blue cabochon -->
@@ -573,7 +573,7 @@ function speedmaster() {
   function subdial(cx, cy, R, count, majorEvery, nums) {
     let s = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#060606"/>`;
     for (let r = R - 3; r > 4; r -= 2.3)
-      s += `<circle cx="${cx}" cy="${cy}" r="${r.toFixed(1)}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>`;
+      s += `<circle cx="${cx}" cy="${cy}" r="${r.toFixed(1)}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="0.5"/>`;
     s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#3c3c3c" stroke-width="0.8"/>`;
     for (let i = 0; i < count; i++) {
       const a = (i / count) * 360, maj = i % majorEvery === 0;
@@ -590,9 +590,9 @@ function speedmaster() {
           <circle cx="${cx}" cy="${cy}" r="1.6" fill="#cfcfcf"/>`;
     return s;
   }
-  const subSec = subdial(98, 150, 30, 60, 5, [{t:"60",a:0},{t:"20",a:120},{t:"40",a:240}]);
-  const subMin = subdial(202, 150, 30, 30, 5, [{t:"30",a:0},{t:"10",a:120},{t:"20",a:240}]);
-  const subHr  = subdial(150, 202, 30, 12, 1, [{t:"12",a:0},{t:"3",a:90},{t:"6",a:180},{t:"9",a:270}]);
+  const subSec = subdial(97, 150, 31, 60, 5, [{t:"60",a:0},{t:"20",a:120},{t:"40",a:240}]);
+  const subMin = subdial(203, 150, 31, 30, 5, [{t:"30",a:0},{t:"10",a:120},{t:"20",a:240}]);
+  const subHr  = subdial(150, 203, 31, 12, 1, [{t:"12",a:0},{t:"3",a:90},{t:"6",a:180},{t:"9",a:270}]);
 
   // the real Omega logo (Ω + OMEGA wordmark), traced from Omega_Logo.svg
   // — native viewBox 254x135, recoloured from crimson to the dial's lume
@@ -608,7 +608,7 @@ function speedmaster() {
   return `<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${steelDefs('sp')}
     <defs>
       <radialGradient id="sp-dial" cx="50%" cy="40%" r="65%">
-        <stop offset="0" stop-color="#161616"/><stop offset="0.7" stop-color="#0a0a0a"/><stop offset="1" stop-color="#000"/>
+        <stop offset="0" stop-color="#0d0d0d"/><stop offset="0.7" stop-color="#070707"/><stop offset="1" stop-color="#000"/>
       </radialGradient>
       <path id="sp-arc" d="${arc(137, -8, 72)}"/>
     </defs>
@@ -626,8 +626,8 @@ function speedmaster() {
     <text x="150" y="120" font-family="IBM Plex Mono" font-size="5.4" letter-spacing="2.4" fill="${lume}" text-anchor="middle">PROFESSIONAL</text>
     ${subSec}${subMin}${subHr}
     <g class="hands">
-      <rect class="hand h-hour" x="146.5" y="92" width="7" height="64" rx="1.5" fill="${lume}" stroke="#8c8c8c" stroke-width="0.4"/>
-      <rect class="hand h-min" x="147.25" y="58" width="5.5" height="98" rx="1.5" fill="${lume}" stroke="#8c8c8c" stroke-width="0.4"/>
+      <rect class="hand h-hour" x="146" y="90" width="8" height="66" rx="1.5" fill="${lume}" stroke="#8c8c8c" stroke-width="0.4"/>
+      <rect class="hand h-min" x="147" y="56" width="6" height="100" rx="1.5" fill="${lume}" stroke="#8c8c8c" stroke-width="0.4"/>
       <g class="hand h-sec">
         <line x1="150" y1="168" x2="150" y2="52" stroke="${lume}" stroke-width="1.3"/>
       </g>
@@ -661,8 +661,8 @@ function tissot() {
 
   return `<svg viewBox="0 0 300 300">${steelDefs('prx')}
     <defs>
-      <radialGradient id="prx-dial" cx="50%" cy="40%" r="64%">
-        <stop offset="0" stop-color="#284f86"/><stop offset=".58" stop-color="#16315d"/><stop offset="1" stop-color="#0c1d3a"/>
+      <radialGradient id="prx-dial" cx="50%" cy="38%" r="66%">
+        <stop offset="0" stop-color="#2f60a2"/><stop offset=".55" stop-color="#1d4480"/><stop offset="1" stop-color="#132f5b"/>
       </radialGradient>
       <linearGradient id="prx-bar" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#f4f8fb"/><stop offset=".5" stop-color="#cfd8e0"/><stop offset="1" stop-color="#aab6c0"/>
@@ -682,8 +682,9 @@ function tissot() {
     ${markers}
     <text x="150" y="100" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="3" fill="#eef3f7" text-anchor="middle">TISSOT</text>
     <text x="150" y="111" font-family="${sans}" font-weight="400" font-size="5.4" letter-spacing="2.4" fill="#c4d2e2" text-anchor="middle">1853</text>
-    <text x="150" y="186" font-family="${sans}" font-weight="400" font-size="6.6" letter-spacing="1.8" fill="#cdd9e8" text-anchor="middle">POWERMATIC 80</text>
-    <text x="150" y="214" font-family="${sans}" font-weight="400" font-size="6" letter-spacing="2" fill="#c4d2e2" text-anchor="middle">SWISS MADE</text>
+    <text x="150" y="180" font-family="${sans}" font-weight="600" font-size="11" letter-spacing="2.5" fill="#eef3f7" text-anchor="middle">PRX</text>
+    <text x="150" y="191" font-family="${sans}" font-weight="400" font-size="5.4" letter-spacing="1.6" fill="#bcccdf" text-anchor="middle">POWERMATIC 80</text>
+    <text x="150" y="216" font-family="${sans}" font-weight="400" font-size="6" letter-spacing="2" fill="#c4d2e2" text-anchor="middle">SWISS MADE</text>
     <!-- date at 3 -->
     <rect x="192" y="142" width="20" height="16" rx="1" fill="#eef2f5" stroke="#8d99a3" stroke-width="0.5"/>
     <text x="202" y="150.5" font-family="${sans}" font-weight="600" font-size="10" fill="#16294a" text-anchor="middle" dominant-baseline="central">${day}</text>
@@ -702,21 +703,21 @@ function timex() {
   const sans = "'Helvetica Neue', Helvetica, Arial, sans-serif";
   const day = new Date().getDate();
 
-  // chapter ring: arrowheads at the hours, thin ticks for the minutes
+  // chapter ring: triangle markers every 45° (cardinals + diagonals,
+  // the field-watch 'compass' look) over a fine minute track
   const RO = 122;
   let ring = "";
   for (let i = 0; i < 60; i++) {
-    const ang = i * 6;
-    if (i % 5 === 0) {
-      const card = i % 15 === 0;                  // 12/3/6/9 a touch larger
-      const len = card ? 9 : 6.5, dw = card ? 2 : 1.5;
-      const [ax, ay] = P(ang, RO - len);
-      const [b1x, b1y] = P(ang - dw, RO), [b2x, b2y] = P(ang + dw, RO);
-      ring += `<path d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${b1x.toFixed(1)} ${b1y.toFixed(1)} L${b2x.toFixed(1)} ${b2y.toFixed(1)} Z" fill="${lume}"/>`;
-    } else {
-      const [x1, y1] = P(ang, RO), [x2, y2] = P(ang, RO - 3);
-      ring += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${lume}" stroke-width="0.8"/>`;
-    }
+    const ang = i * 6, maj = i % 5 === 0;
+    const [x1, y1] = P(ang, RO), [x2, y2] = P(ang, RO - (maj ? 5 : 3));
+    ring += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${lume}" stroke-width="${maj ? 1 : 0.7}"/>`;
+  }
+  for (const ang of [0, 45, 90, 135, 180, 225, 270, 315]) {
+    const card = ang % 90 === 0;
+    const len = card ? 10 : 8, dw = card ? 2.2 : 1.8;
+    const [ax, ay] = P(ang, RO - len);
+    const [b1x, b1y] = P(ang - dw, RO), [b2x, b2y] = P(ang + dw, RO);
+    ring += `<path d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${b1x.toFixed(1)} ${b1y.toFixed(1)} L${b2x.toFixed(1)} ${b2y.toFixed(1)} Z" fill="${lume}"/>`;
   }
   // outer 1–12 and inner military 13–24 (24 at top); 3 o'clock yields to the date
   let numerals = "";
@@ -889,12 +890,12 @@ function braun() {
     <!-- crown -->
     <rect x="286" y="144" width="11" height="12" rx="2" fill="url(#braun-case)" stroke="#7d8186" stroke-width="0.6"/>
     <g class="hands">
-      <rect class="hand h-hour" x="147" y="94" width="6" height="64" rx="1" fill="${ink}"/>
-      <rect class="hand h-min" x="147.75" y="56" width="4.5" height="102" rx="1" fill="${ink}"/>
+      <rect class="hand h-hour" x="147.5" y="94" width="5" height="64" rx="1" fill="${ink}"/>
+      <rect class="hand h-min" x="148.25" y="56" width="3.5" height="102" rx="1" fill="${ink}"/>
       <!-- signature yellow seconds w/ counterweight tail -->
       <g class="hand h-sec">
-        <line x1="150" y1="172" x2="150" y2="50" stroke="${yellow}" stroke-width="1.8"/>
-        <circle cx="150" cy="166" r="3.4" fill="${yellow}"/>
+        <line x1="150" y1="172" x2="150" y2="50" stroke="${yellow}" stroke-width="1.4"/>
+        <circle cx="150" cy="167" r="2.6" fill="${yellow}"/>
       </g>
       ${centerCap(ink, 3)}
     </g>
