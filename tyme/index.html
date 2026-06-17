@@ -822,11 +822,13 @@ function timex() {
     <rect x="209.5" y="141.4" width="21" height="17.2" rx="1" fill="#eceae3" stroke="#5a5a5a" stroke-width="0.4"/>
     <text x="220" y="150.6" font-family="${sans}" font-weight="700" font-size="11" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
     <g class="hands">
-      <path class="hand h-hour" d="${hand(54, 7.5)}" fill="${lume}" stroke="#2a2a2a" stroke-width="0.6"/>
-      <path class="hand h-min" d="${hand(86, 5.5)}" fill="${lume}" stroke="#2a2a2a" stroke-width="0.6"/>
+      <!-- hour & minute: polished steel frame with white lume centre -->
+      <path class="hand h-hour" d="${hand(54, 7.5)}" fill="${lume}" stroke="url(#steel-tx)" stroke-width="3"/>
+      <path class="hand h-min" d="${hand(86, 5.5)}" fill="${lume}" stroke="url(#steel-tx)" stroke-width="2.6"/>
+      <!-- seconds: all steel -->
       <g class="hand h-sec">
-        <line x1="150" y1="176" x2="150" y2="46" stroke="${lume}" stroke-width="1.1"/>
-        <circle cx="150" cy="170" r="3" fill="${lume}"/>
+        <line x1="150" y1="176" x2="150" y2="46" stroke="#c6c9cd" stroke-width="1.4"/>
+        <circle cx="150" cy="170" r="3" fill="url(#steel-tx)"/>
       </g>
       <!-- black centre dot -->
       <circle cx="150" cy="150" r="1.8" fill="#0c0c0c"/>
