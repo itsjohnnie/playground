@@ -923,12 +923,13 @@ function braun() {
   const sans = "'Helvetica Neue', Helvetica, Arial, sans-serif";
   const day = new Date().getDate();
 
-  // fine minute track — longer ticks at the hours
+  // minute track near the edge — all ticks the same length, the hours
+  // just a touch thicker
   let track = "";
   for (let i = 0; i < 60; i++) {
     const ang = i * 6, maj = i % 5 === 0;
-    const [x1, y1] = P(ang, 125), [x2, y2] = P(ang, maj ? 115 : 120);
-    track += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${ink}" stroke-width="${maj ? 1.3 : 0.7}"/>`;
+    const [x1, y1] = P(ang, 134), [x2, y2] = P(ang, 129);
+    track += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${ink}" stroke-width="${maj ? 1.15 : 0.85}"/>`;
   }
   // thin Arabic numerals 1–12
   let numerals = "";
@@ -958,23 +959,29 @@ function braun() {
         <stop offset="0" stop-color="#f0f0f2"/><stop offset=".5" stop-color="#b9bdc2"/><stop offset="1" stop-color="#82868b"/>
       </linearGradient>
       <radialGradient id="braun-dial" cx="50%" cy="44%" r="62%">
-        <stop offset="0" stop-color="#fcfbf8"/><stop offset="1" stop-color="#eceae3"/>
+        <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f5f5f3"/>
       </radialGradient>
+      <linearGradient id="braun-date-sh" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#000" stop-opacity="0.42"/>
+        <stop offset="0.45" stop-color="#000" stop-opacity="0"/>
+      </linearGradient>
     </defs>
     <circle cx="150" cy="150" r="149" fill="url(#braun-case)"/>
     <circle cx="150" cy="150" r="140" fill="#d8dadd"/>
-    <circle cx="150" cy="150" r="137" fill="#e8e4d9"/>
+    <circle cx="150" cy="150" r="137" fill="#efefed"/>
     <circle cx="150" cy="150" r="110" fill="url(#braun-dial)"/>
     <circle cx="150" cy="150" r="110" fill="none" stroke="rgba(0,0,0,0.14)" stroke-width="1"/>
     <circle cx="150" cy="150" r="108.8" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="0.8"/>
     <circle cx="150" cy="150" r="137" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
     ${track}${numerals}
     ${wordmark}
-    <!-- date aperture above 6 -->
+    <!-- date aperture: narrow, recessed, red curved wheel top -->
     <g>
-      <rect x="142.5" y="187" width="15" height="16" rx="1.2" fill="#fff" stroke="#b9b6ac" stroke-width="0.8"/>
-      <rect x="142.5" y="187" width="15" height="3" fill="#d23b32"/>
-      <text x="150" y="196.5" font-family="${sans}" font-weight="500" font-size="9" fill="#222" text-anchor="middle" dominant-baseline="central">${day}</text>
+      <rect x="143.5" y="196" width="13" height="18" rx="1.6" fill="#0d0d0a"/>
+      <rect x="144.3" y="196.9" width="11.4" height="16.2" rx="1.1" fill="#f7f7f5"/>
+      <path d="M144.3 198 Q144.3 196.9 145.4 196.9 H154.6 Q155.7 196.9 155.7 198 V200.6 Q150 203.4 144.3 200.6 Z" fill="#cf342b"/>
+      <text x="150" y="207.8" font-family="Inter, sans-serif" font-weight="500" font-size="8.5" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
+      <rect x="144.3" y="196.9" width="11.4" height="16.2" rx="1.1" fill="url(#braun-date-sh)"/>
     </g>
     <!-- crown -->
     <rect x="286" y="144" width="11" height="12" rx="2" fill="url(#braun-case)" stroke="#7d8186" stroke-width="0.6"/>
@@ -1045,7 +1052,7 @@ function mountWatch(animate = true) {
     }
     defs.insertAdjacentHTML("beforeend",
       '<filter id="handShadow" x="-40%" y="-40%" width="180%" height="180%">' +
-      '<feDropShadow dx="1.6" dy="4" stdDeviation="2.4" flood-color="#000" flood-opacity="0.45"/></filter>');
+      '<feDropShadow dx="1" dy="2.4" stdDeviation="3.4" flood-color="#000" flood-opacity="0.26"/></filter>');
     handsG.setAttribute("filter", "url(#handShadow)");
   }
 
