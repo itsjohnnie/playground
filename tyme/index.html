@@ -7,7 +7,7 @@
 <title>tyme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Zalando+Sans+Expanded:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=Zalando+Sans+Expanded:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <!-- Google Sans Flex — the UI chrome font, shared with /flyy and /dott -->
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
@@ -935,8 +935,8 @@ function braun() {
   let numerals = "";
   for (let h = 1; h <= 12; h++) {
     const [x, y] = P(h * 30, 101);
-    numerals += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Inter, sans-serif" font-weight="400" font-size="18"
-      letter-spacing="-0.5" fill="#3a3a3a" text-anchor="middle" dominant-baseline="central">${h}</text>`;
+    numerals += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="'Public Sans', sans-serif" font-weight="400" font-size="18"
+      letter-spacing="-0.3" fill="#3a3a3a" text-anchor="middle" dominant-baseline="central">${h}</text>`;
   }
 
   // the real Braun wordmark, traced from Braun_Logo.svg (native 399x169);
