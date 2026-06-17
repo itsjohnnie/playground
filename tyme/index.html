@@ -4,10 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#101010" />
-<title>Timepieces</title>
+<title>tyme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
 <style>
   :root {
     --bg: #ece8e1;
@@ -62,11 +63,10 @@
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 460px;
     height: 100dvh;
     display: flex;
     flex-direction: column;
-    padding: 0 22px;
+    padding: 0 22px max(96px, calc(72px + env(safe-area-inset-bottom)));
   }
 
   /* ---------- Header ---------- */
@@ -74,20 +74,16 @@
     padding-top: max(28px, env(safe-area-inset-top));
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
+    justify-content: flex-end;
   }
-  .wordmark {
-    font-family: "Fraunces", serif;
-    font-weight: 300;
-    font-size: 22px;
-    letter-spacing: 0.01em;
-  }
-  .wordmark em { font-style: italic; }
   .clock-digital {
     font-size: 12px;
     letter-spacing: 0.14em;
     color: var(--muted);
     font-variant-numeric: tabular-nums;
+  }
+  @media (min-width: 760px) {
+    .app { padding-bottom: 0; }
   }
 
   /* ---------- Stage ---------- */
@@ -159,7 +155,7 @@
   .watch-meta.swap { animation: metafade 0.5s ease; }
   @keyframes metafade { 0%{opacity:0; transform:translateY(6px);} 100%{opacity:1; transform:none;} }
 
-  /* ---------- Selector ---------- */
+  /* ---------- Selector dots (under the watch) ---------- */
   .selector {
     display: flex;
     gap: 9px;
@@ -178,85 +174,146 @@
   }
   .dot.active { opacity: 1; background: var(--ink); transform: scale(1.15); }
 
-  /* ---------- Settings ---------- */
-  .settings {
-    flex: 1;
-    display: none;
-    flex-direction: column;
-    justify-content: center;
-    gap: 4px;
-    max-width: 360px;
-    width: 100%;
-    margin: 0 auto;
+  /* =================================================================
+     Dock — bottom bar on mobile, right side panel on desktop.
+     Same markup; the media query re-flows it. (Pattern shared with
+     /dott, /flyy and /waves.)
+     ================================================================= */
+  .panel {
+    position: fixed;
+    left: 0; right: 0;
+    margin-inline: auto;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    width: min(420px, calc(100vw - 24px));
+    z-index: 20;
+    transition: opacity 0.4s ease;
   }
-  body.view-settings .stage { display: none; }
-  body.view-settings .settings { display: flex; }
-
-  .settings h2 {
-    font-family: "Fraunces", serif;
-    font-weight: 300;
-    font-size: 30px;
-    margin-bottom: 18px;
-  }
-  .row {
+  .panel-bar {
+    height: 52px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 2px;
-    border-top: 1px solid var(--line);
-  }
-  .row:last-child { border-bottom: 1px solid var(--line); }
-  .row .label { font-size: 12px; letter-spacing: 0.06em; }
-  .row .sub { font-size: 10px; color: var(--muted); margin-top: 4px; letter-spacing: 0.04em; }
-
-  .seg {
-    display: inline-flex;
+    padding: 10px 12px 10px 18px;
+    border-radius: 16px;
+    background: var(--nav-bg);
     border: 1px solid var(--line);
-    border-radius: 999px;
-    overflow: hidden;
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
   }
+  .brand {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 20px;
+    letter-spacing: 0.01em;
+    color: var(--ink);
+  }
+  .actions { display: flex; gap: 4px; }
+  button.icon {
+    width: 34px; height: 34px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, transform 0.12s;
+  }
+  button.icon:hover { background: var(--surface); color: var(--ink); }
+  button.icon:active { transform: scale(0.9); }
+  button.icon.active { color: var(--ink); background: var(--surface); }
+  button.icon i { font-size: 18px; line-height: 1; }
+
+  /* controls sheet — floats above the dock on mobile */
+  .controls {
+    position: fixed;
+    left: 0; right: 0;
+    margin-inline: auto;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px) + 62px);
+    width: min(420px, calc(100vw - 24px));
+    border-radius: 16px;
+    background: var(--nav-bg);
+    border: 1px solid var(--line);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 19;
+  }
+  .controls.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+  .ctl-row { padding: 15px 18px; border-bottom: 1px solid var(--line); }
+  .ctl-row:last-child { border-bottom: none; }
+  .ctl-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 11px;
+  }
+  .ctl-head h2 {
+    font-family: inherit;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted);
+  }
+
+  .seg { display: flex; gap: 6px; }
   .seg button {
-    font-family: inherit;
-    font-size: 10.5px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 7px 13px;
-    background: transparent;
+    flex: 1; height: 34px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    font-family: inherit; font-size: 11px; font-weight: 400; letter-spacing: 0.04em;
     color: var(--muted);
-    border: none;
-    cursor: pointer;
-    transition: color 0.25s ease, background 0.25s ease;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px; cursor: pointer;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
   }
-  .seg button.on { background: var(--accent); color: var(--bg); }
+  .seg button i { font-size: 15px; }
+  .seg button:hover { color: var(--ink); }
+  .seg button.on {
+    color: var(--bg); background: var(--accent);
+    border-color: var(--accent);
+  }
 
-  .credit { margin-top: 22px; font-size: 10px; color: var(--muted); letter-spacing: 0.04em; line-height: 1.6; }
+  /* idle: tuck the dock away when inactive */
+  body.idle .panel { opacity: 0; pointer-events: none; }
+  body.idle .controls { opacity: 0; pointer-events: none; }
 
-  /* ---------- Bottom nav ---------- */
-  nav {
-    flex-shrink: 0;
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    padding: 10px 0 max(20px, env(safe-area-inset-bottom));
+  /* ---- Desktop: right side panel ---- */
+  @media (min-width: 760px) {
+    .panel {
+      right: 20px; left: auto; margin: 0;
+      top: 50%; bottom: auto;
+      transform: translateY(-50%);
+      width: 256px;
+      display: flex; flex-direction: column;
+      border-radius: 18px;
+      overflow: hidden;
+      background: var(--nav-bg);
+      border: 1px solid var(--line);
+      -webkit-backdrop-filter: blur(16px) saturate(1.4);
+      backdrop-filter: blur(16px) saturate(1.4);
+    }
+    .panel-bar {
+      height: 56px;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    .controls {
+      position: static;
+      width: auto; margin: 0; left: auto; right: auto; bottom: auto;
+      opacity: 1; transform: none; pointer-events: auto;
+      background: transparent;
+      border: none; border-radius: 0;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    body.idle .controls { opacity: 1; pointer-events: auto; }
+    .mobile-only { display: none; }
   }
-  .nav-btn {
-    appearance: none;
-    background: transparent;
-    border: none;
-    font-family: inherit;
-    color: var(--muted);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 26px;
-    cursor: pointer;
-    border-radius: 14px;
-    transition: color 0.3s ease;
-  }
-  .nav-btn svg { width: 21px; height: 21px; stroke: currentColor; fill: none; stroke-width: 1.4; }
-  .nav-btn span { font-size: 9.5px; letter-spacing: 0.22em; text-transform: uppercase; }
-  .nav-btn.active { color: var(--ink); }
 
   @media (max-height: 680px) {
     .watch-meta { margin-bottom: 14px; height: 50px; }
@@ -267,11 +324,9 @@
 <body data-init>
   <div class="app">
     <header>
-      <div class="wordmark"><em>Time</em>pieces</div>
       <div class="clock-digital" id="digital">--:--:--</div>
     </header>
 
-    <!-- TIME VIEW -->
     <section class="stage">
       <div class="watch-meta" id="meta">
         <div class="watch-brand" id="brand"></div>
@@ -280,55 +335,45 @@
       <div class="watch-wrap" id="wrap"></div>
       <div class="selector" id="selector"></div>
     </section>
-
-    <!-- SETTINGS VIEW -->
-    <section class="settings">
-      <h2>Settings</h2>
-      <div class="row">
-        <div>
-          <div class="label">Movement</div>
-          <div class="sub">Sweeping or ticking seconds</div>
-        </div>
-        <div class="seg" data-setting="movement">
-          <button data-val="sweep">Sweep</button>
-          <button data-val="tick">Tick</button>
-        </div>
-      </div>
-      <div class="row">
-        <div>
-          <div class="label">Shadows</div>
-          <div class="sub">Hands cast a single light source</div>
-        </div>
-        <div class="seg" data-setting="shadow">
-          <button data-val="on">On</button>
-          <button data-val="off">Off</button>
-        </div>
-      </div>
-      <div class="row">
-        <div>
-          <div class="label">Ambience</div>
-          <div class="sub">Surrounding light</div>
-        </div>
-        <div class="seg" data-setting="theme">
-          <button data-val="light">Light</button>
-          <button data-val="dark">Dark</button>
-        </div>
-      </div>
-      <p class="credit">Five timepieces, rendered in SVG and driven by your local time.<br/>Shadows fall from a fixed upper-left source for accuracy.</p>
-    </section>
-
-    <!-- BOTTOM NAV -->
-    <nav>
-      <button class="nav-btn active" data-view="time">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span>Time</span>
-      </button>
-      <button class="nav-btn" data-view="settings">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2 5.6 5.6" stroke-linecap="round"/></svg>
-        <span>Settings</span>
-      </button>
-    </nav>
   </div>
+
+  <!-- Dock: bottom bar on mobile, right side panel on desktop -->
+  <aside class="panel" id="panel" aria-label="tyme controls">
+    <div class="panel-bar">
+      <span class="brand">tyme</span>
+      <div class="actions">
+        <button id="nextBtn" class="icon" type="button" title="Next watch" aria-label="Next watch">
+          <i class="ph ph-arrow-clockwise"></i>
+        </button>
+        <button id="settingsBtn" class="icon mobile-only" type="button" title="Settings" aria-label="Settings" aria-expanded="false">
+          <i class="ph ph-sliders-horizontal"></i>
+        </button>
+      </div>
+    </div>
+    <div class="controls" id="controls">
+      <div class="ctl-row">
+        <div class="ctl-head"><h2>Movement</h2></div>
+        <div class="seg" data-setting="movement">
+          <button data-val="sweep"><i class="ph ph-wave-sine"></i>Sweep</button>
+          <button data-val="tick"><i class="ph ph-metronome"></i>Tick</button>
+        </div>
+      </div>
+      <div class="ctl-row">
+        <div class="ctl-head"><h2>Shadows</h2></div>
+        <div class="seg" data-setting="shadow">
+          <button data-val="on"><i class="ph ph-sun"></i>On</button>
+          <button data-val="off"><i class="ph ph-circle"></i>Off</button>
+        </div>
+      </div>
+      <div class="ctl-row">
+        <div class="ctl-head"><h2>Ambience</h2></div>
+        <div class="seg" data-setting="theme">
+          <button data-val="light"><i class="ph ph-sun-dim"></i>Light</button>
+          <button data-val="dark"><i class="ph ph-moon"></i>Dark</button>
+        </div>
+      </div>
+    </div>
+  </aside>
 
 <script>
 "use strict";
@@ -747,13 +792,34 @@ document.querySelectorAll(".seg").forEach(seg => {
   });
 });
 
-document.querySelectorAll(".nav-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    document.body.classList.toggle("view-settings", btn.dataset.view === "settings");
-  });
+/* ---------------- Dock: settings sheet + next watch ---------------- */
+const settingsBtn = document.getElementById("settingsBtn");
+const controls = document.getElementById("controls");
+settingsBtn.addEventListener("click", () => {
+  const open = controls.classList.toggle("open");
+  settingsBtn.classList.toggle("active", open);
+  settingsBtn.setAttribute("aria-expanded", String(open));
 });
+
+document.getElementById("nextBtn").addEventListener("click", () => {
+  state.index = (state.index + 1) % WATCHES.length;
+  mountWatch();
+});
+
+/* ---------------- Idle: tuck the dock away ---------------- */
+let idleTimer;
+function wake() {
+  document.body.classList.remove("idle");
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    document.body.classList.add("idle");
+    controls.classList.remove("open");
+    settingsBtn.classList.remove("active");
+    settingsBtn.setAttribute("aria-expanded", "false");
+  }, 4000);
+}
+["pointermove", "pointerdown", "keydown", "touchstart"].forEach(ev =>
+  window.addEventListener(ev, wake, { passive: true }));
 
 /* ---------------- Boot ---------------- */
 applyTheme();
@@ -762,6 +828,7 @@ syncSegs();
 buildSelector();
 mountWatch(false);
 loop();
+wake();
 </script>
 </body>
 </html>
