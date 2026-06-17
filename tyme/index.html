@@ -508,46 +508,107 @@ function santos() {
 
 /* ---------- 2. Omega Speedmaster ---------- */
 function speedmaster() {
-  const lume = "#d8d2bd";
-  // applied baton markers
-  let markers = "";
-  for (let h = 0; h < 12; h++) {
-    if (h === 0 || h === 3 || h === 6 || h === 9) continue; // subdials/marker differ
-    const ang = h * 30;
-    const [x, y] = P(ang, 104);
-    markers += `<rect x="${x-2.4}" y="${y-7}" width="4.8" height="14" rx="1.5" fill="${lume}"
-      transform="rotate(${ang} ${x} ${y})"/>`;
+  const lume = "#f3f1ea";        // white markers + hands
+  const tach = "#c7c7c7";        // tachymeter print
+  // arc path generator for curved text along a circle (clockwise)
+  const arc = (r, a0, a1) => {
+    const [x0, y0] = P(a0, r), [x1, y1] = P(a1, r);
+    const large = Math.abs(a1 - a0) > 180 ? 1 : 0;
+    return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  };
+
+  // ---- tachymeter graduations (fine ticks around the bezel) ----
+  let tachTicks = "";
+  for (let i = 0; i < 120; i++) {
+    const ang = i * 3;
+    const maj = i % 5 === 0;
+    const [x1, y1] = P(ang, 145);
+    const [x2, y2] = P(ang, maj ? 139 : 142);
+    tachTicks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${tach}" stroke-width="${maj ? 0.9 : 0.5}" opacity="0.85"/>`;
   }
-  // subdial
-  const sub = (cx, cy) => `
-    <circle cx="${cx}" cy="${cy}" r="26" fill="#0d0d0d" stroke="#2a2a2a" stroke-width="1"/>
-    ${Array.from({length:12}).map((_,k)=>{
-      const a=(k/12)*360, [x1,y1]=P(a,24,cx,cy), [x2,y2]=P(a,20,cx,cy);
-      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#777" stroke-width="0.8"/>`;}).join("")}
-    <circle cx="${cx}" cy="${cy}" r="2" fill="#888"/>`;
-  return `<svg viewBox="0 0 300 300">${steelDefs('sp')}
-    <circle cx="150" cy="150" r="142" fill="url(#steel-sp)"/>
-    <circle cx="150" cy="150" r="142" fill="none" stroke="#5f6368" stroke-width="1"/>
-    <!-- tachymeter bezel -->
-    <circle cx="150" cy="150" r="134" fill="#0b0b0c"/>
-    <text x="150" y="34" font-family="IBM Plex Mono" font-size="7.5" fill="#cfcfcf" text-anchor="middle" letter-spacing="2">TACHYMÈTRE</text>
-    <circle cx="150" cy="150" r="118" fill="#080808"/>
-    ${ticks({ r: 116, major: 8, minor: 4, color: "#7a7a7a" })}
-    ${markers}
-    <!-- 12 marker -->
-    <rect x="143" y="42" width="14" height="14" rx="2" fill="${lume}"/>
-    <!-- subdials at 9,6,3 -->
-    ${sub(96,150)}${sub(150,196)}${sub(204,150)}
-    <text x="150" y="92" font-family="Fraunces, serif" font-size="13" fill="#e9e9e9" text-anchor="middle" letter-spacing="3">Ω OMEGA</text>
-    <text x="150" y="104" font-family="IBM Plex Mono" font-size="6.5" fill="#bdbdbd" text-anchor="middle" letter-spacing="1.5">SPEEDMASTER</text>
+
+  // ---- tachymeter numbers (angle = 21600 / speed, clockwise from 12) ----
+  const Ts = [60,500,400,350,300,275,250,225,200,190,180,170,160,150,140,130,120,110,100,90,85,80,75,70,65];
+  let tachNums = "";
+  for (const T of Ts) {
+    let ang = 21600 / T; if (ang >= 360) ang -= 360;   // 60 -> top
+    const [x, y] = P(ang, 127);
+    tachNums += `<text x="${x}" y="${y}" font-family="IBM Plex Mono" font-size="8" fill="${tach}"
+      text-anchor="middle" dominant-baseline="central" transform="rotate(${ang.toFixed(1)} ${x.toFixed(2)} ${y.toFixed(2)})">${T}</text>`;
+  }
+
+  // ---- applied baton hour markers (skip 3/6/9 subdials, double at 12) ----
+  let markers = "";
+  for (const h of [1,2,4,5,7,8,10,11]) {
+    const ang = h * 30;
+    const [x, y] = P(ang, 96);
+    markers += `<rect x="${(x-2.6).toFixed(2)}" y="${(y-12).toFixed(2)}" width="5.2" height="24" rx="1"
+      fill="${lume}" stroke="#8c8c8c" stroke-width="0.5" transform="rotate(${ang} ${x.toFixed(2)} ${y.toFixed(2)})"/>`;
+  }
+  markers += `<rect x="143" y="44" width="4.2" height="23" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>
+              <rect x="152.8" y="44" width="4.2" height="23" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
+
+  // ---- minute / second track on the dial ----
+  let track = "";
+  for (let i = 0; i < 60; i++) {
+    const ang = i * 6, maj = i % 5 === 0;
+    const [x1, y1] = P(ang, 110), [x2, y2] = P(ang, maj ? 104 : 107);
+    track += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${lume}" stroke-width="${maj ? 1.2 : 0.6}"/>`;
+  }
+
+  // ---- a chronograph subdial: snailed rings, ticks, numbers, reset hand ----
+  function subdial(cx, cy, R, count, majorEvery, nums) {
+    let s = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="#060606"/>`;
+    for (let r = R - 3; r > 4; r -= 2.3)
+      s += `<circle cx="${cx}" cy="${cy}" r="${r.toFixed(1)}" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="0.5"/>`;
+    s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#3c3c3c" stroke-width="0.8"/>`;
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * 360, maj = i % majorEvery === 0;
+      const [x1, y1] = P(a, R - 1, cx, cy), [x2, y2] = P(a, R - (maj ? 5 : 3), cx, cy);
+      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#9c9c9c" stroke-width="${maj ? 0.8 : 0.4}"/>`;
+    }
+    for (const n of nums) {
+      const [x, y] = P(n.a, R - 9, cx, cy);
+      s += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="IBM Plex Mono" font-size="7.5" fill="#dcdcdc"
+        text-anchor="middle" dominant-baseline="central">${n.t}</text>`;
+    }
+    const [hx, hy] = P(0, R - 6, cx, cy), [tx, ty] = P(180, 5, cx, cy);
+    s += `<line x1="${tx.toFixed(2)}" y1="${ty.toFixed(2)}" x2="${hx.toFixed(2)}" y2="${hy.toFixed(2)}" stroke="${lume}" stroke-width="1.2"/>
+          <circle cx="${cx}" cy="${cy}" r="1.6" fill="#cfcfcf"/>`;
+    return s;
+  }
+  const subSec = subdial(98, 150, 30, 60, 5, [{t:"60",a:0},{t:"20",a:120},{t:"40",a:240}]);
+  const subMin = subdial(202, 150, 30, 30, 5, [{t:"30",a:0},{t:"10",a:120},{t:"20",a:240}]);
+  const subHr  = subdial(150, 202, 30, 12, 1, [{t:"12",a:0},{t:"3",a:90},{t:"6",a:180},{t:"9",a:270}]);
+
+  return `<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${steelDefs('sp')}
+    <defs>
+      <radialGradient id="sp-dial" cx="50%" cy="40%" r="65%">
+        <stop offset="0" stop-color="#161616"/><stop offset="0.7" stop-color="#0a0a0a"/><stop offset="1" stop-color="#000"/>
+      </radialGradient>
+      <path id="sp-arc" d="${arc(137, -8, 72)}"/>
+    </defs>
+    <circle cx="150" cy="150" r="149" fill="url(#steel-sp)"/>
+    <circle cx="150" cy="150" r="145" fill="#0b0b0c"/>
+    ${tachTicks}${tachNums}
+    <text font-family="IBM Plex Mono" font-size="8.5" letter-spacing="3.2" fill="${tach}">
+      <textPath href="#sp-arc" xlink:href="#sp-arc" startOffset="50%" text-anchor="middle">TACHYMÈTRE</textPath>
+    </text>
+    <circle cx="150" cy="150" r="116" fill="url(#steel-sp)"/>
+    <circle cx="150" cy="150" r="114" fill="url(#sp-dial)"/>
+    ${track}${markers}
+    <text x="150" y="84" font-family="Fraunces, serif" font-size="14" fill="${lume}" text-anchor="middle">&#937;</text>
+    <text x="150" y="98" font-family="Fraunces, serif" font-size="13" letter-spacing="2" fill="${lume}" text-anchor="middle">OMEGA</text>
+    <text x="150" y="110" font-family="Fraunces, serif" font-style="italic" font-size="10.5" fill="${lume}" text-anchor="middle">Speedmaster</text>
+    <text x="150" y="118" font-family="IBM Plex Mono" font-size="5.4" letter-spacing="2.4" fill="${lume}" text-anchor="middle">PROFESSIONAL</text>
+    ${subSec}${subMin}${subHr}
     <g class="hands">
-      <rect class="hand h-hour" x="146.5" y="96" width="7" height="58" rx="2" fill="${lume}"/>
-      <rect class="hand h-min" x="147.5" y="60" width="5" height="94" rx="2" fill="${lume}"/>
+      <rect class="hand h-hour" x="146.5" y="92" width="7" height="64" rx="1.5" fill="${lume}" stroke="#8c8c8c" stroke-width="0.4"/>
+      <rect class="hand h-min" x="147.25" y="58" width="5.5" height="98" rx="1.5" fill="${lume}" stroke="#8c8c8c" stroke-width="0.4"/>
       <g class="hand h-sec">
-        <line x1="150" y1="168" x2="150" y2="50" stroke="#e64a2e" stroke-width="1.6"/>
-        <circle cx="150" cy="120" r="3" fill="none" stroke="#e64a2e" stroke-width="1.4"/>
+        <line x1="150" y1="168" x2="150" y2="52" stroke="${lume}" stroke-width="1.3"/>
       </g>
-      ${centerCap("#e9e9e9", 4)}
+      ${centerCap("#e9e9e9", 3.6)}
     </g>
   </svg>`;
 }
@@ -666,42 +727,59 @@ function bellross() {
 
 /* ---------- 6. Braun (Dieter Rams) ---------- */
 function braun() {
-  const white = "#f2f2ee";
-  const yellow = "#f5c518";
-  // minute track: fine white ticks, the Braun signature
+  const dial = "#f6f5f1";      // white dial
+  const ink = "#2c2c2c";       // numerals, ticks, hands
+  const yellow = "#e6a019";    // signature second hand
+  const sans = "'Helvetica Neue', Helvetica, Arial, sans-serif";
+  const day = new Date().getDate();
+
+  // fine minute track — longer ticks at the hours
   let track = "";
   for (let i = 0; i < 60; i++) {
-    const ang = i * 6;
-    const major = i % 5 === 0;
-    const [x1, y1] = P(ang, 120);
-    const [x2, y2] = P(ang, major ? 108 : 114);
-    track += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${white}" stroke-width="${major ? 2 : 1}"/>`;
+    const ang = i * 6, maj = i % 5 === 0;
+    const [x1, y1] = P(ang, 125), [x2, y2] = P(ang, maj ? 115 : 120);
+    track += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${ink}" stroke-width="${maj ? 1.3 : 0.7}"/>`;
   }
-  // clean sans numerals at 12/3/6/9
-  const nums = { 0: "12", 3: "3", 6: "6", 9: "9" };
+  // thin Arabic numerals 1–12
   let numerals = "";
-  for (const h in nums) {
-    const [x, y] = P(h * 30, 92);
-    numerals += `<text x="${x}" y="${y}" font-family="IBM Plex Mono" font-weight="500" font-size="15" fill="${white}"
-      text-anchor="middle" dominant-baseline="central">${nums[h]}</text>`;
+  for (let h = 1; h <= 12; h++) {
+    const [x, y] = P(h * 30, 101);
+    numerals += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="${sans}" font-weight="400" font-size="15"
+      fill="#3a3a3a" text-anchor="middle" dominant-baseline="central">${h}</text>`;
   }
+
   return `<svg viewBox="0 0 300 300">
-    <defs><linearGradient id="braun-case" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2c2c2c"/><stop offset="1" stop-color="#111"/></linearGradient></defs>
-    <circle cx="150" cy="150" r="142" fill="url(#braun-case)"/>
-    <circle cx="150" cy="150" r="130" fill="#0b0b0b"/>
-    <circle cx="150" cy="150" r="130" fill="none" stroke="#222" stroke-width="1"/>
+    <defs>
+      <linearGradient id="braun-case" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#f0f0f2"/><stop offset=".5" stop-color="#b9bdc2"/><stop offset="1" stop-color="#82868b"/>
+      </linearGradient>
+      <radialGradient id="braun-dial" cx="50%" cy="44%" r="62%">
+        <stop offset="0" stop-color="#fcfbf8"/><stop offset="1" stop-color="#eceae3"/>
+      </radialGradient>
+    </defs>
+    <circle cx="150" cy="150" r="149" fill="url(#braun-case)"/>
+    <circle cx="150" cy="150" r="140" fill="#d8dadd"/>
+    <circle cx="150" cy="150" r="137" fill="url(#braun-dial)"/>
+    <circle cx="150" cy="150" r="137" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
     ${track}${numerals}
-    <text x="150" y="112" font-family="IBM Plex Mono" font-weight="500" font-size="11" fill="${white}" text-anchor="middle" letter-spacing="3">BRAUN</text>
+    <text x="150" y="116" font-family="${sans}" font-weight="700" font-size="16" letter-spacing="0.5" fill="#262626" text-anchor="middle">BRAUN</text>
+    <!-- date aperture above 6 -->
+    <g>
+      <rect x="139" y="188" width="22" height="16" rx="1.5" fill="#fff" stroke="#b9b6ac" stroke-width="0.8"/>
+      <rect x="139" y="188" width="22" height="3.2" fill="#d23b32"/>
+      <text x="150" y="197.5" font-family="${sans}" font-weight="500" font-size="9.5" fill="#222" text-anchor="middle" dominant-baseline="central">${day}</text>
+    </g>
+    <!-- crown -->
+    <rect x="286" y="144" width="11" height="12" rx="2" fill="url(#braun-case)" stroke="#7d8186" stroke-width="0.6"/>
     <g class="hands">
-      <rect class="hand h-hour" x="146.5" y="100" width="7" height="54" rx="0.5" fill="${white}"/>
-      <rect class="hand h-min" x="147.5" y="60" width="5" height="94" rx="0.5" fill="${white}"/>
-      <!-- signature yellow seconds w/ counterweight -->
+      <rect class="hand h-hour" x="147" y="94" width="6" height="64" rx="1" fill="${ink}"/>
+      <rect class="hand h-min" x="147.75" y="56" width="4.5" height="102" rx="1" fill="${ink}"/>
+      <!-- signature yellow seconds w/ counterweight tail -->
       <g class="hand h-sec">
-        <line x1="150" y1="168" x2="150" y2="52" stroke="${yellow}" stroke-width="2"/>
-        <circle cx="150" cy="60" r="4.5" fill="${yellow}"/>
+        <line x1="150" y1="172" x2="150" y2="50" stroke="${yellow}" stroke-width="1.8"/>
+        <circle cx="150" cy="166" r="3.4" fill="${yellow}"/>
       </g>
-      ${centerCap(white, 4)}
+      ${centerCap(ink, 3)}
     </g>
   </svg>`;
 }
