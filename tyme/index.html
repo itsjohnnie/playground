@@ -1134,7 +1134,7 @@ function citizen() {
       + `L${L} ${B} `
       + `C${L - b} ${(cy + h * 0.5).toFixed(1)} ${L - b} ${(cy - h * 0.5).toFixed(1)} ${L} ${T} Z`;
   };
-  const lens = pill(9.5, 9.5, 3.4), lensF1 = pill(10, 10, 3.6), lensF2 = pill(10.4, 10.4, 3.8);
+  const lens = pill(12.5, 11.5, 4.4), lensF1 = pill(13, 12, 4.6), lensF2 = pill(13.5, 12.5, 4.8);
 
   return `<svg viewBox="0 0 300 300">${steelDefs('cz')}
     <defs>
@@ -1199,7 +1199,7 @@ function citizen() {
     </g>
     <!-- domed glass body + specular glare -->
     <path d="${lens}" fill="url(#cz-glass)"/>
-    <ellipse cx="200.4" cy="145" rx="4.4" ry="2.6" fill="#ffffff" opacity="0.5"/>
+    <ellipse cx="198.5" cy="143" rx="5.2" ry="3" fill="#ffffff" opacity="0.5"/>
     <!-- glass edge with red/blue chromatic fringe -->
     <path d="${lens}" fill="none" stroke="#e2eae4" stroke-width="0.8"/>
     <path d="${lensF1}" fill="none" stroke="#ff3b5c" stroke-opacity="0.22" stroke-width="0.8"/>
