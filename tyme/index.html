@@ -615,7 +615,7 @@ function speedmaster() {
     <circle cx="150" cy="150" r="149" fill="url(#steel-sp)"/>
     <circle cx="150" cy="150" r="145" fill="#0b0b0c"/>
     ${tachTicks}${tachNums}
-    <text font-family="IBM Plex Mono" font-size="8.5" letter-spacing="3.2" fill="${tach}">
+    <text font-family="Inter, sans-serif" font-weight="500" font-size="8.5" letter-spacing="3.2" fill="${tach}">
       <textPath href="#sp-arc" xlink:href="#sp-arc" startOffset="50%" text-anchor="middle">TACHYMÈTRE</textPath>
     </text>
     <circle cx="150" cy="150" r="116" fill="url(#steel-sp)"/>
@@ -679,7 +679,7 @@ function tissot() {
   return `<svg viewBox="0 0 300 300">${steelDefs('prx')}
     <defs>
       <radialGradient id="prx-dial" cx="50%" cy="38%" r="66%">
-        <stop offset="0" stop-color="#2f60a2"/><stop offset=".55" stop-color="#1d4480"/><stop offset="1" stop-color="#132f5b"/>
+        <stop offset="0" stop-color="#214a82"/><stop offset=".55" stop-color="#143461"/><stop offset="1" stop-color="#0b2040"/>
       </radialGradient>
       <linearGradient id="prx-bar" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#f4f8fb"/><stop offset=".5" stop-color="#cfd8e0"/><stop offset="1" stop-color="#aab6c0"/>
