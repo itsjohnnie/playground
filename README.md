@@ -21,6 +21,7 @@ A collection of experimental web projects, prototypes, and interactive demos.
 | **mask** | CSS mask experiments | [View](https://itsjohnnie.github.io/playground/mask/) |
 | **orb** | Animated orb effects | [View](https://itsjohnnie.github.io/playground/orb/) |
 | **toaster** | Toast notification demos | [View](https://itsjohnnie.github.io/playground/toaster/) |
+| **watch** | Six SVG watch faces (Cartier, Omega, Vacheron, Timex, Bell & Ross, Braun) with live hands and accurate shadows | [View](https://itsjohnnie.github.io/playground/watch/) |
 | **waves** | Full-screen banded gradient waves with a fresh harmonious palette each load | [View](https://itsjohnnie.github.io/playground/waves/) |
 
 ## Claude Code Documentation
