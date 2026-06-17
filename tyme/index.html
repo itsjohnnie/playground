@@ -125,21 +125,15 @@
   }
   .watch-brand {
     font-family: "Inter", sans-serif;
-    font-size: 26px;
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
     line-height: 1;
     color: var(--label);
+    opacity: 0.8;
   }
-  .watch-model {
-    font-family: "Inter", sans-serif;
-    margin-top: 8px;
-    font-size: 10.5px;
-    letter-spacing: 0.26em;
-    text-transform: uppercase;
-    color: var(--label);
-    opacity: 0.6;
-  }
+  .watch-model { display: none; }
 
   .watch-wrap {
     position: relative;
@@ -462,6 +456,23 @@ function centerCap(color = "#111", r = 4) {
   return `<circle cx="150" cy="150" r="${r}" fill="${color}"/>`;
 }
 
+/* Sunray dial: a smooth conic-style sweep approximated with many fine wedges,
+   each interpolated between a dark and a light tone by cos(lobes·θ). Produces a
+   continuous radial sheen (no banding) and a beautiful spread of midtones.
+   `light`/`dark` are [r,g,b]. Returned as a <g class="sunray"> so it can be
+   gently spun by pointer movement. */
+function sunray(r, light, dark, lobes = 2, segs = 240) {
+  let s = "";
+  for (let i = 0; i < segs; i++) {
+    const a0 = (i / segs) * 360, a1 = ((i + 1) / segs) * 360, mid = (a0 + a1) / 2;
+    const f = 0.5 + 0.5 * Math.cos(mid * Math.PI / 180 * lobes);
+    const c = light.map((L, k) => Math.round(dark[k] + (L - dark[k]) * f));
+    const [x0, y0] = P(a0, r), [x1, y1] = P(a1, r);
+    s += `<path d="M150 150 L${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="rgb(${c[0]},${c[1]},${c[2]})"/>`;
+  }
+  return `<g class="sunray">${s}</g>`;
+}
+
 /* shared <defs> for metallic strokes */
 function steelDefs(id) {
   return `<defs>
@@ -552,7 +563,7 @@ function speedmaster() {
   let tachNums = "";
   for (const T of Ts) {
     let ang = 21600 / T; if (ang >= 360) ang -= 360;   // 60 -> top
-    const [x, y] = P(ang, 135);
+    const [x, y] = P(ang, 136);
     tachNums += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Figtree, sans-serif" font-weight="500" font-size="8.5" fill="${tach}"
       text-anchor="middle" dominant-baseline="central">${T}</text>`;
   }
@@ -561,14 +572,14 @@ function speedmaster() {
   let markers = "";
   for (const h of [1,2,3,4,5,7,8,9,10,11]) {
     const ang = h * 30;
-    const [x, y] = P(ang, 97);
+    const [x, y] = P(ang, 104);
     markers += `<rect x="${(x-2.6).toFixed(2)}" y="${(y-10.5).toFixed(2)}" width="5.2" height="21" rx="1"
       fill="${lume}" stroke="#8c8c8c" stroke-width="0.5" transform="rotate(${ang} ${x.toFixed(2)} ${y.toFixed(2)})"/>`;
   }
-  markers += `<rect x="143" y="46" width="4.2" height="21" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>
-              <rect x="152.8" y="46" width="4.2" height="21" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
+  markers += `<rect x="143" y="35.5" width="4.2" height="21" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>
+              <rect x="152.8" y="35.5" width="4.2" height="21" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
   // 6 o'clock baton — shorter so it clears the 12-hour subdial below it
-  markers += `<rect x="147.4" y="239" width="5.2" height="19" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
+  markers += `<rect x="147.4" y="245" width="5.2" height="19" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
 
   // ---- minute / second track on the dial: fine 1/5 railroad, longer at
   //      the minutes, longest every five ----
@@ -626,17 +637,25 @@ function speedmaster() {
     <path fill-rule="evenodd" clip-rule="evenodd" d="M163.03 21.08L168.53 17.98C168.61 17.93 168.68 17.88 168.73 17.84C168.85 17.73 168.9 17.61 168.81 17.44C168.63 17.06 167.55 16.18 167.55 16.18C167.55 16.18 161.77 19.41 161.51 19.39C161.29 19.37 161.21 19.08 161.29 18.47C161.3 18.37 161.32 18.28 161.36 18.19C161.41 18.07 161.43 18.03 161.55 17.84L164.21 13.51C164.33 13.32 164.35 13.27 164.42 13.06C164.78 11.98 164.5 11.36 163.8 10.75C162.9 9.97002 160.65 8.61002 160.65 8.61002C160.65 8.61002 161.39 7.43002 161.67 6.87002C161.84 6.54002 161.84 6.41002 161.67 6.20002C161.51 6.00002 160.55 5.39002 160.38 5.39002C160.23 5.39002 160.11 5.49002 160 5.62002C159.3 6.50002 154.61 14.71 153.82 15.73C152.28 17.73 149.05 19.21 145.98 19.41C145.12 19.47 144.2 19.35 143.41 18.96C143.07 18.79 142.61 18.53 142.61 18.53L150.8 13.89C151 13.78 151.04 13.75 151.21 13.61C151.89 13.07 151.97 12.98 152.18 12.22C152.36 11.58 152.27 10.93 151.8 10.22C150.76 8.62002 148.02 8.30002 146.71 8.38002C143.72 8.57002 140.56 10.58 139.52 13.73C139.41 14.08 139.32 14.46 139.31 14.83C139.31 15.44 139.38 15.48 139.14 15.77C139 15.94 132.62 19.4 132.43 19.4C132.19 19.4 131.96 19.4 131.96 19.4C131.96 19.4 131.92 18.99 131.92 18.73C131.92 18.5 131.96 18.4 132 18.29C132.17 17.85 138.06 8.01002 138.23 7.90002C138.29 7.86002 138.35 7.83002 138.41 7.81002C138.5 7.78002 138.53 7.78002 138.76 7.78002H142.61C142.61 7.78002 143.41 6.63002 143.53 6.12002C143.56 5.98002 143.57 5.86002 143.57 5.86002H143.49V5.69002H139.53L142.42 0.93002H140.33C140.1 0.93002 140.06 0.95002 139.92 1.11002C139.81 1.23002 139.74 1.36002 139.66 1.51002C138.88 2.92002 137.15 5.69002 137.15 5.69002H133.58C133.35 5.69002 133.32 5.69002 133.23 5.72002C133.17 5.74002 133.11 5.77002 133.05 5.81002C132.88 5.94002 132.29 7.00002 132.15 7.41002C132.11 7.54002 132.13 7.65002 132.39 7.74002C132.48 7.77002 132.51 7.77002 132.74 7.77002H135.84C135.84 7.77002 133.26 12.36 132.71 13C132.56 13.17 132.45 13.27 132.29 13.41C131.97 13.69 129.76 14.94 129.56 14.96C129.38 14.97 129.2 14.96 129.2 14.96C129.2 14.96 129.21 14.52 129.2 14.16C129.15 12.91 128.27 11.06 127.4 10.2C127.05 9.86002 126.57 9.46002 126.57 9.46002C126.57 9.46002 128.24 7.89002 128.69 7.28002C128.84 7.08002 128.82 6.91002 128.65 6.70002C128.37 6.35002 127.58 5.63002 127.58 5.63002L113.95 18.89C113.79 19.05 113.76 19.07 113.67 19.08C113.24 19.13 113.17 18.8 113.24 18.37C113.25 18.28 113.27 18.19 113.31 18.11C113.36 18 113.38 17.97 113.49 17.77L118.87 8.46002H116.68C116.68 8.46002 116.02 9.33002 115.52 10.2C115.34 10.51 115.18 10.83 115.18 10.83C115.18 10.83 114.89 10.31 114.65 10C113.95 9.06002 112.02 8.20002 111.02 8.20002C110 8.20002 108.79 8.89002 108.05 9.58002C106.58 10.95 104.92 14.22 104.14 16.12C104.05 16.33 104.02 16.36 103.83 16.48C102.16 17.48 99.8201 18.9 98.7801 19.4C98.3701 19.6 97.8101 19.73 97.6901 19.21C97.6301 18.92 97.7301 18.57 97.8201 18.32C98.0101 17.77 98.9001 16.03 99.3201 15.4C100.44 13.7 102.37 11.82 101.49 9.89002C101.11 9.05002 100.46 8.60002 99.5601 8.47002C98.5301 8.32002 97.0701 9.04002 96.1001 9.56002C95.3901 9.94002 94.4401 10.5 94.4401 10.5C94.4401 10.5 94.3001 10.02 94.1801 9.72002C93.5801 8.22002 91.9901 7.91002 90.5801 8.49002C89.7801 8.83002 88.8001 9.49002 88.2501 9.63002C88.1801 9.65002 88.1101 9.66002 88.0801 9.63002C88.0501 9.60002 88.0801 9.53002 88.1201 9.44002C88.4101 8.89002 88.7701 8.63002 88.2801 8.46002C87.8901 8.32002 86.3901 8.46002 86.3901 8.46002L82.7401 15.1L81.6501 15.98L77.7601 18.64C77.5701 18.77 77.5301 18.79 77.3701 18.89C77.2501 18.96 77.1001 19 76.9701 19.03C76.4401 19.18 76.3801 19.16 76.4401 18.64C76.4601 18.45 76.4801 18.4 76.5801 18.2C78.8301 13.77 83.0901 5.37002 83.4001 4.95002C83.8201 4.38002 86.0701 0.41002 86.0701 0.23002C86.0701 0.17002 86.0701 0.10002 86.0701 0.10002H85.9901V0.0200195H83.9501L78.5301 10.34C78.5301 10.34 78.3201 9.99002 78.1501 9.75002C77.2701 8.56002 75.2101 8.00002 73.8901 8.41002C72.3501 8.89002 71.2801 10.42 70.4201 11.71C69.8101 12.63 68.9901 14.07 68.7901 14.59C68.3801 15.66 68.3901 15.89 67.7001 16.43C67.1901 16.83 64.0501 18.71 62.8501 19.19C61.3901 19.77 60.5501 19.62 59.1601 19.12C58.7201 18.96 58.3601 18.8 58.5001 18.53C58.5801 18.39 58.7901 18.27 59.0001 18.14C60.8601 17.04 62.8701 15.93 64.7401 14.85C66.0601 14.09 67.7301 12.96 67.3601 11.32C67.1501 10.39 66.2701 9.63002 65.4801 9.29002C63.5401 8.44002 61.9401 8.50002 59.8401 9.42002C57.7801 10.32 56.6401 11.47 55.7001 13.3C55.4401 13.81 55.1601 14.61 55.1601 14.89C55.1501 15.59 55.2501 15.67 54.5801 16.06C52.7601 17.11 49.3401 18.98 48.8101 19.17C47.8701 19.51 46.0301 19.63 44.7701 18.9C44.5001 18.75 44.1901 18.52 44.1901 18.52C44.1901 18.52 48.2001 16.32 50.5401 15.06C52.2201 14.15 53.5301 13.43 53.3401 11.74C53.1901 10.37 52.2701 9.68002 50.9901 9.20002C49.3401 8.58002 47.3901 8.73002 45.8201 9.26002C44.0601 9.85002 42.1901 11.39 41.5601 12.94C41.4501 13.21 40.9901 14.5 40.9801 14.95C40.9801 15.25 41.0501 15.59 40.9801 15.76C40.9501 15.84 40.8801 15.89 40.8101 15.94C40.3901 16.26 34.7201 19.23 34.5301 19.24C34.3301 19.24 34.1301 19.24 34.1301 19.24C34.1301 19.24 34.1101 18.79 34.1301 18.5C34.1701 17.91 34.6801 17.14 35.0701 16.55C36.4701 14.48 39.3701 11.78 37.9401 9.54002C37.2101 8.40002 36.1101 8.44002 34.7101 8.75002C34.5101 8.79002 34.3301 8.83002 34.1301 8.92002C33.5101 9.17002 32.6801 9.85002 32.2501 9.96002C32.2001 9.97002 32.1501 9.98002 32.1201 9.96002C32.1001 9.94002 32.1001 9.89002 32.1201 9.83002C32.3301 9.28002 32.7401 9.15002 32.4501 8.92002C32.3801 8.86002 32.3001 8.82002 32.1701 8.79002C31.6601 8.68002 30.4101 8.79002 30.4101 8.79002L28.4401 12.09L21.6201 16.36C21.6201 16.36 22.0501 17.49 22.3401 17.85C22.5101 18.07 22.6501 17.99 22.9101 17.83C23.3101 17.58 25.5401 15.95 26.1001 15.8C26.2101 15.77 26.2201 15.82 26.1801 16C26.1301 16.25 24.2701 19.42 22.5501 22.23C21.2401 24.36 19.8501 27.08 19.8501 27.08H21.9501C21.9501 27.08 29.4001 13.96 29.7701 13.59C29.9901 13.37 34.3601 10.98 34.9501 10.75C35.7501 10.44 36.4701 10.28 36.2901 11.24C36.0501 12.54 34.0101 14.7 33.3701 15.55C32.6901 16.45 31.9901 17.88 32.1201 19.14C32.3201 21.07 33.6101 21.62 35.1301 21.1C35.6701 20.92 40.1301 18.62 40.5601 18.3C40.9001 18.05 41.2301 17.78 41.4201 17.88C41.5501 17.95 41.7001 18.39 41.8501 18.72C42.3601 19.81 43.8201 20.77 44.9001 21.18C46.8401 21.92 48.7201 21.51 50.5801 20.55C52.1501 19.74 54.1901 18.35 55.2501 17.92C55.6201 17.77 55.5501 18 55.8501 18.76C56.2701 19.83 57.7401 20.74 58.7801 21.08C60.8501 21.75 62.7801 21.55 64.6601 20.48C65.9301 19.76 68.0701 18.35 68.0701 18.35C68.0701 18.35 68.4801 19.26 68.8001 19.77C69.6201 21.08 72.3701 21.92 73.8101 21.11C74.3701 20.79 74.7801 20.35 75.0701 20.45C75.2501 20.51 75.5401 20.76 75.7701 20.91C76.4701 21.34 77.4701 21.06 78.1501 20.62C78.8901 20.14 79.9401 19.2 80.3601 19.07C80.5001 19.03 80.5401 19.07 80.4901 19.27C80.3301 19.87 79.4001 21.41 79.4001 21.41H81.3601C81.3601 21.41 85.6501 13.53 86.0001 13.18C86.5301 12.67 89.3401 11.29 90.6801 10.67C91.3301 10.37 92.2301 10.02 92.3501 10.52C92.4001 10.7 92.3501 11.01 92.3101 11.25C92.2701 11.47 92.2601 11.52 92.1401 11.71C90.4501 14.6 87.9401 19.28 87.1301 20.4C86.9501 20.65 86.7701 20.97 86.7501 21.19C86.7501 21.25 86.7501 21.32 86.7501 21.32H86.9201V21.4H88.9401L93.4001 13.8C93.5101 13.61 93.5501 13.57 93.7201 13.42C95.1301 12.21 95.9001 11.93 98.1001 10.9C98.7001 10.62 99.4501 10.25 99.6301 10.76C99.7001 10.96 99.5701 11.24 99.4201 11.54C98.1201 14.08 96.0501 16.26 95.7001 18.79C95.4801 20.38 96.6201 21.51 98.0401 21.56C98.9401 21.59 99.6501 21.25 100.51 20.76C101.81 20.03 104.26 18.6 104.26 18.6C104.26 18.6 104.72 19.42 105.06 19.84C105.66 20.6 107.14 21.3 107.98 21.47C108.92 21.65 110.42 21.42 111.28 20.58C111.39 20.47 111.48 20.39 111.69 20.47C111.87 20.54 111.99 20.77 112.16 20.93C112.83 21.54 113.91 21.49 114.56 21.14C114.86 20.98 116.97 19.05 117.61 18.36C118.1 17.82 118.54 17.35 119.11 16.77C121.21 14.6 125.11 10.84 125.11 10.84C125.11 10.84 125.64 11.31 125.99 11.7C126.83 12.63 127.44 14.4 127.28 15.54C126.85 18.63 123.31 20.14 120.68 18.96C120.47 18.87 120.27 18.76 120.1 18.58C119.55 18.03 119.46 17.63 118.93 18C118.7 18.16 117.93 18.86 117.93 19.17C117.93 19.46 118.53 19.98 118.77 20.17C119.53 20.8 120.77 21.33 121.91 21.46C123.7 21.68 125.79 20.9 127.03 19.98C127.36 19.73 127.67 19.47 127.92 19.12C128.42 18.39 128.42 18.02 128.88 17.66C129.14 17.45 130.06 16.95 130.22 17.03C130.35 17.1 129.92 18.01 129.8 18.57C129.68 19.15 129.99 20.18 130.34 20.63C130.99 21.46 132.15 21.64 132.94 21.47C133.41 21.37 138.87 18 139.37 17.88C139.96 17.74 139.84 18.22 140.53 19.3C141.31 20.53 143.43 21.34 144.77 21.47C147.53 21.75 151.95 20.21 153.85 18.67C154.39 18.23 154.89 17.72 155.35 17.12C156.18 16.06 159.57 10.32 159.57 10.32C159.57 10.32 160.31 11.01 161.11 11.57C161.71 11.99 162.36 12.34 162.36 12.34C162.36 12.34 160.52 15.3 159.69 16.84C158.9 18.31 158.75 20.16 160.37 21.17C161.24 21.71 161.99 21.65 162.91 21.15C162.94 21.13 162.98 21.11 163.02 21.09L163.03 21.08ZM77.0801 12.33C77.2301 13.61 75.9501 15.45 75.5801 16.12C74.5001 18.06 73.9501 19.54 72.0001 19.38C70.6101 19.26 69.6601 18.11 69.8901 16.79C70.0701 15.76 72.4001 11.57 73.4801 10.82C74.3201 10.23 75.0601 10.06 75.9901 10.53C76.6601 10.87 76.9801 11.5 77.0801 12.33ZM113.51 12.36C113.6 12.77 113.37 13.58 113.3 13.78C113.16 14.17 111 17.75 110.53 18.37C110.09 18.94 109.52 19.36 108.71 19.38C107.67 19.41 106.72 18.77 106.27 17.89C105.98 17.33 106.03 16.79 106.2 16.21C106.42 15.46 108.27 12.08 109.33 11.16C109.93 10.64 110.84 10.2 111.56 10.37C112.09 10.49 112.96 11.05 113.23 11.53C113.37 11.79 113.47 12.15 113.51 12.37V12.36ZM57.5401 16.79C57.2601 16.93 57.1901 16.73 57.1601 16.54C57.0701 15.97 56.9901 15.95 57.0301 15.5C57.2301 13.53 58.7701 12.09 60.4101 11.27C61.6301 10.66 63.6901 10.31 65.1201 11.32C65.3201 11.46 65.5601 11.82 65.4601 12.05C65.4301 12.12 65.3601 12.17 65.2901 12.23C64.8201 12.61 61.7001 14.41 59.5301 15.66C58.7801 16.09 58.0401 16.53 57.5201 16.79H57.5401ZM51.3501 11.88C51.4101 12.19 51.3501 12.29 51.1701 12.39C49.3801 13.3 43.3101 16.85 43.1601 16.77C43.0401 16.7 42.8401 16.02 42.9101 15.39C43.0801 13.9 44.2501 12.41 45.3301 11.78C47.3301 10.62 49.0301 10.25 50.9101 11.34C51.0501 11.42 51.2901 11.62 51.3401 11.88H51.3501ZM149.87 11.64C149.93 11.95 149.87 12.05 149.69 12.15C147.9 13.06 141.83 16.61 141.68 16.53C141.56 16.46 141.36 15.78 141.43 15.15C141.6 13.66 142.77 12.17 143.85 11.54C145.85 10.38 147.55 10.01 149.43 11.1C149.57 11.18 149.81 11.38 149.86 11.64H149.87Z"/>
   </g>`;
 
+  // lance/spear hand: straight baton that flares to a spearhead and points,
+  // with the spear sitting almost at the very tip
+  const lance = (len, hw, sw, spear) => {
+    const tipY = 150 - len, shoulderY = tipY + spear, midY = shoulderY + 4, tailY = 162;
+    return `M150 ${tipY.toFixed(1)} L${(150 + sw).toFixed(1)} ${shoulderY.toFixed(1)} L${(150 + hw).toFixed(1)} ${midY.toFixed(1)} `
+      + `L${(150 + hw).toFixed(1)} ${tailY} L${(150 - hw).toFixed(1)} ${tailY} L${(150 - hw).toFixed(1)} ${midY.toFixed(1)} L${(150 - sw).toFixed(1)} ${shoulderY.toFixed(1)} Z`;
+  };
+
   return `<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${steelDefs('sp')}
     <defs>
       <radialGradient id="sp-dial" cx="50%" cy="40%" r="65%">
         <stop offset="0" stop-color="#0d0d0d"/><stop offset="0.7" stop-color="#070707"/><stop offset="1" stop-color="#000"/>
       </radialGradient>
-      <path id="sp-arc" d="${arc(135, 3, 40)}"/>
+      <path id="sp-arc" d="${arc(136, 3, 40)}"/>
     </defs>
     <circle cx="150" cy="150" r="149" fill="url(#steel-sp)"/>
     <circle cx="150" cy="150" r="145" fill="#0b0b0c"/>
     ${tachNums}
-    <text font-family="Figtree, sans-serif" font-weight="500" font-size="8.2" letter-spacing="1.4" fill="${tach}">
+    <text font-family="Figtree, sans-serif" font-weight="500" font-size="8.2" letter-spacing="1.4" fill="${tach}" dominant-baseline="central">
       <textPath href="#sp-arc" xlink:href="#sp-arc" startOffset="50%" text-anchor="middle">TACHYMÈTRE</textPath>
     </text>
     <circle cx="150" cy="150" r="127" fill="url(#steel-sp)"/>
@@ -648,17 +667,20 @@ function speedmaster() {
     ${subSec}${subMin}${subHr}
     <g class="hands">
       <g class="hand h-hour">
-        <rect x="146" y="90" width="8" height="66" rx="1.5" fill="#eef0f1" stroke="#8c8c8c" stroke-width="0.4"/>
-        <rect x="148" y="94" width="4" height="56" rx="1" fill="#cdc6ac"/>
+        <path d="${lance(60, 3.2, 4.6, 15)}" fill="#eef0f1" stroke="#8c8c8c" stroke-width="0.4"/>
+        <rect x="148.4" y="104" width="3.2" height="54" rx="1" fill="#cdc6ac"/>
       </g>
       <g class="hand h-min">
-        <rect x="147" y="56" width="6" height="100" rx="1.5" fill="#eef0f1" stroke="#8c8c8c" stroke-width="0.4"/>
-        <rect x="148.5" y="60" width="3" height="92" rx="1" fill="#cdc6ac"/>
+        <path d="${lance(95, 2.8, 4.0, 15)}" fill="#eef0f1" stroke="#8c8c8c" stroke-width="0.4"/>
+        <rect x="148.6" y="70" width="2.8" height="88" rx="1" fill="#cdc6ac"/>
       </g>
       <g class="hand h-sec">
-        <line x1="150" y1="168" x2="150" y2="52" stroke="${lume}" stroke-width="1.3"/>
+        <line x1="150" y1="172" x2="150" y2="58" stroke="${lume}" stroke-width="0.9"/>
+        <path d="M150 48 L152 62 L150 68 L148 62 Z" fill="${lume}"/>
+        <circle cx="150" cy="176" r="3.3" fill="${lume}"/>
       </g>
-      ${centerCap("#0a0a0a", 3)}
+      <!-- a tiny pin-prick of a centre dot -->
+      ${centerCap("#0a0a0a", 1)}
     </g>
   </svg>`;
 }
@@ -696,12 +718,8 @@ function tissot() {
     }
     return d + "Z";
   };
-  // sunray sunburst — many fine wedges alternating two close blues
-  let sun = "";
-  for (let i = 0; i < 120; i++) {
-    const [x0, y0] = P(i * 3, 122), [x1, y1] = P((i + 1) * 3, 122);
-    sun += `<path d="M150 150 L${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${i % 2 ? '#235994' : '#21548b'}"/>`;
-  }
+  // smooth conic-style sunray sweep through a range of blues
+  const sun = sunray(122, [0x2f, 0x72, 0xb8], [0x0b, 0x24, 0x49], 2);
 
   return `<svg viewBox="0 0 300 300">${steelDefs('prx')}
     <defs>
@@ -1056,7 +1074,7 @@ function citizen() {
       </g>`;
     } else {
       const [x1, y1] = P(ang, 112), [x2, y2] = P(ang, 109.5);
-      track += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="rgba(225,242,232,0.6)" stroke-width="0.7"/>`;
+      track += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="rgba(225,242,232,0.7)" stroke-width="0.95"/>`;
     }
   }
   // subtle step delimiting the inner dial level
@@ -1092,10 +1110,10 @@ function citizen() {
 
   return `<svg viewBox="0 0 300 300">${steelDefs('cz')}
     <defs>
-      <radialGradient id="cz-dial" cx="50%" cy="42%" r="64%">
-        <stop offset="0" stop-color="#1f9149"/>
-        <stop offset="0.55" stop-color="#15723a"/>
-        <stop offset="1" stop-color="#093c1d"/>
+      <radialGradient id="cz-sheen" cx="50%" cy="44%" r="63%">
+        <stop offset="0" stop-color="#46cb7b" stop-opacity="0.30"/>
+        <stop offset="0.5" stop-color="#0b4a24" stop-opacity="0"/>
+        <stop offset="1" stop-color="#03210e" stop-opacity="0.62"/>
       </radialGradient>
       <linearGradient id="cz-rim" x1="0" y1="0" x2="1" y2="1">
         <stop offset="0" stop-color="#cdd4da"/><stop offset=".5" stop-color="#99a1a8"/><stop offset="1" stop-color="#c2c9cf"/>
@@ -1131,15 +1149,34 @@ function citizen() {
     <circle cx="150" cy="150" r="140" fill="url(#steel-cz)" stroke="#71777d" stroke-width="1"/>
     <circle cx="150" cy="150" r="125" fill="#c3cace"/>
     <circle cx="150" cy="150" r="121" fill="#0a3a1c"/>
-    <circle cx="150" cy="150" r="120" fill="url(#cz-dial)"/>
+    <circle cx="150" cy="150" r="120" fill="#0e4d26"/>
+    <g clip-path="url(#cz-clip)">
+      ${sunray(124, [0x35, 0xb0, 0x64], [0x06, 0x33, 0x19], 2)}
+      <circle cx="150" cy="150" r="120" fill="url(#cz-sheen)"/>
+    </g>
     ${track}${innerRing}${markers}
-    <text x="150" y="103" font-family="Domine, serif" font-weight="700" font-size="13" letter-spacing="1.5" fill="#f3f7f4" text-anchor="middle">CITIZEN</text>
-    <text x="150" y="200" font-family="${sans}" font-weight="500" font-size="8.5" letter-spacing="2" fill="#eaf3ec" text-anchor="middle">AUTOMATIC</text>
-    <!-- date window just inboard (left) of the 3 o'clock marker, with a faux-cyclops magnifier -->
-    <rect x="192" y="140.5" width="27" height="19" rx="1.8" fill="#eef3ee" stroke="#0a3a1c" stroke-width="0.6"/>
-    <text x="205.5" y="150.5" font-family="${sans}" font-weight="700" font-size="13.5" fill="#10331d" text-anchor="middle" dominant-baseline="central">${day}</text>
-    <rect x="192" y="140.5" width="27" height="19" rx="1.8" fill="url(#cz-glass)"/>
-    <rect x="192" y="140.5" width="27" height="19" rx="1.8" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.7"/>
+    <text x="150" y="103" font-family="Domine, serif" font-weight="700" font-size="13" letter-spacing="0.4" fill="#f3f7f4" text-anchor="middle">CITIZEN</text>
+    <text x="150" y="200" font-family="${sans}" font-weight="500" font-size="8.5" letter-spacing="0.8" fill="#eaf3ec" text-anchor="middle">AUTOMATIC</text>
+    <!-- classic cyclops date lens, just inboard of the 3 o'clock marker:
+         magnified digit, edge refraction, a domed glass highlight, specular
+         glare, and chromatic aberration at the rim/glyph edges -->
+    <rect x="194.5" y="143.5" width="21" height="13" rx="1.4" fill="#eef3ee"/>
+    <clipPath id="cz-lens"><circle cx="205" cy="150" r="12.7"/></clipPath>
+    <circle cx="205" cy="150" r="12.7" fill="#eef3ee"/>
+    <g clip-path="url(#cz-lens)">
+      <text x="204.1" y="150.4" font-family="${sans}" font-weight="700" font-size="17" fill="#ff2d55" opacity="0.55" text-anchor="middle" dominant-baseline="central">${day}</text>
+      <text x="205.9" y="150.4" font-family="${sans}" font-weight="700" font-size="17" fill="#2d7bff" opacity="0.55" text-anchor="middle" dominant-baseline="central">${day}</text>
+      <text x="205" y="150.4" font-family="${sans}" font-weight="700" font-size="17" fill="#10331d" text-anchor="middle" dominant-baseline="central">${day}</text>
+      <!-- refraction: glass bends light into a darker ring just inside the edge -->
+      <circle cx="205" cy="150" r="12.7" fill="none" stroke="rgba(0,0,0,0.30)" stroke-width="2.6"/>
+    </g>
+    <!-- domed glass body + specular glare -->
+    <circle cx="205" cy="150" r="12.7" fill="url(#cz-glass)"/>
+    <ellipse cx="200.4" cy="145" rx="4.4" ry="2.6" fill="#ffffff" opacity="0.5"/>
+    <!-- glass edge with red/blue chromatic fringe -->
+    <circle cx="205" cy="150" r="12.7" fill="none" stroke="#e2eae4" stroke-width="0.8"/>
+    <circle cx="205" cy="150" r="13.2" fill="none" stroke="#ff3b5c" stroke-opacity="0.22" stroke-width="0.8"/>
+    <circle cx="205" cy="150" r="13.7" fill="none" stroke="#3b7bff" stroke-opacity="0.18" stroke-width="0.8"/>
     <g class="hands">
       ${hand("h-hour", 52, 5)}
       ${hand("h-min", 82, 4)}
@@ -1193,8 +1230,8 @@ function mountWatch(animate = true) {
   const w = WATCHES[state.index];
   wrap.innerHTML = w.render();
   wrap.dataset.shape = w.shape || "round";
-  brandEl.textContent = w.brand;
-  modelEl.textContent = w.model;
+  brandEl.textContent = `${w.brand} ${w.model}`;
+  modelEl.textContent = "";
 
   // Hands sit proud of the dial, so they cast a soft shadow back onto the
   // face. We do this with a real in-SVG feDropShadow on the static hands
@@ -1252,6 +1289,19 @@ window.addEventListener("keydown", e => {
   if (e.key === "ArrowRight") { state.index = (state.index + 1) % WATCHES.length; mountWatch(); }
   else if (e.key === "ArrowLeft") { state.index = (state.index - 1 + WATCHES.length) % WATCHES.length; mountWatch(); }
 });
+
+/* Pointer parallax: gently spin the sunray sheen so the light "follows" the
+   cursor, the way a real sunburst dial shifts as you tilt it. */
+let sunDeg = 0, sunRAF = 0;
+function applySunray() {
+  sunRAF = 0;
+  document.querySelectorAll(".sunray").forEach(g =>
+    g.setAttribute("transform", `rotate(${sunDeg.toFixed(2)} 150 150)`));
+}
+window.addEventListener("pointermove", e => {
+  sunDeg = (e.clientX / window.innerWidth - 0.5) * 20 + (e.clientY / window.innerHeight - 0.5) * 8;
+  if (!sunRAF) sunRAF = requestAnimationFrame(applySunray);
+}, { passive: true });
 
 /* ---------------- The clock (visitor's local time) ---------------- */
 const zoneEl = document.getElementById("zone");
