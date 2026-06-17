@@ -801,9 +801,10 @@ function timex() {
     <text x="150" y="97" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="1.5" fill="${lume}" text-anchor="middle">TIMEX</text>
     <text x="150" y="108" font-family="${sans}" font-weight="700" font-size="9.5" letter-spacing="-0.2" fill="${lume}" text-anchor="middle">EXPEDITION</text>
     <text x="150" y="196" font-family="${sans}" font-weight="500" font-size="8" letter-spacing="1.6" fill="${lume}" text-anchor="middle">SOLAR POWERED</text>
-    <!-- date window at 3 -->
-    <rect x="184" y="141" width="22" height="18" rx="1" fill="#e9e7df" stroke="#000" stroke-width="0.6"/>
-    <text x="195" y="150.5" font-family="${sans}" font-weight="700" font-size="11" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
+    <!-- date window at 3 with a steel rim matching the case -->
+    <rect x="182" y="139" width="26" height="22" rx="2.5" fill="url(#steel-tx)" stroke="#7f858b" stroke-width="0.5"/>
+    <rect x="184.5" y="141.4" width="21" height="17.2" rx="1" fill="#eceae3" stroke="#5a5a5a" stroke-width="0.4"/>
+    <text x="195" y="150.6" font-family="${sans}" font-weight="700" font-size="11" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
     <g class="hands">
       <path class="hand h-hour" d="${hand(54, 7.5)}" fill="${lume}" stroke="#2a2a2a" stroke-width="0.6"/>
       <path class="hand h-min" d="${hand(86, 5.5)}" fill="${lume}" stroke="#2a2a2a" stroke-width="0.6"/>
