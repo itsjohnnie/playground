@@ -166,7 +166,8 @@
   .no-shadow .hands { filter: none; }
   .no-shadow .watch-wrap::after { opacity: 0.25; }
 
-  .hand { transform-box: fill-box; transform-origin: center; }
+  /* hands pivot on the true dial centre (150,150) via the SVG transform
+     attribute set in JS — not a per-hand bounding-box centre */
   .h-hour, .h-min, .h-sec { transition: none; }
 
   /* fade/scale transition when switching watches */
@@ -343,6 +344,17 @@
     .selector { padding: 16px 0 4px; }
   }
 </style>
+<script>
+  /* set the colour scheme before first paint to avoid a flash */
+  (function () {
+    try {
+      var t = localStorage.getItem("tp_theme");
+      if (t !== "light" && t !== "dark")
+        t = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body data-init>
   <div class="app">
@@ -548,9 +560,8 @@ function vacheron() {
     const ang = h * 30;
     const [x, y] = P(ang, 110);
     if (h === 0) {
-      markers += `<rect x="${x-1.4}" y="${y-12}" width="2.8" height="11" fill="#b9974f"/>
-                  <rect x="${x-6}" y="${y-12}" width="2.4" height="11" fill="#b9974f"/>
-                  <rect x="${x+3.6}" y="${y-12}" width="2.4" height="11" fill="#b9974f"/>`;
+      // a single bolder, longer baton marks 12
+      markers += `<rect x="${x-1.9}" y="${y-11}" width="3.8" height="20" rx="0.8" fill="#b9974f"/>`;
     } else {
       markers += `<rect x="${x-1.3}" y="${y-9}" width="2.6" height="16" rx="0.6" fill="#b9974f"
         transform="rotate(${ang} ${x} ${y})"/>`;
@@ -559,8 +570,8 @@ function vacheron() {
   // minute dots
   let dots = "";
   for (let i = 0; i < 60; i++) { const [x,y]=P(i*6,124); dots += `<circle cx="${x}" cy="${y}" r="${i%5===0?0:0.7}" fill="#9a7a33"/>`; }
-  // dauphine hand path (faceted)
-  const dauphine = (len, w) => `M150 150 L${150-w} ${150-len*0.45} L150 ${150-len} L${150+w} ${150-len*0.45} Z`;
+  // dauphine hand path (faceted) — long & tapered, widest near the base
+  const dauphine = (len, w) => `M150 150 L${150-w} ${150-len*0.38} L150 ${150-len} L${150+w} ${150-len*0.38} Z`;
   return `<svg viewBox="0 0 300 300">${steelDefs('vc')}
     <circle cx="150" cy="150" r="140" fill="url(#gold-vc)"/>
     <circle cx="150" cy="150" r="128" fill="#1c1813"/>
@@ -574,9 +585,9 @@ function vacheron() {
     <text x="150" y="118" font-family="Fraunces, serif" font-style="italic" font-size="11" fill="#3a3025" text-anchor="middle">Vacheron Constantin</text>
     <text x="150" y="200" font-family="Fraunces, serif" font-size="7" fill="#7a6a4a" text-anchor="middle" letter-spacing="2">GENÈVE</text>
     <g class="hands">
-      <path class="hand h-hour" d="${dauphine(58, 6)}" fill="#a8842f"/>
-      <path class="hand h-min" d="${dauphine(94, 5)}" fill="#a8842f"/>
-      <line class="hand h-sec" x1="150" y1="164" x2="150" y2="56" stroke="#8a6a28" stroke-width="1"/>
+      <path class="hand h-hour" d="${dauphine(66, 6.5)}" fill="#a8842f"/>
+      <path class="hand h-min" d="${dauphine(102, 5.5)}" fill="#a8842f"/>
+      <line class="hand h-sec" x1="150" y1="164" x2="150" y2="52" stroke="#8a6a28" stroke-width="1"/>
       ${centerCap("#a8842f", 3.5)}
     </g>
   </svg>`;
@@ -709,11 +720,16 @@ const store = {
   get(k, d) { try { return localStorage.getItem("tp_" + k) ?? d; } catch { return d; } },
   set(k, v) { try { localStorage.setItem("tp_" + k, v); } catch {} },
 };
+// Respect the OS colour scheme until the visitor explicitly picks one.
+const mql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+function systemTheme() { return mql && mql.matches ? "dark" : "light"; }
+const storedTheme = store.get("theme", null);
+let themeUserSet = storedTheme === "light" || storedTheme === "dark";
 const state = {
   index: +store.get("index", 0) || 0,
   movement: store.get("movement", "sweep"),
   shadow: store.get("shadow", "on"),
-  theme: store.get("theme", "light"),
+  theme: themeUserSet ? storedTheme : systemTheme(),
 };
 
 const wrap = document.getElementById("wrap");
@@ -772,7 +788,7 @@ function localZoneLabel(now) {
   const date = now.toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short" });
   return city ? `${date} · ${city}` : date;
 }
-function setRot(el, deg) { if (el) el.style.transform = `rotate(${deg}deg)`; }
+function setRot(el, deg) { if (el) el.setAttribute("transform", `rotate(${deg} 150 150)`); }
 
 function tick() {
   const now = new Date();
@@ -803,7 +819,22 @@ function loop() {
 
 /* ---------------- Settings + nav wiring ---------------- */
 function applyShadow() { document.body.classList.toggle("no-shadow", state.shadow === "off"); }
-function applyTheme() { document.documentElement.setAttribute("data-theme", state.theme); }
+function applyTheme() {
+  document.documentElement.setAttribute("data-theme", state.theme);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", state.theme === "dark" ? "#121110" : "#ece8e1");
+}
+
+// follow the OS scheme live, unless the visitor overrode it
+if (mql) {
+  const onScheme = () => {
+    if (themeUserSet) return;
+    state.theme = systemTheme();
+    applyTheme();
+    syncSegs();
+  };
+  mql.addEventListener ? mql.addEventListener("change", onScheme) : mql.addListener(onScheme);
+}
 
 function syncSegs() {
   document.querySelectorAll(".seg").forEach(seg => {
@@ -821,7 +852,7 @@ document.querySelectorAll(".seg").forEach(seg => {
     store.set(key, btn.dataset.val);
     syncSegs();
     if (key === "shadow") applyShadow();
-    if (key === "theme") applyTheme();
+    if (key === "theme") { themeUserSet = true; applyTheme(); }
     if (key === "movement") { /* loop adapts automatically */ }
   });
 });
