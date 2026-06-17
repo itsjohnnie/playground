@@ -76,11 +76,19 @@
     align-items: baseline;
     justify-content: flex-end;
   }
+  .clock { text-align: right; }
   .clock-digital {
-    font-size: 12px;
+    font-size: 13px;
     letter-spacing: 0.14em;
-    color: var(--muted);
+    color: var(--ink);
     font-variant-numeric: tabular-nums;
+  }
+  .clock-zone {
+    margin-top: 4px;
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
   @media (min-width: 760px) {
     .app { padding-bottom: 0; }
@@ -136,6 +144,21 @@
     transition: opacity 0.4s ease;
   }
   .watch-wrap svg { width: 100%; height: 100%; display: block; }
+  /* sapphire crystal glare — a soft off-axis reflection for realism */
+  .watch-wrap::before {
+    content: "";
+    position: absolute;
+    inset: 4%;
+    pointer-events: none;
+    z-index: 2;
+    border-radius: 22%;
+    background:
+      radial-gradient(75% 55% at 30% 16%, rgba(255,255,255,0.22), rgba(255,255,255,0) 46%),
+      linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 26%);
+    mix-blend-mode: screen;
+    opacity: 0.9;
+  }
+  html[data-theme="dark"] .watch-wrap::before { opacity: 0.7; }
 
   /* the accurate-shadow trick: shadow lives on the static hands group,
      so all hands throw a shadow in ONE consistent light direction */
@@ -324,7 +347,10 @@
 <body data-init>
   <div class="app">
     <header>
-      <div class="clock-digital" id="digital">--:--:--</div>
+      <div class="clock">
+        <div class="clock-digital" id="digital">--:--:--</div>
+        <div class="clock-zone" id="zone">your local time</div>
+      </div>
     </header>
 
     <section class="stage">
@@ -738,7 +764,14 @@ wrap.addEventListener("touchend", e => {
   touchX = null;
 });
 
-/* ---------------- The clock ---------------- */
+/* ---------------- The clock (visitor's local time) ---------------- */
+const zoneEl = document.getElementById("zone");
+function localZoneLabel(now) {
+  let city = "";
+  try { city = (Intl.DateTimeFormat().resolvedOptions().timeZone || "").split("/").pop().replace(/_/g, " "); } catch {}
+  const date = now.toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short" });
+  return city ? `${date} · ${city}` : date;
+}
 function setRot(el, deg) { if (el) el.style.transform = `rotate(${deg}deg)`; }
 
 function tick() {
@@ -759,6 +792,7 @@ function tick() {
 
   const pad = n => String(n).padStart(2, "0");
   digital.textContent = `${pad(h)}:${pad(m)}:${pad(s)}`;
+  zoneEl.textContent = localZoneLabel(now);
 }
 
 function loop() {
