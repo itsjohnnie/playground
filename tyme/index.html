@@ -577,6 +577,8 @@ function speedmaster() {
   }
   markers += `<rect x="143" y="44" width="4.2" height="23" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>
               <rect x="152.8" y="44" width="4.2" height="23" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
+  // 6 o'clock baton — shorter so it clears the 12-hour subdial below it
+  markers += `<rect x="147.4" y="238" width="5.2" height="20" rx="1" fill="${lume}" stroke="#8c8c8c" stroke-width="0.5"/>`;
 
   // ---- minute / second track on the dial: fine 1/5 railroad, longer at
   //      the minutes, longest every five ----
@@ -598,12 +600,12 @@ function speedmaster() {
     s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#3c3c3c" stroke-width="0.8"/>`;
     for (let i = 0; i < count; i++) {
       const a = (i / count) * 360, maj = i % majorEvery === 0;
-      const [x1, y1] = P(a, R - 1, cx, cy), [x2, y2] = P(a, R - (maj ? 5 : 3), cx, cy);
-      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#9c9c9c" stroke-width="${maj ? 0.8 : 0.4}"/>`;
+      const [x1, y1] = P(a, R - 1, cx, cy), [x2, y2] = P(a, R - (maj ? 7 : 3), cx, cy);
+      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#9c9c9c" stroke-width="${maj ? 0.9 : 0.4}"/>`;
     }
     for (const n of nums) {
-      const [x, y] = P(n.a, R - 9, cx, cy);
-      s += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Sora, sans-serif" font-size="7.5" fill="#dcdcdc"
+      const [x, y] = P(n.a, R - 10, cx, cy);
+      s += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Sora, sans-serif" font-size="8.5" fill="#dcdcdc"
         text-anchor="middle" dominant-baseline="central">${n.t}</text>`;
     }
     const [hx, hy] = P(0, R - 6, cx, cy), [tx, ty] = P(180, 5, cx, cy);
@@ -649,7 +651,7 @@ function speedmaster() {
     ${track}${markers}
     ${omega}
     ${speed}
-    <text x="150" y="120" font-family="Sora, sans-serif" font-weight="500" font-size="5.4" letter-spacing="2.2" fill="${lume}" text-anchor="middle">PROFESSIONAL</text>
+    <text x="150" y="120" font-family="Sora, sans-serif" font-weight="500" font-size="5.4" letter-spacing="1" fill="${lume}" text-anchor="middle">PROFESSIONAL</text>
     ${subSec}${subMin}${subHr}
     <g class="hands">
       <g class="hand h-hour">
@@ -887,7 +889,7 @@ function bellross() {
     </defs>
     <rect x="16" y="16" width="268" height="268" rx="40" fill="url(#br-case)"/>
     <rect x="16" y="16" width="268" height="268" rx="40" fill="none" stroke="#2c2e24" stroke-width="1.5"/>
-    ${[[40,40],[260,40],[40,260],[260,260]].map(([x,y])=>{
+    ${[[44,44],[256,44],[44,256],[256,256]].map(([x,y])=>{
       const grad = y < 150 ? "br-screw-t" : "br-screw-b";   // top screws lit lighter
       const slot = (x-150)*(y-150) > 0 ? 45 : -45;           // slot aligned toward centre
       return `<circle cx="${x}" cy="${y}" r="11.5" fill="#1f201a"/>
@@ -897,7 +899,7 @@ function bellross() {
     <rect x="280" y="138" width="14" height="24" rx="2" fill="#1c1d16"/>
     ${Array.from({length:5}).map((_,k)=>`<line x1="${281+k*2.8}" y1="139" x2="${281+k*2.8}" y2="161" stroke="#3a3b2e" stroke-width="0.8"/>`).join("")}
     <!-- round bezel nearly filling the square; only corners show behind it -->
-    <circle cx="150" cy="150" r="135" fill="#41442f"/>
+    <circle cx="150" cy="150" r="132" fill="#41442f"/>
     <circle cx="150" cy="150" r="127" fill="url(#br-dial)"/>
     <circle cx="150" cy="150" r="127" fill="none" stroke="#23241c" stroke-width="1"/>
     ${ticks}${bars}${numerals}
