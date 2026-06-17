@@ -66,20 +66,29 @@
     position: relative;
     z-index: 1;
     width: 100%;
+    max-width: 520px;
+    margin-inline: auto;
     height: 100dvh;
     display: flex;
     flex-direction: column;
-    padding: 0 22px max(96px, calc(72px + env(safe-area-inset-bottom)));
+    /* room for the top clock + bottom dock on mobile */
+    padding: max(58px, calc(40px + env(safe-area-inset-top))) 22px max(96px, calc(72px + env(safe-area-inset-bottom)));
+  }
+  @media (min-width: 760px) {
+    .app { max-width: 640px; padding-top: 0; padding-bottom: 64px; }
   }
 
-  /* ---------- Header ---------- */
-  header {
-    padding-top: max(28px, env(safe-area-inset-top));
-    display: flex;
-    align-items: baseline;
-    justify-content: flex-end;
+  /* ---------- Clock (time + location) — top-centred on mobile,
+     bottom-centred on desktop ---------- */
+  .clock {
+    position: fixed;
+    left: 0; right: 0;
+    margin-inline: auto;
+    text-align: center;
+    top: max(22px, env(safe-area-inset-top));
+    z-index: 15;
+    pointer-events: none;
   }
-  .clock { text-align: right; }
   .clock-digital {
     font-size: 13px;
     letter-spacing: 0.14em;
@@ -94,7 +103,7 @@
     color: var(--muted);
   }
   @media (min-width: 760px) {
-    .app { padding-bottom: 0; }
+    .clock { top: auto; bottom: 26px; }
   }
 
   /* ---------- Stage ---------- */
@@ -113,27 +122,31 @@
     height: 56px;
   }
   .watch-brand {
-    font-family: var(--font-sans);
+    font-family: "Inter", sans-serif;
     font-size: 26px;
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1;
+    color: #fafafa;
   }
   .watch-model {
+    font-family: "Inter", sans-serif;
     margin-top: 8px;
     font-size: 10.5px;
     letter-spacing: 0.26em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: #fafafa;
+    opacity: 0.6;
   }
 
   .watch-wrap {
     position: relative;
-    width: min(78vw, 320px);
+    width: min(80vw, 330px);
     aspect-ratio: 1;
     display: grid;
     place-items: center;
   }
+  @media (min-width: 760px) { .watch-wrap { width: 440px; } }
   /* ground shadow under the case */
   .watch-wrap::after {
     content: "";
@@ -365,12 +378,10 @@
 </head>
 <body data-init>
   <div class="app">
-    <header>
-      <div class="clock">
-        <div class="clock-digital" id="digital">--:--:--</div>
-        <div class="clock-zone" id="zone">your local time</div>
-      </div>
-    </header>
+    <div class="clock">
+      <div class="clock-digital" id="digital">--:--:--</div>
+      <div class="clock-zone" id="zone">your local time</div>
+    </div>
 
     <section class="stage">
       <div class="watch-meta" id="meta">
@@ -871,7 +882,7 @@ function bellross() {
       const slot = (x-150)*(y-150) > 0 ? 45 : -45;           // slot aligned toward centre
       return `<circle cx="${x}" cy="${y}" r="11.5" fill="#1f201a"/>
       <circle cx="${x}" cy="${y}" r="9.6" fill="url(#${grad})" stroke="#565b5f" stroke-width="0.8"/>
-      <line x1="${x-6.4}" y1="${y}" x2="${x+6.4}" y2="${y}" stroke="#4b5054" stroke-width="1.8" stroke-linecap="round" transform="rotate(${slot} ${x} ${y})"/>`;
+      <line x1="${x-9.4}" y1="${y}" x2="${x+9.4}" y2="${y}" stroke="#4b5054" stroke-width="1.8" stroke-linecap="butt" transform="rotate(${slot} ${x} ${y})"/>`;
     }).join("")}
     <rect x="280" y="138" width="14" height="24" rx="2" fill="#1c1d16"/>
     ${Array.from({length:5}).map((_,k)=>`<line x1="${281+k*2.8}" y1="139" x2="${281+k*2.8}" y2="161" stroke="#3a3b2e" stroke-width="0.8"/>`).join("")}
@@ -883,7 +894,7 @@ function bellross() {
     <!-- Bell & Ross logo: tight, large, circled ampersand pushed up -->
     <text x="137" y="119" font-family="${sans}" font-weight="500" font-size="15" fill="${lume}" text-anchor="end">Bell</text>
     <circle cx="150" cy="114" r="10" fill="none" stroke="${lume}" stroke-width="1.3"/>
-    <text x="150" y="111" font-family="${sans}" font-weight="600" font-size="14" fill="${lume}" text-anchor="middle" dominant-baseline="central">&amp;</text>
+    <text x="150" y="113.5" font-family="${sans}" font-weight="600" font-size="14" fill="${lume}" text-anchor="middle" dominant-baseline="central">&amp;</text>
     <text x="163" y="119" font-family="${sans}" font-weight="500" font-size="15" fill="${lume}" text-anchor="start">Ross</text>
     <text x="150" y="181" font-family="${sans}" font-weight="500" font-size="9" letter-spacing="0.4" fill="${lume}" text-anchor="middle">BR03-92</text>
     <text x="150" y="193" font-family="${sans}" font-weight="400" font-size="7.5" letter-spacing="0.6" fill="${lume}" opacity="0.78" text-anchor="middle">MILITARY TYPE</text>
@@ -1070,6 +1081,12 @@ wrap.addEventListener("touchend", e => {
     mountWatch();
   }
   touchX = null;
+});
+
+/* arrow keys switch watches */
+window.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") { state.index = (state.index + 1) % WATCHES.length; mountWatch(); }
+  else if (e.key === "ArrowLeft") { state.index = (state.index - 1 + WATCHES.length) % WATCHES.length; mountWatch(); }
 });
 
 /* ---------------- The clock (visitor's local time) ---------------- */
