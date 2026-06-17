@@ -7,7 +7,7 @@
 <title>tyme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <!-- Google Sans Flex — the UI chrome font, shared with /flyy and /dott -->
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
@@ -546,8 +546,8 @@ function speedmaster() {
   for (const T of Ts) {
     let ang = 21600 / T; if (ang >= 360) ang -= 360;   // 60 -> top
     const [x, y] = P(ang, 127);
-    tachNums += `<text x="${x}" y="${y}" font-family="IBM Plex Mono" font-size="8" fill="${tach}"
-      text-anchor="middle" dominant-baseline="central" transform="rotate(${ang.toFixed(1)} ${x.toFixed(2)} ${y.toFixed(2)})">${T}</text>`;
+    tachNums += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Inter, sans-serif" font-weight="500" font-size="8" fill="${tach}"
+      text-anchor="middle" dominant-baseline="central">${T}</text>`;
   }
 
   // ---- applied baton hour markers (skip 3/6/9 subdials, double at 12) ----
@@ -582,7 +582,7 @@ function speedmaster() {
     }
     for (const n of nums) {
       const [x, y] = P(n.a, R - 9, cx, cy);
-      s += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="IBM Plex Mono" font-size="7.5" fill="#dcdcdc"
+      s += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Inter, sans-serif" font-size="7.5" fill="#dcdcdc"
         text-anchor="middle" dominant-baseline="central">${n.t}</text>`;
     }
     const [hx, hy] = P(0, R - 6, cx, cy), [tx, ty] = P(180, 5, cx, cy);
@@ -884,7 +884,7 @@ function braun() {
   let numerals = "";
   for (let h = 1; h <= 12; h++) {
     const [x, y] = P(h * 30, 101);
-    numerals += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Arial, 'Helvetica Neue', sans-serif" font-weight="400" font-size="18"
+    numerals += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Inter, sans-serif" font-weight="400" font-size="18"
       letter-spacing="-0.5" fill="#3a3a3a" text-anchor="middle" dominant-baseline="central">${h}</text>`;
   }
 
