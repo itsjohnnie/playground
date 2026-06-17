@@ -163,11 +163,11 @@
   }
   html[data-theme="dark"] .watch-wrap::before { opacity: 0.7; }
 
-  /* the accurate-shadow trick: shadow lives on the static hands group,
-     so all hands throw a shadow in ONE consistent light direction */
-  .hands { filter: drop-shadow(2px 5px 3px rgba(0,0,0,0.34)); }
-  .no-shadow .hands { filter: none; }
-  .no-shadow .watch-wrap::after { opacity: 0.25; }
+  /* The hands sit slightly proud of the dial, so they always cast a soft
+     shadow back onto the face. The filter lives on the static hands group,
+     so every hand throws its shadow in ONE consistent light direction and
+     the shadow sweeps along as each hand rotates. */
+  .hands { filter: drop-shadow(1.6px 4px 2.6px rgba(0,0,0,0.42)); }
 
   /* hands pivot on the true dial centre (150,150) via the SVG transform
      attribute set in JS — not a per-hand bounding-box centre */
@@ -396,13 +396,6 @@
         <div class="seg" data-setting="movement">
           <button data-val="sweep"><i class="ph ph-wave-sine"></i>Sweep</button>
           <button data-val="tick"><i class="ph ph-metronome"></i>Tick</button>
-        </div>
-      </div>
-      <div class="ctl-row">
-        <div class="ctl-head"><h2>Shadows</h2></div>
-        <div class="seg" data-setting="shadow">
-          <button data-val="on"><i class="ph ph-sun"></i>On</button>
-          <button data-val="off"><i class="ph ph-circle"></i>Off</button>
         </div>
       </div>
       <div class="ctl-row">
@@ -905,7 +898,6 @@ let themeUserSet = storedTheme === "light" || storedTheme === "dark";
 const state = {
   index: +store.get("index", 0) || 0,
   movement: store.get("movement", "sweep"),
-  shadow: store.get("shadow", "on"),
   theme: themeUserSet ? storedTheme : systemTheme(),
 };
 
@@ -995,7 +987,6 @@ function loop() {
 }
 
 /* ---------------- Settings + nav wiring ---------------- */
-function applyShadow() { document.body.classList.toggle("no-shadow", state.shadow === "off"); }
 function applyTheme() {
   document.documentElement.setAttribute("data-theme", state.theme);
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -1028,7 +1019,6 @@ document.querySelectorAll(".seg").forEach(seg => {
     state[key] = btn.dataset.val;
     store.set(key, btn.dataset.val);
     syncSegs();
-    if (key === "shadow") applyShadow();
     if (key === "theme") { themeUserSet = true; applyTheme(); }
     if (key === "movement") { /* loop adapts automatically */ }
   });
@@ -1065,7 +1055,6 @@ function wake() {
 
 /* ---------------- Boot ---------------- */
 applyTheme();
-applyShadow();
 syncSegs();
 buildSelector();
 mountWatch(false);
