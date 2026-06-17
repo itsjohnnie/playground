@@ -147,21 +147,25 @@
     transition: opacity 0.4s ease;
   }
   .watch-wrap svg { width: 100%; height: 100%; display: block; }
-  /* sapphire crystal glare — a soft off-axis reflection for realism */
+  /* sapphire crystal glare — a soft off-axis reflection, shaped to match
+     each watch's silhouette so its edge follows the case (set via
+     data-shape in mountWatch) */
   .watch-wrap::before {
     content: "";
     position: absolute;
-    inset: 4%;
+    inset: 5%;
     pointer-events: none;
     z-index: 2;
-    border-radius: 22%;
+    border-radius: 50%;
     background:
-      radial-gradient(75% 55% at 30% 16%, rgba(255,255,255,0.22), rgba(255,255,255,0) 46%),
-      linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 26%);
+      radial-gradient(70% 52% at 30% 16%, rgba(255,255,255,0.16), rgba(255,255,255,0) 50%),
+      linear-gradient(135deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 24%);
     mix-blend-mode: screen;
-    opacity: 0.9;
+    opacity: 0.85;
   }
-  html[data-theme="dark"] .watch-wrap::before { opacity: 0.7; }
+  .watch-wrap[data-shape="square"]::before { inset: 8%; border-radius: 16%; }
+  .watch-wrap[data-shape="cushion"]::before { inset: 6%; border-radius: 30%; }
+  html[data-theme="dark"] .watch-wrap::before { opacity: 0.6; }
 
   /* The hands sit slightly proud of the dial, so they always cast a soft
      shadow back onto the face. The shadow is an in-SVG feDropShadow added
@@ -929,8 +933,8 @@ function braun() {
     <!-- crown -->
     <rect x="286" y="144" width="11" height="12" rx="2" fill="url(#braun-case)" stroke="#7d8186" stroke-width="0.6"/>
     <g class="hands">
-      <rect class="hand h-hour" x="147.5" y="94" width="5" height="64" rx="1" fill="${ink}"/>
-      <rect class="hand h-min" x="148.25" y="56" width="3.5" height="102" rx="1" fill="${ink}"/>
+      <rect class="hand h-hour" x="147.5" y="88" width="5" height="70" rx="1" fill="${ink}"/>
+      <rect class="hand h-min" x="148.25" y="46" width="3.5" height="112" rx="1" fill="${ink}"/>
       <!-- signature yellow seconds w/ counterweight tail -->
       <g class="hand h-sec">
         <line x1="150" y1="172" x2="150" y2="50" stroke="${yellow}" stroke-width="1.4"/>
@@ -942,12 +946,12 @@ function braun() {
 }
 
 const WATCHES = [
-  { id: "santos",     brand: "Cartier",   model: "Santos de Cartier", render: santos },
-  { id: "speedmaster",brand: "Omega",     model: "Speedmaster Pro",   render: speedmaster },
-  { id: "tissot",     brand: "Tissot",    model: "PRX Powermatic 80",  render: tissot },
-  { id: "timex",      brand: "Timex",     model: "Marlin Hand-Wind",  render: timex },
-  { id: "bellross",   brand: "Bell & Ross", model: "BR 03 Instrument", render: bellross },
-  { id: "braun",      brand: "Braun",     model: "BN0021 — Rams",     render: braun },
+  { id: "santos",     brand: "Cartier",   model: "Santos de Cartier",   shape: "square",  render: santos },
+  { id: "speedmaster",brand: "Omega",     model: "Speedmaster Professional", shape: "round", render: speedmaster },
+  { id: "tissot",     brand: "Tissot",    model: "PRX Powermatic 80",   shape: "cushion", render: tissot },
+  { id: "timex",      brand: "Timex",     model: "Expedition",          shape: "round",   render: timex },
+  { id: "bellross",   brand: "Bell & Ross", model: "BR03-92 Military",  shape: "square",  render: bellross },
+  { id: "braun",      brand: "Braun",     model: "BN0032",              shape: "round",   render: braun },
 ];
 
 /* ---------------- State + persistence ---------------- */
@@ -978,6 +982,7 @@ let hands = {};
 function mountWatch(animate = true) {
   const w = WATCHES[state.index];
   wrap.innerHTML = w.render();
+  wrap.dataset.shape = w.shape || "round";
   brandEl.textContent = w.brand;
   modelEl.textContent = w.model;
 
