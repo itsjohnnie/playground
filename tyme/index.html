@@ -799,8 +799,8 @@ function timex() {
 
 /* ---------- 5. Bell & Ross BR03-92 Military ---------- */
 function bellross() {
-  const lume = "#c4cb7e";       // greener military lume
-  const dark = "#45483a";       // dark half of the duotone hands
+  const lume = "#bfd3b6";       // sampled from the reference lume (cool sage green)
+  const dark = "#41443a";       // dark half of the duotone hands
   const sans = "'Helvetica Neue', Helvetica, Arial, sans-serif";
   const day = new Date().getDate();
   const arc = (r, a0, a1, sweep = 1) => {
@@ -822,8 +822,12 @@ function bellross() {
   const nums = { 0: "12", 3: "3", 6: "6", 9: "9" };
   for (const h in nums) {
     const [x, y] = P(h * 30, 80);
+    // render "12" with a capital I so the 1 is a plain bar like the watch;
+    // aria-label keeps it readable as "12"
+    const glyph = nums[h] === "12" ? "I2" : nums[h];
+    const a11y = nums[h] === "12" ? ' aria-label="12" role="img"' : "";
     numerals += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="'Zalando Sans Expanded', ${sans}" font-weight="600" font-size="36"
-      fill="${lume}" text-anchor="middle" dominant-baseline="central">${nums[h]}</text>`;
+      fill="${lume}" text-anchor="middle" dominant-baseline="central"${a11y}>${glyph}</text>`;
   }
   for (let i = 0; i < 60; i++) {
     if (i % 5 === 0) continue;
@@ -852,14 +856,23 @@ function bellross() {
         <stop offset="0" stop-color="${lume}"/><stop offset=".5" stop-color="${lume}"/>
         <stop offset=".5" stop-color="${dark}"/><stop offset="1" stop-color="${dark}"/>
       </linearGradient>
+      <radialGradient id="br-screw-t" cx="36%" cy="32%" r="75%">
+        <stop offset="0" stop-color="#f2f4f6"/><stop offset=".55" stop-color="#c2c7cb"/><stop offset="1" stop-color="#83888d"/>
+      </radialGradient>
+      <radialGradient id="br-screw-b" cx="36%" cy="32%" r="75%">
+        <stop offset="0" stop-color="#cfd3d7"/><stop offset=".55" stop-color="#969ba0"/><stop offset="1" stop-color="#5e6367"/>
+      </radialGradient>
       <path id="br-swiss" d="${arc(101, 206, 154, 0)}"/>
     </defs>
     <rect x="16" y="16" width="268" height="268" rx="40" fill="url(#br-case)"/>
     <rect x="16" y="16" width="268" height="268" rx="40" fill="none" stroke="#2c2e24" stroke-width="1.5"/>
-    ${[[46,46],[254,46],[46,254],[254,254]].map(([x,y])=>`
-      <circle cx="${x}" cy="${y}" r="11.5" fill="#2b2d21"/>
-      <circle cx="${x}" cy="${y}" r="9.8" fill="#3b3d2f" stroke="#1c1d15" stroke-width="1"/>
-      <line x1="${x-6.8}" y1="${y}" x2="${x+6.8}" y2="${y}" stroke="#15160f" stroke-width="2" transform="rotate(-25 ${x} ${y})"/>`).join("")}
+    ${[[46,46],[254,46],[46,254],[254,254]].map(([x,y])=>{
+      const grad = y < 150 ? "br-screw-t" : "br-screw-b";   // top screws lit lighter
+      const slot = (x-150)*(y-150) > 0 ? 45 : -45;           // slot aligned toward centre
+      return `<circle cx="${x}" cy="${y}" r="11.5" fill="#1f201a"/>
+      <circle cx="${x}" cy="${y}" r="9.6" fill="url(#${grad})" stroke="#565b5f" stroke-width="0.8"/>
+      <line x1="${x-6.4}" y1="${y}" x2="${x+6.4}" y2="${y}" stroke="#4b5054" stroke-width="1.8" stroke-linecap="round" transform="rotate(${slot} ${x} ${y})"/>`;
+    }).join("")}
     <rect x="280" y="138" width="14" height="24" rx="2" fill="#1c1d16"/>
     ${Array.from({length:5}).map((_,k)=>`<line x1="${281+k*2.8}" y1="139" x2="${281+k*2.8}" y2="161" stroke="#3a3b2e" stroke-width="0.8"/>`).join("")}
     <!-- round bezel nearly filling the square; only corners show behind it -->
@@ -868,18 +881,18 @@ function bellross() {
     <circle cx="150" cy="150" r="123" fill="none" stroke="#23241c" stroke-width="1"/>
     ${ticks}${bars}${numerals}
     <!-- Bell & Ross logo: tight, large, circled ampersand pushed up -->
-    <text x="139.5" y="119" font-family="${sans}" font-weight="500" font-size="15" fill="#e6e2cf" text-anchor="end">Bell</text>
-    <circle cx="150" cy="114.5" r="8" fill="none" stroke="#e6e2cf" stroke-width="1.2"/>
-    <text x="150" y="111.5" font-family="${sans}" font-weight="600" font-size="12.5" fill="#e6e2cf" text-anchor="middle" dominant-baseline="central">&amp;</text>
-    <text x="160.5" y="119" font-family="${sans}" font-weight="500" font-size="15" fill="#e6e2cf" text-anchor="start">Ross</text>
-    <text x="150" y="181" font-family="${sans}" font-weight="500" font-size="9" letter-spacing="1.5" fill="#cdc9b4" text-anchor="middle">BR03-92</text>
-    <text x="150" y="193" font-family="${sans}" font-weight="400" font-size="7.5" letter-spacing="1.6" fill="#9c9881" text-anchor="middle">MILITARY TYPE</text>
-    <text font-family="${sans}" font-weight="400" font-size="5.5" letter-spacing="2" fill="#9c9881">
+    <text x="137" y="119" font-family="${sans}" font-weight="500" font-size="15" fill="${lume}" text-anchor="end">Bell</text>
+    <circle cx="150" cy="114" r="10" fill="none" stroke="${lume}" stroke-width="1.3"/>
+    <text x="150" y="111" font-family="${sans}" font-weight="600" font-size="14" fill="${lume}" text-anchor="middle" dominant-baseline="central">&amp;</text>
+    <text x="163" y="119" font-family="${sans}" font-weight="500" font-size="15" fill="${lume}" text-anchor="start">Ross</text>
+    <text x="150" y="181" font-family="${sans}" font-weight="500" font-size="9" letter-spacing="0.4" fill="${lume}" text-anchor="middle">BR03-92</text>
+    <text x="150" y="193" font-family="${sans}" font-weight="400" font-size="7.5" letter-spacing="0.6" fill="${lume}" opacity="0.78" text-anchor="middle">MILITARY TYPE</text>
+    <text font-family="${sans}" font-weight="400" font-size="5.5" letter-spacing="2" fill="${lume}" opacity="0.78">
       <textPath href="#br-swiss" xlink:href="#br-swiss" startOffset="50%" text-anchor="middle">SWISS MADE</textPath>
     </text>
     <!-- date at 4:30 -->
     <rect x="189.5" y="189" width="17" height="14" rx="1" fill="none" stroke="#4c4d40" stroke-width="0.7"/>
-    <text x="198" y="196.2" font-family="${sans}" font-weight="500" font-size="9" fill="#e8e4cf" text-anchor="middle" dominant-baseline="central">${day}</text>
+    <text x="198" y="196.2" font-family="${sans}" font-weight="500" font-size="9" fill="${lume}" text-anchor="middle" dominant-baseline="central">${day}</text>
     <g class="hands">
       ${hand("h-hour", 54, 9)}
       ${hand("h-min", 84, 7)}
