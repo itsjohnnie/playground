@@ -703,9 +703,20 @@ function tissot() {
     }
     return d + "Z";
   };
+  // sunray sunburst — many fine wedges alternating two close blues
+  let sun = "";
+  for (let i = 0; i < 120; i++) {
+    const [x0, y0] = P(i * 3, 122), [x1, y1] = P((i + 1) * 3, 122);
+    sun += `<path d="M150 150 L${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${i % 2 ? '#235a98' : '#193d72'}"/>`;
+  }
 
   return `<svg viewBox="0 0 300 300">${steelDefs('prx')}
     <defs>
+      <radialGradient id="prx-vig" cx="50%" cy="40%" r="62%">
+        <stop offset="0" stop-color="#3a6cab" stop-opacity="0.35"/>
+        <stop offset="0.55" stop-color="#1d4480" stop-opacity="0"/>
+        <stop offset="1" stop-color="#081634" stop-opacity="0.6"/>
+      </radialGradient>
       <radialGradient id="prx-dial" cx="50%" cy="38%" r="66%">
         <stop offset="0" stop-color="#214a82"/><stop offset=".55" stop-color="#143461"/><stop offset="1" stop-color="#0b2040"/>
       </radialGradient>
@@ -734,8 +745,11 @@ function tissot() {
     <path d="${squircle(132, 3.1)}" fill="url(#steel-prx)" stroke="#71777d" stroke-width="1"/>
     <path d="${squircle(126, 3.1)}" fill="#aab1b8"/>
     <circle cx="150" cy="150" r="123" fill="#cdd2d6"/>
-    <circle cx="150" cy="150" r="117" fill="url(#prx-dial)"/>
-    <circle cx="150" cy="150" r="117" fill="url(#prx-waffle)" clip-path="url(#prx-clip)"/>
+    <g clip-path="url(#prx-clip)">
+      ${sun}
+      <circle cx="150" cy="150" r="117" fill="url(#prx-waffle)"/>
+      <circle cx="150" cy="150" r="117" fill="url(#prx-vig)"/>
+    </g>
     ${markers}
     <text x="150" y="100" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="3" fill="#eef3f7" text-anchor="middle">TISSOT</text>
     <text x="150" y="111" font-family="${sans}" font-weight="400" font-size="5.4" letter-spacing="2.4" fill="#c4d2e2" text-anchor="middle">1853</text>
@@ -762,7 +776,7 @@ function timex() {
   const bar = n => String(n).replace(/1/g, "I");   // 1 -> I, for the bar look
 
   // chapter: triangle, then four dashes, repeating (a triangle every 5 min)
-  const RO = 119;
+  const RO = 113;
   let ring = "";
   for (let i = 0; i < 60; i++) {
     const ang = i * 6;
@@ -778,14 +792,14 @@ function timex() {
   // outer 1–12 + inner military 13–24 (24 at top); 3 o'clock yields to date
   let numerals = "";
   for (let h = 1; h <= 12; h++) {
-    const [x, y] = P(h * 30, 100);
-    numerals += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="${sans}" font-weight="700" font-size="23"
+    const [x, y] = P(h * 30, 94);
+    numerals += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="${sans}" font-weight="700" font-size="25"
       fill="${lume}" text-anchor="middle" dominant-baseline="central" aria-label="${h}">${bar(h)}</text>`;
     if (h === 3) continue;                          // date sits where 15 would be
     const v = h + 12;
-    const [ix, iy] = P(h * 30, 77);
-    numerals += `<text x="${ix.toFixed(1)}" y="${iy.toFixed(1)}" font-family="${sans}" font-size="9"
-      fill="#9a9a92" text-anchor="middle" dominant-baseline="central" aria-label="${v}">${bar(v)}</text>`;
+    const [ix, iy] = P(h * 30, 70);
+    numerals += `<text x="${ix.toFixed(1)}" y="${iy.toFixed(1)}" font-family="${sans}" font-weight="300" font-size="17"
+      fill="${lume}" text-anchor="middle" dominant-baseline="central" aria-label="${v}">${bar(v)}</text>`;
   }
   // lance/cathedral hand — sharp tip, broad shoulders, slim base
   const hand = (len, w) => `M150 ${150-len} L${(150-w).toFixed(1)} ${(150-len+w*2.2).toFixed(1)} L${(150-w*0.62).toFixed(1)} ${150+12} L${(150+w*0.62).toFixed(1)} ${150+12} L${(150+w).toFixed(1)} ${(150-len+w*2.2).toFixed(1)} Z`;
@@ -800,13 +814,13 @@ function timex() {
     <circle cx="150" cy="150" r="122" fill="#0c0c0d"/>
     <circle cx="150" cy="150" r="122" fill="none" stroke="#2a2a2b" stroke-width="1"/>
     ${ring}${numerals}
-    <text x="150" y="97" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="1.5" fill="${lume}" text-anchor="middle">TIMEX</text>
-    <text x="150" y="108" font-family="${sans}" font-weight="700" font-size="9.5" letter-spacing="-0.2" fill="${lume}" text-anchor="middle">EXPEDITION</text>
+    <text x="150" y="105" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="1.5" fill="${lume}" text-anchor="middle">TIMEX</text>
+    <text x="150" y="116" font-family="${sans}" font-weight="700" font-size="9.5" letter-spacing="-0.2" fill="${lume}" text-anchor="middle">EXPEDITION</text>
     <text x="150" y="196" font-family="${sans}" font-weight="500" font-size="8" letter-spacing="1.6" fill="${lume}" text-anchor="middle">SOLAR POWERED</text>
-    <!-- date window at 3 with a steel rim matching the case -->
-    <rect x="182" y="139" width="26" height="22" rx="2.5" fill="url(#steel-tx)" stroke="#7f858b" stroke-width="0.5"/>
-    <rect x="184.5" y="141.4" width="21" height="17.2" rx="1" fill="#eceae3" stroke="#5a5a5a" stroke-width="0.4"/>
-    <text x="195" y="150.6" font-family="${sans}" font-weight="700" font-size="11" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
+    <!-- date window near the 3, with a steel rim matching the case -->
+    <rect x="207" y="139" width="26" height="22" rx="2.5" fill="url(#steel-tx)" stroke="#7f858b" stroke-width="0.5"/>
+    <rect x="209.5" y="141.4" width="21" height="17.2" rx="1" fill="#eceae3" stroke="#5a5a5a" stroke-width="0.4"/>
+    <text x="220" y="150.6" font-family="${sans}" font-weight="700" font-size="11" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
     <g class="hands">
       <path class="hand h-hour" d="${hand(54, 7.5)}" fill="${lume}" stroke="#2a2a2a" stroke-width="0.6"/>
       <path class="hand h-min" d="${hand(86, 5.5)}" fill="${lume}" stroke="#2a2a2a" stroke-width="0.6"/>
