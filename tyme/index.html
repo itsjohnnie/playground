@@ -202,9 +202,9 @@
   .dot.active { opacity: 1; background: var(--ink); transform: scale(1.15); }
 
   /* =================================================================
-     Dock — bottom bar on mobile, right side panel on desktop.
-     Same markup; the media query re-flows it. (Pattern shared with
-     /dott, /flyy and /waves.)
+     Dock — bottom bar on mobile, right side panel on desktop. Same
+     dark frosted-glass styling as /flyy and /waves so the nav reads as
+     one universal component across the playground, regardless of theme.
      ================================================================= */
   .panel {
     position: fixed;
@@ -222,8 +222,8 @@
     justify-content: space-between;
     padding: 10px 12px 10px 18px;
     border-radius: 16px;
-    background: var(--nav-bg);
-    border: 1px solid var(--line);
+    background: rgba(13, 14, 16, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     -webkit-backdrop-filter: blur(16px) saturate(1.4);
     backdrop-filter: blur(16px) saturate(1.4);
   }
@@ -232,7 +232,8 @@
     font-weight: 700;
     font-size: 20px;
     letter-spacing: -0.025em;
-    color: var(--ink);
+    color: #fafafa;
+    user-select: none; -webkit-user-select: none;
   }
   .actions { display: flex; gap: 4px; }
   button.icon {
@@ -241,14 +242,14 @@
     background: transparent;
     border: 1px solid transparent;
     border-radius: 10px;
-    color: var(--muted);
+    color: rgba(255, 255, 255, 0.78);
     cursor: pointer;
     transition: background 0.15s, color 0.15s, transform 0.12s;
   }
-  button.icon:hover { background: var(--surface); color: var(--ink); }
+  button.icon:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
   button.icon:active { transform: scale(0.9); }
-  button.icon.active { color: var(--ink); background: var(--surface); }
-  button.icon i { font-size: 18px; line-height: 1; }
+  button.icon.active { color: #fff; background: rgba(255, 255, 255, 0.14); }
+  button.icon i { font-size: 17px; line-height: 1; }
 
   /* controls sheet — floats above the dock on mobile */
   .controls {
@@ -258,8 +259,8 @@
     bottom: calc(14px + env(safe-area-inset-bottom, 0px) + 62px);
     width: min(420px, calc(100vw - 24px));
     border-radius: 16px;
-    background: var(--nav-bg);
-    border: 1px solid var(--line);
+    background: rgba(13, 14, 16, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     -webkit-backdrop-filter: blur(16px) saturate(1.4);
     backdrop-filter: blur(16px) saturate(1.4);
     opacity: 0;
@@ -270,34 +271,34 @@
   }
   .controls.open { opacity: 1; transform: translateY(0); pointer-events: auto; }
 
-  .ctl-row { padding: 15px 18px; border-bottom: 1px solid var(--line); }
+  .ctl-row { padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
   .ctl-row:last-child { border-bottom: none; }
   .ctl-head {
     display: flex; align-items: baseline; justify-content: space-between;
-    margin-bottom: 11px;
+    margin-bottom: 10px;
   }
   .ctl-head h2 {
     font-family: inherit;
-    font-size: 10px; font-weight: 500; letter-spacing: 0.16em;
-    text-transform: uppercase; color: var(--muted);
+    font-size: 10px; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase; color: rgba(255, 255, 255, 0.42);
   }
 
   .seg { display: flex; gap: 6px; }
   .seg button {
     flex: 1; height: 34px;
     display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-    font-family: inherit; font-size: 11px; font-weight: 400; letter-spacing: 0.04em;
-    color: var(--muted);
-    background: var(--surface);
-    border: 1px solid var(--line);
+    font-family: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 10px; cursor: pointer;
     transition: color 0.15s, border-color 0.15s, background 0.15s;
   }
   .seg button i { font-size: 15px; }
-  .seg button:hover { color: var(--ink); }
+  .seg button:hover { color: rgba(255, 255, 255, 0.8); }
   .seg button.on {
-    color: var(--bg); background: var(--accent);
-    border-color: var(--accent);
+    color: #fff; background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.45);
   }
 
   /* idle: tuck the dock away when inactive */
@@ -314,8 +315,8 @@
       display: flex; flex-direction: column;
       border-radius: 18px;
       overflow: hidden;
-      background: var(--nav-bg);
-      border: 1px solid var(--line);
+      background: rgba(13, 14, 16, 0.62);
+      border: 1px solid rgba(255, 255, 255, 0.1);
       -webkit-backdrop-filter: blur(16px) saturate(1.4);
       backdrop-filter: blur(16px) saturate(1.4);
     }
@@ -323,7 +324,7 @@
       height: 56px;
       background: transparent;
       border: none;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: 0;
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
@@ -651,7 +652,7 @@ function tissot() {
   return `<svg viewBox="0 0 300 300">${steelDefs('prx')}
     <defs>
       <radialGradient id="prx-dial" cx="50%" cy="40%" r="64%">
-        <stop offset="0" stop-color="#3b6fb6"/><stop offset=".58" stop-color="#214a86"/><stop offset="1" stop-color="#142d54"/>
+        <stop offset="0" stop-color="#284f86"/><stop offset=".58" stop-color="#16315d"/><stop offset="1" stop-color="#0c1d3a"/>
       </radialGradient>
       <linearGradient id="prx-bar" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0" stop-color="#f4f8fb"/><stop offset=".5" stop-color="#cfd8e0"/><stop offset="1" stop-color="#aab6c0"/>
@@ -836,8 +837,8 @@ function braun() {
   let numerals = "";
   for (let h = 1; h <= 12; h++) {
     const [x, y] = P(h * 30, 101);
-    numerals += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="${sans}" font-weight="400" font-size="15"
-      fill="#3a3a3a" text-anchor="middle" dominant-baseline="central">${h}</text>`;
+    numerals += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="${sans}" font-weight="400" font-size="18"
+      letter-spacing="-0.5" fill="#3a3a3a" text-anchor="middle" dominant-baseline="central">${h}</text>`;
   }
 
   return `<svg viewBox="0 0 300 300">
