@@ -884,13 +884,13 @@ function braun() {
   let numerals = "";
   for (let h = 1; h <= 12; h++) {
     const [x, y] = P(h * 30, 101);
-    numerals += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="${sans}" font-weight="400" font-size="18"
+    numerals += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Arial, 'Helvetica Neue', sans-serif" font-weight="400" font-size="18"
       letter-spacing="-0.5" fill="#3a3a3a" text-anchor="middle" dominant-baseline="central">${h}</text>`;
   }
 
   // the real Braun wordmark, traced from Braun_Logo.svg (native 399x169);
   // its nested transforms are preserved and wrapped to sit on the dial
-  const wordmark = `<g transform="translate(122 104) scale(0.1402)" fill="#1f1f1f">
+  const wordmark = `<g transform="translate(122 90) scale(0.1402)" fill="#1f1f1f">
     <g transform="matrix(0.45094353,0,0,0.45094353,357.14835,54.396579)">
       <g transform="translate(35.43305,35.421298)">
         <path d="m -755.77392,173.4791 c -12.04864,0 -25.61009,0 -25.61009,0 l 0,-78.863135 c 0,0 13.15304,0 25.61009,0 17.54966,0 25.67707,13.084765 25.67707,36.501805 0,32.15511 -9.75185,42.36133 -25.67707,42.36133 m -25.61009,-193.281256 c 0,0 12.93505,0 24.98369,0 12.89698,0 23.33563,9.490523 23.33563,35.636407 0,26.422971 -12.06309,35.562868 -23.33563,35.562868 -12.45705,0 -24.98369,0 -24.98369,0 l 0,-71.199275 z m 68.34437,89.829696 0,-0.216679 c 10.15369,-7.126756 26.38488,-19.384199 26.38488,-58.777682 0,-50.89846 -26.55691,-73.950437 -62.43232,-73.950437 -12.15239,0 -78.34836,0 -78.34836,0 l 0,279.487818 c 0,0 43.66533,0 77.93864,0 44.17223,0 65.6825,-32.74473 65.6825,-81.53156 0,-45.515639 -17.85563,-58.084311 -29.22534,-65.01146 z"/>
@@ -913,10 +913,10 @@ function braun() {
     </defs>
     <circle cx="150" cy="150" r="149" fill="url(#braun-case)"/>
     <circle cx="150" cy="150" r="140" fill="#d8dadd"/>
-    <circle cx="150" cy="150" r="137" fill="#f4f1ea"/>
+    <circle cx="150" cy="150" r="137" fill="#e8e4d9"/>
     <circle cx="150" cy="150" r="110" fill="url(#braun-dial)"/>
-    <circle cx="150" cy="150" r="110" fill="none" stroke="rgba(0,0,0,0.05)" stroke-width="0.8"/>
-    <circle cx="150" cy="150" r="109" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="0.7"/>
+    <circle cx="150" cy="150" r="110" fill="none" stroke="rgba(0,0,0,0.14)" stroke-width="1"/>
+    <circle cx="150" cy="150" r="108.8" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="0.8"/>
     <circle cx="150" cy="150" r="137" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
     ${track}${numerals}
     ${wordmark}
