@@ -7,7 +7,7 @@
 <title>tyme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Figtree:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600&family=Zalando+Sans+Expanded:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Figtree:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600&family=Zalando+Sans+Expanded:wght@400;500;600;700&family=Domine:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <!-- Google Sans Flex — the UI chrome font, shared with /flyy and /dott -->
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
@@ -547,22 +547,12 @@ function speedmaster() {
     return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
   };
 
-  // ---- tachymeter graduations (fine ticks around the bezel) ----
-  let tachTicks = "";
-  for (let i = 0; i < 120; i++) {
-    const ang = i * 3;
-    const maj = i % 5 === 0;
-    const [x1, y1] = P(ang, 145);
-    const [x2, y2] = P(ang, maj ? 139 : 142);
-    tachTicks += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${tach}" stroke-width="${maj ? 0.9 : 0.5}" opacity="0.85"/>`;
-  }
-
   // ---- tachymeter numbers (angle = 21600 / speed, clockwise from 12) ----
   const Ts = [60,500,400,350,300,275,250,225,200,190,180,170,160,150,140,130,120,110,100,90,85,80,75,70,65];
   let tachNums = "";
   for (const T of Ts) {
     let ang = 21600 / T; if (ang >= 360) ang -= 360;   // 60 -> top
-    const [x, y] = P(ang, 128);
+    const [x, y] = P(ang, 135);
     tachNums += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Figtree, sans-serif" font-weight="500" font-size="8.5" fill="${tach}"
       text-anchor="middle" dominant-baseline="central">${T}</text>`;
   }
@@ -588,7 +578,7 @@ function speedmaster() {
     const five = i % 25 === 0, min = i % 5 === 0;
     const len = five ? 7 : min ? 5 : 2.4;
     const w = five ? 1.3 : min ? 0.8 : 0.4;
-    const [x1, y1] = P(ang, 110), [x2, y2] = P(ang, 110 - len);
+    const [x1, y1] = P(ang, 121), [x2, y2] = P(ang, 121 - len);
     track += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${lume}" stroke-width="${w}"/>`;
   }
 
@@ -641,16 +631,16 @@ function speedmaster() {
       <radialGradient id="sp-dial" cx="50%" cy="40%" r="65%">
         <stop offset="0" stop-color="#0d0d0d"/><stop offset="0.7" stop-color="#070707"/><stop offset="1" stop-color="#000"/>
       </radialGradient>
-      <path id="sp-arc" d="${arc(128, 3, 40)}"/>
+      <path id="sp-arc" d="${arc(135, 3, 40)}"/>
     </defs>
     <circle cx="150" cy="150" r="149" fill="url(#steel-sp)"/>
     <circle cx="150" cy="150" r="145" fill="#0b0b0c"/>
-    ${tachTicks}${tachNums}
+    ${tachNums}
     <text font-family="Figtree, sans-serif" font-weight="500" font-size="8.2" letter-spacing="1.4" fill="${tach}">
       <textPath href="#sp-arc" xlink:href="#sp-arc" startOffset="50%" text-anchor="middle">TACHYMÈTRE</textPath>
     </text>
-    <circle cx="150" cy="150" r="116" fill="url(#steel-sp)"/>
-    <circle cx="150" cy="150" r="114" fill="url(#sp-dial)"/>
+    <circle cx="150" cy="150" r="127" fill="url(#steel-sp)"/>
+    <circle cx="150" cy="150" r="125" fill="url(#sp-dial)"/>
     ${track}${markers}
     ${omega}
     ${speed}
@@ -668,7 +658,7 @@ function speedmaster() {
       <g class="hand h-sec">
         <line x1="150" y1="168" x2="150" y2="52" stroke="${lume}" stroke-width="1.3"/>
       </g>
-      ${centerCap("#e9e9e9", 3.6)}
+      ${centerCap("#0a0a0a", 3)}
     </g>
   </svg>`;
 }
@@ -1046,60 +1036,73 @@ function citizen() {
   const sans = "'Helvetica Neue', Helvetica, Arial, sans-serif";
   const day = new Date().getDate();
 
-  // green sunray sunburst — many fine wedges alternating two close greens
-  let sun = "";
-  for (let i = 0; i < 120; i++) {
-    const [x0, y0] = P(i * 3, 120), [x1, y1] = P((i + 1) * 3, 120);
-    sun += `<path d="M150 150 L${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${i % 2 ? '#1a7c3f' : '#176d37'}"/>`;
-  }
-
-  // faceted steel baton, long axis radial, centred at (cx,cy)
+  // applied marker — light face inside a metallic rim, like the hands
   const bar = (cx, cy, w, len, ang) =>
-    `<rect x="${(cx - w / 2).toFixed(1)}" y="${(cy - len / 2).toFixed(1)}" width="${w}" height="${len}" rx="0.8"
-      fill="url(#cz-bar)" stroke="#8a9298" stroke-width="0.4"
-      transform="rotate(${ang} ${cx.toFixed(1)} ${cy.toFixed(1)})"/>`;
-  // applied markers; doubled at 12/3/6/9
-  const dbl = [0, 3, 6, 9];
+    `<g transform="rotate(${ang} ${cx.toFixed(1)} ${cy.toFixed(1)})">
+      <rect x="${(cx - w / 2).toFixed(1)}" y="${(cy - len / 2).toFixed(1)}" width="${w}" height="${len}" rx="0.9" fill="url(#cz-rim)"/>
+      <rect x="${(cx - w / 2 + 0.85).toFixed(1)}" y="${(cy - len / 2 + 0.85).toFixed(1)}" width="${(w - 1.7).toFixed(1)}" height="${(len - 1.7).toFixed(1)}" rx="0.5" fill="url(#cz-face)"/>
+    </g>`;
+
+  // ---- level 1: outer minute track — fine lines, with a 1:1 square block at
+  //      every 5-min (hour) position ----
+  let track = "";
+  for (let i = 0; i < 60; i++) {
+    const ang = i * 6;
+    if (i % 5 === 0) {
+      const [sx, sy] = P(ang, 109), s = 4.4;
+      track += `<g transform="rotate(${ang} ${sx.toFixed(1)} ${sy.toFixed(1)})">
+        <rect x="${(sx - s / 2).toFixed(1)}" y="${(sy - s / 2).toFixed(1)}" width="${s}" height="${s}" rx="0.6" fill="url(#cz-rim)"/>
+        <rect x="${(sx - s / 2 + 0.7).toFixed(1)}" y="${(sy - s / 2 + 0.7).toFixed(1)}" width="${(s - 1.4).toFixed(1)}" height="${(s - 1.4).toFixed(1)}" rx="0.4" fill="url(#cz-face)"/>
+      </g>`;
+    } else {
+      const [x1, y1] = P(ang, 112), [x2, y2] = P(ang, 109.5);
+      track += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="rgba(225,242,232,0.6)" stroke-width="0.7"/>`;
+    }
+  }
+  // subtle step delimiting the inner dial level
+  const innerRing = `<circle cx="150" cy="150" r="104" fill="none" stroke="rgba(0,0,0,0.12)" stroke-width="1"/>
+    <circle cx="150" cy="150" r="103.3" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="0.8"/>`;
+
+  // ---- level 2: inner dial — long thick faceted batons, doubled at 12 & 6 ----
+  const dbl = [0, 6];
   let markers = "";
   for (let h = 0; h < 12; h++) {
     const ang = h * 30, a = (ang - 90) * Math.PI / 180;
     const tx = -Math.sin(a), ty = Math.cos(a);     // tangent unit
-    const [bx, by] = P(ang, 98);
+    const [bx, by] = P(ang, 91);
     if (dbl.includes(h)) {
-      const d = 4;
-      markers += bar(bx + tx * d, by + ty * d, 4, 22, ang);
-      markers += bar(bx - tx * d, by - ty * d, 4, 22, ang);
+      const d = 3.8;
+      markers += bar(bx + tx * d, by + ty * d, 4, 21, ang);
+      markers += bar(bx - tx * d, by - ty * d, 4, 21, ang);
     } else {
-      markers += bar(bx, by, 5, 22, ang);
+      markers += bar(bx, by, 5, 21, ang);
     }
   }
-  // fine minute track
-  let track = "";
-  for (let i = 0; i < 60; i++) {
-    const ang = i * 6, [x1, y1] = P(ang, 113), [x2, y2] = P(ang, i % 5 === 0 ? 108 : 110.5);
-    track += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"
-      stroke="rgba(225,242,232,0.55)" stroke-width="${i % 5 === 0 ? 1 : 0.7}"/>`;
-  }
-  // faceted dauphine hand: split-bevel fill (light left / dark right), a centre
-  // ridge, and a brief polished highlight toward the outer (tip) side
-  const dauph = (len, w) =>
-    `M150 ${150 - len} L${(150 + w).toFixed(1)} ${(150 - len * 0.32).toFixed(1)} L150 ${150 + 9} L${(150 - w).toFixed(1)} ${(150 - len * 0.32).toFixed(1)} Z`;
+  // faceted straight-stick hand: split-bevel fill (light left / dark right), a
+  // centre ridge, and a brief polished highlight toward the outer (tip) side
+  const stick = (len, w) => {
+    const t = 150 - len, h = w / 2;
+    return `M${(150 - h).toFixed(1)} ${(t + w).toFixed(1)} L150 ${t.toFixed(1)} L${(150 + h).toFixed(1)} ${(t + w).toFixed(1)} L${(150 + h).toFixed(1)} ${150 + 9} L${(150 - h).toFixed(1)} ${150 + 9} Z`;
+  };
   const hand = (cls, len, w) => `<g class="hand ${cls}">
-    <path d="${dauph(len, w)}" fill="url(#cz-hand)" stroke="#7c858c" stroke-width="0.4"/>
-    <line x1="150" y1="${(150 - len).toFixed(1)}" x2="150" y2="${150 + 9}" stroke="#69727a" stroke-width="0.4" opacity="0.55"/>
+    <path d="${stick(len, w)}" fill="url(#cz-hand)" stroke="#7c858c" stroke-width="0.4"/>
+    <line x1="150" y1="${(150 - len).toFixed(1)}" x2="150" y2="${150 + 9}" stroke="#69727a" stroke-width="0.4" opacity="0.5"/>
     <line x1="${(150 - w * 0.4).toFixed(1)}" y1="${(150 - len * 0.7).toFixed(1)}" x2="${(150 - w * 0.16).toFixed(1)}" y2="${(150 - len * 0.4).toFixed(1)}" stroke="#ffffff" stroke-width="0.7" opacity="0.8"/>
   </g>`;
 
   return `<svg viewBox="0 0 300 300">${steelDefs('cz')}
     <defs>
-      <radialGradient id="cz-vig" cx="50%" cy="40%" r="64%">
-        <stop offset="0" stop-color="#2a9b54" stop-opacity="0.4"/>
-        <stop offset="0.5" stop-color="#15602f" stop-opacity="0"/>
-        <stop offset="1" stop-color="#062c14" stop-opacity="0.7"/>
+      <radialGradient id="cz-dial" cx="50%" cy="42%" r="64%">
+        <stop offset="0" stop-color="#1f9149"/>
+        <stop offset="0.55" stop-color="#15723a"/>
+        <stop offset="1" stop-color="#093c1d"/>
       </radialGradient>
-      <linearGradient id="cz-bar" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#fbfcfd"/><stop offset=".45" stop-color="#dde3e8"/>
-        <stop offset=".55" stop-color="#aeb6bd"/><stop offset="1" stop-color="#cdd4da"/>
+      <linearGradient id="cz-rim" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#cdd4da"/><stop offset=".5" stop-color="#99a1a8"/><stop offset="1" stop-color="#c2c9cf"/>
+      </linearGradient>
+      <linearGradient id="cz-face" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#f8fafb"/><stop offset=".5" stop-color="#e6ebef"/>
+        <stop offset=".5" stop-color="#c4ccd2"/><stop offset="1" stop-color="#e0e6ea"/>
       </linearGradient>
       <linearGradient id="cz-hand" x1="0" y1="0" x2="1" y2="0">
         <stop offset="0" stop-color="#f4f7f9"/><stop offset=".48" stop-color="#ced5db"/>
@@ -1128,19 +1131,15 @@ function citizen() {
     <circle cx="150" cy="150" r="140" fill="url(#steel-cz)" stroke="#71777d" stroke-width="1"/>
     <circle cx="150" cy="150" r="125" fill="#c3cace"/>
     <circle cx="150" cy="150" r="121" fill="#0a3a1c"/>
-    <circle cx="150" cy="150" r="120" fill="#155f31"/>
-    <g clip-path="url(#cz-clip)">
-      ${sun}
-      <circle cx="150" cy="150" r="120" fill="url(#cz-vig)"/>
-    </g>
-    ${track}${markers}
-    <text x="150" y="103" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="2" fill="#f3f7f4" text-anchor="middle">CITIZEN</text>
+    <circle cx="150" cy="150" r="120" fill="url(#cz-dial)"/>
+    ${track}${innerRing}${markers}
+    <text x="150" y="103" font-family="Domine, serif" font-weight="700" font-size="13" letter-spacing="1.5" fill="#f3f7f4" text-anchor="middle">CITIZEN</text>
     <text x="150" y="200" font-family="${sans}" font-weight="500" font-size="8.5" letter-spacing="2" fill="#eaf3ec" text-anchor="middle">AUTOMATIC</text>
-    <!-- date window at 4:30 with a faux-cyclops magnifier: enlarged digit + glass dome -->
-    <rect x="177" y="176.5" width="27" height="19" rx="1.8" fill="#eef3ee" stroke="#0a3a1c" stroke-width="0.6"/>
-    <text x="190.5" y="186.5" font-family="${sans}" font-weight="700" font-size="13.5" fill="#10331d" text-anchor="middle" dominant-baseline="central">${day}</text>
-    <rect x="177" y="176.5" width="27" height="19" rx="1.8" fill="url(#cz-glass)"/>
-    <rect x="177" y="176.5" width="27" height="19" rx="1.8" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.7"/>
+    <!-- date window just inboard (left) of the 3 o'clock marker, with a faux-cyclops magnifier -->
+    <rect x="192" y="140.5" width="27" height="19" rx="1.8" fill="#eef3ee" stroke="#0a3a1c" stroke-width="0.6"/>
+    <text x="205.5" y="150.5" font-family="${sans}" font-weight="700" font-size="13.5" fill="#10331d" text-anchor="middle" dominant-baseline="central">${day}</text>
+    <rect x="192" y="140.5" width="27" height="19" rx="1.8" fill="url(#cz-glass)"/>
+    <rect x="192" y="140.5" width="27" height="19" rx="1.8" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.7"/>
     <g class="hands">
       ${hand("h-hour", 52, 5)}
       ${hand("h-min", 82, 4)}
