@@ -7,7 +7,7 @@
 <title>tyme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600&family=Zalando+Sans+Expanded:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,400&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Figtree:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600&family=Zalando+Sans+Expanded:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <!-- Google Sans Flex — the UI chrome font, shared with /flyy and /dott -->
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css" />
@@ -562,8 +562,8 @@ function speedmaster() {
   let tachNums = "";
   for (const T of Ts) {
     let ang = 21600 / T; if (ang >= 360) ang -= 360;   // 60 -> top
-    const [x, y] = P(ang, 127);
-    tachNums += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Sora, sans-serif" font-weight="500" font-size="8" fill="${tach}"
+    const [x, y] = P(ang, 128);
+    tachNums += `<text x="${x.toFixed(2)}" y="${y.toFixed(2)}" font-family="Figtree, sans-serif" font-weight="500" font-size="8.5" fill="${tach}"
       text-anchor="middle" dominant-baseline="central">${T}</text>`;
   }
 
@@ -636,12 +636,12 @@ function speedmaster() {
       <radialGradient id="sp-dial" cx="50%" cy="40%" r="65%">
         <stop offset="0" stop-color="#0d0d0d"/><stop offset="0.7" stop-color="#070707"/><stop offset="1" stop-color="#000"/>
       </radialGradient>
-      <path id="sp-arc" d="${arc(137, -8, 72)}"/>
+      <path id="sp-arc" d="${arc(128, 3, 40)}"/>
     </defs>
     <circle cx="150" cy="150" r="149" fill="url(#steel-sp)"/>
     <circle cx="150" cy="150" r="145" fill="#0b0b0c"/>
     ${tachTicks}${tachNums}
-    <text font-family="Sora, sans-serif" font-weight="500" font-size="8.5" letter-spacing="3.2" fill="${tach}">
+    <text font-family="Figtree, sans-serif" font-weight="500" font-size="8.2" letter-spacing="1.4" fill="${tach}">
       <textPath href="#sp-arc" xlink:href="#sp-arc" startOffset="50%" text-anchor="middle">TACHYMÈTRE</textPath>
     </text>
     <circle cx="150" cy="150" r="116" fill="url(#steel-sp)"/>
@@ -757,64 +757,62 @@ function timex() {
   const lume = "#f0efe9";       // white numerals / hands
   const sans = "'Helvetica Neue', Helvetica, Arial, sans-serif";
   const day = new Date().getDate();
+  const bar = n => String(n).replace(/1/g, "I");   // 1 -> I, for the bar look
 
-  // chapter ring: triangle markers every 45° (cardinals + diagonals,
-  // the field-watch 'compass' look) over a fine minute track
-  const RO = 122;
+  // chapter: triangle, then four dashes, repeating (a triangle every 5 min)
+  const RO = 119;
   let ring = "";
   for (let i = 0; i < 60; i++) {
-    const ang = i * 6, maj = i % 5 === 0;
-    const [x1, y1] = P(ang, RO), [x2, y2] = P(ang, RO - (maj ? 5 : 3));
-    ring += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${lume}" stroke-width="${maj ? 1 : 0.7}"/>`;
+    const ang = i * 6;
+    if (i % 5 === 0) {
+      const [ax, ay] = P(ang, RO - 9);
+      const [b1x, b1y] = P(ang - 1.9, RO), [b2x, b2y] = P(ang + 1.9, RO);
+      ring += `<path d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${b1x.toFixed(1)} ${b1y.toFixed(1)} L${b2x.toFixed(1)} ${b2y.toFixed(1)} Z" fill="${lume}"/>`;
+    } else {
+      const [x1, y1] = P(ang, RO), [x2, y2] = P(ang, RO - 4);
+      ring += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${lume}" stroke-width="1"/>`;
+    }
   }
-  for (const ang of [0, 45, 90, 135, 180, 225, 270, 315]) {
-    const card = ang % 90 === 0;
-    const len = card ? 10 : 8, dw = card ? 2.2 : 1.8;
-    const [ax, ay] = P(ang, RO - len);
-    const [b1x, b1y] = P(ang - dw, RO), [b2x, b2y] = P(ang + dw, RO);
-    ring += `<path d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${b1x.toFixed(1)} ${b1y.toFixed(1)} L${b2x.toFixed(1)} ${b2y.toFixed(1)} Z" fill="${lume}"/>`;
-  }
-  // outer 1–12 and inner military 13–24 (24 at top); 3 o'clock yields to the date
+  // outer 1–12 + inner military 13–24 (24 at top); 3 o'clock yields to date
   let numerals = "";
   for (let h = 1; h <= 12; h++) {
-    const [x, y] = P(h * 30, 104);
-    numerals += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="${sans}" font-weight="700" font-size="19"
-      fill="${lume}" text-anchor="middle" dominant-baseline="central">${h}</text>`;
+    const [x, y] = P(h * 30, 100);
+    numerals += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="${sans}" font-weight="700" font-size="23"
+      fill="${lume}" text-anchor="middle" dominant-baseline="central" aria-label="${h}">${bar(h)}</text>`;
     if (h === 3) continue;                          // date sits where 15 would be
-    const [ix, iy] = P(h * 30, 82);
+    const v = h + 12;
+    const [ix, iy] = P(h * 30, 77);
     numerals += `<text x="${ix.toFixed(1)}" y="${iy.toFixed(1)}" font-family="${sans}" font-size="9"
-      fill="#9a9a92" text-anchor="middle" dominant-baseline="central">${h + 12}</text>`;
+      fill="#9a9a92" text-anchor="middle" dominant-baseline="central" aria-label="${v}">${bar(v)}</text>`;
   }
-
-  const sword = (len, w) => `M150 ${150-len} L${150-w} ${150-len*0.62} L${150-w*0.45} ${150+13} L${150+w*0.45} ${150+13} L${150+w} ${150-len*0.62} Z`;
+  // lance/cathedral hand — sharp tip, broad shoulders, slim base
+  const hand = (len, w) => `M150 ${150-len} L${(150-w).toFixed(1)} ${(150-len+w*2.2).toFixed(1)} L${(150-w*0.62).toFixed(1)} ${150+12} L${(150+w*0.62).toFixed(1)} ${150+12} L${(150+w).toFixed(1)} ${(150-len+w*2.2).toFixed(1)} Z`;
 
   return `<svg viewBox="0 0 300 300">${steelDefs('tx')}
-    <!-- knurled crown at ~3:30 -->
-    <g transform="rotate(15 150 150)">
-      <rect x="287" y="145" width="6" height="10" fill="#9aa0a6"/>
-      <rect x="292" y="141" width="9" height="18" rx="2" fill="url(#steel-tx)" stroke="#7f858b" stroke-width="0.6"/>
-      ${[0,1,2,3].map(k=>`<line x1="${294+k*2}" y1="142.5" x2="${294+k*2}" y2="157.5" stroke="#7f858b" stroke-width="0.5"/>`).join("")}
-    </g>
-    <circle cx="150" cy="150" r="143" fill="url(#steel-tx)"/>
-    <circle cx="150" cy="150" r="128" fill="#9aa0a6"/>
-    <circle cx="150" cy="150" r="124" fill="#0c0c0d"/>
-    <circle cx="150" cy="150" r="124" fill="none" stroke="#2a2a2b" stroke-width="1"/>
+    <!-- knurled crown centered at 3 o'clock -->
+    <rect x="282" y="146.5" width="9" height="7" rx="1" fill="url(#steel-tx)" stroke="#7f858b" stroke-width="0.5"/>
+    <rect x="289" y="142" width="11" height="16" rx="2.4" fill="url(#steel-tx)" stroke="#71777d" stroke-width="0.6"/>
+    ${[0,1,2,3,4,5,6].map(k=>`<line x1="${(290.6+k*1.3).toFixed(1)}" y1="143" x2="${(290.6+k*1.3).toFixed(1)}" y2="157" stroke="#71777d" stroke-width="0.45" opacity="0.7"/>`).join("")}
+    <circle cx="150" cy="150" r="140" fill="url(#steel-tx)"/>
+    <circle cx="150" cy="150" r="126" fill="#9aa0a6"/>
+    <circle cx="150" cy="150" r="122" fill="#0c0c0d"/>
+    <circle cx="150" cy="150" r="122" fill="none" stroke="#2a2a2b" stroke-width="1"/>
     ${ring}${numerals}
     <text x="150" y="97" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="1.5" fill="${lume}" text-anchor="middle">TIMEX</text>
     <text x="150" y="108" font-family="${sans}" font-weight="500" font-size="8.5" letter-spacing="2.6" fill="${lume}" text-anchor="middle">EXPEDITION</text>
     <text x="150" y="196" font-family="${sans}" font-weight="500" font-size="8" letter-spacing="1.6" fill="${lume}" text-anchor="middle">SOLAR POWERED</text>
     <!-- date window at 3 -->
-    <rect x="188" y="141" width="22" height="18" rx="1" fill="#e9e7df" stroke="#000" stroke-width="0.6"/>
-    <text x="199" y="150.5" font-family="${sans}" font-weight="700" font-size="11" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
+    <rect x="184" y="141" width="22" height="18" rx="1" fill="#e9e7df" stroke="#000" stroke-width="0.6"/>
+    <text x="195" y="150.5" font-family="${sans}" font-weight="700" font-size="11" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
     <g class="hands">
-      <path class="hand h-hour" d="${sword(56, 8)}" fill="${lume}" stroke="#3a3a3a" stroke-width="0.5"/>
-      <path class="hand h-min" d="${sword(88, 6)}" fill="${lume}" stroke="#3a3a3a" stroke-width="0.5"/>
+      <path class="hand h-hour" d="${hand(54, 7.5)}" fill="${lume}" stroke="#2a2a2a" stroke-width="0.6"/>
+      <path class="hand h-min" d="${hand(86, 5.5)}" fill="${lume}" stroke="#2a2a2a" stroke-width="0.6"/>
       <g class="hand h-sec">
-        <line x1="150" y1="174" x2="150" y2="48" stroke="${lume}" stroke-width="1.1"/>
-        <circle cx="150" cy="168" r="3" fill="${lume}"/>
-        <path d="M150 64 l-2.6 8 h5.2 z" fill="${lume}"/>
+        <line x1="150" y1="176" x2="150" y2="46" stroke="${lume}" stroke-width="1.1"/>
+        <circle cx="150" cy="170" r="3" fill="${lume}"/>
       </g>
-      ${centerCap("#dedede", 3)}
+      <!-- black centre dot -->
+      <circle cx="150" cy="150" r="1.8" fill="#0c0c0c"/>
     </g>
   </svg>`;
 }
