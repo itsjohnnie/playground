@@ -463,46 +463,63 @@ function steelDefs(id) {
 
 /* ---------- 1. Cartier Santos ---------- */
 function santos() {
-  const blue = "#21356b";
+  const blue = "#16306e";       // blued-steel hands
+  const ink = "#1c1c1c";        // black Roman numerals
+  // project an hour angle onto a square of half-size S (Santos square layout)
+  const sq = (ang, S) => {
+    const a = (ang - 90) * Math.PI / 180;
+    const dx = Math.cos(a), dy = Math.sin(a);
+    const m = Math.max(Math.abs(dx), Math.abs(dy));
+    return [150 + dx * S / m, 150 + dy * S / m, dx, dy, m];
+  };
+
+  // all twelve Roman numerals around the square (Cartier uses IIII)
+  const RN = ["XII","I","II","III","IIII","V","VI","VII","VIII","IX","X","XI"];
   let romans = "";
-  const nums = { 0: "XII", 3: "III", 6: "VI", 9: "IX" };
   for (let h = 0; h < 12; h++) {
-    const ang = h * 30;
-    if (nums[h]) {
-      const [x, y] = P(ang, 96);
-      romans += `<text x="${x}" y="${y}" font-family="Fraunces, serif" font-size="20" fill="${blue}"
-        text-anchor="middle" dominant-baseline="central" font-weight="500">${nums[h]}</text>`;
-    }
+    const [x, y] = sq(h * 30, 83);
+    romans += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="Fraunces, serif" font-size="16"
+      fill="${ink}" text-anchor="middle" dominant-baseline="central">${RN[h]}</text>`;
   }
-  // rail-track minutes
+
+  // chemin-de-fer rail: minute ticks between two concentric squares
+  const RO = 100, RI = 94;
   let rail = "";
   for (let i = 0; i < 60; i++) {
-    const [x, y] = P(i * 6, 116);
-    rail += `<circle cx="${x}" cy="${y}" r="${i % 5 === 0 ? 1.5 : 0.9}" fill="${blue}"/>`;
+    const [, , dx, dy, m] = sq(i * 6, 1);
+    const maj = i % 5 === 0;
+    const inner = maj ? RI - 3 : RI;
+    rail += `<line x1="${(150+dx*RO/m).toFixed(1)}" y1="${(150+dy*RO/m).toFixed(1)}"
+      x2="${(150+dx*inner/m).toFixed(1)}" y2="${(150+dy*inner/m).toFixed(1)}" stroke="${ink}" stroke-width="${maj?1.1:0.6}"/>`;
   }
+
+  // sword hand (blued steel) — pointed blade with a short tail
+  const sword = (len, w) => `M150 ${150-len} L${150-w} ${150-len*0.5} L150 ${150+12} L${150+w} ${150-len*0.5} Z`;
+
+  // eight exposed bezel screws (corners + mid-edges)
+  const screws = [[40,40],[260,40],[40,260],[260,260],[150,29],[271,150],[150,271],[29,150]]
+    .map(([x,y]) => `<circle cx="${x}" cy="${y}" r="5.4" fill="#d3d6da" stroke="#83878c" stroke-width="0.9"/>
+      <line x1="${x-3.4}" y1="${y}" x2="${x+3.4}" y2="${y}" stroke="#6c7075" stroke-width="1.2" transform="rotate(28 ${x} ${y})"/>`).join("");
+
   return `<svg viewBox="0 0 300 300">${steelDefs('s')}
-    <!-- square steel case -->
-    <rect x="14" y="14" width="272" height="272" rx="56" fill="url(#steel-s)"/>
-    <rect x="14" y="14" width="272" height="272" rx="56" fill="none" stroke="#6d7176" stroke-width="1.5"/>
-    <!-- screws -->
-    ${[[48,48],[252,48],[48,252],[252,252]].map(([x,y])=>`
-      <circle cx="${x}" cy="${y}" r="6.5" fill="#cfd2d6" stroke="#7d8186" stroke-width="1"/>
-      <line x1="${x-4}" y1="${y}" x2="${x+4}" y2="${y}" stroke="#6c7075" stroke-width="1.4" transform="rotate(35 ${x} ${y})"/>`).join("")}
-    <!-- bezel + dial -->
-    <rect x="40" y="40" width="220" height="220" rx="40" fill="#10141f"/>
-    <rect x="48" y="48" width="204" height="204" rx="36" fill="#f6f4ee"/>
+    <rect x="16" y="16" width="268" height="268" rx="52" fill="url(#steel-s)"/>
+    <rect x="16" y="16" width="268" height="268" rx="52" fill="none" stroke="#6d7176" stroke-width="1.2"/>
+    <rect x="34" y="34" width="232" height="232" rx="40" fill="#0e1320"/>
+    <rect x="40" y="40" width="220" height="220" rx="36" fill="#f7f5f0"/>
+    <rect x="50" y="50" width="200" height="200" rx="30" fill="none" stroke="${ink}" stroke-width="0.8"/>
+    <rect x="56" y="56" width="188" height="188" rx="25" fill="none" stroke="${ink}" stroke-width="0.8"/>
     ${rail}${romans}
-    <!-- secret signature / brand -->
-    <text x="150" y="118" font-family="Fraunces, serif" font-size="9" fill="${blue}" text-anchor="middle" letter-spacing="1">CARTIER</text>
+    ${screws}
+    <text x="150" y="104" font-family="Fraunces, serif" font-size="11" fill="#2c3c66" text-anchor="middle" letter-spacing="0.5">Cartier</text>
+    <text x="150" y="198" font-family="Fraunces, serif" font-size="7.5" fill="#6a6a6a" text-anchor="middle" letter-spacing="1.5">AUTOMATIC</text>
     <g class="hands">
-      <rect class="hand h-hour" x="146.5" y="92" width="7" height="62" rx="3.5" fill="${blue}"/>
-      <rect class="hand h-min" x="147.5" y="66" width="5" height="88" rx="2.5" fill="${blue}"/>
-      <line class="hand h-sec" x1="150" y1="166" x2="150" y2="58" stroke="${blue}" stroke-width="1.4"/>
-      ${centerCap(blue, 4)}
+      <path class="hand h-hour" d="${sword(58, 5)}" fill="${blue}"/>
+      <path class="hand h-min" d="${sword(82, 4.2)}" fill="${blue}"/>
+      ${centerCap(blue, 3.5)}
     </g>
     <!-- crown w/ blue cabochon -->
-    <rect x="284" y="142" width="12" height="16" rx="2" fill="url(#steel-s)"/>
-    <circle cx="296" cy="150" r="5" fill="#2a47a0" stroke="#16224d" stroke-width="1"/>
+    <rect x="282" y="143" width="11" height="14" rx="2" fill="url(#steel-s)" stroke="#7d8186" stroke-width="0.6"/>
+    <circle cx="294" cy="150" r="4.6" fill="#2a47a0" stroke="#16224d" stroke-width="1"/>
   </svg>`;
 }
 
@@ -654,31 +671,63 @@ function vacheron() {
   </svg>`;
 }
 
-/* ---------- 4. Timex ---------- */
+/* ---------- 4. Timex Expedition (field) ---------- */
 function timex() {
-  const ink = "#23211c";
+  const lume = "#f0efe9";       // white numerals / hands
+  const sans = "'Helvetica Neue', Helvetica, Arial, sans-serif";
+  const day = new Date().getDate();
+
+  // chapter ring: arrowheads at the hours, thin ticks for the minutes
+  const RO = 122;
+  let ring = "";
+  for (let i = 0; i < 60; i++) {
+    const ang = i * 6;
+    if (i % 5 === 0) {
+      const card = i % 15 === 0;                  // 12/3/6/9 a touch larger
+      const len = card ? 9 : 6.5, dw = card ? 2 : 1.5;
+      const [ax, ay] = P(ang, RO - len);
+      const [b1x, b1y] = P(ang - dw, RO), [b2x, b2y] = P(ang + dw, RO);
+      ring += `<path d="M${ax.toFixed(1)} ${ay.toFixed(1)} L${b1x.toFixed(1)} ${b1y.toFixed(1)} L${b2x.toFixed(1)} ${b2y.toFixed(1)} Z" fill="${lume}"/>`;
+    } else {
+      const [x1, y1] = P(ang, RO), [x2, y2] = P(ang, RO - 3);
+      ring += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${lume}" stroke-width="0.8"/>`;
+    }
+  }
+  // outer 1–12 and inner military 13–24 (24 at top); 3 o'clock yields to the date
   let numerals = "";
   for (let h = 1; h <= 12; h++) {
-    const ang = h * 30;
-    const [x, y] = P(ang, 98);
-    numerals += `<text x="${x}" y="${y}" font-family="Fraunces, serif" font-size="19" fill="${ink}"
-      text-anchor="middle" dominant-baseline="central">${h}</text>`;
+    const [x, y] = P(h * 30, 104);
+    numerals += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="${sans}" font-weight="700" font-size="19"
+      fill="${lume}" text-anchor="middle" dominant-baseline="central">${h}</text>`;
+    if (h === 3) continue;                          // date sits where 15 would be
+    const [ix, iy] = P(h * 30, 82);
+    numerals += `<text x="${ix.toFixed(1)}" y="${iy.toFixed(1)}" font-family="${sans}" font-size="9"
+      fill="#9a9a92" text-anchor="middle" dominant-baseline="central">${h + 12}</text>`;
   }
-  let mins = "";
-  for (let i = 0; i < 60; i++) { if (i%5===0) continue; const [x,y]=P(i*6,118); mins += `<circle cx="${x}" cy="${y}" r="0.8" fill="${ink}"/>`; }
+
+  const sword = (len, w) => `M150 ${150-len} L${150-w} ${150-len*0.62} L${150-w*0.45} ${150+13} L${150+w*0.45} ${150+13} L${150+w} ${150-len*0.62} Z`;
+
   return `<svg viewBox="0 0 300 300">${steelDefs('tx')}
-    <circle cx="150" cy="150" r="142" fill="url(#steel-tx)"/>
-    <circle cx="150" cy="150" r="130" fill="#caced2"/>
-    <circle cx="150" cy="150" r="122" fill="#f1ead6"/>
-    <circle cx="150" cy="150" r="122" fill="none" stroke="#d8cfb4" stroke-width="1.5"/>
-    ${mins}${numerals}
-    <text x="150" y="108" font-family="Fraunces, serif" font-size="12" fill="${ink}" text-anchor="middle" letter-spacing="3" font-weight="500">TIMEX</text>
-    <text x="150" y="196" font-family="IBM Plex Mono" font-size="6" fill="#8a8270" text-anchor="middle" letter-spacing="2">WATER RESISTANT</text>
+    <circle cx="150" cy="150" r="149" fill="url(#steel-tx)"/>
+    <circle cx="150" cy="150" r="133" fill="#9aa0a6"/>
+    <circle cx="150" cy="150" r="129" fill="#0c0c0d"/>
+    <circle cx="150" cy="150" r="129" fill="none" stroke="#2a2a2b" stroke-width="1"/>
+    ${ring}${numerals}
+    <text x="150" y="97" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="1.5" fill="${lume}" text-anchor="middle">TIMEX</text>
+    <text x="150" y="108" font-family="${sans}" font-weight="500" font-size="8.5" letter-spacing="2.6" fill="${lume}" text-anchor="middle">EXPEDITION</text>
+    <text x="150" y="196" font-family="${sans}" font-weight="500" font-size="8" letter-spacing="1.6" fill="${lume}" text-anchor="middle">SOLAR POWERED</text>
+    <!-- date window at 3 -->
+    <rect x="188" y="141" width="22" height="18" rx="1" fill="#e9e7df" stroke="#000" stroke-width="0.6"/>
+    <text x="199" y="150.5" font-family="${sans}" font-weight="700" font-size="11" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
     <g class="hands">
-      <rect class="hand h-hour" x="147" y="96" width="6" height="60" rx="1" fill="${ink}"/>
-      <rect class="hand h-min" x="148" y="62" width="4" height="94" rx="1" fill="${ink}"/>
-      <line class="hand h-sec" x1="150" y1="170" x2="150" y2="54" stroke="#c0392b" stroke-width="1.4"/>
-      ${centerCap("#c0392b", 3.5)}
+      <path class="hand h-hour" d="${sword(56, 8)}" fill="${lume}" stroke="#3a3a3a" stroke-width="0.5"/>
+      <path class="hand h-min" d="${sword(88, 6)}" fill="${lume}" stroke="#3a3a3a" stroke-width="0.5"/>
+      <g class="hand h-sec">
+        <line x1="150" y1="174" x2="150" y2="48" stroke="${lume}" stroke-width="1.1"/>
+        <circle cx="150" cy="168" r="3" fill="${lume}"/>
+        <path d="M150 64 l-2.6 8 h5.2 z" fill="${lume}"/>
+      </g>
+      ${centerCap("#dedede", 3)}
     </g>
   </svg>`;
 }
