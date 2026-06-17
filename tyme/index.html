@@ -799,8 +799,8 @@ function timex() {
 
 /* ---------- 5. Bell & Ross BR03-92 Military ---------- */
 function bellross() {
-  const lume = "#d7d0a4";       // green-cream lume
-  const dark = "#47483b";       // dark half of the duotone hands
+  const lume = "#c4cb7e";       // greener military lume
+  const dark = "#45483a";       // dark half of the duotone hands
   const sans = "'Helvetica Neue', Helvetica, Arial, sans-serif";
   const day = new Date().getDate();
   const arc = (r, a0, a1, sweep = 1) => {
@@ -814,21 +814,21 @@ function bellross() {
   let bars = "", numerals = "", ticks = "";
   for (let h = 0; h < 12; h++) {
     const ang = h * 30, card = cardinals.includes(h);
-    const outer = 107, len = card ? 11 : 23;
+    const outer = 117, len = card ? 12 : 24;
     const [cx, cy] = P(ang, outer - len / 2);
     bars += `<rect x="${(cx-2.8).toFixed(1)}" y="${(cy-len/2).toFixed(1)}" width="5.6" height="${len}" rx="1"
       fill="${lume}" transform="rotate(${ang} ${cx.toFixed(1)} ${cy.toFixed(1)})"/>`;
   }
   const nums = { 0: "12", 3: "3", 6: "6", 9: "9" };
   for (const h in nums) {
-    const [x, y] = P(h * 30, 72);
-    numerals += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="'Zalando Sans Expanded', ${sans}" font-weight="600" font-size="34"
+    const [x, y] = P(h * 30, 80);
+    numerals += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="'Zalando Sans Expanded', ${sans}" font-weight="600" font-size="36"
       fill="${lume}" text-anchor="middle" dominant-baseline="central">${nums[h]}</text>`;
   }
   for (let i = 0; i < 60; i++) {
     if (i % 5 === 0) continue;
     const ang = i * 6;
-    const [x1, y1] = P(ang, 110), [x2, y2] = P(ang, 107);
+    const [x1, y1] = P(ang, 120), [x2, y2] = P(ang, 117);
     ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${lume}" stroke-width="0.6" opacity="0.85"/>`;
   }
 
@@ -848,7 +848,7 @@ function bellross() {
       <radialGradient id="br-dial" cx="50%" cy="42%" r="64%">
         <stop offset="0" stop-color="#141511"/><stop offset="1" stop-color="#050504"/>
       </radialGradient>
-      <path id="br-swiss" d="${arc(92, 206, 154, 0)}"/>
+      <path id="br-swiss" d="${arc(101, 206, 154, 0)}"/>
     </defs>
     <rect x="16" y="16" width="268" height="268" rx="40" fill="url(#br-case)"/>
     <rect x="16" y="16" width="268" height="268" rx="40" fill="none" stroke="#2c2e24" stroke-width="1.5"/>
@@ -858,10 +858,10 @@ function bellross() {
       <line x1="${x-6.8}" y1="${y}" x2="${x+6.8}" y2="${y}" stroke="#15160f" stroke-width="2" transform="rotate(-25 ${x} ${y})"/>`).join("")}
     <rect x="280" y="138" width="14" height="24" rx="2" fill="#1c1d16"/>
     ${Array.from({length:5}).map((_,k)=>`<line x1="${281+k*2.8}" y1="139" x2="${281+k*2.8}" y2="161" stroke="#3a3b2e" stroke-width="0.8"/>`).join("")}
-    <!-- round bezel + dial sitting on the square case -->
-    <circle cx="150" cy="150" r="120" fill="#3a3d30"/>
-    <circle cx="150" cy="150" r="113" fill="url(#br-dial)"/>
-    <circle cx="150" cy="150" r="113" fill="none" stroke="#23241c" stroke-width="1"/>
+    <!-- round bezel nearly filling the square; only corners show behind it -->
+    <circle cx="150" cy="150" r="131" fill="#41442f"/>
+    <circle cx="150" cy="150" r="123" fill="url(#br-dial)"/>
+    <circle cx="150" cy="150" r="123" fill="none" stroke="#23241c" stroke-width="1"/>
     ${ticks}${bars}${numerals}
     <!-- Bell & Ross logo: tight, large, circled ampersand pushed up -->
     <text x="139.5" y="119" font-family="${sans}" font-weight="500" font-size="15" fill="#e6e2cf" text-anchor="end">Bell</text>
