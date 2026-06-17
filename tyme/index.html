@@ -1038,8 +1038,123 @@ function braun() {
   </svg>`;
 }
 
+/* ---------- 7. Citizen Tsuyosa (green automatic) ---------- */
+function citizen() {
+  const sans = "'Helvetica Neue', Helvetica, Arial, sans-serif";
+  const day = new Date().getDate();
+
+  // green sunray sunburst — many fine wedges alternating two close greens
+  let sun = "";
+  for (let i = 0; i < 120; i++) {
+    const [x0, y0] = P(i * 3, 120), [x1, y1] = P((i + 1) * 3, 120);
+    sun += `<path d="M150 150 L${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="${i % 2 ? '#1a7c3f' : '#176d37'}"/>`;
+  }
+
+  // faceted steel baton, long axis radial, centred at (cx,cy)
+  const bar = (cx, cy, w, len, ang) =>
+    `<rect x="${(cx - w / 2).toFixed(1)}" y="${(cy - len / 2).toFixed(1)}" width="${w}" height="${len}" rx="0.8"
+      fill="url(#cz-bar)" stroke="#8a9298" stroke-width="0.4"
+      transform="rotate(${ang} ${cx.toFixed(1)} ${cy.toFixed(1)})"/>`;
+  // applied markers; doubled at 12/3/6/9
+  const dbl = [0, 3, 6, 9];
+  let markers = "";
+  for (let h = 0; h < 12; h++) {
+    const ang = h * 30, a = (ang - 90) * Math.PI / 180;
+    const tx = -Math.sin(a), ty = Math.cos(a);     // tangent unit
+    const [bx, by] = P(ang, 98);
+    if (dbl.includes(h)) {
+      const d = 4;
+      markers += bar(bx + tx * d, by + ty * d, 4, 22, ang);
+      markers += bar(bx - tx * d, by - ty * d, 4, 22, ang);
+    } else {
+      markers += bar(bx, by, 5, 22, ang);
+    }
+  }
+  // fine minute track
+  let track = "";
+  for (let i = 0; i < 60; i++) {
+    const ang = i * 6, [x1, y1] = P(ang, 113), [x2, y2] = P(ang, i % 5 === 0 ? 108 : 110.5);
+    track += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"
+      stroke="rgba(225,242,232,0.55)" stroke-width="${i % 5 === 0 ? 1 : 0.7}"/>`;
+  }
+  // faceted dauphine hand: split-bevel fill (light left / dark right), a centre
+  // ridge, and a brief polished highlight toward the outer (tip) side
+  const dauph = (len, w) =>
+    `M150 ${150 - len} L${(150 + w).toFixed(1)} ${(150 - len * 0.32).toFixed(1)} L150 ${150 + 9} L${(150 - w).toFixed(1)} ${(150 - len * 0.32).toFixed(1)} Z`;
+  const hand = (cls, len, w) => `<g class="hand ${cls}">
+    <path d="${dauph(len, w)}" fill="url(#cz-hand)" stroke="#7c858c" stroke-width="0.4"/>
+    <line x1="150" y1="${(150 - len).toFixed(1)}" x2="150" y2="${150 + 9}" stroke="#69727a" stroke-width="0.4" opacity="0.55"/>
+    <line x1="${(150 - w * 0.4).toFixed(1)}" y1="${(150 - len * 0.7).toFixed(1)}" x2="${(150 - w * 0.16).toFixed(1)}" y2="${(150 - len * 0.4).toFixed(1)}" stroke="#ffffff" stroke-width="0.7" opacity="0.8"/>
+  </g>`;
+
+  return `<svg viewBox="0 0 300 300">${steelDefs('cz')}
+    <defs>
+      <radialGradient id="cz-vig" cx="50%" cy="40%" r="64%">
+        <stop offset="0" stop-color="#2a9b54" stop-opacity="0.4"/>
+        <stop offset="0.5" stop-color="#15602f" stop-opacity="0"/>
+        <stop offset="1" stop-color="#062c14" stop-opacity="0.7"/>
+      </radialGradient>
+      <linearGradient id="cz-bar" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#fbfcfd"/><stop offset=".45" stop-color="#dde3e8"/>
+        <stop offset=".55" stop-color="#aeb6bd"/><stop offset="1" stop-color="#cdd4da"/>
+      </linearGradient>
+      <linearGradient id="cz-hand" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#f4f7f9"/><stop offset=".48" stop-color="#ced5db"/>
+        <stop offset=".5" stop-color="#878f96"/><stop offset="1" stop-color="#aab2b9"/>
+      </linearGradient>
+      <radialGradient id="cz-glass" cx="34%" cy="26%" r="85%">
+        <stop offset="0" stop-color="#ffffff" stop-opacity="0.6"/>
+        <stop offset="0.4" stop-color="#ffffff" stop-opacity="0.13"/>
+        <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+      </radialGradient>
+      <clipPath id="cz-clip"><circle cx="150" cy="150" r="120"/></clipPath>
+    </defs>
+    <!-- bracelet end-links emerging top & bottom -->
+    <g stroke="#71777d" stroke-width="0.8">
+      <path d="M96 0 L204 0 L198 30 L102 30 Z" fill="url(#steel-cz)"/>
+      <path d="M102 270 L198 270 L204 300 L96 300 Z" fill="url(#steel-cz)"/>
+    </g>
+    <g stroke="#80868c" stroke-width="0.9" opacity="0.8" stroke-linecap="round">
+      <line x1="128" y1="0" x2="130" y2="30"/><line x1="172" y1="0" x2="170" y2="30"/>
+      <line x1="128" y1="300" x2="130" y2="270"/><line x1="172" y1="300" x2="170" y2="270"/>
+    </g>
+    <!-- crown at 3 -->
+    <rect x="277" y="144" width="10" height="12" rx="1.4" fill="url(#steel-cz)" stroke="#71777d" stroke-width="0.6"/>
+    ${[0,1,2].map(k=>`<line x1="${279+k*3}" y1="145" x2="${279+k*3}" y2="155" stroke="#9aa6b0" stroke-width="0.5"/>`).join("")}
+    <!-- polished case + thin bezel + green dial -->
+    <circle cx="150" cy="150" r="140" fill="url(#steel-cz)" stroke="#71777d" stroke-width="1"/>
+    <circle cx="150" cy="150" r="125" fill="#c3cace"/>
+    <circle cx="150" cy="150" r="121" fill="#0a3a1c"/>
+    <circle cx="150" cy="150" r="120" fill="#155f31"/>
+    <g clip-path="url(#cz-clip)">
+      ${sun}
+      <circle cx="150" cy="150" r="120" fill="url(#cz-vig)"/>
+    </g>
+    ${track}${markers}
+    <text x="150" y="103" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="2" fill="#f3f7f4" text-anchor="middle">CITIZEN</text>
+    <text x="150" y="200" font-family="${sans}" font-weight="500" font-size="8.5" letter-spacing="2" fill="#eaf3ec" text-anchor="middle">AUTOMATIC</text>
+    <!-- date window at 4:30 with a faux-cyclops magnifier: enlarged digit + glass dome -->
+    <rect x="177" y="176.5" width="27" height="19" rx="1.8" fill="#eef3ee" stroke="#0a3a1c" stroke-width="0.6"/>
+    <text x="190.5" y="186.5" font-family="${sans}" font-weight="700" font-size="13.5" fill="#10331d" text-anchor="middle" dominant-baseline="central">${day}</text>
+    <rect x="177" y="176.5" width="27" height="19" rx="1.8" fill="url(#cz-glass)"/>
+    <rect x="177" y="176.5" width="27" height="19" rx="1.8" fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.7"/>
+    <g class="hands">
+      ${hand("h-hour", 52, 5)}
+      ${hand("h-min", 82, 4)}
+      <g class="hand h-sec">
+        <line x1="150" y1="172" x2="150" y2="48" stroke="#e7edf2" stroke-width="1"/>
+        <circle cx="150" cy="166" r="3" fill="#e7edf2"/>
+      </g>
+      ${centerCap("#dfe6ec", 3.4)}
+      <circle cx="150" cy="150" r="1.4" fill="#10331d"/>
+    </g>
+  </svg>`;
+}
+
 const WATCHES = [
-  { id: "santos",     brand: "Cartier",   model: "Santos de Cartier",   shape: "square",  render: santos },
+  // Cartier Santos hidden for now — too intricate to match cleanly (santos() kept in code above)
+  // { id: "santos",     brand: "Cartier",   model: "Santos de Cartier",   shape: "square",  render: santos },
+  { id: "citizen",    brand: "Citizen",   model: "Tsuyosa Automatic",   shape: "round",   render: citizen },
   { id: "speedmaster",brand: "Omega",     model: "Speedmaster Professional", shape: "round", render: speedmaster },
   { id: "tissot",     brand: "Tissot",    model: "PRX Powermatic 80",   shape: "cushion", render: tissot },
   { id: "timex",      brand: "Timex",     model: "Expedition",          shape: "round",   render: timex },
