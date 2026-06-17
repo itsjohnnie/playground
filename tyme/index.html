@@ -694,19 +694,29 @@ function tissot() {
   // applied baton markers (skip 3 for the date, double baton at 12)
   let markers = "";
   for (let h = 0; h < 12; h++) {
-    if (h === 3) continue;
     const ang = h * 30;
     const [x, y] = P(ang, 99);
     if (h === 0) {
-      for (const off of [-4, 4])
+      // double baton at 12 — the two bars sit flush against each other
+      for (const off of [-1.7, 1.7])
         markers += `<rect x="${(x+off-1.6).toFixed(1)}" y="${(y-9).toFixed(1)}" width="3.2" height="20" rx="0.6"
           fill="url(#prx-bar)" stroke="#9aa6b0" stroke-width="0.4"/>`;
+    } else if (h === 3) {
+      // shorter bar at 3 — the date window shares this spot
+      const [x3, y3] = P(90, 103.5);
+      markers += `<rect x="${(x3-1.8).toFixed(1)}" y="${(y3-5.5).toFixed(1)}" width="3.6" height="11" rx="0.6"
+        fill="url(#prx-bar)" stroke="#9aa6b0" stroke-width="0.4" transform="rotate(90 ${x3.toFixed(1)} ${y3.toFixed(1)})"/>`;
     } else {
       markers += `<rect x="${(x-1.8).toFixed(1)}" y="${(y-10).toFixed(1)}" width="3.6" height="20" rx="0.6"
         fill="url(#prx-bar)" stroke="#9aa6b0" stroke-width="0.4" transform="rotate(${ang} ${x.toFixed(1)} ${y.toFixed(1)})"/>`;
     }
   }
   const baton = (len, w) => `<rect x="${(150-w/2).toFixed(2)}" y="${150-len}" width="${w}" height="${len+12}" rx="${w/2}"`;
+  const arc = (r, a0, a1) => {
+    const [x0, y0] = P(a0, r), [x1, y1] = P(a1, r);
+    const large = Math.abs(a1 - a0) > 180 ? 1 : 0;
+    return `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  };
   // squircle (superellipse) — the PRX's smooth cushion case
   const squircle = (r, n) => {
     let d = "";
@@ -718,15 +728,15 @@ function tissot() {
     }
     return d + "Z";
   };
-  // smooth conic-style sunray sweep through a range of blues
-  const sun = sunray(122, [0x2f, 0x72, 0xb8], [0x0b, 0x24, 0x49], 2, 90);
+  // smooth conic-style sunray sweep through a range of blues (deep)
+  const sun = sunray(122, [0x21, 0x55, 0x8e], [0x05, 0x14, 0x2c], 2, 90);
 
-  return `<svg viewBox="0 0 300 300">${steelDefs('prx')}
+  return `<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${steelDefs('prx')}
     <defs>
       <radialGradient id="prx-vig" cx="50%" cy="40%" r="62%">
-        <stop offset="0" stop-color="#3a6cab" stop-opacity="0.35"/>
-        <stop offset="0.55" stop-color="#1d4480" stop-opacity="0"/>
-        <stop offset="1" stop-color="#081634" stop-opacity="0.6"/>
+        <stop offset="0" stop-color="#2f5e9b" stop-opacity="0.18"/>
+        <stop offset="0.55" stop-color="#12305c" stop-opacity="0"/>
+        <stop offset="1" stop-color="#040d22" stop-opacity="0.72"/>
       </radialGradient>
       <radialGradient id="prx-dial" cx="50%" cy="38%" r="66%">
         <stop offset="0" stop-color="#214a82"/><stop offset=".55" stop-color="#143461"/><stop offset="1" stop-color="#0b2040"/>
@@ -762,14 +772,17 @@ function tissot() {
       <circle cx="150" cy="150" r="117" fill="url(#prx-vig)"/>
     </g>
     ${markers}
-    <text x="150" y="100" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="3" fill="#eef3f7" text-anchor="middle">TISSOT</text>
-    <text x="150" y="111" font-family="${sans}" font-weight="400" font-size="5.4" letter-spacing="2.4" fill="#c4d2e2" text-anchor="middle">1853</text>
-    <text x="150" y="180" font-family="${sans}" font-weight="600" font-size="11" letter-spacing="2.5" fill="#eef3f7" text-anchor="middle">PRX</text>
-    <text x="150" y="191" font-family="${sans}" font-weight="400" font-size="5.4" letter-spacing="1.6" fill="#bcccdf" text-anchor="middle">POWERMATIC 80</text>
-    <text x="150" y="216" font-family="${sans}" font-weight="400" font-size="6" letter-spacing="2" fill="#c4d2e2" text-anchor="middle">SWISS MADE</text>
-    <!-- date at 3 -->
-    <rect x="192" y="142" width="20" height="16" rx="1" fill="#eef2f5" stroke="#8d99a3" stroke-width="0.5"/>
-    <text x="202" y="150.5" font-family="${sans}" font-weight="600" font-size="10" fill="#16294a" text-anchor="middle" dominant-baseline="central">${day}</text>
+    <text x="150" y="100" font-family="${sans}" font-weight="700" font-size="13" letter-spacing="1.6" fill="#eef3f7" text-anchor="middle">TISSOT</text>
+    <text x="150" y="111" font-family="${sans}" font-weight="400" font-size="5.4" letter-spacing="1.2" fill="#c4d2e2" text-anchor="middle">1853</text>
+    <text x="150" y="180" font-family="${sans}" font-weight="700" font-style="italic" font-size="11.5" letter-spacing="0.6" fill="#eef3f7" text-anchor="middle">PRX</text>
+    <text x="150" y="191" font-family="${sans}" font-weight="400" font-size="5.4" letter-spacing="1" fill="#bcccdf" text-anchor="middle">POWERMATIC 80</text>
+    <!-- SWISS · MADE flanking the 6 o'clock marker, following the bottom curve -->
+    <text x="110" y="245" font-family="${sans}" font-weight="400" font-size="6" letter-spacing="1" fill="#c4d2e2" text-anchor="middle" transform="rotate(20 110 245)">SWISS</text>
+    <text x="190" y="245" font-family="${sans}" font-weight="400" font-size="6" letter-spacing="1" fill="#c4d2e2" text-anchor="middle" transform="rotate(-20 190 245)">MADE</text>
+    <!-- date at 3 with a metallic frame matching the case -->
+    <rect x="190.5" y="140.5" width="23" height="19" rx="1.8" fill="url(#steel-prx)" stroke="#71777d" stroke-width="0.5"/>
+    <rect x="192.4" y="142.4" width="19.2" height="15.2" rx="1" fill="#eef2f5"/>
+    <text x="202" y="150.6" font-family="${sans}" font-weight="600" font-size="10" fill="#16294a" text-anchor="middle" dominant-baseline="central">${day}</text>
     <g class="hands">
       ${baton(54, 6)} fill="url(#prx-bar)" stroke="#8c98a2" stroke-width="0.4" class="hand h-hour"/>
       ${baton(82, 4.4)} fill="url(#prx-bar)" stroke="#8c98a2" stroke-width="0.4" class="hand h-min"/>
@@ -1092,6 +1105,10 @@ function citizen() {
       const d = 3.8;
       markers += bar(bx + tx * d, by + ty * d, 4, 21, ang);
       markers += bar(bx - tx * d, by - ty * d, 4, 21, ang);
+    } else if (h === 3) {
+      // shorter bar at 3 — the date cyclops shares this spot
+      const [bx3, by3] = P(90, 96);
+      markers += bar(bx3, by3, 5, 11, 90);
     } else {
       markers += bar(bx, by, 5, 21, ang);
     }
@@ -1107,6 +1124,16 @@ function citizen() {
     <line x1="150" y1="${(150 - len).toFixed(1)}" x2="150" y2="${150 + 9}" stroke="#69727a" stroke-width="0.4" opacity="0.5"/>
     <line x1="${(150 - w * 0.4).toFixed(1)}" y1="${(150 - len * 0.7).toFixed(1)}" x2="${(150 - w * 0.16).toFixed(1)}" y2="${(150 - len * 0.4).toFixed(1)}" stroke="#ffffff" stroke-width="0.7" opacity="0.8"/>
   </g>`;
+
+  // "pillow" lens outline: flat top & bottom, convex bulging sides
+  const pill = (w, h, b, cx = 205, cy = 150) => {
+    const L = cx - w, R = cx + w, T = cy - h, B = cy + h;
+    return `M${L} ${T} L${R} ${T} `
+      + `C${R + b} ${(cy - h * 0.5).toFixed(1)} ${R + b} ${(cy + h * 0.5).toFixed(1)} ${R} ${B} `
+      + `L${L} ${B} `
+      + `C${L - b} ${(cy + h * 0.5).toFixed(1)} ${L - b} ${(cy - h * 0.5).toFixed(1)} ${L} ${T} Z`;
+  };
+  const lens = pill(9.5, 9.5, 3.4), lensF1 = pill(10, 10, 3.6), lensF2 = pill(10.4, 10.4, 3.8);
 
   return `<svg viewBox="0 0 300 300">${steelDefs('cz')}
     <defs>
@@ -1160,23 +1187,22 @@ function citizen() {
     <!-- classic cyclops date lens, just inboard of the 3 o'clock marker:
          magnified digit, edge refraction, a domed glass highlight, specular
          glare, and chromatic aberration at the rim/glyph edges -->
-    <rect x="194.5" y="143.5" width="21" height="13" rx="1.4" fill="#eef3ee"/>
-    <clipPath id="cz-lens"><circle cx="205" cy="150" r="12.7"/></clipPath>
-    <circle cx="205" cy="150" r="12.7" fill="#eef3ee"/>
+    <clipPath id="cz-lens"><path d="${lens}"/></clipPath>
+    <path d="${lens}" fill="#eef3ee"/>
     <g clip-path="url(#cz-lens)">
       <text x="204.1" y="150.4" font-family="${sans}" font-weight="700" font-size="17" fill="#ff2d55" opacity="0.55" text-anchor="middle" dominant-baseline="central">${day}</text>
       <text x="205.9" y="150.4" font-family="${sans}" font-weight="700" font-size="17" fill="#2d7bff" opacity="0.55" text-anchor="middle" dominant-baseline="central">${day}</text>
       <text x="205" y="150.4" font-family="${sans}" font-weight="700" font-size="17" fill="#10331d" text-anchor="middle" dominant-baseline="central">${day}</text>
       <!-- refraction: glass bends light into a darker ring just inside the edge -->
-      <circle cx="205" cy="150" r="12.7" fill="none" stroke="rgba(0,0,0,0.30)" stroke-width="2.6"/>
+      <path d="${lens}" fill="none" stroke="rgba(0,0,0,0.30)" stroke-width="2.6"/>
     </g>
     <!-- domed glass body + specular glare -->
-    <circle cx="205" cy="150" r="12.7" fill="url(#cz-glass)"/>
+    <path d="${lens}" fill="url(#cz-glass)"/>
     <ellipse cx="200.4" cy="145" rx="4.4" ry="2.6" fill="#ffffff" opacity="0.5"/>
     <!-- glass edge with red/blue chromatic fringe -->
-    <circle cx="205" cy="150" r="12.7" fill="none" stroke="#e2eae4" stroke-width="0.8"/>
-    <circle cx="205" cy="150" r="13.2" fill="none" stroke="#ff3b5c" stroke-opacity="0.22" stroke-width="0.8"/>
-    <circle cx="205" cy="150" r="13.7" fill="none" stroke="#3b7bff" stroke-opacity="0.18" stroke-width="0.8"/>
+    <path d="${lens}" fill="none" stroke="#e2eae4" stroke-width="0.8"/>
+    <path d="${lensF1}" fill="none" stroke="#ff3b5c" stroke-opacity="0.22" stroke-width="0.8"/>
+    <path d="${lensF2}" fill="none" stroke="#3b7bff" stroke-opacity="0.18" stroke-width="0.8"/>
     <g class="hands">
       ${hand("h-hour", 52, 5)}
       ${hand("h-min", 82, 4)}
