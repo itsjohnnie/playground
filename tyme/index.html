@@ -836,9 +836,8 @@ function bellross() {
     <text x="150" y="180" font-family="${sans}" font-weight="500" font-size="9" letter-spacing="1.5" fill="#cdc9b4" text-anchor="middle">BR03-92</text>
     <text x="150" y="192" font-family="${sans}" font-weight="400" font-size="7.5" letter-spacing="1.6" fill="#9c9881" text-anchor="middle">MILITARY TYPE</text>
     <text x="150" y="214" font-family="${sans}" font-weight="400" font-size="6.5" letter-spacing="2" fill="#9c9881" text-anchor="middle">SWISS MADE</text>
-    <!-- date at 4:30 -->
-    <rect x="190" y="190" width="16" height="14" rx="1" fill="#e6e2cf" stroke="#000" stroke-width="0.5"/>
-    <text x="198" y="197.5" font-family="${sans}" font-weight="700" font-size="9" fill="#1a1a1a" text-anchor="middle" dominant-baseline="central">${day}</text>
+    <!-- date at 4:30 — white print directly on the dial -->
+    <text x="198" y="196" font-family="${sans}" font-weight="500" font-size="9" fill="#e8e4cf" text-anchor="middle" dominant-baseline="central">${day}</text>
     <g class="hands">
       <path class="hand h-hour" d="${sword(54, 9)}" fill="${lume}" stroke="#15160f" stroke-width="0.6"/>
       <path class="hand h-min" d="${sword(84, 7)}" fill="${lume}" stroke="#15160f" stroke-width="0.6"/>
