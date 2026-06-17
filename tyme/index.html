@@ -818,8 +818,9 @@ function bellross() {
     <rect x="16" y="16" width="268" height="268" rx="40" fill="url(#br-case)"/>
     <rect x="16" y="16" width="268" height="268" rx="40" fill="none" stroke="#2c2e24" stroke-width="1.5"/>
     ${[[46,46],[254,46],[46,254],[254,254]].map(([x,y])=>`
-      <circle cx="${x}" cy="${y}" r="7" fill="#34362a" stroke="#1f2018" stroke-width="1"/>
-      <line x1="${x-4.6}" y1="${y}" x2="${x+4.6}" y2="${y}" stroke="#15160f" stroke-width="1.4" transform="rotate(-25 ${x} ${y})"/>`).join("")}
+      <circle cx="${x}" cy="${y}" r="11.5" fill="#2b2d21"/>
+      <circle cx="${x}" cy="${y}" r="9.8" fill="#3b3d2f" stroke="#1c1d15" stroke-width="1"/>
+      <line x1="${x-6.8}" y1="${y}" x2="${x+6.8}" y2="${y}" stroke="#15160f" stroke-width="2" transform="rotate(-25 ${x} ${y})"/>`).join("")}
     <!-- black knurled crown at 3 -->
     <rect x="280" y="138" width="14" height="24" rx="2" fill="#1c1d16"/>
     ${Array.from({length:5}).map((_,k)=>`<line x1="${281+k*2.8}" y1="139" x2="${281+k*2.8}" y2="161" stroke="#3a3b2e" stroke-width="0.8"/>`).join("")}
