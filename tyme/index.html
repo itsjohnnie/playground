@@ -461,11 +461,11 @@ function centerCap(color = "#111", r = 4) {
    continuous radial sheen (no banding) and a beautiful spread of midtones.
    `light`/`dark` are [r,g,b]. Returned as a <g class="sunray"> so it can be
    gently spun by pointer movement. */
-function sunray(r, light, dark, lobes = 2, segs = 240) {
+function sunray(r, light, dark, lobes = 2, phase = 0, segs = 240) {
   let s = "";
   for (let i = 0; i < segs; i++) {
     const a0 = (i / segs) * 360, a1 = ((i + 1) / segs) * 360, mid = (a0 + a1) / 2;
-    const f = 0.5 + 0.5 * Math.cos(mid * Math.PI / 180 * lobes);
+    const f = 0.5 + 0.5 * Math.cos((mid - phase) * Math.PI / 180 * lobes);
     const c = light.map((L, k) => Math.round(dark[k] + (L - dark[k]) * f));
     const [x0, y0] = P(a0, r), [x1, y1] = P(a1, r);
     s += `<path d="M150 150 L${x0.toFixed(1)} ${y0.toFixed(1)} L${x1.toFixed(1)} ${y1.toFixed(1)} Z" fill="rgb(${c[0]},${c[1]},${c[2]})"/>`;
@@ -719,7 +719,7 @@ function tissot() {
     return d + "Z";
   };
   // smooth conic-style sunray sweep through a range of blues
-  const sun = sunray(122, [0x2f, 0x72, 0xb8], [0x0b, 0x24, 0x49], 2);
+  const sun = sunray(122, [0x2f, 0x72, 0xb8], [0x0b, 0x24, 0x49], 2, 90);
 
   return `<svg viewBox="0 0 300 300">${steelDefs('prx')}
     <defs>
@@ -1151,7 +1151,7 @@ function citizen() {
     <circle cx="150" cy="150" r="121" fill="#0a3a1c"/>
     <circle cx="150" cy="150" r="120" fill="#0e4d26"/>
     <g clip-path="url(#cz-clip)">
-      ${sunray(124, [0x35, 0xb0, 0x64], [0x06, 0x33, 0x19], 2)}
+      ${sunray(124, [0x35, 0xb0, 0x64], [0x06, 0x33, 0x19], 2, 90)}
       <circle cx="150" cy="150" r="120" fill="url(#cz-sheen)"/>
     </g>
     ${track}${innerRing}${markers}
