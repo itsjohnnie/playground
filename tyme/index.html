@@ -876,7 +876,7 @@ function bellross() {
     // aria-label keeps it readable as "12"
     const glyph = nums[h] === "12" ? "I2" : nums[h];
     const a11y = nums[h] === "12" ? ' aria-label="12" role="img"' : "";
-    numerals += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="'Zalando Sans Expanded', ${sans}" font-weight="600" font-size="36"
+    numerals += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" font-family="'Zalando Sans Expanded', ${sans}" font-weight="600" font-size="42"
       fill="${lume}" text-anchor="middle" dominant-baseline="central"${a11y}>${glyph}</text>`;
   }
   for (let i = 0; i < 60; i++) {
