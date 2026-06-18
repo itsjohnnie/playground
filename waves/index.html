@@ -379,44 +379,46 @@
                 // variation reads as the rising / curving heights above it.
                 float wave  = 0.5 + 0.5 * sin(center * TAU * 0.8 - t * 0.22)
                                   + 0.18 * sin(center * TAU * 1.6 + 1.3 - t * 0.22);
-                // Per-flute bar HEIGHT (width when horizontal), measured from the
-                // anchored baseline. It can fall all the way to 0 — the bar
-                // vanishes — and grow back, so growth is fully progressive from
-                // nothing. At rest it's the spatial wave; volume lifts every bar
-                // additively (louder = taller).
+                // Stacked bars use an explicit HEIGHT that can fall all the way to
+                // 0 (the bar vanishes) and grow back from the anchored baseline; at
+                // rest it's the spatial wave, and volume lifts every bar additively.
                 float h = clamp(wave, 0.0, 1.0) * 0.8 + vol * 1.2;
+                // The smooth (non-stacked) mode keeps its reach-based size instead,
+                // with no zero-height clipping: louder -> larger lit shapes.
+                float reach = mix(0.55, 1.75, clamp(wave, 0.0, 1.0)) / (1.0 + vol * 2.0);
 
                 float rp = u_repeat;
 
                 vec3 lab;
                 float bright;
                 if (rp > 1.5) {
-                    // Segmented "stacked shapes", anchored at the baseline. Cells
-                    // grow from along == 0; 'reach' sets how many stack up each
-                    // flute (so their heights vary), and a warp that vanishes at
-                    // the anchor adds within-flute height variation without moving
-                    // the baseline. A SHARP cut ends each shape.
-                    float warp = 0.04 * rp * along * sin(along * TAU * 1.3 + center * 5.0 + t * 0.25);
-                    float P    = along * rp * 1.7 + warp;   // fixed cell size; the bar is clipped to height h below
+                    // Segmented "stacked shapes": a bar of height h, divided into rp
+                    // segments that STRETCH to fill it — so the gradient inside each
+                    // segment grows / shrinks as the bar (and segment) gets taller or
+                    // shorter. A warp that vanishes at the baseline gives the segments
+                    // uneven heights; each runs A->B with a SHARP cut, and anything
+                    // above h is black (h can reach 0 -> the bar vanishes). This
+                    // zero-height growth is exclusive to the stacked mode.
+                    float u    = along / max(h, 1e-4);   // 0..1 within the bar
+                    float warp = 0.04 * rp * u * sin(u * TAU * 1.3 + center * 5.0 + t * 0.25);
+                    float P    = u * rp + warp;
                     float s    = fract(P);
                     float seg  = floor(P);
                     lab = colorCycle(s * 0.9 + seg * 0.12 + t * 0.03);
-                    bright = pow(clamp(1.0 - s, 0.0, 1.0), 0.8); // bright base -> dark top
-                    bright *= smoothstep(1.0, 0.94, s);          // thin dark gap = the cut
+                    bright = pow(clamp(1.0 - s, 0.0, 1.0), 0.8);     // bright base -> dark top
+                    bright *= smoothstep(1.0, 0.94, s);              // thin dark gap = the cut
+                    bright *= 1.0 - smoothstep(h - 0.008, h, along); // soft top edge + black above
                 } else {
-                    // Smooth single gradient, anchored: bright at the baseline,
-                    // receding along the flute at the per-flute reach.
-                    float phase = along;   // fixed gradient; the bar is clipped to height h below
+                    // Smooth single gradient, anchored at the baseline; size set by
+                    // the per-flute reach (volume grows it). No zero-height clipping.
+                    float phase = along * reach;
                     float colorPhase  = phase * 0.9 + t * 0.03;
                     float brightPhase = phase * TAU * 0.5 - 0.2;
                     lab = colorCycle(colorPhase);
                     bright = 0.5 + 0.5 * cos(brightPhase);
                     bright = pow(clamp(bright, 0.0, 1.0), 1.2);
                 }
-                // Clip the flute to the bar height: lit below h, black above
-                // (h can reach 0 -> the bar vanishes entirely). A hair of
-                // softening at the top edge avoids aliasing.
-                bright *= 1.0 - smoothstep(h - 0.012, h, along);
+
                 vec3 color = linearToSrgb(oklabToLinear(lab * bright));
 
                 // Interleaved-gradient-noise dither, animated, to dissolve any
