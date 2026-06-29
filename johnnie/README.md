@@ -100,8 +100,26 @@ every push to `main`. `johnnie` is built there with
 
 Cloudflare Pages' free tier covers this entirely (static hosting + global CDN).
 
-## Notes
+## Contact form (Cloudflare Email Routing)
 
-- The contact form preserves the original Webflow markup/styling. Webflow's form
-  backend is gone, so wire the `<form>` to a free endpoint (Cloudflare Pages
-  Functions, Formspree, etc.) when you want submissions delivered.
+The form posts JSON to `POST /api/contact`, handled by the Cloudflare Worker in
+`../worker/index.js`, which emails it to you via **Cloudflare Email Routing**
+(no third party). Spam is filtered with a honeypot field; header values are
+sanitized. Success/error states are rendered in `app/contact-form.tsx`.
+
+One-time Cloudflare setup:
+
+1. Make sure the site is deployed as a **Worker** (the repo `wrangler.toml`
+   already sets `main = worker/index.js` + the `[assets]` and `[[send_email]]`
+   bindings).
+2. In the Cloudflare dashboard for **johnnies.life**: **Email → Email Routing →
+   Enable**.
+3. **Email Routing → Destination addresses → Add** `johnnie@hey.com` and click
+   the verification link Cloudflare emails there.
+4. (Optional) change the inbox / from-address via the `CONTACT_TO` /
+   `CONTACT_FROM` vars in `wrangler.toml`.
+5. Redeploy. The form now delivers to your inbox; replies go straight to the
+   sender (Reply-To is set to their address).
+
+Note: `/api/contact` only exists on the Cloudflare deployment. On the GitHub
+Pages mirror the form renders but can't send (no Worker).

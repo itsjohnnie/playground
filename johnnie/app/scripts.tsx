@@ -27,23 +27,18 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
-function runInline(code: string) {
-  const s = document.createElement("script");
-  s.text = code;
-  document.body.appendChild(s);
-}
-
 // The page background-color is animated frame-by-frame by Webflow's JS (the
 // cycling hue), written straight onto <body>. The fixed nav has its own color
 // that can lag/freeze, causing a duotone clash on mobile. Rather than push the
 // color onto each nav element, we mirror the body's current color into a single
 // CSS custom property (--bg) on the root each frame; CSS then drives the nav
-// (and anything else) off var(--bg), so everything stays in sync by design.
+// (and anything else) off var(--bg), so everything stays in sync by design. We
+// also keep the <meta name="theme-color"> in sync so the iOS/Android browser
+// chrome matches the page in real time.
 function syncBgVar(): () => void {
   let raf = 0;
   let last = "";
   let lastTheme = 0;
-  // Ensure a theme-color meta exists; iOS/Android tint the browser UI to it.
   let metas = Array.from(
     document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'),
   );
@@ -64,8 +59,6 @@ function syncBgVar(): () => void {
     if (c && c !== last) {
       last = c;
       document.documentElement.style.setProperty("--bg", c);
-      // Match the browser-UI tint (iOS status bar) in ~real time. Throttled so
-      // the OS chrome doesn't stutter; the hue changes gradually so it's smooth.
       const now = performance.now();
       if (now - lastTheme > 150) {
         lastTheme = now;
@@ -77,98 +70,6 @@ function syncBgVar(): () => void {
   raf = requestAnimationFrame(tick);
   return () => cancelAnimationFrame(raf);
 }
-
-// Three.js smoke field (verbatim from the original, texture localized).
-const SMOKE_INIT = `
-var camera, scene, renderer,
-    geometry, material, mesh;
-
-init();
-animate();
-
-function init() {
-   clock = new THREE.Clock();
-
-    renderer = new THREE.WebGLRenderer();
-    renderer.setSize( window.innerWidth, window.innerHeight );
-
-    scene = new THREE.Scene();
-
-    camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 10000 );
-    camera.position.z = 1000;
-    scene.add( camera );
-
-    geometry = new THREE.CubeGeometry( 200, 200, 200 );
-    material = new THREE.MeshLambertMaterial( { color: 0xffffff, wireframe: false } );
-    mesh = new THREE.Mesh( geometry, material );
-    cubeSineDriver = 0;
-
-    THREE.ImageUtils.crossOrigin = '';
-
-    light = new THREE.DirectionalLight(0xffffff,0.5);
-    light.position.set(-1,0,1);
-    scene.add(light);
-
-    smokeTexture = THREE.ImageUtils.loadTexture('${asset("/vendor/Smoke-Element.png")}');
-    smokeMaterial = new THREE.MeshLambertMaterial({color: 0xffffff, map: smokeTexture, transparent: true});
-    smokeGeo = new THREE.PlaneGeometry(300,300);
-    smokeParticles = [];
-
-    for (p = 0; p < 150; p++) {
-        var particle = new THREE.Mesh(smokeGeo,smokeMaterial);
-        particle.position.set(Math.random()*500-250,Math.random()*500-250,Math.random()*1000-100);
-        particle.rotation.z = Math.random() * 360;
-        scene.add(particle);
-        smokeParticles.push(particle);
-    }
-    // Contain the smoke to the hero so it fills (and scrolls with) the hero
-    // instead of a fixed viewport-height band glued to the top of the page.
-    var __hero = document.querySelector('#hero') || document.body;
-    renderer.domElement.style.cssText = 'position:absolute !important;top:0 !important;left:0 !important;right:0 !important;bottom:0 !important;width:100% !important;height:100% !important;mix-blend-mode:plus-lighter;pointer-events:none;opacity:0.75;';
-    __hero.appendChild( renderer.domElement );
-
-    // Only animate while the hero is on-screen and the tab is visible — saves
-    // CPU/GPU/battery when it isn't visible. No visual change.
-    __heroVisible = true;
-    try {
-      if (window.IntersectionObserver) {
-        new IntersectionObserver(function(es){ __heroVisible = es[0].isIntersecting; __resume(); }, { threshold: 0 }).observe(__hero);
-      }
-      document.addEventListener('visibilitychange', __resume);
-    } catch(e){}
-}
-
-var __running = true, __heroVisible = true;
-function __resume() {
-    var should = __heroVisible && !document.hidden;
-    if (should && !__running) { __running = true; clock.getDelta(); requestAnimationFrame( animate ); }
-    else if (!should) { __running = false; }
-}
-
-function animate() {
-    if (!__running) return;
-    requestAnimationFrame( animate );
-    delta = clock.getDelta();
-    evolveSmoke();
-    render();
-}
-
-function evolveSmoke() {
-    var sp = smokeParticles.length - 1;
-    while(sp >= 0) {
-      smokeParticles[sp].rotation.z += (delta * 0.2);
-      sp = sp - 1;
-    }
-}
-
-function render() {
-    mesh.rotation.x += 0.005;
-    mesh.rotation.y += 0.01;
-    cubeSineDriver += .01;
-    mesh.position.z = 100 + (Math.sin(cubeSineDriver) * 500);
-    renderer.render( scene, camera );
-}
-`;
 
 export default function Scripts() {
   useEffect(() => {
@@ -183,22 +84,6 @@ export default function Scripts() {
         }
         if (cancelled) return;
         await loadScript(asset(WEBFLOW_MAIN));
-
-        // Three.js smoke is purely decorative + ~0.5 MB, so load it when the
-        // browser is idle rather than competing with critical work. It appears
-        // a beat after the rest, with no visual difference once loaded.
-        const startSmoke = async () => {
-          if (cancelled) return;
-          try {
-            await loadScript(asset("/vendor/three.min.js"));
-            if (!cancelled) runInline(SMOKE_INIT);
-          } catch (e) {
-            console.error(e);
-          }
-        };
-        const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
-        if (ric) ric(() => startSmoke(), { timeout: 2500 });
-        else setTimeout(startSmoke, 300);
       } catch (e) {
         // Non-fatal: visuals degrade gracefully if a runtime asset fails.
         console.error(e);
@@ -210,7 +95,7 @@ export default function Scripts() {
     };
   }, []);
 
-  // Fonts are now loaded via render-blocking <link> stylesheets in the <head>
+  // Fonts are loaded via render-blocking <link> stylesheets in the <head>
   // (see app/layout.tsx) to avoid the flash-of-unstyled-text / layout shift.
   return null;
 }

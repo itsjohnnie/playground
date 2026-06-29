@@ -61,23 +61,10 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap"
         />
-        {/* Smoke canvas positioning (verbatim from original) */}
+        {/* Mobile nav color + (formerly) canvas styles */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
-canvas {
-    position: absolute;
-    top: -4vh;
-    width: 100% !important;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    mix-blend-mode: plus-lighter;
-    pointer-events: none;
-    opacity: 0.75;
-    height: 100dvh !important
-}
-
 /* Mobile: keep the fixed nav (and its menu/overlay) matching the cycling page
    background, driven off the --bg variable synced in app/scripts.tsx. Desktop
    keeps its white-gradient reveal. */
