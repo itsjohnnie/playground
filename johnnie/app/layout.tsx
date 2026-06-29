@@ -27,7 +27,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  // Starting hero color; JS then keeps it in sync with the cycling background.
+  themeColor: "#facbc7",
   width: "device-width",
   initialScale: 1,
 };

@@ -17,7 +17,7 @@ function ProjectItem({ p }: { p: Project }) {
     <div role="listitem" className="project-item w-dyn-item">
       <a href="#" className="project-link_block w-inline-block w-lightbox">
         <div className="project-embed w-embed">
-          <video autoPlay loop poster={asset(p.poster)} className="project-video">
+          <video autoPlay loop preload="none" poster={asset(p.poster)} className="project-video">
             <source src={p.video ? asset(p.video) : ""} type="video/mp4" />
             <source src="video.webm" type="video/webm" />
             <source src="video.ogv" type="video/ogg" />
