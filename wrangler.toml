@@ -1,8 +1,21 @@
-# Cloudflare Workers (Static Assets) config for the johnnie site.
-# Build command produces johnnie/out; this serves it at the root.
+# Cloudflare Worker for the johnnie site.
+# - Serves the static export (johnnie/out) as assets.
+# - Handles POST /api/contact and emails it to you via Cloudflare Email Routing.
 name = "playground"
+main = "worker/index.js"
 compatibility_date = "2025-01-01"
 
+# Static site (Next.js export). The Worker falls back to these for non-API paths.
 [assets]
 directory = "./johnnie/out"
-not_found_handling = "404-page"
+binding = "ASSETS"
+
+[vars]
+CONTACT_TO = "johnnie@hey.com"          # destination inbox (verify in Email Routing)
+CONTACT_FROM = "contact@johnnies.life"  # any address on your Cloudflare domain
+
+# Cloudflare Email Routing "send" binding. Locked to the destination above.
+# Requires Email Routing enabled on johnnies.life + CONTACT_TO verified there.
+[[send_email]]
+name = "CONTACT_EMAIL"
+destination_address = "johnnie@hey.com"

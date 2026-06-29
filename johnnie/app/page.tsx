@@ -1,5 +1,6 @@
 import { getProjects, getFeatures, type Project, type Feature } from "@/lib/content";
 import { asset } from "@/lib/asset";
+import ContactForm from "./contact-form";
 
 // Non-breaking spaces (U+00A0) around the bullet so the gaps don't collapse —
 // matches the live site exactly.
@@ -231,51 +232,7 @@ export default function Home() {
                 <div className="footer-availability-text">not Available for projects</div>
               </div>
             </div>
-            <div className="w-form">
-              <form
-                id="email-form"
-                name="email-form"
-                data-name="Email Form"
-                method="get"
-                className="form-block"
-                data-wf-page-id="6056222abaee8b5188754749"
-                data-wf-element-id="b67203ee-7bb7-116a-5a4c-5e6567b72e1f"
-              >
-                <div id="w-node-_6829feba-1507-2144-b2d5-9bf30f1d60ab-88754749">
-                  <label htmlFor="First-name" className="form_label">First name</label>
-                  <input className="input w-input" maxLength={256} name="First-name" data-name="First name" placeholder="Michael" type="text" id="First-name" />
-                </div>
-                <div id="w-node-_3358f559-ab27-daca-3ff4-566ef882069a-88754749">
-                  <label htmlFor="Last-name" className="form_label">Last name</label>
-                  <input className="input w-input" maxLength={256} name="Last-name" data-name="Last name" placeholder="Scott" type="text" id="Last-name" />
-                </div>
-                <div id="w-node-_6c0fe243-60c4-4a3a-2b26-33bac757c5bd-88754749">
-                  <label htmlFor="email" className="form_label">Email</label>
-                  <input className="input w-input" maxLength={256} name="email" data-name="Email" placeholder="michael.g.scott@sabre.net" type="email" id="email" required />
-                </div>
-                <div id="w-node-_0619b491-c351-eb3e-25fb-cc6c49253414-88754749">
-                  <label htmlFor="Why" className="form_label">Subject</label>
-                  <input className="input w-input" maxLength={256} name="Why" data-name="Why" placeholder="Jamaica Jan photo" type="text" id="Why" />
-                </div>
-                <div id="w-node-_7f5a8fc1-66a3-3f08-a351-fce4efbaf9da-88754749">
-                  <label htmlFor="Message" className="form_label">Message</label>
-                  <textarea placeholder="Write your message here. No worries if it&#x27;s short and sweet. " maxLength={5000} id="Message" name="Message" data-name="Message" className="input cc-textearea w-input"></textarea>
-                </div>
-                <input
-                  type="submit"
-                  data-wait="Sending to packaging@dundermifflin.com"
-                  id="w-node-b67203ee-7bb7-116a-5a4c-5e6567b72e26-88754749"
-                  className="button form w-button"
-                  value="Send message"
-                />
-              </form>
-              <div className="form-success w-form-done">
-                <div className="text-block-4">Thank you! Your submission has been received!</div>
-              </div>
-              <div className="w-form-fail">
-                <div>Oops! Something went wrong while submitting the form.</div>
-              </div>
-            </div>
+            <ContactForm />
           </div>
         </section>
       </main>
@@ -314,7 +271,7 @@ export default function Home() {
                 <li><a rel="noreferrer" href="https://dribbble.com/itsjohnnie" target="_blank" className="footer-link w-inline-block"><div>Dribbble</div></a></li>
                 <li><a rel="noreferrer" href="https://twitter.com/callmejohnnie" className="footer-link w-inline-block"><div>X.com</div></a></li>
                 <li><a rel="noreferrer" href="https://www.linkedin.com/in/johnniegomez/" target="_blank" className="footer-link w-inline-block"><div>LinkedIn</div></a></li>
-                <li><a rel="noreferrer" href="mailto:juanalzaga@gmail.com?subject=Hello%20there%20%F0%9F%91%8B" className="footer-link w-inline-block"><div>Email love</div></a></li>
+                <li><a rel="noreferrer" href="mailto:johnnie@hey.com?subject=Hello%20there%20%F0%9F%91%8B" className="footer-link w-inline-block"><div>Email love</div></a></li>
               </ul>
             </div>
           </div>
