@@ -1,0 +1,8 @@
+# Cloudflare Workers (Static Assets) config for the johnnie site.
+# Build command produces johnnie/out; this serves it at the root.
+name = "playground"
+compatibility_date = "2025-01-01"
+
+[assets]
+directory = "./johnnie/out"
+not_found_handling = "404-page"
