@@ -42,13 +42,35 @@ function runInline(code: string) {
 function syncBgVar(): () => void {
   let raf = 0;
   let last = "";
+  let lastTheme = 0;
+  // Ensure a theme-color meta exists; iOS/Android tint the browser UI to it.
+  let metas = Array.from(
+    document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'),
+  );
+  if (metas.length === 0) {
+    const m = document.createElement("meta");
+    m.name = "theme-color";
+    document.head.appendChild(m);
+    metas = [m];
+  }
   const tick = () => {
+    if (document.hidden) {
+      raf = requestAnimationFrame(tick);
+      return;
+    }
     const c =
       document.body.style.backgroundColor ||
       getComputedStyle(document.body).backgroundColor;
     if (c && c !== last) {
       last = c;
       document.documentElement.style.setProperty("--bg", c);
+      // Match the browser-UI tint (iOS status bar) in ~real time. Throttled so
+      // the OS chrome doesn't stutter; the hue changes gradually so it's smooth.
+      const now = performance.now();
+      if (now - lastTheme > 150) {
+        lastTheme = now;
+        for (const m of metas) m.setAttribute("content", c);
+      }
     }
     raf = requestAnimationFrame(tick);
   };
@@ -104,11 +126,29 @@ function init() {
     var __hero = document.querySelector('#hero') || document.body;
     renderer.domElement.style.cssText = 'position:absolute !important;top:0 !important;left:0 !important;right:0 !important;bottom:0 !important;width:100% !important;height:100% !important;mix-blend-mode:plus-lighter;pointer-events:none;opacity:0.75;';
     __hero.appendChild( renderer.domElement );
+
+    // Only animate while the hero is on-screen and the tab is visible — saves
+    // CPU/GPU/battery when it isn't visible. No visual change.
+    __heroVisible = true;
+    try {
+      if (window.IntersectionObserver) {
+        new IntersectionObserver(function(es){ __heroVisible = es[0].isIntersecting; __resume(); }, { threshold: 0 }).observe(__hero);
+      }
+      document.addEventListener('visibilitychange', __resume);
+    } catch(e){}
+}
+
+var __running = true, __heroVisible = true;
+function __resume() {
+    var should = __heroVisible && !document.hidden;
+    if (should && !__running) { __running = true; clock.getDelta(); requestAnimationFrame( animate ); }
+    else if (!should) { __running = false; }
 }
 
 function animate() {
-    delta = clock.getDelta();
+    if (!__running) return;
     requestAnimationFrame( animate );
+    delta = clock.getDelta();
     evolveSmoke();
     render();
 }
@@ -144,12 +184,21 @@ export default function Scripts() {
         if (cancelled) return;
         await loadScript(asset(WEBFLOW_MAIN));
 
-        // Three.js smoke background
-        if (cancelled) return;
-        await loadScript(asset("/vendor/three.min.js"));
-        await loadScript(asset("/vendor/Stats.js"));
-        if (cancelled) return;
-        runInline(SMOKE_INIT);
+        // Three.js smoke is purely decorative + ~0.5 MB, so load it when the
+        // browser is idle rather than competing with critical work. It appears
+        // a beat after the rest, with no visual difference once loaded.
+        const startSmoke = async () => {
+          if (cancelled) return;
+          try {
+            await loadScript(asset("/vendor/three.min.js"));
+            if (!cancelled) runInline(SMOKE_INIT);
+          } catch (e) {
+            console.error(e);
+          }
+        };
+        const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+        if (ric) ric(() => startSmoke(), { timeout: 2500 });
+        else setTimeout(startSmoke, 300);
       } catch (e) {
         // Non-fatal: visuals degrade gracefully if a runtime asset fails.
         console.error(e);
