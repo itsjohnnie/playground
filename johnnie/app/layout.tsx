@@ -76,6 +76,16 @@ canvas {
     opacity: 0.75;
     height: 100dvh !important
 }
+
+/* Mobile: keep the fixed nav (and its menu/overlay) matching the cycling page
+   background, driven off the --bg variable synced in app/scripts.tsx. Desktop
+   keeps its white-gradient reveal. */
+@media (max-width: 991px) {
+  .navbar, .nav_menu, .w-nav-overlay {
+    background-color: var(--bg, #facbc7) !important;
+    background-image: none !important;
+  }
+}
 `,
           }}
         />
