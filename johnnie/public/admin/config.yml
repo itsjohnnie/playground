@@ -1,0 +1,53 @@
+# Sveltia CMS configuration
+# Docs: https://github.com/sveltia/sveltia-cms
+#
+# All paths are relative to the REPO ROOT (itsjohnnie/playground), because the
+# Next.js app lives in the `johnnie/` subfolder.
+
+backend:
+  name: github
+  repo: itsjohnnie/playground
+  branch: main # the branch your live site deploys from
+
+# Lets you edit locally without GitHub auth:
+#   1) cd johnnie && npx @sveltia/cms-server
+#   2) open http://localhost:3000/admin/ (or your dev server's /admin/)
+local_backend: true
+
+# Uploaded images go here and are referenced from the site as /images/<file>
+media_folder: "johnnie/public/images"
+public_folder: "/images"
+
+collections:
+  - name: projects
+    label: "Projects"
+    label_singular: "Project"
+    folder: "johnnie/content/projects"
+    create: true
+    slug: "{{fields.order}}-{{slug}}"
+    identifier_field: title
+    sortable_fields: [order, title]
+    summary: "{{fields.order}} — {{title}}"
+    fields:
+      - { name: order, label: "Order (sort position)", widget: number, value_type: int, default: 99 }
+      - { name: title, label: "Title", widget: string }
+      - { name: tag, label: "Tag (small label, optional)", widget: string, required: false, default: "" }
+      - { name: poster, label: "Poster image", widget: image, choose_url: false }
+      - { name: video, label: "Video (mp4, optional)", widget: file, required: false, default: "" }
+      - { name: award_text, label: "Award text (optional)", widget: string, required: false, default: "" }
+      - { name: award_url, label: "Award link (optional)", widget: string, required: false, default: "" }
+
+  - name: features
+    label: "Features & Appearances"
+    label_singular: "Feature"
+    folder: "johnnie/content/features"
+    create: true
+    slug: "{{fields.order}}-{{slug}}"
+    identifier_field: title
+    sortable_fields: [order, title]
+    summary: "{{fields.order}} — {{title}}"
+    fields:
+      - { name: order, label: "Order (sort position)", widget: number, value_type: int, default: 99 }
+      - { name: title, label: "Title", widget: string }
+      - { name: category, label: "Category (e.g. Podcast, Interview)", widget: string }
+      - { name: url, label: "Link", widget: string }
