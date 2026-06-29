@@ -395,10 +395,18 @@
                     // size (louder -> bigger shapes, so fewer fit but the flute stays
                     // full); a per-flute density plus a warp that vanishes at the
                     // baseline give the segments uneven heights and per-flute variety.
-                    float density = mix(2.0, 3.6, clamp(wave, 0.0, 1.0)); // per-flute base count
-                    float scale   = density / (1.0 + vol * 2.0);          // louder -> bigger segments
-                    float warp    = 0.05 * scale * along * sin(along * TAU * 1.3 + center * 5.0 + t * 0.25);
-                    float P       = along * scale + warp;
+                    // Segment sizes vary widely — from near 0 (thin slivers) up to
+                    // tall blocks — and animate, so segments visibly grow from almost
+                    // nothing. A higher base count plus a strong two-harmonic warp
+                    // (kept just under the monotonic limit so the cuts stay clean)
+                    // clusters thin segments in some zones and merges tall blocks in
+                    // others, like the references. Volume grows the overall size.
+                    float density = mix(4.0, 8.0, clamp(wave, 0.0, 1.0));
+                    float scale   = density / (1.0 + vol * 2.0);
+                    float th1 = along * TAU       + center * 5.0 + t * 0.25;
+                    float th2 = along * TAU * 2.3 + center * 3.0 - t * 0.30;
+                    float warp = 0.063 * scale * (sin(th1) + 0.55 * sin(th2));
+                    float P    = along * scale + warp;
                     float s       = fract(P);
                     float seg     = floor(P);
                     lab = colorCycle(s * 0.9 + seg * 0.12 + t * 0.03);
