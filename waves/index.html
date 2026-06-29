@@ -395,18 +395,17 @@
                     // size (louder -> bigger shapes, so fewer fit but the flute stays
                     // full); a per-flute density plus a warp that vanishes at the
                     // baseline give the segments uneven heights and per-flute variety.
-                    // Segment sizes vary widely — from near 0 (thin slivers) up to
-                    // tall blocks — and animate, so segments visibly grow from almost
-                    // nothing. A higher base count plus a strong two-harmonic warp
-                    // (kept just under the monotonic limit so the cuts stay clean)
-                    // clusters thin segments in some zones and merges tall blocks in
-                    // others, like the references. Volume grows the overall size.
+                    // Segment sizes PROGRESS monotonically along the flute. P grows
+                    // as a power of 'along', so the cells start near 0 at the
+                    // baseline and get progressively larger (exponent < 1) — or the
+                    // reverse (exponent > 1) — never oscillating big/small/big, so
+                    // each cell differs smoothly from the one next to it. The
+                    // exponent drifts per flute (center) and over time, so the
+                    // progression and its direction animate; volume grows the count.
                     float density = mix(4.0, 8.0, clamp(wave, 0.0, 1.0));
                     float scale   = density / (1.0 + vol * 2.0);
-                    float th1 = along * TAU       + center * 5.0 + t * 0.25;
-                    float th2 = along * TAU * 2.3 + center * 3.0 - t * 0.30;
-                    float warp = 0.063 * scale * (sin(th1) + 0.55 * sin(th2));
-                    float P    = along * scale + warp;
+                    float prog    = mix(0.5, 1.4, 0.5 + 0.5 * sin(center * TAU * 0.5 + t * 0.3));
+                    float P       = scale * pow(max(along, 0.0), prog);
                     float s       = fract(P);
                     float seg     = floor(P);
                     lab = colorCycle(s * 0.9 + seg * 0.12 + t * 0.03);
