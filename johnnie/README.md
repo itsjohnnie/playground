@@ -71,6 +71,23 @@ npm run serve          # preview the exported ./out locally
    For the hosted admin, set up a GitHub OAuth app and point `/admin/config.yml`
    at it (see Sveltia docs). `repo`/`branch` are configured in that file.
 
+## Hosting / base path
+
+The app supports being served from a subdirectory via the `PAGES_BASE_PATH`
+build-time env var (empty = domain root). All asset URLs are prefixed
+accordingly (`lib/asset.ts`).
+
+- Root host (Cloudflare, `johnnies.life`): leave `PAGES_BASE_PATH` unset.
+- GitHub Pages project site (`/playground/johnnie/`): build with
+  `PAGES_BASE_PATH=/playground/johnnie`.
+
+## Deploy free on GitHub Pages (already wired)
+
+This repo already deploys to GitHub Pages via `.github/workflows/deploy.yml` on
+every push to `main`. `johnnie` is built there with
+`PAGES_BASE_PATH=/playground/johnnie` and published at
+**https://itsjohnnie.github.io/playground/johnnie/**. Merge to `main` to update it.
+
 ## Deploy free on Cloudflare Pages
 
 1. Push this repo to GitHub (already at `itsjohnnie/playground`).

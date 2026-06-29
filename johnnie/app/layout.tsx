@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Scripts from "./scripts";
+import { asset } from "@/lib/asset";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://johnnies.life"),
@@ -8,16 +9,16 @@ export const metadata: Metadata = {
     "Dog-lover, sticker collector, music aficionado, conference enthusiast, and Staff Brand Designer at Webflow, working remotely from Miami, FL.",
   generator: "Webflow",
   icons: {
-    icon: "/images/favicon.png",
-    apple: "/images/webclip.png",
+    icon: asset("/images/favicon.png"),
+    apple: asset("/images/webclip.png"),
   },
   openGraph: {
     title: "Johnnie's Life — An ongoing work in progress",
-    images: ["/images/opengraph.jpg"],
+    images: [asset("/images/opengraph.jpg")],
   },
   twitter: {
     title: "Johnnie's Life — An ongoing work in progress",
-    images: ["/images/opengraph.jpg"],
+    images: [asset("/images/opengraph.jpg")],
   },
   other: {
     "apple-mobile-web-app-capable": "yes",
@@ -47,7 +48,7 @@ export default function RootLayout({
       <head>
         {/* Exact Webflow stylesheet (fonts localized to /fonts) */}
         <link rel="preconnect" href="https://cdn.prod.website-files.com" crossOrigin="anonymous" />
-        <link rel="stylesheet" href="/webflow.css" type="text/css" />
+        <link rel="stylesheet" href={asset("/webflow.css")} type="text/css" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Smoke canvas positioning (verbatim from original) */}

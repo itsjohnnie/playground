@@ -2,6 +2,7 @@
 
 import Script from "next/script";
 import { useEffect } from "react";
+import { asset } from "@/lib/asset";
 
 // Exact list of Webflow runtime chunks (IX2 interactions + Lottie), in the
 // order Webflow ships them, followed by the entry loader. They self-assemble
@@ -64,7 +65,7 @@ function init() {
     light.position.set(-1,0,1);
     scene.add(light);
 
-    smokeTexture = THREE.ImageUtils.loadTexture('/vendor/Smoke-Element.png');
+    smokeTexture = THREE.ImageUtils.loadTexture('${asset("/vendor/Smoke-Element.png")}');
     smokeMaterial = new THREE.MeshLambertMaterial({color: 0xffffff, map: smokeTexture, transparent: true});
     smokeGeo = new THREE.PlaneGeometry(300,300);
     smokeParticles = [];
@@ -108,18 +109,18 @@ export default function Scripts() {
     let cancelled = false;
     (async () => {
       try {
-        await loadScript("/vendor/jquery-3.5.1.min.js");
+        await loadScript(asset("/vendor/jquery-3.5.1.min.js"));
         for (const c of WEBFLOW_CHUNKS) {
           if (cancelled) return;
-          await loadScript(c);
+          await loadScript(asset(c));
         }
         if (cancelled) return;
-        await loadScript(WEBFLOW_MAIN);
+        await loadScript(asset(WEBFLOW_MAIN));
 
         // Three.js smoke background
         if (cancelled) return;
-        await loadScript("/vendor/three.min.js");
-        await loadScript("/vendor/Stats.js");
+        await loadScript(asset("/vendor/three.min.js"));
+        await loadScript(asset("/vendor/Stats.js"));
         if (cancelled) return;
         runInline(SMOKE_INIT);
       } catch (e) {

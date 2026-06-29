@@ -2048,7 +2048,7 @@ textarea.w-input, textarea.w-select {
 
 @font-face {
   font-family: Henrietta;
-  src: url("/fonts/VCHenrietta7-Medium.woff2") format("woff2"), url("/fonts/VCHenrietta7-Medium.woff") format("woff");
+  src: url("fonts/VCHenrietta7-Medium.woff2") format("woff2"), url("fonts/VCHenrietta7-Medium.woff") format("woff");
   font-weight: 500;
   font-style: normal;
   font-display: swap;
