@@ -1,7 +1,9 @@
 import { getProjects, getFeatures, type Project, type Feature } from "@/lib/content";
 import { asset } from "@/lib/asset";
 
-const MARQUEE_TEXT = "design & web @ anthropic  ·  ";
+// Non-breaking spaces (U+00A0) around the bullet so the gaps don't collapse —
+// matches the live site exactly.
+const MARQUEE_TEXT = "design &\u00A0web @ anthropic\u00A0\u00A0·\u00A0\u00A0";
 
 // Bio paragraph — kept byte-identical to the original (inline emphasis + strike).
 const BIO_HTML = `<strong>Johnnie Gomez</strong> is a dog-lover, sticker collector, music aficionado, and a conference enthusiast<strong>.</strong> He was born and raised in Buenos Aires, Argentina, but has moved to <span aria-hidden="true" class="striked">Washington, DC</span> Miami, FL with his adorable wife Dani, baby-boy Dante, and their dog <em>lil</em> Honey-boo, where he designs and builds websites remotely for Anthropic Member of the Technical Staff.<br/><br/>Previously at <strong>Webflow</strong> he collaborated closely with a variety of teams internally like Growth, Product Design, Lifecycle and Enterprise, creating performing, creative, and accessible web experiences, and evolving the brand with a bunch of amazing &amp; talented folks.<br/><br/>Before that, he co-ran the agency <strong>Cruz Barcelona</strong> for over a decade, based from Buenos Aires, Argentina, working with a diverse set of clients, ranging within fashion, branding, advertising, illustration, sustainability, editorial, store design, web design and development. <br/><br/>He also mentors designers in all stages of their careers, through <a href="#"><strong>ADPList</strong></a>, and is very invested in community, and community-driven initiatives.<br/><br/><strong>#SharingIsCaring</strong><br/>`;
@@ -181,7 +183,7 @@ export default function Home() {
                   alt=""
                   className="photo"
                 />
-                <div className="year cc-right">2025</div>
+                <div className="year cc-right">2026</div>
                 <div className="year">2006</div>
               </div>
             </div>
@@ -292,7 +294,7 @@ export default function Home() {
                 />
               </a>
               <div className="_w-60">
-                <div>Johnnie&#x27;s Life © 2025 — This is copyright text, but Johnnie owns all of this. Not to be used without his consent. </div>
+                <div>Johnnie&#x27;s Life © 2026 — This is copyright text, but Johnnie owns all of this. Not to be used without his consent. </div>
               </div>
             </div>
             <div id="w-node-_3f9b5b68-6de6-9e5a-0f5e-3f024a230b92-88754749" className="footer-column">

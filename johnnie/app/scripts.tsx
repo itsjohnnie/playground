@@ -1,6 +1,5 @@
 "use client";
 
-import Script from "next/script";
 import { useEffect } from "react";
 import { asset } from "@/lib/asset";
 
@@ -133,30 +132,7 @@ export default function Scripts() {
     };
   }, []);
 
-  return (
-    <>
-      {/* Inconsolata via Google WebFont loader (matches original) */}
-      <Script
-        src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"
-        strategy="afterInteractive"
-        onLoad={() => {
-          // @ts-expect-error injected global
-          window.WebFont?.load({ google: { families: ["Inconsolata:400,700"] } });
-        }}
-      />
-      {/* Adobe Fonts / Typekit kit (eckmannpsych, program-narrow, franklin-gothic, Henrietta) */}
-      <Script
-        src="https://use.typekit.net/uqs5mpm.js"
-        strategy="afterInteractive"
-        onLoad={() => {
-          try {
-            // @ts-expect-error injected global
-            window.Typekit?.load();
-          } catch {
-            /* noop */
-          }
-        }}
-      />
-    </>
-  );
+  // Fonts are now loaded via render-blocking <link> stylesheets in the <head>
+  // (see app/layout.tsx) to avoid the flash-of-unstyled-text / layout shift.
+  return null;
 }
