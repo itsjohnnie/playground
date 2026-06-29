@@ -51,6 +51,15 @@ export default function RootLayout({
         <link rel="stylesheet" href={asset("/webflow.css")} type="text/css" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* Render-blocking font CSS so the Adobe (Eckmann/Franklin) + Inconsolata
+            fonts are known before first paint — avoids the flash/layout shift. */}
+        <link rel="preconnect" href="https://use.typekit.net" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://p.typekit.net" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://use.typekit.net/uqs5mpm.css" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap"
+        />
         {/* Smoke canvas positioning (verbatim from original) */}
         <style
           dangerouslySetInnerHTML={{
