@@ -44,6 +44,23 @@ jobs:
           mkdir -p ../_site/truco
           cp -r dist/. ../_site/truco/
 
+      # johnnie: Next.js static export, served at /playground/johnnie/
+      - name: Install johnnie
+        working-directory: johnnie
+        run: npm ci
+
+      - name: Build johnnie
+        working-directory: johnnie
+        run: npm run build
+        env:
+          PAGES_BASE_PATH: /playground/johnnie
+
+      - name: Stage johnnie
+        working-directory: johnnie
+        run: |
+          mkdir -p ../_site/johnnie
+          cp -r out/. ../_site/johnnie/
+
       # Bundle every other static experiment + root files into the
       # same Pages artifact. The repo root is the working directory
       # here, not truco/. Anything that is its own folder of static
