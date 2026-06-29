@@ -33,6 +33,29 @@ function runInline(code: string) {
   document.body.appendChild(s);
 }
 
+// The page background-color is animated frame-by-frame by Webflow's JS (the
+// cycling hue), written straight onto <body>. The fixed nav has its own color
+// that can lag/freeze, causing a duotone clash on mobile. Rather than push the
+// color onto each nav element, we mirror the body's current color into a single
+// CSS custom property (--bg) on the root each frame; CSS then drives the nav
+// (and anything else) off var(--bg), so everything stays in sync by design.
+function syncBgVar(): () => void {
+  let raf = 0;
+  let last = "";
+  const tick = () => {
+    const c =
+      document.body.style.backgroundColor ||
+      getComputedStyle(document.body).backgroundColor;
+    if (c && c !== last) {
+      last = c;
+      document.documentElement.style.setProperty("--bg", c);
+    }
+    raf = requestAnimationFrame(tick);
+  };
+  raf = requestAnimationFrame(tick);
+  return () => cancelAnimationFrame(raf);
+}
+
 // Three.js smoke field (verbatim from the original, texture localized).
 const SMOKE_INIT = `
 var camera, scene, renderer,
@@ -76,7 +99,11 @@ function init() {
         scene.add(particle);
         smokeParticles.push(particle);
     }
-    document.body.appendChild( renderer.domElement );
+    // Contain the smoke to the hero so it fills (and scrolls with) the hero
+    // instead of a fixed viewport-height band glued to the top of the page.
+    var __hero = document.querySelector('#hero') || document.body;
+    renderer.domElement.style.cssText = 'position:absolute !important;top:0 !important;left:0 !important;right:0 !important;bottom:0 !important;width:100% !important;height:100% !important;mix-blend-mode:plus-lighter;pointer-events:none;opacity:0.75;';
+    __hero.appendChild( renderer.domElement );
 }
 
 function animate() {
@@ -106,6 +133,7 @@ function render() {
 export default function Scripts() {
   useEffect(() => {
     let cancelled = false;
+    const stopNavSync = syncBgVar();
     (async () => {
       try {
         await loadScript(asset("/vendor/jquery-3.5.1.min.js"));
@@ -129,6 +157,7 @@ export default function Scripts() {
     })();
     return () => {
       cancelled = true;
+      stopNavSync();
     };
   }, []);
 
