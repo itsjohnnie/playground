@@ -160,7 +160,7 @@ body.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
    image, not the whole stage. */
 .discover-stage_inner {
   display: flex; flex-direction: column; align-items: center; gap: 1rem;
-  width: fit-content; max-width: 86vw;
+  width: fit-content; max-width: 92vw;
   transform: scale(.92);
   transition: transform .35s cubic-bezier(.22, 1, .36, 1);
 }
@@ -168,9 +168,9 @@ body.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
 .discover-stage .hero-image {
   display: block;
   width: auto !important; height: auto !important;
-  max-width: 86vw; max-height: 64vh;
+  max-width: 92vw; max-height: 64vh;
   aspect-ratio: auto !important; object-fit: contain !important;
-  border-radius: 10px; box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+  border-radius: 2px; box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
   outline: none;
 }
 /* Caption matches the image width: name left, category right, space-between.
