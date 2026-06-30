@@ -102,9 +102,86 @@ async function handleContact(request, env) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// GitHub OAuth for the Sveltia/Decap CMS admin (/admin). Replaces Netlify's
+// default OAuth proxy. Needs env.GITHUB_CLIENT_ID + env.GITHUB_CLIENT_SECRET
+// (set as Worker secrets). Only the origins below may receive the token.
+// ---------------------------------------------------------------------------
+const CMS_ORIGINS = [
+  "https://johnnies.life",
+  "https://www.johnnies.life",
+  "https://itsjohnnie.github.io",
+];
+const originAllowed = (o) =>
+  !!o && (CMS_ORIGINS.includes(o) || o.endsWith(".workers.dev"));
+
+function handleAuthStart(url, env) {
+  const state = crypto.randomUUID();
+  const authorize = new URL("https://github.com/login/oauth/authorize");
+  authorize.searchParams.set("client_id", env.GITHUB_CLIENT_ID || "");
+  authorize.searchParams.set("redirect_uri", `${url.origin}/callback`);
+  authorize.searchParams.set("scope", "repo,user");
+  authorize.searchParams.set("state", state);
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: authorize.toString(),
+      "Set-Cookie": `csrf=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
+    },
+  });
+}
+
+function authResultPage(status, payload) {
+  // Standard Decap/Sveltia OAuth handshake; only posts the token to an allowed
+  // opener origin.
+  const allow = JSON.stringify(CMS_ORIGINS);
+  return new Response(
+    `<!doctype html><html><body><script>
+(function(){
+  var allow=${allow};
+  function ok(o){return o&&(allow.indexOf(o)>-1||/\\.workers\\.dev$/.test(new URL(o).host));}
+  var msg='authorization:github:${status}:'+JSON.stringify(${JSON.stringify(payload)});
+  function recv(e){ if(!ok(e.origin))return; window.opener.postMessage(msg,e.origin); window.removeEventListener('message',recv); }
+  window.addEventListener('message',recv,false);
+  if(window.opener){ window.opener.postMessage('authorizing:github','*'); } else { document.body.textContent='You can close this window.'; }
+})();
+</script></body></html>`,
+    { headers: { "Content-Type": "text/html; charset=utf-8", "Set-Cookie": "csrf=; Max-Age=0; Path=/" } },
+  );
+}
+
+async function handleAuthCallback(request, url, env) {
+  const code = url.searchParams.get("code");
+  const state = url.searchParams.get("state");
+  const csrf = (request.headers.get("Cookie") || "").match(/csrf=([^;]+)/)?.[1];
+  if (!code || !state || state !== csrf) {
+    return authResultPage("error", { message: "Invalid OAuth state." });
+  }
+  try {
+    const res = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        client_id: env.GITHUB_CLIENT_ID,
+        client_secret: env.GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: `${url.origin}/callback`,
+      }),
+    });
+    const data = await res.json();
+    if (!data.access_token) {
+      return authResultPage("error", { message: data.error_description || "No token returned." });
+    }
+    return authResultPage("success", { token: data.access_token, provider: "github" });
+  } catch (e) {
+    return authResultPage("error", { message: String(e) });
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
     if (url.pathname === "/api/contact") {
       const origin = request.headers.get("Origin");
       if (request.method === "OPTIONS")
@@ -113,7 +190,15 @@ export default {
         return json({ ok: false, error: "method_not_allowed" }, 405, origin);
       return handleContact(request, env);
     }
+
+    // CMS GitHub OAuth
+    if (url.pathname === "/auth") return handleAuthStart(url, env);
+    if (url.pathname === "/callback") return handleAuthCallback(request, url, env);
+
     // Everything else: static assets.
     return env.ASSETS.fetch(request);
   },
 };
+
+// Keep the linter happy about the helper used only in the inline page template.
+void originAllowed;

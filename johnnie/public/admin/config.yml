@@ -8,6 +8,10 @@ backend:
   name: github
   repo: itsjohnnie/playground
   branch: main # the branch your live site deploys from
+  # Our own GitHub OAuth handler (the Cloudflare Worker), instead of Netlify's.
+  # Change this to https://johnnies.life once the domain is on Cloudflare.
+  base_url: https://playground.johnnie-885.workers.dev
+  auth_endpoint: auth
 
 # Lets you edit locally without GitHub auth:
 #   1) cd johnnie && npx @sveltia/cms-server

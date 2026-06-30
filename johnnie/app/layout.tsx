@@ -67,6 +67,9 @@ export default function RootLayout({
             __html: `
 /* Anchor links glide; offset so sections clear the fixed nav. */
 html { scroll-behavior: smooth; }
+
+/* Balance the footer copyright across lines. */
+._w-60 > div { text-wrap: balance; }
 #about, #work, #features, #contact { scroll-margin-top: 72px; }
 
 /* Body, nav, and sections all read the cycling color from one --bg variable.
