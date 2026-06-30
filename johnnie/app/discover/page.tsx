@@ -1,10 +1,19 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { getDiscover } from "@/lib/content";
 import { asset } from "@/lib/asset";
 import DiscoverGrid from "./discover-grid";
 
 export const metadata: Metadata = {
   title: "Design Discovery Area — Designed by Johnnie Gomez",
+};
+
+// Discover-only: paint edge-to-edge into the iOS safe areas so the gallery
+// fills the whole device (behind the translucent Safari chrome / notch / home
+// indicator) instead of being boxed into the area between the bars.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function DiscoverPage() {
@@ -103,9 +112,16 @@ body,
 
 .hero-list-wrapper {
   position: fixed; inset: 0;
-  width: 100vw; height: 100vh; height: 100dvh;
+  /* Large-viewport height so the canvas spans the full device behind the
+     translucent Safari chrome, rather than the dynamic (between-bars) height. */
+  width: 100vw; height: 100vh; height: 100lvh;
   overflow: hidden; cursor: grab; contain: strict;
   opacity: 0; transition: opacity .6s ease-out;
+}
+/* Keep the floating control bar clear of the iOS home indicator now that the
+   canvas extends into the bottom safe area. */
+.discover-comp {
+  bottom: calc(2rem + env(safe-area-inset-bottom));
 }
 .hero-list-wrapper.ready { opacity: 1; }
 .hero-list-wrapper.dragging { cursor: grabbing; }
