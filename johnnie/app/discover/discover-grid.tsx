@@ -127,7 +127,7 @@ class InfiniteGrid {
     } else {
       this.itemWidth = this.baseWidth;
       this.itemHeight = this.baseHeight;
-      this.gap = 68;
+      this.gap = 100;
     }
     this.cellWidth = this.itemWidth + this.gap;
     this.cellHeight = this.itemHeight + this.gap;
