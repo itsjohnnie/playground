@@ -244,10 +244,10 @@ export default function Home() {
             <div id="ui-node-_1047d52f-8c02-246e-93ff-f4e9ec2f6519-88754749" className="footer-column">
               <h2 className="footer-list_title">Social</h2>
               <ul role="list" className="footer-list ui-list-unstyled">
-                <li className="footer-list_item"><a rel="noreferrer" href="https://webflow.com/itsjohnnie" target="_blank" className="footer-link ui-inline-block"><div>Webflow</div></a></li>
-                <li><a rel="noreferrer" href="https://dribbble.com/itsjohnnie" target="_blank" className="footer-link ui-inline-block"><div>Dribbble</div></a></li>
-                <li><a rel="noreferrer" href="https://x.com/callmejohnnie" className="footer-link ui-inline-block"><div>X.com</div></a></li>
+                <li className="footer-list_item"><a rel="noreferrer" href="https://x.com/callmejohnnie" target="_blank" className="footer-link ui-inline-block"><div>X.com</div></a></li>
                 <li><a rel="noreferrer" href="https://www.linkedin.com/in/johnniegomez/" target="_blank" className="footer-link ui-inline-block"><div>LinkedIn</div></a></li>
+                <li><a rel="noreferrer" href="https://webflow.com/itsjohnnie" target="_blank" className="footer-link ui-inline-block"><div>Webflow</div></a></li>
+                <li><a rel="noreferrer" href="https://dribbble.com/itsjohnnie" target="_blank" className="footer-link ui-inline-block"><div>Dribbble</div></a></li>
                 <li><a rel="noreferrer" href="mailto:johnnie@hey.com?subject=Hello%20there%20%F0%9F%91%8B" className="footer-link ui-inline-block"><div>Email love</div></a></li>
               </ul>
             </div>
