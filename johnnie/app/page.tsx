@@ -16,8 +16,12 @@ const CIRCLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 68.61 6
 function ProjectItem({ p }: { p: Project }) {
   const isGif = /\.gif(\?|$)/i.test(p.poster);
   const animated = isGif || !!p.video; // gif or real video → motion content
+  // Featured projects carry an award/"shared" callout banner attached under the
+  // card. When featured, the card's bottom corners go sharp and the callout
+  // takes the rounded bottom, so the two read as one unit (see site.css).
+  const featured = !!p.award_text;
   return (
-    <div role="listitem" className="project-item ui-dyn-item">
+    <div role="listitem" className={`project-item ui-dyn-item${featured ? " is-featured" : ""}`}>
       <a
         href="#"
         className="project-link_block ui-inline-block"
@@ -127,9 +131,9 @@ export default function Home() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={asset("/icons/logo-dribbble.svg")} loading="lazy" width={24} alt="Dribbble" />
             </a>
-            <a rel="noreferrer" href="https://twitter.com/callmejohnnie" target="_blank" className="social-link_block ui-inline-block">
+            <a rel="noreferrer" href="https://x.com/callmejohnnie" target="_blank" className="social-link_block ui-inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={asset("/icons/logo-twitter.svg")} loading="lazy" width={24} alt="Twitter" />
+              <img src={asset("/icons/logo-x.svg")} loading="lazy" width={24} alt="X" />
             </a>
             <a rel="noreferrer" href="https://www.linkedin.com/in/johnniegomez/" target="_blank" className="social-link_block cc-last ui-inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -242,7 +246,7 @@ export default function Home() {
               <ul role="list" className="footer-list ui-list-unstyled">
                 <li className="footer-list_item"><a rel="noreferrer" href="https://webflow.com/itsjohnnie" target="_blank" className="footer-link ui-inline-block"><div>Webflow</div></a></li>
                 <li><a rel="noreferrer" href="https://dribbble.com/itsjohnnie" target="_blank" className="footer-link ui-inline-block"><div>Dribbble</div></a></li>
-                <li><a rel="noreferrer" href="https://twitter.com/callmejohnnie" className="footer-link ui-inline-block"><div>X.com</div></a></li>
+                <li><a rel="noreferrer" href="https://x.com/callmejohnnie" className="footer-link ui-inline-block"><div>X.com</div></a></li>
                 <li><a rel="noreferrer" href="https://www.linkedin.com/in/johnniegomez/" target="_blank" className="footer-link ui-inline-block"><div>LinkedIn</div></a></li>
                 <li><a rel="noreferrer" href="mailto:johnnie@hey.com?subject=Hello%20there%20%F0%9F%91%8B" className="footer-link ui-inline-block"><div>Email love</div></a></li>
               </ul>
