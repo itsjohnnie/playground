@@ -49,7 +49,7 @@ class InfiniteGrid {
 
   velocityX = 0;
   velocityY = 0;
-  friction = 0.92;
+  friction = 0.94;
   wheelMultiplier = 1.5;
 
   items: Cell[] = [];
@@ -248,8 +248,14 @@ class InfiniteGrid {
     const point = "touches" in e ? e.touches[0] : e;
     const clientX = point.clientX;
     const clientY = point.clientY;
-    this.velocityX = clientX - this.lastX;
-    this.velocityY = clientY - this.lastY;
+    // Low-pass the pointer velocity (EMA) instead of taking a single raw frame
+    // delta: raw deltas are noisy and arrive unevenly, which made flings feel
+    // jerky and inconsistent depending on direction. Smoothing gives an even,
+    // predictable glide every way you throw it.
+    const dx = clientX - this.lastX;
+    const dy = clientY - this.lastY;
+    this.velocityX = this.velocityX * 0.7 + dx * 0.3;
+    this.velocityY = this.velocityY * 0.7 + dy * 0.3;
     this.lastX = clientX;
     this.lastY = clientY;
     this.currentX = clientX - this.startX;

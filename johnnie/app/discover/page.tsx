@@ -156,22 +156,37 @@ body.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
   transition: opacity .3s ease;
 }
 .discover-stage.is-open { opacity: 1; pointer-events: auto; }
+/* fit-content so the column (and the caption beneath) is exactly as wide as the
+   image, not the whole stage. */
 .discover-stage_inner {
   display: flex; flex-direction: column; align-items: center; gap: 1rem;
-  max-width: 100%;
+  width: fit-content; max-width: 86vw;
   transform: scale(.92);
   transition: transform .35s cubic-bezier(.22, 1, .36, 1);
 }
 .discover-stage.is-open .discover-stage_inner { transform: scale(1); }
 .discover-stage .hero-image {
+  display: block;
   width: auto !important; height: auto !important;
-  max-width: 86vw; max-height: 64vh; object-fit: contain !important;
+  max-width: 86vw; max-height: 64vh;
+  aspect-ratio: auto !important; object-fit: contain !important;
   border-radius: 10px; box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+  outline: none;
 }
+/* Caption matches the image width: name left, category right, space-between.
+   width:0 + min-width:100% lets it fill the image width WITHOUT widening the
+   fit-content column (so a long name can't stretch the stage). */
 .discover-stage .hero-meta_data {
-  text-align: center; color: #fff; font-size: 1.05rem; line-height: 1.4;
+  width: 0; min-width: 100%;
+  gap: 1.5rem; padding: 0;
+  color: #fff; font-size: 1.05rem; line-height: 1.4;
 }
-.discover-stage .hero-meta_data-lighter { opacity: .6; }
+.discover-stage .hero-meta_data > :first-child {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.discover-stage .hero-meta_data-lighter {
+  flex: none; white-space: nowrap; opacity: .6;
+}
 `,
         }}
       />
