@@ -105,13 +105,59 @@ function lightbox(): () => void {
   return () => document.removeEventListener("click", onClick);
 }
 
+// Custom-eased smooth scroll for in-page anchor links — buttery + snappy
+// (easeInOutCubic), not the browser's linear default.
+function smoothAnchors(): () => void {
+  const easeInOutCubic = (t: number) =>
+    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  let raf = 0;
+  const scrollToY = (targetY: number) => {
+    cancelAnimationFrame(raf);
+    const startY = window.scrollY;
+    const dist = targetY - startY;
+    if (Math.abs(dist) < 2) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      window.scrollTo(0, targetY);
+      return;
+    }
+    // Snappy: scales with distance but capped so long jumps don't drag.
+    const duration = Math.min(900, Math.max(420, Math.abs(dist) * 0.32));
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      window.scrollTo(0, Math.round(startY + dist * easeInOutCubic(t)));
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  };
+  const onClick = (e: MouseEvent) => {
+    const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href^="#"]');
+    if (!a) return;
+    const href = a.getAttribute("href");
+    if (!href || href === "#") return; // project links / no target
+    const el = document.getElementById(href.slice(1));
+    if (!el) return;
+    e.preventDefault();
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    scrollToY(Math.max(0, top));
+    history.replaceState(null, "", href);
+  };
+  document.addEventListener("click", onClick);
+  return () => {
+    document.removeEventListener("click", onClick);
+    cancelAnimationFrame(raf);
+  };
+}
+
 export default function Scripts() {
   useEffect(() => {
     const stopColor = colorCycle();
     const stopLightbox = lightbox();
+    const stopAnchors = smoothAnchors();
     return () => {
       stopColor();
       stopLightbox();
+      stopAnchors();
     };
   }, []);
   return null;
