@@ -7,10 +7,10 @@ const LINKS = [
   { href: "#hero", label: "Top" },
   { href: "#about", label: "About" },
   { href: "#work", label: "Work" },
-  { href: "#features", label: "Features" },
-  { href: "#contact", label: "Contact" },
   // Separate page (not an in-page anchor), so it gets the basePath prefix.
   { href: asset("/discover/"), label: "Discover" },
+  { href: "#features", label: "Features" },
+  { href: "#contact", label: "Contact" },
 ];
 
 export default function SiteNav() {
