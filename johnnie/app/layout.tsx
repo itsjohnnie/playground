@@ -157,28 +157,35 @@ export default function RootLayout({
   width: 48px; height: 48px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   pointer-events: none; isolation: isolate;
-  background: rgba(24, 24, 28, 0.22);
-  -webkit-backdrop-filter: blur(9px) saturate(185%);
-  backdrop-filter: blur(9px) saturate(185%);
+  /* Clear, barely-there tint so the image refracts through it (Apple's Liquid
+     Glass reads as glass, not a dark disc); legibility comes from a centered
+     vignette below, not a heavy fill. */
+  background: rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(7px) saturate(180%) brightness(1.05);
+  backdrop-filter: blur(7px) saturate(180%) brightness(1.05);
   box-shadow:
-    0 7px 22px rgba(0, 0, 0, 0.24),
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.55),
-    inset 0 -5px 10px rgba(0, 0, 0, 0.22);
+    0 8px 22px rgba(0, 0, 0, 0.22),               /* float */
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.6), /* top bevel light */
+    inset 0 -6px 12px rgba(0, 0, 0, 0.20),        /* bottom volume */
+    inset 0 0 10px rgba(255, 255, 255, 0.10);     /* faint inner glow */
   transition: transform .3s cubic-bezier(.22, 1, .36, 1), box-shadow .3s ease, background .3s ease;
 }
-/* Specular sheen — soft light pooling toward the top-left. */
+/* Three stacked light cues: a soft dark pool centred behind the glyph (keeps the
+   white icon legible on light images while the edges stay clear), the broad
+   specular sheen, and a small crisp hotspot like a reflected light source. */
 .media-badge::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(115% 115% at 30% 20%, rgba(255,255,255,.5), rgba(255,255,255,0) 45%),
-    linear-gradient(165deg, rgba(255,255,255,.14), rgba(255,255,255,0) 58%);
+    radial-gradient(circle 5px at 33% 26%, rgba(255,255,255,.95), rgba(255,255,255,0) 70%),
+    radial-gradient(115% 115% at 30% 20%, rgba(255,255,255,.5), rgba(255,255,255,0) 44%),
+    radial-gradient(closest-side at 50% 56%, rgba(8,8,12,.34), rgba(8,8,12,0) 76%);
 }
 /* Refractive rim — a 1px gradient ring (masked) that's brightest up top and
    round the upper-left, dimming toward the bottom: glass catching the light. */
 .media-badge::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
   padding: 1px;
-  background: linear-gradient(155deg, rgba(255,255,255,.9), rgba(255,255,255,.25) 30%, rgba(255,255,255,0) 58%, rgba(255,255,255,.18));
+  background: linear-gradient(155deg, rgba(255,255,255,.95), rgba(255,255,255,.3) 28%, rgba(255,255,255,0) 56%, rgba(255,255,255,.22));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
           mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -187,16 +194,17 @@ export default function RootLayout({
 .media-badge svg {
   position: relative; z-index: 1;
   width: 25px; height: 25px; fill: #fff;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5));
+  filter: drop-shadow(0 1px 2.5px rgba(0, 0, 0, .55));
 }
 .media-badge.is-play svg { margin-left: 2px; }
 .project-link_block:hover .media-badge {
   transform: translate(-50%, -50%) scale(1.07);
-  background: rgba(24, 24, 28, 0.16);
+  background: rgba(255, 255, 255, 0.1);
   box-shadow:
     0 12px 30px rgba(0, 0, 0, 0.28),
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.7),
-    inset 0 -5px 10px rgba(0, 0, 0, 0.24);
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.75),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.22),
+    inset 0 0 10px rgba(255, 255, 255, 0.12);
 }
 
 /* Taller project thumbnails on phones so images aren't cropped so harshly. */
