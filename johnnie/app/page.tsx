@@ -1,6 +1,7 @@
 import { getProjects, getFeatures, type Project, type Feature } from "@/lib/content";
 import { asset } from "@/lib/asset";
 import ContactForm from "./contact-form";
+import SiteNav from "./site-nav";
 
 // Non-breaking spaces (U+00A0) around the bullet so the gaps don't collapse —
 // matches the live site exactly.
@@ -80,59 +81,23 @@ export default function Home() {
   return (
     <>
       {/* ============ FIXED NAV ============ */}
-      <div data-w-id="7890d81b-0280-f690-049d-33a0fb8af3ed" style={{ display: "none", opacity: 0 }} className="cc-fixed">
-        <div
-          data-collapse="small"
-          data-animation="default"
-          data-duration="400"
-          data-w-id="0b990860-bc28-d649-e60c-86f76c4bd8e3"
-          data-easing="ease"
-          data-easing2="ease"
-          role="banner"
-          className="navbar w-nav"
-        >
-          <div className="container cc-nav">
-            <a href="#" className="brand w-nav-brand">
-              <div>Johnnie&#x27;s LiFe</div>
-            </a>
-            <nav role="navigation" className="nav_menu w-nav-menu">
-              <a href="#hero" className="nav_link w-nav-link">Top</a>
-              <a href="#about" className="nav_link w-nav-link">About</a>
-              <a href="#work" className="nav_link w-nav-link">Work</a>
-              <a href="#features" className="nav_link w-nav-link">Features</a>
-              <a href="#contact" className="nav_link w-nav-link">Contact</a>
-            </nav>
-            <div className="nav_button w-nav-button">
-              <div
-                data-is-ix2-target="1"
-                className="lottie-animation"
-                data-w-id="71cf35f5-e435-f308-01b3-3b3f48795e1e"
-                data-animation-type="lottie"
-                data-src={asset("/lottie/hamburger-menu.json")}
-                data-loop="0"
-                data-direction="1"
-                data-autoplay="0"
-                data-renderer="svg"
-                data-default-duration="2.3333333333333335"
-                data-duration="0"
-                data-loading="eager"
-              ></div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SiteNav />
 
       {/* ============ HERO ============ */}
-      <header id="hero" data-w-id="e26d0824-c4cc-4811-b808-21cc5d30dd8a" className="section hero">
+      <header id="hero" className="section hero">
         <div className="marquee_wrapper cc-top">
-          {Array.from({ length: 20 }).map((_, i) => (
-            <div key={i} className="marquee-text_item">{MARQUEE_TEXT}</div>
-          ))}
+          <div className="marquee_track">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div key={i} className="marquee-text_item">{MARQUEE_TEXT}</div>
+            ))}
+          </div>
         </div>
         <div className="marquee_wrapper cc-bottom">
-          {Array.from({ length: 20 }).map((_, i) => (
-            <div key={i} className="marquee-text_item">{MARQUEE_TEXT}</div>
-          ))}
+          <div className="marquee_track">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div key={i} className="marquee-text_item">{MARQUEE_TEXT}</div>
+            ))}
+          </div>
         </div>
         <div className="z-index-top full-width">
           <div className="hero-bottom_right">
