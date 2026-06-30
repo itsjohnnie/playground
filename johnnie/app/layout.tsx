@@ -143,62 +143,24 @@ export default function RootLayout({
    image's multiply blend so it stays crisp. */
 .project-media { position: relative; display: flex; }
 
-/* Liquid-glass content badge (iOS-style): real refraction + a frosted, beveled
-   body. The unprefixed backdrop-filter appends url(#badge-glass) — an SVG
-   feDisplacementMap (defined once in <body>) that bends the project image behind
-   the badge like a convex glass lens: the map encodes horizontal shift in red,
-   vertical in green, neutral (128) at center, so the image splays outward toward
-   the rim. This is jh3y/kube's technique and runs only in Chromium; Safari and
-   Firefox accept backdrop-filter but silently drop the SVG part, and old iOS
-   Safari reads the -webkit- chain below — both gracefully fall back to the flat
-   frosted blur. Layered inset shadows form the glass bevel (bright top, shaded
-   bottom); ::before pools a specular sheen top-left; ::after draws the refractive
-   hairline rim. A light dark-vibrancy tint keeps the white glyph legible. */
+/* Content badge: a solid light disc with a 2px dark outline and the glyph in
+   the text color — crisp and legible on any media (no backdrop-filter, so it
+   renders identically across browsers). */
 .media-badge {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: 48px; height: 48px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  pointer-events: none; isolation: isolate;
-  background: rgba(24, 24, 28, 0.22);
-  -webkit-backdrop-filter: blur(9px) saturate(185%);
-  backdrop-filter: blur(9px) saturate(185%) url(#badge-glass);
-  box-shadow:
-    0 7px 22px rgba(0, 0, 0, 0.24),
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.55),
-    inset 0 -5px 10px rgba(0, 0, 0, 0.22);
-  transition: transform .3s cubic-bezier(.22, 1, .36, 1), box-shadow .3s ease, background .3s ease;
-}
-/* Specular sheen — soft light pooling toward the top-left. */
-.media-badge::before {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
-  background:
-    radial-gradient(115% 115% at 30% 20%, rgba(255,255,255,.5), rgba(255,255,255,0) 45%),
-    linear-gradient(165deg, rgba(255,255,255,.14), rgba(255,255,255,0) 58%);
-}
-/* Refractive rim — a 1px gradient ring (masked) that's brightest up top and
-   round the upper-left, dimming toward the bottom: glass catching the light. */
-.media-badge::after {
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
-  padding: 1px;
-  background: linear-gradient(155deg, rgba(255,255,255,.9), rgba(255,255,255,.25) 30%, rgba(255,255,255,0) 58%, rgba(255,255,255,.18));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          mask-composite: exclude;
+  pointer-events: none;
+  background: #f5f5f5;
+  border: 2px solid #1b1b1b;
+  transition: transform .3s cubic-bezier(.22, 1, .36, 1);
 }
 .media-badge svg {
-  position: relative; z-index: 1;
-  width: 25px; height: 25px; fill: #fff;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5));
+  width: 24px; height: 24px; fill: #1b1b1b;
 }
 .media-badge.is-play svg { margin-left: 2px; }
 .project-link_block:hover .media-badge {
   transform: translate(-50%, -50%) scale(1.07);
-  background: rgba(24, 24, 28, 0.16);
-  box-shadow:
-    0 12px 30px rgba(0, 0, 0, 0.28),
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.7),
-    inset 0 -5px 10px rgba(0, 0, 0, 0.24);
 }
 
 /* Taller project thumbnails on phones so images aren't cropped so harshly. */
@@ -267,38 +229,6 @@ a {
             }}
           />
         </div>
-        {/* Liquid-glass refraction filter for the project media badges (used by
-            .media-badge's backdrop-filter). Two feImage ramps — a left→right red
-            gradient (encodes horizontal shift) and a top→bottom green one
-            (vertical shift) — are screen-blended into a displacement map that's
-            neutral (128) at center and splays toward the rim; feDisplacementMap
-            then warps the badge's backdrop (the project image) by up to ±7px like
-            a convex lens. sRGB keeps 128 the true neutral point. Chromium-only;
-            a harmless 0×0 svg elsewhere (Safari falls back to the frosted blur). */}
-        <svg aria-hidden="true" width="0" height="0" style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
-          <filter id="badge-glass" x="0%" y="0%" width="100%" height="100%" colorInterpolationFilters="sRGB">
-            <feImage
-              href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%3E%3ClinearGradient%20id='g'%20x1='0'%20x2='1'%20y1='0'%20y2='0'%3E%3Cstop%20offset='0'%20stop-color='%23000'/%3E%3Cstop%20offset='1'%20stop-color='%23f00'/%3E%3C/linearGradient%3E%3Crect%20width='100'%20height='100'%20fill='url(%23g)'/%3E%3C/svg%3E"
-              preserveAspectRatio="none"
-              x="0"
-              y="0"
-              width="100%"
-              height="100%"
-              result="rx"
-            />
-            <feImage
-              href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%3E%3ClinearGradient%20id='g'%20x1='0'%20x2='0'%20y1='0'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%23000'/%3E%3Cstop%20offset='1'%20stop-color='%230f0'/%3E%3C/linearGradient%3E%3Crect%20width='100'%20height='100'%20fill='url(%23g)'/%3E%3C/svg%3E"
-              preserveAspectRatio="none"
-              x="0"
-              y="0"
-              width="100%"
-              height="100%"
-              result="gy"
-            />
-            <feBlend in="rx" in2="gy" mode="screen" result="map" />
-            <feDisplacementMap in="SourceGraphic" in2="map" scale="14" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
-        </svg>
         {children}
         <Scripts />
       </body>
