@@ -143,15 +143,17 @@ export default function RootLayout({
    image's multiply blend so it stays crisp. */
 .project-media { position: relative; display: flex; }
 
-/* Liquid-glass content badge (iOS-style): frosted, beveled, with a refractive
-   rim. backdrop-filter frosts the project image behind it; layered inset shadows
-   form a glass bevel (bright top, shaded bottom); the ::before pools a specular
-   sheen at the top-left; the ::after draws a gradient hairline rim that catches
-   light at the top and fades round — the edge "lensing" cue of liquid glass. A
-   light dark-vibrancy tint keeps the white glyph legible over any image.
-   (Apple/Aave use an feDisplacementMap for true refraction, but SVG-filter
-   backdrop-filter is Chromium-only — this CSS build also holds up on iOS Safari,
-   where the site is actually viewed.) */
+/* Liquid-glass content badge (iOS-style): real refraction + a frosted, beveled
+   body. The unprefixed backdrop-filter appends url(#badge-glass) — an SVG
+   feDisplacementMap (defined once in <body>) that bends the project image behind
+   the badge like a convex glass lens: the map encodes horizontal shift in red,
+   vertical in green, neutral (128) at center, so the image splays outward toward
+   the rim. This is jh3y/kube's technique and runs only in Chromium; Safari and
+   Firefox accept backdrop-filter but silently drop the SVG part, and old iOS
+   Safari reads the -webkit- chain below — both gracefully fall back to the flat
+   frosted blur. Layered inset shadows form the glass bevel (bright top, shaded
+   bottom); ::before pools a specular sheen top-left; ::after draws the refractive
+   hairline rim. A light dark-vibrancy tint keeps the white glyph legible. */
 .media-badge {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: 48px; height: 48px; border-radius: 50%;
@@ -159,7 +161,7 @@ export default function RootLayout({
   pointer-events: none; isolation: isolate;
   background: rgba(24, 24, 28, 0.22);
   -webkit-backdrop-filter: blur(9px) saturate(185%);
-  backdrop-filter: blur(9px) saturate(185%);
+  backdrop-filter: blur(9px) saturate(185%) url(#badge-glass);
   box-shadow:
     0 7px 22px rgba(0, 0, 0, 0.24),
     inset 0 1.5px 1px rgba(255, 255, 255, 0.55),
@@ -265,6 +267,38 @@ a {
             }}
           />
         </div>
+        {/* Liquid-glass refraction filter for the project media badges (used by
+            .media-badge's backdrop-filter). Two feImage ramps — a left→right red
+            gradient (encodes horizontal shift) and a top→bottom green one
+            (vertical shift) — are screen-blended into a displacement map that's
+            neutral (128) at center and splays toward the rim; feDisplacementMap
+            then warps the badge's backdrop (the project image) by up to ±7px like
+            a convex lens. sRGB keeps 128 the true neutral point. Chromium-only;
+            a harmless 0×0 svg elsewhere (Safari falls back to the frosted blur). */}
+        <svg aria-hidden="true" width="0" height="0" style={{ position: "absolute", width: 0, height: 0, overflow: "hidden" }}>
+          <filter id="badge-glass" x="0%" y="0%" width="100%" height="100%" colorInterpolationFilters="sRGB">
+            <feImage
+              href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%3E%3ClinearGradient%20id='g'%20x1='0'%20x2='1'%20y1='0'%20y2='0'%3E%3Cstop%20offset='0'%20stop-color='%23000'/%3E%3Cstop%20offset='1'%20stop-color='%23f00'/%3E%3C/linearGradient%3E%3Crect%20width='100'%20height='100'%20fill='url(%23g)'/%3E%3C/svg%3E"
+              preserveAspectRatio="none"
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              result="rx"
+            />
+            <feImage
+              href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='100'%20height='100'%3E%3ClinearGradient%20id='g'%20x1='0'%20x2='0'%20y1='0'%20y2='1'%3E%3Cstop%20offset='0'%20stop-color='%23000'/%3E%3Cstop%20offset='1'%20stop-color='%230f0'/%3E%3C/linearGradient%3E%3Crect%20width='100'%20height='100'%20fill='url(%23g)'/%3E%3C/svg%3E"
+              preserveAspectRatio="none"
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              result="gy"
+            />
+            <feBlend in="rx" in2="gy" mode="screen" result="map" />
+            <feDisplacementMap in="SourceGraphic" in2="map" scale="14" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+        </svg>
         {children}
         <Scripts />
       </body>
