@@ -123,21 +123,21 @@ export default function Home() {
           </div>
           <div className="hero-bottom_left">
             <h2 className="label">Follow him</h2>
-            <a rel="noreferrer" href="https://webflow.com/itsjohnnie" target="_blank" className="social-link_block cc-legacy ui-inline-block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={asset("/icons/webflow-icon.svg")} loading="lazy" width={33} alt="" />
-            </a>
-            <a rel="noreferrer" href="https://dribbble.com/itsjohnnie" target="_blank" className="social-link_block ui-inline-block">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={asset("/icons/logo-dribbble.svg")} loading="lazy" width={24} alt="Dribbble" />
-            </a>
             <a rel="noreferrer" href="https://x.com/callmejohnnie" target="_blank" className="social-link_block ui-inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={asset("/icons/logo-x.svg")} loading="lazy" width={24} alt="X" />
             </a>
-            <a rel="noreferrer" href="https://www.linkedin.com/in/johnniegomez/" target="_blank" className="social-link_block cc-last ui-inline-block">
+            <a rel="noreferrer" href="https://www.linkedin.com/in/johnniegomez/" target="_blank" className="social-link_block ui-inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={asset("/icons/logo-linkedin.svg")} loading="lazy" width={24} alt="LinkedIn" />
+            </a>
+            <a rel="noreferrer" href="https://webflow.com/itsjohnnie" target="_blank" className="social-link_block cc-legacy ui-inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={asset("/icons/webflow-icon.svg")} loading="lazy" width={33} alt="" />
+            </a>
+            <a rel="noreferrer" href="https://dribbble.com/itsjohnnie" target="_blank" className="social-link_block cc-last ui-inline-block">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={asset("/icons/logo-dribbble.svg")} loading="lazy" width={24} alt="Dribbble" />
             </a>
           </div>
         </div>
