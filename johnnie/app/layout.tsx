@@ -21,7 +21,11 @@ export const metadata: Metadata = {
   },
   other: {
     "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "default",
+    "mobile-web-app-capable": "yes",
+    // Transparent status bar in standalone (Add to Home Screen) mode so content
+    // paints behind it edge-to-edge, instead of "default"'s opaque white bar
+    // that pushes the page down. Pairs with viewport-fit=cover + safe-area insets.
+    "apple-mobile-web-app-status-bar-style": "black-translucent",
   },
 };
 
