@@ -1400,6 +1400,10 @@ strong {
   margin-bottom: 2rem;
 }
 
+/* Featured/"shared" callout banner, attached beneath a featured project card.
+   Its top is square (it butts up against the card's now-sharp bottom — see the
+   .is-featured rules below), its bottom carries the unit's rounded corners, and
+   the -2px pull merges its top border with the card's bottom border. */
 .project-award_link {
   color: #1b1b1b;
   text-align: center;
@@ -1408,12 +1412,28 @@ strong {
   border-bottom-right-radius: 6px;
   border-bottom-left-radius: 6px;
   width: 100%;
-  padding-top: .5rem;
-  padding-bottom: .5rem;
+  margin-top: -2px;
+  padding-top: .6rem;
+  padding-bottom: .6rem;
   font-family: franklin-gothic-urw-cond, sans-serif;
   font-weight: 500;
+  line-height: 1.3;
   display: block;
-  transform: translate(0, -6px);
+}
+
+/* Featured card: square off the card's bottom so the callout joins seamlessly. */
+.project-item.is-featured .project-link_block {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.project-item.is-featured .project-content {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+/* Hover lifts the whole unit (card + callout) with one shadow, not just the card. */
+.project-item.is-featured:hover .project-link_block,
+.project-item.is-featured:hover .project-award_link {
+  box-shadow: 11px 11px 0 0 #1b1b1b;
 }
 
 .hero-list {
@@ -2148,6 +2168,10 @@ strong {
     border-style: none none solid;
     border-bottom-width: 0;
     padding: 0;
+    /* No padding on phones, so the card's background meets the edge. Match its
+       radius to the inner image/content blocks (12px) so the off-white fill
+       doesn't peek out behind their rounded corners. */
+    border-radius: 12px;
   }
 
   .project-link_block.cc-vertical {
@@ -2201,6 +2225,12 @@ strong {
     border-radius: 0 0 12px 12px;
     justify-content: flex-start;
     padding-top: 2em;
+  }
+
+  /* On phones the rounded bottom is 12px, so a featured card's callout matches. */
+  .project-award_link {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
   }
 
   .project-content.cc-grid {
