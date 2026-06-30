@@ -69,7 +69,10 @@ export default function RootLayout({
 html { scroll-behavior: smooth; }
 #about, #work, #features, #contact { scroll-margin-top: 72px; }
 
-/* The nav matches the cycling page background via the --bg variable. */
+/* Body, nav, and sections all read the cycling color from one --bg variable.
+   The inline head script seeds --bg (random color) before first paint, so there
+   is no flash/jump when the color loop takes over. */
+.body { background-color: var(--bg, #facbc7) !important; }
 .navbar, .nav_menu { background-color: var(--bg, #facbc7) !important; }
 @media (max-width: 991px) { .navbar, .nav_menu { background-image: none !important; } }
 
@@ -104,10 +107,27 @@ html { scroll-behavior: smooth; }
 }
 @media (min-width: 768px) { .hamburger { display: none !important; } }
 
-/* Native image lightbox for project tiles ("Zoom in"). */
+/* Project tiles: a content-type badge centered on the media — a play glyph for
+   gifs/videos, a plus glyph for static images. The badge sits outside the
+   image's multiply blend so it stays crisp. */
+.project-media { position: relative; display: flex; }
+.media-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; border-radius: 50%; background: rgba(27,27,27,.45); display: flex; align-items: center; justify-content: center; pointer-events: none; transition: background .2s ease; }
+.media-badge svg { width: 20px; height: 20px; fill: #fff; }
+.media-badge.is-play svg { margin-left: 2px; }
+.project-link_block:hover .media-badge { background: rgba(27,27,27,.7); }
+
+/* Taller project thumbnails on phones so images aren't cropped so harshly. */
+@media (max-width: 767px) {
+  .project-media { aspect-ratio: 4 / 3; }
+  .project-media .project-embed, .project-media .project-video {
+    max-height: none !important; min-height: 0 !important; height: 100% !important;
+  }
+}
+
+/* Native lightbox for project tiles ("Zoom in"): image, or the mp4 on click. */
 .lb-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 5vw; background: rgba(27,27,27,.85); opacity: 0; transition: opacity .2s ease; cursor: zoom-out; }
 .lb-overlay.is-open { opacity: 1; }
-.lb-overlay img { max-width: 92vw; max-height: 92vh; border-radius: 4px; box-shadow: 0 12px 48px rgba(0,0,0,.45); }
+.lb-overlay img, .lb-overlay video { max-width: 92vw; max-height: 92vh; border-radius: 4px; box-shadow: 0 12px 48px rgba(0,0,0,.45); }
 `,
           }}
         />
@@ -115,6 +135,14 @@ html { scroll-behavior: smooth; }
         <script
           dangerouslySetInnerHTML={{
             __html: `var e=document.documentElement;e.classList.add('w-mod-js');if('ontouchstart'in window||navigator.maxTouchPoints>0)e.classList.add('w-mod-touch');`,
+          }}
+        />
+        {/* Seed a RANDOM start color into --bg + theme-color before first paint,
+            so the background starts on any palette color with no flash. The color
+            loop (app/scripts.tsx) continues from this same phase via __bgOffset. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var P=[[174,190,169],[233,178,151],[250,203,199],[184,166,204]],SEG=6000,n=P.length,off=Math.floor(Math.random()*SEG*n);window.__bgOffset=off;var s=Math.floor(off/SEG)%n,f=off%SEG/SEG,a=P[s],b=P[(s+1)%n],c='rgb('+Math.round(a[0]+(b[0]-a[0])*f)+', '+Math.round(a[1]+(b[1]-a[1])*f)+', '+Math.round(a[2]+(b[2]-a[2])*f)+')';document.documentElement.style.setProperty('--bg',c);var m=document.querySelector('meta[name=theme-color]');if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');document.head.appendChild(m);}m.setAttribute('content',c);})();`,
           }}
         />
       </head>

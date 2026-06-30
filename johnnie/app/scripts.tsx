@@ -29,8 +29,12 @@ function colorCycle(): () => void {
   let startedAt = -1;
   let lastTheme = 0;
   const n = PALETTE.length;
+  // Continue from the random phase the inline head script chose, so there's no
+  // jump from the first-painted color (see app/layout.tsx).
+  const offset =
+    (window as unknown as { __bgOffset?: number }).__bgOffset || 0;
   const frame = (now: number) => {
-    if (startedAt < 0) startedAt = now;
+    if (startedAt < 0) startedAt = now - offset;
     if (document.hidden) {
       raf = requestAnimationFrame(frame);
       return;
@@ -44,7 +48,7 @@ function colorCycle(): () => void {
     const g = Math.round(a[1] + (b[1] - a[1]) * f);
     const bl = Math.round(a[2] + (b[2] - a[2]) * f);
     const c = `rgb(${r}, ${g}, ${bl})`;
-    document.body.style.backgroundColor = c;
+    // The body, nav, and sections all read --bg; no need to touch body.style.
     root.style.setProperty("--bg", c);
     if (now - lastTheme > 150) {
       lastTheme = now;
@@ -62,15 +66,30 @@ function lightbox(): () => void {
     const link = (e.target as HTMLElement).closest<HTMLElement>(".project-link_block");
     if (!link) return;
     e.preventDefault();
-    const img = link.querySelector("img");
-    const src = img?.getAttribute("src");
-    if (!src) return;
+    const videoSrc = link.getAttribute("data-video");
+    const src = link.querySelector("img")?.getAttribute("src");
+    if (!videoSrc && !src) return;
     const overlay = document.createElement("div");
     overlay.className = "lb-overlay";
-    const big = document.createElement("img");
-    big.src = src;
-    big.alt = "";
-    overlay.appendChild(big);
+    let media: HTMLElement;
+    if (videoSrc) {
+      const v = document.createElement("video");
+      v.src = videoSrc;
+      v.controls = true;
+      v.autoplay = true;
+      v.loop = true;
+      v.playsInline = true;
+      if (src) v.poster = src;
+      media = v;
+    } else {
+      const big = document.createElement("img");
+      big.src = src as string;
+      big.alt = "";
+      media = big;
+    }
+    // Let users interact with the media; close via background/Escape.
+    media.addEventListener("click", (ev) => ev.stopPropagation());
+    overlay.appendChild(media);
     const close = () => {
       overlay.classList.remove("is-open");
       setTimeout(() => overlay.remove(), 200);
