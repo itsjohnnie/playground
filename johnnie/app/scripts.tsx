@@ -151,6 +151,9 @@ function smoothAnchors(): () => void {
 
 export default function Scripts() {
   useEffect(() => {
+    // The Discover page runs its own background/theme logic (a flat white/dark
+    // canvas), so the cycling color loop must not run there.
+    if (location.pathname.indexOf("/discover") !== -1) return;
     const stopColor = colorCycle();
     const stopLightbox = lightbox();
     const stopAnchors = smoothAnchors();

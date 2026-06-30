@@ -17,14 +17,14 @@ function ProjectItem({ p }: { p: Project }) {
   const isGif = /\.gif(\?|$)/i.test(p.poster);
   const animated = isGif || !!p.video; // gif or real video → motion content
   return (
-    <div role="listitem" className="project-item w-dyn-item">
+    <div role="listitem" className="project-item ui-dyn-item">
       <a
         href="#"
-        className="project-link_block w-inline-block"
+        className="project-link_block ui-inline-block"
         data-video={p.video ? asset(p.video) : undefined}
       >
         <div className="project-media">
-          <div className="project-embed w-embed">
+          <div className="project-embed ui-embed">
             {/* Static poster/gif as an image (no native video control, videos
                 stay deferred); the mp4 plays in the lightbox on click. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -38,11 +38,11 @@ function ProjectItem({ p }: { p: Project }) {
             )}
           </div>
         </div>
-        <div id="w-node-_480febd2-ea4c-f172-8bd0-eedc316394bd-88754749" className="project-content">
+        <div id="ui-node-_480febd2-ea4c-f172-8bd0-eedc316394bd-88754749" className="project-content">
           {p.tag ? (
             <div className="project-content-tag">{p.tag}</div>
           ) : (
-            <div className="project-content-tag w-dyn-bind-empty"></div>
+            <div className="project-content-tag ui-dyn-bind-empty"></div>
           )}
           <div className="project-content_info">
             <h3 className="project-heading">{p.title}</h3>
@@ -65,13 +65,12 @@ function ProjectItem({ p }: { p: Project }) {
 
 function FeatureItem({ f }: { f: Feature }) {
   return (
-    <div role="listitem" className="w-dyn-item">
+    <div role="listitem" className="ui-dyn-item">
       <a
         rel="noreferrer"
-        data-w-id="d43d19fc-66ef-7acd-6cfe-e0c381e37d9c"
         href={f.url}
         target="_blank"
-        className="feature-link w-inline-block"
+        className="feature-link ui-inline-block"
       >
         <div className="feature-content">
           <div className="feature-headiing">{f.title}</div>
@@ -116,23 +115,23 @@ export default function Home() {
           <div className="container cc-center cc-hero">
             <h1 className="hero-heading">Hola hola &amp;<br />welcome to johnnie&#x27;s<br />home &amp; life</h1>
             <div className="subhead cc-hero">DESIGNING FROM MIAMI, FL<br /></div>
-            <a href="#about" className="button u-mt-3 w-button">Who is Johnnie?</a>
+            <a href="#about" className="button u-mt-3 ui-button">Who is Johnnie?</a>
           </div>
           <div className="hero-bottom_left">
             <h2 className="label">Follow him</h2>
-            <a rel="noreferrer" href="https://webflow.com/itsjohnnie" target="_blank" className="social-link_block cc-webflow w-inline-block">
+            <a rel="noreferrer" href="https://webflow.com/itsjohnnie" target="_blank" className="social-link_block cc-legacy ui-inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={asset("/icons/webflow-icon.svg")} loading="lazy" width={33} alt="" />
             </a>
-            <a rel="noreferrer" href="https://dribbble.com/itsjohnnie" target="_blank" className="social-link_block w-inline-block">
+            <a rel="noreferrer" href="https://dribbble.com/itsjohnnie" target="_blank" className="social-link_block ui-inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={asset("/icons/logo-dribbble.svg")} loading="lazy" width={24} alt="Dribbble" />
             </a>
-            <a rel="noreferrer" href="https://twitter.com/callmejohnnie" target="_blank" className="social-link_block w-inline-block">
+            <a rel="noreferrer" href="https://twitter.com/callmejohnnie" target="_blank" className="social-link_block ui-inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={asset("/icons/logo-twitter.svg")} loading="lazy" width={24} alt="Twitter" />
             </a>
-            <a rel="noreferrer" href="https://www.linkedin.com/in/johnniegomez/" target="_blank" className="social-link_block cc-last w-inline-block">
+            <a rel="noreferrer" href="https://www.linkedin.com/in/johnniegomez/" target="_blank" className="social-link_block cc-last ui-inline-block">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={asset("/icons/logo-linkedin.svg")} loading="lazy" width={24} alt="LinkedIn" />
             </a>
@@ -147,9 +146,9 @@ export default function Home() {
           <div className="container">
             <div className="line_divider"></div>
             <h2 className="section_heading">originally juan, but you can call him <span>johnnie</span></h2>
-            <div className="w-layout-grid grid cc-gap-4">
+            <div className="ui-layout-grid grid cc-gap-4">
               <div className="paragraph cc-large" dangerouslySetInnerHTML={{ __html: BIO_HTML }} />
-              <div id="w-node-_105c8a76-68e7-b361-f2e2-5c51f760b469-88754749" className="u-relative">
+              <div id="ui-node-_105c8a76-68e7-b361-f2e2-5c51f760b469-88754749" className="u-relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={asset("/images/johnnie-gomez.jpeg")}
@@ -171,8 +170,8 @@ export default function Home() {
           <div className="container">
             <div className="line_divider"></div>
             <h2 className="section_heading">These are<br />his featured projects, enjoy.</h2>
-            <div className="w-dyn-list">
-              <div role="list" className="project-list w-dyn-items">
+            <div className="ui-dyn-list">
+              <div role="list" className="project-list ui-dyn-items">
                 {projects.map((p) => (
                   <ProjectItem key={p.title + p.poster} p={p} />
                 ))}
@@ -186,8 +185,8 @@ export default function Home() {
           <div className="container cc-center">
             <h2 className="section_heading">Features &amp;<br />Appearances</h2>
             <div>
-              <div className="w-dyn-list">
-                <div role="list" className="feature-list w-dyn-items">
+              <div className="ui-dyn-list">
+                <div role="list" className="feature-list ui-dyn-items">
                   {features.map((f) => (
                     <FeatureItem key={f.title} f={f} />
                   ))}
@@ -215,13 +214,12 @@ export default function Home() {
       {/* ============ FOOTER ============ */}
       <footer className="section cc-contact">
         <div className="container">
-          <div className="w-layout-grid grid cc-gap-4 cc-col_3">
-            <div id="w-node-bcb10cf6-8be8-4af7-ed1a-458ad6dfee0d-88754749" className="footer-column cc-first">
-              <a href="#" className="brand cc-footer w-inline-block">
+          <div className="ui-layout-grid grid cc-gap-4 cc-col_3">
+            <div id="ui-node-bcb10cf6-8be8-4af7-ed1a-458ad6dfee0d-88754749" className="footer-column cc-first">
+              <a href="#" className="brand cc-footer ui-inline-block">
                 <div
                   aria-label="Forever learning, forever sharing."
-                  data-w-id="01edeeae-d6a6-2998-44c8-c2a1ea6a4881"
-                  className="rotating_circle w-embed"
+                  className="rotating_circle ui-embed"
                   dangerouslySetInnerHTML={{ __html: CIRCLE_SVG }}
                 />
               </a>
@@ -229,24 +227,24 @@ export default function Home() {
                 <div>Johnnie&#x27;s Life © 2026 — all the work here is his own. Please ask before using any of it. </div>
               </div>
             </div>
-            <div id="w-node-_3f9b5b68-6de6-9e5a-0f5e-3f024a230b92-88754749" className="footer-column">
+            <div id="ui-node-_3f9b5b68-6de6-9e5a-0f5e-3f024a230b92-88754749" className="footer-column">
               <h2 className="footer-list_title">Navigate</h2>
-              <ul role="list" className="footer-list w-list-unstyled">
-                <li className="footer-list_item"><a href="#hero" className="footer-link w-inline-block"><div>Back to top</div></a></li>
-                <li><a href="#about" className="footer-link w-inline-block"><div>About</div></a></li>
-                <li><a href="#work" className="footer-link w-inline-block"><div>Work</div></a></li>
-                <li><a href="#features" className="footer-link w-inline-block"><div>Features</div></a></li>
-                <li><a href="#contact" className="footer-link w-inline-block"><div>Contact</div></a></li>
+              <ul role="list" className="footer-list ui-list-unstyled">
+                <li className="footer-list_item"><a href="#hero" className="footer-link ui-inline-block"><div>Back to top</div></a></li>
+                <li><a href="#about" className="footer-link ui-inline-block"><div>About</div></a></li>
+                <li><a href="#work" className="footer-link ui-inline-block"><div>Work</div></a></li>
+                <li><a href="#features" className="footer-link ui-inline-block"><div>Features</div></a></li>
+                <li><a href="#contact" className="footer-link ui-inline-block"><div>Contact</div></a></li>
               </ul>
             </div>
-            <div id="w-node-_1047d52f-8c02-246e-93ff-f4e9ec2f6519-88754749" className="footer-column">
+            <div id="ui-node-_1047d52f-8c02-246e-93ff-f4e9ec2f6519-88754749" className="footer-column">
               <h2 className="footer-list_title">Social</h2>
-              <ul role="list" className="footer-list w-list-unstyled">
-                <li className="footer-list_item"><a rel="noreferrer" href="https://webflow.com/itsjohnnie" target="_blank" className="footer-link w-inline-block"><div>Webflow</div></a></li>
-                <li><a rel="noreferrer" href="https://dribbble.com/itsjohnnie" target="_blank" className="footer-link w-inline-block"><div>Dribbble</div></a></li>
-                <li><a rel="noreferrer" href="https://twitter.com/callmejohnnie" className="footer-link w-inline-block"><div>X.com</div></a></li>
-                <li><a rel="noreferrer" href="https://www.linkedin.com/in/johnniegomez/" target="_blank" className="footer-link w-inline-block"><div>LinkedIn</div></a></li>
-                <li><a rel="noreferrer" href="mailto:johnnie@hey.com?subject=Hello%20there%20%F0%9F%91%8B" className="footer-link w-inline-block"><div>Email love</div></a></li>
+              <ul role="list" className="footer-list ui-list-unstyled">
+                <li className="footer-list_item"><a rel="noreferrer" href="https://webflow.com/itsjohnnie" target="_blank" className="footer-link ui-inline-block"><div>Webflow</div></a></li>
+                <li><a rel="noreferrer" href="https://dribbble.com/itsjohnnie" target="_blank" className="footer-link ui-inline-block"><div>Dribbble</div></a></li>
+                <li><a rel="noreferrer" href="https://twitter.com/callmejohnnie" className="footer-link ui-inline-block"><div>X.com</div></a></li>
+                <li><a rel="noreferrer" href="https://www.linkedin.com/in/johnniegomez/" target="_blank" className="footer-link ui-inline-block"><div>LinkedIn</div></a></li>
+                <li><a rel="noreferrer" href="mailto:johnnie@hey.com?subject=Hello%20there%20%F0%9F%91%8B" className="footer-link ui-inline-block"><div>Email love</div></a></li>
               </ul>
             </div>
           </div>

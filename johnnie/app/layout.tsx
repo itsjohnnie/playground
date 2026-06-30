@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   title: "Johnnie's Life — An ongoing work in progress",
   description:
     "Dog-lover, sticker collector, music aficionado, conference enthusiast, and Staff Brand Designer at Webflow, working remotely from Miami, FL.",
-  generator: "Webflow",
   icons: {
     icon: asset("/images/favicon.png"),
     apple: asset("/images/webclip.png"),
@@ -39,17 +38,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      data-wf-domain="johnnies.life"
-      data-wf-page="6056222abaee8b5188754749"
-      data-wf-site="6056222abaee8b22b8754748"
-      suppressHydrationWarning
-    >
+    <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Exact Webflow stylesheet (fonts localized to /fonts) */}
-        <link rel="preconnect" href="https://cdn.prod.website-files.com" crossOrigin="anonymous" />
-        <link rel="stylesheet" href={asset("/webflow.css")} type="text/css" />
+        {/* Site stylesheet (fonts localized to /fonts) */}
+        <link rel="stylesheet" href={asset("/site.css")} type="text/css" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Render-blocking font CSS so the Adobe (Eckmann/Franklin) + Inconsolata
@@ -98,23 +90,49 @@ export default function RootLayout({
 .navbar.is-open .hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 /* Mobile nav menu: hidden behind the hamburger, drops down when open.
-   Full-width links, text aligned to the logo (the container's 5% gutter), and
-   no divider under the last item. */
+   Full-width links, text aligned to the logo (the container's gutter), and
+   no divider under the last item. Dividers are 2px to match the rest of the
+   design (nav underline, feature rows, pills are all 2px). */
 @media (max-width: 767px) {
-  .hamburger { display: flex; }
+  .hamburger {
+    display: flex;
+    /* Webflow nudged the old Lottie icon 18px right; our clean 44px button
+       doesn't need it (it would overflow the container). Right-align the bars
+       so the icon's right edge meets the container edge — symmetric with the
+       logo's left edge. */
+    transform: none !important;
+    align-items: flex-end;
+  }
+  .hamburger span { margin-left: auto !important; margin-right: 0 !important; }
   .nav_menu {
-    display: none !important;
+    display: flex !important;
     position: absolute; top: 100%; left: 0; right: 0;
     flex-direction: column; align-items: stretch !important; gap: 0 !important;
     padding: 0 !important;
+    border-top: 2px solid #1b1b1b;
     border-bottom: 2px solid #1b1b1b;
+    /* Slide down on open / up on close. Tucked above the bar (translateY -100%)
+       and concealed (opacity 0) when closed; a snappy, buttery ease drops it in.
+       transform + opacity are GPU-composited, so the motion stays smooth. */
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+    will-change: transform;
+    transition: transform .42s cubic-bezier(.22, 1, .36, 1), opacity .26s ease;
   }
-  .navbar.is-open .nav_menu { display: flex !important; }
+  .navbar.is-open .nav_menu {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .nav_menu { transition: none; }
+  }
   .nav_menu .nav_link {
     width: 100% !important;
     margin: 0 !important;
     padding: 18px 24px !important;       /* 24px = the mobile gutter, aligns with the logo */
-    border-bottom: 1px solid #1b1b1b !important;
+    border-bottom: 2px solid #1b1b1b !important;
   }
   .nav_menu .nav_link:last-child { border-bottom: none !important; }
 }
@@ -147,21 +165,23 @@ export default function RootLayout({
         {/* Mark JS available + touch capability (CSS hooks used by the styles). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `var e=document.documentElement;e.classList.add('w-mod-js');if('ontouchstart'in window||navigator.maxTouchPoints>0)e.classList.add('w-mod-touch');`,
+            __html: `var e=document.documentElement;e.classList.add('ui-mod-js');if('ontouchstart'in window||navigator.maxTouchPoints>0)e.classList.add('ui-mod-touch');`,
           }}
         />
         {/* Seed a RANDOM start color into --bg + theme-color before first paint,
             so the background starts on any palette color with no flash. The color
-            loop (app/scripts.tsx) continues from this same phase via __bgOffset. */}
+            loop (app/scripts.tsx) continues from this same phase via __bgOffset.
+            The Discover page is exempt — it stays white (its own light/dark JS
+            takes over), so we just seed white there. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var P=[[174,190,169],[233,178,151],[250,203,199],[184,166,204]],SEG=6000,n=P.length,off=Math.floor(Math.random()*SEG*n);window.__bgOffset=off;var s=Math.floor(off/SEG)%n,f=off%SEG/SEG,a=P[s],b=P[(s+1)%n],c='rgb('+Math.round(a[0]+(b[0]-a[0])*f)+', '+Math.round(a[1]+(b[1]-a[1])*f)+', '+Math.round(a[2]+(b[2]-a[2])*f)+')';document.documentElement.style.setProperty('--bg',c);var m=document.querySelector('meta[name=theme-color]');if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');document.head.appendChild(m);}m.setAttribute('content',c);})();`,
+            __html: `(function(){function setMeta(c){var m=document.querySelector('meta[name=theme-color]');if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');document.head.appendChild(m);}m.setAttribute('content',c);}if(location.pathname.indexOf('/discover')!==-1){document.documentElement.style.setProperty('--bg','#ffffff');setMeta('#ffffff');return;}var P=[[174,190,169],[233,178,151],[250,203,199],[184,166,204]],SEG=6000,n=P.length,off=Math.floor(Math.random()*SEG*n);window.__bgOffset=off;var s=Math.floor(off/SEG)%n,f=off%SEG/SEG,a=P[s],b=P[(s+1)%n],c='rgb('+Math.round(a[0]+(b[0]-a[0])*f)+', '+Math.round(a[1]+(b[1]-a[1])*f)+', '+Math.round(a[2]+(b[2]-a[2])*f)+')';document.documentElement.style.setProperty('--bg',c);setMeta(c);})();`,
           }}
         />
       </head>
-      <body data-w-id="6056222abaee8bab2175474a" className="body" suppressHydrationWarning>
+      <body className="body" suppressHydrationWarning>
         {/* Global embed styles (verbatim from original) */}
-        <div className="cc-hidden w-embed">
+        <div className="cc-hidden ui-embed">
           <style
             dangerouslySetInnerHTML={{
               __html: `
