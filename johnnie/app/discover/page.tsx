@@ -156,10 +156,10 @@ body.is-dark .hero-image { outline-color: #ffffff14; }
 body.is-dark .discover-logo,
 body.is-dark .discover-text,
 body.is-dark .toggle-mode {
-  background-color: #181818; color: #fff;
+  background-color: rgba(24, 24, 24, .6); color: #fff;
 }
 body.is-dark .discover-logo:hover,
-body.is-dark .toggle-mode:hover { background-color: #242424; }
+body.is-dark .toggle-mode:hover { background-color: rgba(36, 36, 36, .72); }
 body.is-dark .discover-text { border-color: #ffffff14; }
 body.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #00000052; }
 
