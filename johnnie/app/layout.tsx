@@ -97,16 +97,26 @@ export default function RootLayout({
 .navbar.is-open .hamburger span:nth-child(2) { opacity: 0; }
 .navbar.is-open .hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
-/* Mobile nav menu: hidden behind the hamburger, drops down when open. */
+/* Mobile nav menu: hidden behind the hamburger, drops down when open.
+   Full-width links, text aligned to the logo (the container's 5% gutter), and
+   no divider under the last item. */
 @media (max-width: 767px) {
   .hamburger { display: flex; }
   .nav_menu {
     display: none !important;
     position: absolute; top: 100%; left: 0; right: 0;
-    flex-direction: column; align-items: flex-start; gap: .25rem;
-    border-bottom: 2px solid #000; padding: 16px 24px;
+    flex-direction: column; align-items: stretch !important; gap: 0 !important;
+    padding: 0 !important;
+    border-bottom: 2px solid #1b1b1b;
   }
   .navbar.is-open .nav_menu { display: flex !important; }
+  .nav_menu .nav_link {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 18px 24px !important;       /* 24px = the mobile gutter, aligns with the logo */
+    border-bottom: 1px solid #1b1b1b !important;
+  }
+  .nav_menu .nav_link:last-child { border-bottom: none !important; }
 }
 @media (min-width: 768px) { .hamburger { display: none !important; } }
 
