@@ -108,10 +108,6 @@ html, body { overflow: hidden; }
 }
 .hero-item .hero-meta_data { pointer-events: none; }
 
-/* The light/dark toggle glyph reads a touch small in its pill — bump it. */
-.discover-comp .button-icon { width: 27px; height: 27px; }
-.discover-comp .button-icon svg { width: 100%; height: 100%; display: block; }
-
 /* Native dark mode (replaces the visual-builder interaction). */
 body.is-dark { background-color: #080808 !important; color: #fff; }
 body.is-dark .hero-gradient.cc-white {

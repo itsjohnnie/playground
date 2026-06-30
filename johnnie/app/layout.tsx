@@ -143,7 +143,7 @@ export default function RootLayout({
    image's multiply blend so it stays crisp. */
 .project-media { position: relative; display: flex; }
 .media-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; border-radius: 50%; background: rgba(27,27,27,.45); display: flex; align-items: center; justify-content: center; pointer-events: none; transition: background .2s ease; }
-.media-badge svg { width: 20px; height: 20px; fill: #fff; }
+.media-badge svg { width: 26px; height: 26px; fill: #fff; }
 .media-badge.is-play svg { margin-left: 2px; }
 .project-link_block:hover .media-badge { background: rgba(27,27,27,.7); }
 
