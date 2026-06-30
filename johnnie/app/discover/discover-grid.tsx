@@ -123,11 +123,11 @@ class InfiniteGrid {
     if (vw < this.mobileBreakpoint) {
       this.itemWidth = Math.round(vw * this.mobileWidthPercent);
       this.itemHeight = Math.round(this.itemWidth * this.aspectRatio);
-      this.gap = 50;
+      this.gap = 32;
     } else {
       this.itemWidth = this.baseWidth;
       this.itemHeight = this.baseHeight;
-      this.gap = 100;
+      this.gap = 68;
     }
     this.cellWidth = this.itemWidth + this.gap;
     this.cellHeight = this.itemHeight + this.gap;
