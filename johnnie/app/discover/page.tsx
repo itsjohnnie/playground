@@ -111,11 +111,14 @@ body,
 }
 
 .hero-list-wrapper {
+  /* No explicit width/height: inset:0 (top/right/bottom/left all 0) stretches
+     the canvas to the FULL viewport in both Safari (the layout viewport, behind
+     the chrome) and standalone/PWA (the whole screen, behind the status bar and
+     the home indicator). An explicit height:100lvh would override bottom:0 and,
+     in standalone, fall short of the home-indicator strip — leaving a bar at the
+     bottom. Letting the insets drive it is unit-agnostic and always edge-to-edge. */
   position: fixed; inset: 0;
-  /* Large-viewport height so the canvas spans the full device behind the
-     translucent Safari chrome, rather than the dynamic (between-bars) height. */
-  width: 100vw; height: 100vh; height: 100lvh;
-  overflow: hidden; cursor: grab; contain: strict;
+  overflow: hidden; cursor: grab; contain: layout paint;
   opacity: 0; transition: opacity .6s ease-out;
 }
 /* Keep the floating control bar clear of the iOS home indicator now that the
