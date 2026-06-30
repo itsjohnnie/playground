@@ -419,13 +419,21 @@ const LIGHT = "#ffffff";
 const DARK = "#080808";
 
 function setThemeColor(color: string) {
-  let m = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-  if (!m) {
-    m = document.createElement("meta");
+  let metas = Array.from(
+    document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'),
+  );
+  if (metas.length === 0) {
+    const m = document.createElement("meta");
     m.name = "theme-color";
     document.head.appendChild(m);
+    metas = [m];
   }
-  m.setAttribute("content", color);
+  // Update every theme-color tag (and strip any media-scoped ones that could let
+  // the system appearance win) so iOS Safari tints its chrome to match.
+  for (const m of metas) {
+    m.removeAttribute("media");
+    m.setAttribute("content", color);
+  }
 }
 
 export default function DiscoverGrid() {
@@ -445,6 +453,9 @@ export default function DiscoverGrid() {
     // Native light/dark toggle (no visual-builder runtime).
     const applyTheme = (dark: boolean) => {
       document.body.classList.toggle("is-dark", dark);
+      // color-scheme tells the browser the page itself is dark/light, which (with
+      // theme-color) is what some browsers use to tint their surrounding chrome.
+      document.documentElement.style.colorScheme = dark ? "dark" : "light";
       setThemeColor(dark ? DARK : LIGHT);
     };
     applyTheme(false);
@@ -460,6 +471,7 @@ export default function DiscoverGrid() {
       grid.destroy();
       toggle?.removeEventListener("click", onToggle);
       document.body.classList.remove("is-dark");
+      document.documentElement.style.colorScheme = "";
     };
   }, []);
 
