@@ -1578,7 +1578,7 @@ strong {
   outline-offset: -1px;
   color: #080808;
   text-transform: uppercase;
-  background-color: #fff;
+  background-color: rgba(255, 255, 255, .68);
   outline: 1px solid #ffffff29;
   justify-content: center;
   align-items: center;
@@ -1646,7 +1646,7 @@ strong {
   color: #080808;
   letter-spacing: -.02em;
   text-transform: uppercase;
-  background-color: #fff;
+  background-color: rgba(255, 255, 255, .68);
   justify-content: flex-start;
   align-items: center;
   padding: .5rem .75rem .4rem;
@@ -1670,9 +1670,11 @@ strong {
 
 .discover-text {
   z-index: 4;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   color: #080808;
   letter-spacing: -.03em;
-  background-color: #fff;
+  background-color: rgba(255, 255, 255, .68);
   border-left: 1px solid #00000014;
   border-right: 1px solid #00000014;
   justify-content: flex-start;
