@@ -111,17 +111,19 @@ export default function RootLayout({
     padding: 0 !important;
     border-top: 2px solid #1b1b1b;
     border-bottom: 2px solid #1b1b1b;
-    /* Slide down on open / up on close. Tucked above the bar (translateY -100%)
-       and concealed (opacity 0) when closed; a snappy, buttery ease drops it in.
-       transform + opacity are GPU-composited, so the motion stays smooth. */
-    transform: translateY(-100%);
+    /* Reveal downward from under the bar. The panel sits just below the bar
+       (top:100%) and is clipped to a zero-height slice at its top edge when
+       closed, then wipes open to full height. Because it's a child of the
+       transformed navbar it would otherwise paint OVER the bar; clipping at the
+       bar's bottom edge instead makes it read as sliding out from beneath. */
+    clip-path: inset(0 0 100% 0);
     opacity: 0;
     pointer-events: none;
-    will-change: transform;
-    transition: transform .42s cubic-bezier(.22, 1, .36, 1), opacity .26s ease;
+    will-change: clip-path;
+    transition: clip-path .42s cubic-bezier(.22, 1, .36, 1), opacity .26s ease;
   }
   .navbar.is-open .nav_menu {
-    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
     opacity: 1;
     pointer-events: auto;
   }

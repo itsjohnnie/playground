@@ -195,10 +195,10 @@ body.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
 .discover-stage .hero-meta_data {
   width: 0; min-width: 100%;
   gap: 1.5rem; padding: 0;
-  color: #fff; font-size: 1.05rem; line-height: 1.4;
+  color: #fff; font-size: 0.875rem; line-height: 1.4;
   /* Match the control-bar logo (the full name) typeface. */
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-  letter-spacing: -.02em;
+  letter-spacing: .01em;
 }
 .discover-stage .hero-meta_data > :first-child {
   min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

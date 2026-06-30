@@ -162,8 +162,13 @@ class InfiniteGrid {
     this.contentPool = this.shuffleArray(this.originalItems);
     this.poolIndex = 0;
 
-    this.cols = Math.ceil(window.innerWidth / this.cellWidth) + 4;
-    this.rows = Math.ceil(window.innerHeight / this.cellHeight) + 4;
+    // Size to the actual canvas (the fixed wrapper spans 100lvh, into the iOS
+    // safe areas) rather than window.innerHeight (the smaller visual viewport) —
+    // otherwise the bottom safe-area strip lacks tiles and they pop in/out there.
+    const viewW = this.wrapper.clientWidth || window.innerWidth;
+    const viewH = this.wrapper.clientHeight || window.innerHeight;
+    this.cols = Math.ceil(viewW / this.cellWidth) + 4;
+    this.rows = Math.ceil(viewH / this.cellHeight) + 4;
     this.gridWidth = this.cols * this.cellWidth;
     this.gridHeight = this.rows * this.cellHeight;
 
@@ -354,8 +359,8 @@ class InfiniteGrid {
     const gridH = this.gridHeight;
     const curX = this.currentX;
     const curY = this.currentY;
-    const viewW = window.innerWidth;
-    const viewH = window.innerHeight;
+    const viewW = this.wrapper.clientWidth || window.innerWidth;
+    const viewH = this.wrapper.clientHeight || window.innerHeight;
     const itemW = this.itemWidth;
     const itemH = this.itemHeight;
 
