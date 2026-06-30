@@ -65,8 +65,8 @@ export default function RootLayout({
         <style
           dangerouslySetInnerHTML={{
             __html: `
-/* Anchor links glide; offset so sections clear the fixed nav. */
-html { scroll-behavior: smooth; }
+/* Anchor links are smooth-scrolled with a custom ease in app/scripts.tsx. */
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
 /* Balance the footer copyright across lines. */
 ._w-60 > div { text-wrap: balance; }
