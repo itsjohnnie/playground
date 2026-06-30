@@ -60,6 +60,9 @@ export default function RootLayout({
 /* Anchor links are smooth-scrolled with a custom ease in app/scripts.tsx. */
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
+/* Never allow horizontal scroll — a stray shadow/transform shouldn't leak width. */
+html { overflow-x: hidden; }
+
 /* Balance the footer copyright across lines. */
 ._w-60 > div { text-wrap: balance; }
 #about, #work, #features, #contact { scroll-margin-top: 72px; }

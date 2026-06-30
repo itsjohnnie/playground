@@ -692,6 +692,14 @@ strong {
 
 .section.cc-feature {
   border-bottom: 2px solid #1b1b1b;
+  /* No empty gap under the last appearance — let it close on the section
+     divider (the last row's own bottom border is removed below). */
+  padding-bottom: 0;
+}
+
+.feature-list .feature-link:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .section.cc-contact, .section.cc-projects {
@@ -925,8 +933,12 @@ strong {
   box-shadow: 0 0 #1b1b1b;
 }
 
-.project-link_block:hover {
-  box-shadow: 11px 11px 0 0 #1b1b1b;
+/* Hover lift only on real pointers — on touch, :hover sticks after a tap and the
+   offset shadow would poke past the viewport edge (horizontal overflow). */
+@media (hover: hover) {
+  .project-link_block:hover {
+    box-shadow: 11px 11px 0 0 #1b1b1b;
+  }
 }
 
 .project-link_block.cc-vertical {
@@ -938,8 +950,10 @@ strong {
   box-shadow: 0 0 #1b1b1b;
 }
 
-.project-link_block.cc-vertical:hover {
-  box-shadow: 14px 14px #1b1b1b;
+@media (hover: hover) {
+  .project-link_block.cc-vertical:hover {
+    box-shadow: 14px 14px #1b1b1b;
+  }
 }
 
 .project-content-tag {
@@ -1430,10 +1444,13 @@ strong {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
 }
-/* Hover lifts the whole unit (card + callout) with one shadow, not just the card. */
-.project-item.is-featured:hover .project-link_block,
-.project-item.is-featured:hover .project-award_link {
-  box-shadow: 11px 11px 0 0 #1b1b1b;
+/* Hover lifts the whole unit (card + callout) with one shadow, not just the card.
+   Pointer-only, so the offset shadow can't stick/overflow on touch. */
+@media (hover: hover) {
+  .project-item.is-featured:hover .project-link_block,
+  .project-item.is-featured:hover .project-award_link {
+    box-shadow: 11px 11px 0 0 #1b1b1b;
+  }
 }
 
 .hero-list {
@@ -2169,9 +2186,11 @@ strong {
     border-bottom-width: 0;
     padding: 0;
     /* No padding on phones, so the card's background meets the edge. Match its
-       radius to the inner image/content blocks (12px) so the off-white fill
-       doesn't peek out behind their rounded corners. */
+       radius to the inner image/content blocks (12px) and clip, so the off-white
+       fill can't peek out behind their rounded corners. (No hover shadow on
+       touch, so clipping costs nothing here.) */
     border-radius: 12px;
+    overflow: hidden;
   }
 
   .project-link_block.cc-vertical {
