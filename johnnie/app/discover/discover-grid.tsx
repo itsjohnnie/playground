@@ -64,6 +64,16 @@ class InfiniteGrid {
   rafId = 0;
   resizeTimeout = 0;
 
+  // Mobile tap-to-stage: a quick tap (not a drag/fling-stop) brings the tapped
+  // tile front-and-center, enlarged, with its meta at the bottom over a dimmed
+  // backdrop. Tapping the stage dismisses it.
+  pointerStartX = 0;
+  pointerStartY = 0;
+  pointerStartTime = 0;
+  tapCancelled = false;
+  stage: HTMLElement | null = null;
+  stageInner: HTMLElement | null = null;
+
   constructor(
     wrapper: HTMLElement,
     list: HTMLElement,
@@ -92,6 +102,7 @@ class InfiniteGrid {
     this.onDragEnd = this.onDragEnd.bind(this);
     this.onWheel = this.onWheel.bind(this);
     this.onResize = this.onResize.bind(this);
+    this.closeStage = this.closeStage.bind(this);
 
     this.init();
   }
@@ -99,6 +110,7 @@ class InfiniteGrid {
   init() {
     this.calculateDimensions();
     this.createGrid();
+    this.createStage();
     this.setupEventListeners();
     this.rafId = requestAnimationFrame(this.animate);
     requestAnimationFrame(() => {
@@ -216,6 +228,8 @@ class InfiniteGrid {
   onDragStart(e: MouseEvent | TouchEvent) {
     this.isDragging = true;
     this.wrapper.classList.add("dragging");
+    // A press that lands while the grid is still gliding is a "stop", not a tap.
+    this.tapCancelled = Math.hypot(this.velocityX, this.velocityY) > 1;
     this.velocityX = 0;
     this.velocityY = 0;
     const point = "touches" in e ? e.touches[0] : e;
@@ -223,6 +237,9 @@ class InfiniteGrid {
     this.startY = point.clientY - this.currentY;
     this.lastX = point.clientX;
     this.lastY = point.clientY;
+    this.pointerStartX = point.clientX;
+    this.pointerStartY = point.clientY;
+    this.pointerStartTime = Date.now();
     e.preventDefault();
   }
 
@@ -243,6 +260,64 @@ class InfiniteGrid {
     if (!this.isDragging) return;
     this.isDragging = false;
     this.wrapper.classList.remove("dragging");
+
+    // Mobile tap → stage the tile under the finger (only a still, brief, tap).
+    if (this.tapCancelled) return;
+    const moved = Math.hypot(
+      this.lastX - this.pointerStartX,
+      this.lastY - this.pointerStartY,
+    );
+    const elapsed = Date.now() - this.pointerStartTime;
+    if (moved < 8 && elapsed < 350 && window.innerWidth < this.mobileBreakpoint) {
+      this.openStageAt(this.pointerStartX, this.pointerStartY);
+    }
+  }
+
+  createStage() {
+    if (this.stage) return;
+    const stage = document.createElement("div");
+    stage.className = "discover-stage";
+    stage.setAttribute("aria-hidden", "true");
+    const inner = document.createElement("div");
+    inner.className = "discover-stage_inner";
+    stage.appendChild(inner);
+    document.body.appendChild(stage);
+    stage.addEventListener("click", this.closeStage);
+    this.stage = stage;
+    this.stageInner = inner;
+  }
+
+  // Find the tile whose on-screen rect contains the point and bring it on stage.
+  openStageAt(clientX: number, clientY: number) {
+    if (!this.stage || !this.stageInner) return;
+    const itemW = this.itemWidth;
+    const itemH = this.itemHeight;
+    for (const it of this.items) {
+      if (
+        clientX >= it.lastX &&
+        clientX <= it.lastX + itemW &&
+        clientY >= it.lastY &&
+        clientY <= it.lastY + itemH
+      ) {
+        this.stageInner.innerHTML = it.el.innerHTML;
+        this.stage.setAttribute("aria-hidden", "false");
+        // Next frame so the open transition runs from the collapsed state.
+        requestAnimationFrame(() => this.stage?.classList.add("is-open"));
+        // The grid is now static behind a backdrop-blur — stop the rAF so the
+        // blur isn't recompositing a moving layer every frame (GPU finesse).
+        cancelAnimationFrame(this.rafId);
+        this.rafId = 0;
+        return;
+      }
+    }
+  }
+
+  closeStage() {
+    if (!this.stage) return;
+    this.stage.classList.remove("is-open");
+    this.stage.setAttribute("aria-hidden", "true");
+    // Resume the gallery loop (velocity is ~0 after a tap, so it stays put).
+    if (!this.rafId) this.rafId = requestAnimationFrame(this.animate);
   }
 
   onWheel(e: WheelEvent) {
@@ -320,6 +395,12 @@ class InfiniteGrid {
     this.wrapper.removeEventListener("touchstart", this.onDragStart);
     this.wrapper.removeEventListener("wheel", this.onWheel);
     this.wrapper.removeEventListener("contextmenu", this.onContextMenu);
+    if (this.stage) {
+      this.stage.removeEventListener("click", this.closeStage);
+      this.stage.remove();
+      this.stage = null;
+      this.stageInner = null;
+    }
   }
 }
 
