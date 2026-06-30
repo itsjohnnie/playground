@@ -15,7 +15,7 @@ export default function DiscoverPage() {
       {/* Floating control bar: home link, page label, light/dark toggle. */}
       <div className="discover-comp">
         <a href={asset("/")} className="discover-logo">
-          <div>Johnnie GómeZ ®</div>
+          <div>Johnnie Gómez Alzaga ®</div>
         </a>
         <div className="discover-text">
           <div>Design Discovery Area</div>
@@ -81,6 +81,26 @@ export default function DiscoverPage() {
 .hero { overflow: hidden; }
 html, body { overflow: hidden; }
 
+/* Unified light/dark transition. Every themed surface eases on the SAME timing
+   so backgrounds, text, borders, shadows and the toggle icon all change in
+   lockstep — previously each had a different transition (or none), so they
+   shifted at different speeds. An explicit light background-color on <body>
+   gives the body a real value to ease from. */
+body { background-color: #fff; }
+body,
+.discover-comp,
+.discover-logo,
+.discover-text,
+.toggle-mode,
+.hero-image {
+  transition: background-color .45s ease, color .45s ease,
+    border-color .45s ease, outline-color .45s ease, box-shadow .45s ease !important;
+}
+.toggle-mode svg,
+.toggle-mode svg * {
+  transition: color .45s ease, fill .45s ease, stroke .45s ease;
+}
+
 .hero-list-wrapper {
   position: fixed; inset: 0;
   width: 100vw; height: 100vh; height: 100dvh;
@@ -123,6 +143,35 @@ body.is-dark .discover-logo:hover,
 body.is-dark .toggle-mode:hover { background-color: #242424; }
 body.is-dark .discover-text { border-color: #ffffff14; }
 body.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #00000052; }
+
+/* Mobile tap-to-stage: the tapped tile, front-and-center and enlarged, over a
+   dimmed backdrop with its meta beneath. Tapping anywhere dismisses it. */
+.discover-stage {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1.25rem; padding: 6vh 7vw;
+  background: rgba(8, 8, 8, .72);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  opacity: 0; pointer-events: none;
+  transition: opacity .3s ease;
+}
+.discover-stage.is-open { opacity: 1; pointer-events: auto; }
+.discover-stage_inner {
+  display: flex; flex-direction: column; align-items: center; gap: 1rem;
+  max-width: 100%;
+  transform: scale(.92);
+  transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+}
+.discover-stage.is-open .discover-stage_inner { transform: scale(1); }
+.discover-stage .hero-image {
+  width: auto !important; height: auto !important;
+  max-width: 86vw; max-height: 64vh; object-fit: contain !important;
+  border-radius: 10px; box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
+}
+.discover-stage .hero-meta_data {
+  text-align: center; color: #fff; font-size: 1.05rem; line-height: 1.4;
+}
+.discover-stage .hero-meta_data-lighter { opacity: .6; }
 `,
         }}
       />
