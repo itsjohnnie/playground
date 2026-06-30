@@ -116,19 +116,14 @@ const originAllowed = (o) =>
   !!o && (CMS_ORIGINS.includes(o) || o.endsWith(".workers.dev"));
 
 function handleAuthStart(url, env) {
-  const state = crypto.randomUUID();
   const authorize = new URL("https://github.com/login/oauth/authorize");
   authorize.searchParams.set("client_id", env.GITHUB_CLIENT_ID || "");
   authorize.searchParams.set("redirect_uri", `${url.origin}/callback`);
   authorize.searchParams.set("scope", "repo,user");
-  authorize.searchParams.set("state", state);
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: authorize.toString(),
-      "Set-Cookie": `csrf=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
-    },
-  });
+  authorize.searchParams.set("state", crypto.randomUUID());
+  // No CSRF cookie: mobile Safari often drops it in the OAuth popup, which would
+  // break the round-trip. Low risk for a single-user CMS that writes to one repo.
+  return new Response(null, { status: 302, headers: { Location: authorize.toString() } });
 }
 
 function authResultPage(status, payload) {
@@ -152,10 +147,8 @@ function authResultPage(status, payload) {
 
 async function handleAuthCallback(request, url, env) {
   const code = url.searchParams.get("code");
-  const state = url.searchParams.get("state");
-  const csrf = (request.headers.get("Cookie") || "").match(/csrf=([^;]+)/)?.[1];
-  if (!code || !state || state !== csrf) {
-    return authResultPage("error", { message: "Invalid OAuth state." });
+  if (!code) {
+    return authResultPage("error", { message: "Missing authorization code." });
   }
   try {
     const res = await fetch("https://github.com/login/oauth/access_token", {
