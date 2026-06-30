@@ -21,6 +21,13 @@ export type Feature = {
   url: string;
 };
 
+export type DiscoverItem = {
+  order: number;
+  name: string;
+  category: string;
+  image: string;
+};
+
 function readCollection<T>(dir: string): T[] {
   const full = path.join(CONTENT, dir);
   if (!fs.existsSync(full)) return [];
@@ -37,4 +44,8 @@ export function getProjects(): Project[] {
 
 export function getFeatures(): Feature[] {
   return readCollection<Feature>("features");
+}
+
+export function getDiscover(): DiscoverItem[] {
+  return readCollection<DiscoverItem>("discover");
 }

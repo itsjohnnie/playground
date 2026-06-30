@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { asset } from "@/lib/asset";
 
 const LINKS = [
   { href: "#hero", label: "Top" },
   { href: "#about", label: "About" },
   { href: "#work", label: "Work" },
+  // Separate page (not an in-page anchor), so it gets the basePath prefix.
+  { href: asset("/discover/"), label: "Discover" },
   { href: "#features", label: "Features" },
   { href: "#contact", label: "Contact" },
 ];
@@ -57,23 +60,23 @@ export default function SiteNav() {
       <div
         ref={barRef}
         role="banner"
-        className={`navbar w-nav${open ? " is-open" : ""}`}
+        className={`navbar ui-nav${open ? " is-open" : ""}`}
         style={{ transition: "transform 0.4s ease" }}
       >
         <div className="container cc-nav">
-          <a href="#hero" className="brand w-nav-brand" onClick={() => setOpen(false)}>
+          <a href="#hero" className="brand ui-nav-brand" onClick={() => setOpen(false)}>
             <div>Johnnie&#x27;s LiFe</div>
           </a>
-          <nav role="navigation" className="nav_menu w-nav-menu">
+          <nav role="navigation" className="nav_menu ui-nav-menu">
             {LINKS.map((l) => (
-              <a key={l.href} href={l.href} className="nav_link w-nav-link" onClick={() => setOpen(false)}>
+              <a key={l.href} href={l.href} className="nav_link ui-nav-link" onClick={() => setOpen(false)}>
                 {l.label}
               </a>
             ))}
           </nav>
           <button
             type="button"
-            className="nav_button w-nav-button hamburger"
+            className="nav_button ui-nav-button hamburger"
             aria-label="Menu"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
