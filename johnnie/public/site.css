@@ -2188,13 +2188,16 @@ strong {
 
   .project-video {
     max-height: 240px;
+    /* The image is the card's top on phones — round its top corners to 12px. */
+    border-radius: 12px 12px 0 0;
   }
 
   .project-content {
     border: 2px solid #000;
     border-top-style: none;
-    /* Bottom corners match the about-photo's bottom radius (12px). On phones the
-       content block carries the card's bottom edge, so the radius lives here. */
+    /* ...and the content block is the card's bottom, so it carries the bottom
+       12px. Together the card's four outer corners are a uniform 12px (matching
+       the about-photo's bottom radius). */
     border-radius: 0 0 12px 12px;
     justify-content: flex-start;
     padding-top: 2em;
