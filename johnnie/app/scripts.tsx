@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 // Cycling background palette, sampled from the original site:
 // green -> peach -> salmon -> lavender, looping. We drive it ourselves (no
@@ -150,10 +151,16 @@ function smoothAnchors(): () => void {
 }
 
 export default function Scripts() {
+  // <Scripts /> lives in the persistent root layout, so it does NOT remount on
+  // client-side navigation. Keying the effect on the pathname makes it tear down
+  // and re-run on every route change — so the color loop reliably starts when you
+  // land on (or navigate to) a cycling page and stops on Discover, no matter
+  // where the page was first loaded from.
+  const pathname = usePathname();
   useEffect(() => {
     // The Discover page runs its own background/theme logic (a flat white/dark
     // canvas), so the cycling color loop must not run there.
-    if (location.pathname.indexOf("/discover") !== -1) return;
+    if (pathname.indexOf("/discover") !== -1) return;
     const stopColor = colorCycle();
     const stopLightbox = lightbox();
     const stopAnchors = smoothAnchors();
@@ -162,6 +169,6 @@ export default function Scripts() {
       stopLightbox();
       stopAnchors();
     };
-  }, []);
+  }, [pathname]);
   return null;
 }
