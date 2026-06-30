@@ -142,10 +142,62 @@ export default function RootLayout({
    gifs/videos, a plus glyph for static images. The badge sits outside the
    image's multiply blend so it stays crisp. */
 .project-media { position: relative; display: flex; }
-.media-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; border-radius: 50%; background: rgba(27,27,27,.45); display: flex; align-items: center; justify-content: center; pointer-events: none; transition: background .2s ease; }
-.media-badge svg { width: 26px; height: 26px; fill: #fff; }
+
+/* Liquid-glass content badge (iOS-style): frosted, beveled, with a refractive
+   rim. backdrop-filter frosts the project image behind it; layered inset shadows
+   form a glass bevel (bright top, shaded bottom); the ::before pools a specular
+   sheen at the top-left; the ::after draws a gradient hairline rim that catches
+   light at the top and fades round — the edge "lensing" cue of liquid glass. A
+   light dark-vibrancy tint keeps the white glyph legible over any image.
+   (Apple/Aave use an feDisplacementMap for true refraction, but SVG-filter
+   backdrop-filter is Chromium-only — this CSS build also holds up on iOS Safari,
+   where the site is actually viewed.) */
+.media-badge {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; isolation: isolate;
+  background: rgba(24, 24, 28, 0.22);
+  -webkit-backdrop-filter: blur(9px) saturate(185%);
+  backdrop-filter: blur(9px) saturate(185%);
+  box-shadow:
+    0 7px 22px rgba(0, 0, 0, 0.24),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.55),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.22);
+  transition: transform .3s cubic-bezier(.22, 1, .36, 1), box-shadow .3s ease, background .3s ease;
+}
+/* Specular sheen — soft light pooling toward the top-left. */
+.media-badge::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(115% 115% at 30% 20%, rgba(255,255,255,.5), rgba(255,255,255,0) 45%),
+    linear-gradient(165deg, rgba(255,255,255,.14), rgba(255,255,255,0) 58%);
+}
+/* Refractive rim — a 1px gradient ring (masked) that's brightest up top and
+   round the upper-left, dimming toward the bottom: glass catching the light. */
+.media-badge::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+  padding: 1px;
+  background: linear-gradient(155deg, rgba(255,255,255,.9), rgba(255,255,255,.25) 30%, rgba(255,255,255,0) 58%, rgba(255,255,255,.18));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite: exclude;
+}
+.media-badge svg {
+  position: relative; z-index: 1;
+  width: 25px; height: 25px; fill: #fff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .5));
+}
 .media-badge.is-play svg { margin-left: 2px; }
-.project-link_block:hover .media-badge { background: rgba(27,27,27,.7); }
+.project-link_block:hover .media-badge {
+  transform: translate(-50%, -50%) scale(1.07);
+  background: rgba(24, 24, 28, 0.16);
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.28),
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -5px 10px rgba(0, 0, 0, 0.24);
+}
 
 /* Taller project thumbnails on phones so images aren't cropped so harshly. */
 @media (max-width: 767px) {
