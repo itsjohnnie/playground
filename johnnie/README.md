@@ -25,14 +25,18 @@ johnnie/
    └─ admin/         # Sveltia CMS (config.yml + index.html)
 ```
 
-### Fidelity approach
+### Approach
 
-To guarantee the look/feel is identical, the migration **reuses Webflow's exact
-CSS and its IX2 interaction runtime** (the `data-w-id` attributes in the markup
-plus the vendored `public/js/webflow.*.js` chunks). That keeps every animation,
-the marquee, the lottie hamburger, the scroll-reveal nav, the blob, and the
-Three.js smoke field byte-for-byte faithful. All assets are downloaded from the
-Webflow CDN into `public/`, so the site no longer depends on Webflow.
+The visual design reuses Webflow's exported **CSS** (`public/webflow.css`), but
+**all the JavaScript is now native** — there is no Webflow runtime, no jQuery,
+and no Lottie. The interactions are hand-written:
+
+- **Color-cycling background** + `--bg` variable + live `theme-color` — `app/scripts.tsx`
+- **Scroll-reveal nav + hamburger menu** — `app/site-nav.tsx`
+- **Marquee, hamburger icon, mobile menu, footer spin, lightbox, smooth scroll** — CSS in `app/layout.tsx`
+
+All assets are self-hosted in `public/`, so the site has no dependency on
+Webflow at all.
 
 Fonts: **Inconsolata** (Google Fonts) + an **Adobe Fonts / Typekit** kit
 (`uqs5mpm` — Eckmann, Program Narrow, Franklin Gothic) loaded from their font

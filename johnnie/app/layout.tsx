@@ -61,26 +61,60 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap"
         />
-        {/* Mobile nav color + (formerly) canvas styles */}
+        {/* Native interactions CSS (replaces the Webflow JS runtime) */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
-/* Mobile: keep the fixed nav (and its menu/overlay) matching the cycling page
-   background, driven off the --bg variable synced in app/scripts.tsx. Desktop
-   keeps its white-gradient reveal. */
-@media (max-width: 991px) {
-  .navbar, .nav_menu, .w-nav-overlay {
-    background-color: var(--bg, #facbc7) !important;
-    background-image: none !important;
+/* Anchor links glide; offset so sections clear the fixed nav. */
+html { scroll-behavior: smooth; }
+#about, #work, #features, #contact { scroll-margin-top: 72px; }
+
+/* The nav matches the cycling page background via the --bg variable. */
+.navbar, .nav_menu { background-color: var(--bg, #facbc7) !important; }
+@media (max-width: 991px) { .navbar, .nav_menu { background-image: none !important; } }
+
+/* Marquees: continuous horizontal scroll (was Webflow IX2). The track holds the
+   items twice over, so translating -50% loops seamlessly. */
+.marquee_track { display: flex; flex: none; width: max-content; }
+.marquee_wrapper.cc-top .marquee_track,
+.marquee_wrapper.cc-bottom .marquee_track { animation: marquee-left 80s linear infinite; }
+@keyframes marquee-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* Footer "forever sharing" circle: slow spin (was Webflow IX2). */
+.rotating_circle svg { animation: rotate-circle 22s linear infinite; transform-origin: 50% 50%; }
+@keyframes rotate-circle { to { transform: rotate(360deg); } }
+
+/* Hamburger button (replaces the Lottie icon). */
+.hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 44px; height: 44px; padding: 0; background: transparent; border: 0; cursor: pointer; }
+.hamburger span { display: block; width: 24px; height: 2px; margin: 0 auto; background: #1b1b1b; transition: transform .3s ease, opacity .2s ease; }
+.navbar.is-open .hamburger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.navbar.is-open .hamburger span:nth-child(2) { opacity: 0; }
+.navbar.is-open .hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* Mobile nav menu: hidden behind the hamburger, drops down when open. */
+@media (max-width: 767px) {
+  .hamburger { display: flex; }
+  .nav_menu {
+    display: none !important;
+    position: absolute; top: 100%; left: 0; right: 0;
+    flex-direction: column; align-items: flex-start; gap: .25rem;
+    border-bottom: 2px solid #000; padding: 16px 24px;
   }
+  .navbar.is-open .nav_menu { display: flex !important; }
 }
+@media (min-width: 768px) { .hamburger { display: none !important; } }
+
+/* Native image lightbox for project tiles ("Zoom in"). */
+.lb-overlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 5vw; background: rgba(27,27,27,.85); opacity: 0; transition: opacity .2s ease; cursor: zoom-out; }
+.lb-overlay.is-open { opacity: 1; }
+.lb-overlay img { max-width: 92vw; max-height: 92vh; border-radius: 4px; box-shadow: 0 12px 48px rgba(0,0,0,.45); }
 `,
           }}
         />
-        {/* Webflow JS-detection: adds .w-mod-js / .w-mod-touch before paint */}
+        {/* Mark JS available + touch capability (CSS hooks used by the styles). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `!function(o,c){var n=c.documentElement,t=" w-mod-";n.className+=t+"js",("ontouchstart"in o||o.DocumentTouch&&c instanceof DocumentTouch)&&(n.className+=t+"touch")}(window,document);`,
+            __html: `var e=document.documentElement;e.classList.add('w-mod-js');if('ontouchstart'in window||navigator.maxTouchPoints>0)e.classList.add('w-mod-touch');`,
           }}
         />
       </head>

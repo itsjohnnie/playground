@@ -1,44 +1,21 @@
 "use client";
 
 import { useEffect } from "react";
-import { asset } from "@/lib/asset";
 
-// Exact list of Webflow runtime chunks (IX2 interactions + Lottie), in the
-// order Webflow ships them, followed by the entry loader. They self-assemble
-// via self.webpackChunk with no network calls.
-const WEBFLOW_CHUNKS = [
-  "/js/webflow.schunk.36b8fb49256177c8.js",
-  "/js/webflow.schunk.8208d3e53b97e3c7.js",
-  "/js/webflow.schunk.c7aa0cc1620bfec5.js",
-  "/js/webflow.schunk.a2895b93f03a774a.js",
-  "/js/webflow.schunk.b4435221be879eb3.js",
-  "/js/webflow.schunk.b1adc1fa4495e600.js",
+// Cycling background palette, sampled from the original site:
+// green -> peach -> salmon -> lavender, looping. We drive it ourselves (no
+// Webflow runtime) by writing the current color onto <body> and into the --bg
+// custom property (which the nav and the browser theme-color follow).
+const PALETTE: [number, number, number][] = [
+  [174, 190, 169], // green
+  [233, 178, 151], // peach
+  [250, 203, 199], // salmon
+  [184, 166, 204], // lavender
 ];
-const WEBFLOW_MAIN = "/js/webflow.86be44b3.17ea3bd94fa9c2fe.js";
+const SEGMENT_MS = 6000; // time to travel between two palette stops
 
-function loadScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = src;
-    s.async = false; // preserve execution order
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("failed to load " + src));
-    document.body.appendChild(s);
-  });
-}
-
-// The page background-color is animated frame-by-frame by Webflow's JS (the
-// cycling hue), written straight onto <body>. The fixed nav has its own color
-// that can lag/freeze, causing a duotone clash on mobile. Rather than push the
-// color onto each nav element, we mirror the body's current color into a single
-// CSS custom property (--bg) on the root each frame; CSS then drives the nav
-// (and anything else) off var(--bg), so everything stays in sync by design. We
-// also keep the <meta name="theme-color"> in sync so the iOS/Android browser
-// chrome matches the page in real time.
-function syncBgVar(): () => void {
-  let raf = 0;
-  let last = "";
-  let lastTheme = 0;
+function colorCycle(): () => void {
+  const root = document.documentElement;
   let metas = Array.from(
     document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'),
   );
@@ -48,54 +25,75 @@ function syncBgVar(): () => void {
     document.head.appendChild(m);
     metas = [m];
   }
-  const tick = () => {
+  let raf = 0;
+  let startedAt = -1;
+  let lastTheme = 0;
+  const n = PALETTE.length;
+  const frame = (now: number) => {
+    if (startedAt < 0) startedAt = now;
     if (document.hidden) {
-      raf = requestAnimationFrame(tick);
+      raf = requestAnimationFrame(frame);
       return;
     }
-    const c =
-      document.body.style.backgroundColor ||
-      getComputedStyle(document.body).backgroundColor;
-    if (c && c !== last) {
-      last = c;
-      document.documentElement.style.setProperty("--bg", c);
-      const now = performance.now();
-      if (now - lastTheme > 150) {
-        lastTheme = now;
-        for (const m of metas) m.setAttribute("content", c);
-      }
+    const t = now - startedAt;
+    const seg = Math.floor(t / SEGMENT_MS) % n;
+    const f = (t % SEGMENT_MS) / SEGMENT_MS;
+    const a = PALETTE[seg];
+    const b = PALETTE[(seg + 1) % n];
+    const r = Math.round(a[0] + (b[0] - a[0]) * f);
+    const g = Math.round(a[1] + (b[1] - a[1]) * f);
+    const bl = Math.round(a[2] + (b[2] - a[2]) * f);
+    const c = `rgb(${r}, ${g}, ${bl})`;
+    document.body.style.backgroundColor = c;
+    root.style.setProperty("--bg", c);
+    if (now - lastTheme > 150) {
+      lastTheme = now;
+      for (const m of metas) m.setAttribute("content", c);
     }
-    raf = requestAnimationFrame(tick);
+    raf = requestAnimationFrame(frame);
   };
-  raf = requestAnimationFrame(tick);
+  raf = requestAnimationFrame(frame);
   return () => cancelAnimationFrame(raf);
+}
+
+// Minimal image lightbox for the project tiles ("Zoom in"), replacing Webflow's.
+function lightbox(): () => void {
+  const onClick = (e: Event) => {
+    const link = (e.target as HTMLElement).closest<HTMLElement>(".project-link_block");
+    if (!link) return;
+    e.preventDefault();
+    const img = link.querySelector("img");
+    const src = img?.getAttribute("src");
+    if (!src) return;
+    const overlay = document.createElement("div");
+    overlay.className = "lb-overlay";
+    const big = document.createElement("img");
+    big.src = src;
+    big.alt = "";
+    overlay.appendChild(big);
+    const close = () => {
+      overlay.classList.remove("is-open");
+      setTimeout(() => overlay.remove(), 200);
+      document.removeEventListener("keydown", onKey);
+    };
+    const onKey = (ev: KeyboardEvent) => ev.key === "Escape" && close();
+    overlay.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add("is-open"));
+  };
+  document.addEventListener("click", onClick);
+  return () => document.removeEventListener("click", onClick);
 }
 
 export default function Scripts() {
   useEffect(() => {
-    let cancelled = false;
-    const stopNavSync = syncBgVar();
-    (async () => {
-      try {
-        await loadScript(asset("/vendor/jquery-3.5.1.min.js"));
-        for (const c of WEBFLOW_CHUNKS) {
-          if (cancelled) return;
-          await loadScript(asset(c));
-        }
-        if (cancelled) return;
-        await loadScript(asset(WEBFLOW_MAIN));
-      } catch (e) {
-        // Non-fatal: visuals degrade gracefully if a runtime asset fails.
-        console.error(e);
-      }
-    })();
+    const stopColor = colorCycle();
+    const stopLightbox = lightbox();
     return () => {
-      cancelled = true;
-      stopNavSync();
+      stopColor();
+      stopLightbox();
     };
   }, []);
-
-  // Fonts are loaded via render-blocking <link> stylesheets in the <head>
-  // (see app/layout.tsx) to avoid the flash-of-unstyled-text / layout shift.
   return null;
 }
