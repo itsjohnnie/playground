@@ -1955,9 +1955,19 @@ strong {
     text-align: left;
   }
 
+  /* Follow-him as a full-width bottom row: label left, icons clustered right
+     (margin-right:auto on the label pushes the icons to the right edge). */
   .hero-bottom_left {
+    display: flex;
+    align-items: center;
     bottom: 100px;
     left: 40px;
+    right: 40px;
+  }
+
+  .hero-bottom_left .label {
+    margin-bottom: 0;
+    margin-right: auto;
   }
 
   .hero-heading {
@@ -2073,7 +2083,7 @@ strong {
 
   .section.hero {
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: center;
     min-height: 92vh;
     padding-bottom: 120px;
     padding-left: 24px;
@@ -2157,10 +2167,11 @@ strong {
   }
 
   .hero-bottom_left {
-    margin-top: 28px;
-    position: relative;
-    bottom: 0;
-    left: 0;
+    margin-top: 0;
+    position: absolute;
+    bottom: 72px;
+    left: 24px;
+    right: 24px;
   }
 
   .hero-heading {
