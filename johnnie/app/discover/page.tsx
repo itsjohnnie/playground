@@ -101,13 +101,30 @@ body,
 .discover-logo,
 .discover-text,
 .toggle-mode,
-.hero-image {
+.hero-image,
+.hero-item {
   transition: background-color .45s ease, color .45s ease,
     border-color .45s ease, outline-color .45s ease, box-shadow .45s ease !important;
 }
 /* The icon fills via currentColor, so it already follows .toggle-mode's color
    transition. Giving the SVG its OWN color transition made it chase an already-
    animating value and finish ~twice as late — so it has none of its own. */
+
+/* Vignette edge colour as REGISTERED custom properties so the fade can be
+   ANIMATED — a raw background-image gradient can't transition, so it used to
+   snap while everything else eased. These ride the exact same .45s ease, so the
+   edges change in unison with the rest. --vig0 is the inner (transparent) stop,
+   colour-matched to --vig so there's no gray fringe mid-transition. */
+@property --vig { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
+@property --vig0 { syntax: "<color>"; inherits: true; initial-value: rgba(255, 255, 255, 0); }
+html {
+  --vig: #ffffff; --vig0: rgba(255, 255, 255, 0);
+  transition: --vig .45s ease, --vig0 .45s ease;
+}
+html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
+.hero-gradient.cc-white {
+  background-image: radial-gradient(circle closest-corner at 50% 50%, var(--vig0) 60%, var(--vig) 98%);
+}
 
 .hero-list-wrapper {
   /* inset:0 stretches the canvas to the full viewport (unit-agnostic). In
@@ -157,9 +174,6 @@ html.is-dark .hero-item { background-color: rgba(255, 255, 255, .06); }
 /* Native dark mode. The .is-dark class lives on <html> (set pre-paint by the
    head script + managed by the toggle), so target the body for the page fill. */
 html.is-dark, html.is-dark body { background-color: #080808 !important; color: #fff; }
-html.is-dark .hero-gradient.cc-white {
-  background-image: radial-gradient(circle closest-corner at 50% 50%, #08080800 60%, #080808 98%);
-}
 html.is-dark .hero-image { outline-color: #ffffff14; }
 html.is-dark .discover-logo,
 html.is-dark .discover-text,
