@@ -105,10 +105,9 @@ body,
   transition: background-color .45s ease, color .45s ease,
     border-color .45s ease, outline-color .45s ease, box-shadow .45s ease !important;
 }
-.toggle-mode svg,
-.toggle-mode svg * {
-  transition: color .45s ease, fill .45s ease, stroke .45s ease;
-}
+/* The icon fills via currentColor, so it already follows .toggle-mode's color
+   transition. Giving the SVG its OWN color transition made it chase an already-
+   animating value and finish ~twice as late — so it has none of its own. */
 
 .hero-list-wrapper {
   /* No explicit width/height: inset:0 (top/right/bottom/left all 0) stretches
