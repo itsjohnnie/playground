@@ -140,28 +140,37 @@ body,
   width: auto; max-width: none; height: auto;
   will-change: transform; contain: layout style paint;
   backface-visibility: hidden; pointer-events: none; user-select: none;
+  /* Placeholder tint shown under an image while it decodes. */
+  background-color: rgba(0, 0, 0, .05); border-radius: 4px;
 }
+html.is-dark .hero-item { background-color: rgba(255, 255, 255, .06); }
 .hero-item .hero-image {
   pointer-events: none; user-select: none; -webkit-user-drag: none;
   width: 100%; height: 100%; object-fit: cover; aspect-ratio: auto;
+  /* Blur-up: each tile eases from a soft blur to sharp as it decodes, instead
+     of popping in. Per-image and brief, so it stays light on the GPU. */
+  opacity: 0; filter: blur(14px);
+  transition: opacity .55s ease, filter .55s ease;
 }
+.hero-item .hero-image.is-loaded { opacity: 1; filter: blur(0); }
 .hero-item .hero-meta_data { pointer-events: none; }
 
-/* Native dark mode (replaces the visual-builder interaction). */
-body.is-dark { background-color: #080808 !important; color: #fff; }
-body.is-dark .hero-gradient.cc-white {
+/* Native dark mode. The .is-dark class lives on <html> (set pre-paint by the
+   head script + managed by the toggle), so target the body for the page fill. */
+html.is-dark, html.is-dark body { background-color: #080808 !important; color: #fff; }
+html.is-dark .hero-gradient.cc-white {
   background-image: radial-gradient(circle closest-corner at 50% 50%, #08080800 60%, #080808 98%);
 }
-body.is-dark .hero-image { outline-color: #ffffff14; }
-body.is-dark .discover-logo,
-body.is-dark .discover-text,
-body.is-dark .toggle-mode {
+html.is-dark .hero-image { outline-color: #ffffff14; }
+html.is-dark .discover-logo,
+html.is-dark .discover-text,
+html.is-dark .toggle-mode {
   background-color: rgba(24, 24, 24, .6); color: #fff;
 }
-body.is-dark .discover-logo:hover,
-body.is-dark .toggle-mode:hover { background-color: rgba(36, 36, 36, .72); }
-body.is-dark .discover-text { border-color: #ffffff14; }
-body.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #00000052; }
+html.is-dark .discover-logo:hover,
+html.is-dark .toggle-mode:hover { background-color: rgba(36, 36, 36, .72); }
+html.is-dark .discover-text { border-color: #ffffff14; }
+html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #00000052; }
 
 /* Mobile tap-to-stage: the tapped tile, front-and-center and enlarged, over a
    dimmed backdrop with its meta beneath. Tapping anywhere dismisses it. */

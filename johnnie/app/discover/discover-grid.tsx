@@ -156,6 +156,7 @@ class InfiniteGrid {
     const source = this.getNextContent();
     const newContent = source.cloneNode(true) as HTMLElement;
     item.el.innerHTML = newContent.innerHTML;
+    this.markLoaded(item.el);
   }
 
   createGrid() {
@@ -199,6 +200,8 @@ class InfiniteGrid {
       fragment.appendChild(clone);
     }
     this.list.appendChild(fragment);
+    // Cached images are already complete and won't fire load — mark them now.
+    for (const it of this.items) this.markLoaded(it.el);
 
     this.currentX = this.gridWidth / 2;
     this.currentY = this.gridHeight / 2;
@@ -216,11 +219,25 @@ class InfiniteGrid {
 
     wrapper.addEventListener("wheel", this.onWheel, { passive: false });
     wrapper.addEventListener("contextmenu", this.onContextMenu);
+    this.list.addEventListener("load", this.onImgLoad, true);
 
     window.addEventListener("resize", this.onResize, { passive: true });
   }
 
   onContextMenu = (e: Event) => e.preventDefault();
+
+  // Blur-up fade-in: mark each tile image loaded so CSS can transition it from a
+  // blurred/transparent state to sharp once it decodes (load doesn't bubble, so
+  // the listener is registered in the capture phase).
+  onImgLoad = (e: Event) => {
+    const t = e.target as HTMLElement | null;
+    if (t && t.tagName === "IMG") t.classList.add("is-loaded");
+  };
+
+  markLoaded(el: HTMLElement) {
+    const img = el.querySelector("img");
+    if (img && (img as HTMLImageElement).complete) img.classList.add("is-loaded");
+  }
 
   onResize() {
     clearTimeout(this.resizeTimeout);
@@ -406,6 +423,7 @@ class InfiniteGrid {
     this.wrapper.removeEventListener("touchstart", this.onDragStart);
     this.wrapper.removeEventListener("wheel", this.onWheel);
     this.wrapper.removeEventListener("contextmenu", this.onContextMenu);
+    this.list.removeEventListener("load", this.onImgLoad, true);
     if (this.stage) {
       this.stage.removeEventListener("click", this.closeStage);
       this.stage.remove();
@@ -450,28 +468,54 @@ export default function DiscoverGrid() {
       mobileWidthPercent: 0.8,
     });
 
-    // Native light/dark toggle (no visual-builder runtime).
+    // Light/dark: follow the OS preference by default; a manual toggle overrides
+    // it and persists in localStorage (so a refresh keeps the chosen mode). The
+    // pre-paint head script already applied the same initial state to <html>.
+    const THEME_KEY = "discover-theme";
+    const root = document.documentElement;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const readSaved = (): string | null => {
+      try {
+        return localStorage.getItem(THEME_KEY);
+      } catch {
+        return null;
+      }
+    };
     const applyTheme = (dark: boolean) => {
-      document.body.classList.toggle("is-dark", dark);
+      root.classList.toggle("is-dark", dark);
       // color-scheme tells the browser the page itself is dark/light, which (with
       // theme-color) is what some browsers use to tint their surrounding chrome.
-      document.documentElement.style.colorScheme = dark ? "dark" : "light";
+      root.style.colorScheme = dark ? "dark" : "light";
       setThemeColor(dark ? DARK : LIGHT);
     };
-    applyTheme(false);
+    const saved = readSaved();
+    applyTheme(saved ? saved === "dark" : mq.matches);
 
     const toggle = document.querySelector<HTMLElement>("[data-theme-toggle]");
     const onToggle = (e: Event) => {
       e.preventDefault();
-      applyTheme(!document.body.classList.contains("is-dark"));
+      const next = !root.classList.contains("is-dark");
+      applyTheme(next);
+      try {
+        localStorage.setItem(THEME_KEY, next ? "dark" : "light");
+      } catch {
+        /* private mode / storage disabled — just don't persist */
+      }
     };
     toggle?.addEventListener("click", onToggle);
+
+    // Live-follow the OS preference only while the user hasn't set an override.
+    const onSystem = (e: MediaQueryListEvent) => {
+      if (!readSaved()) applyTheme(e.matches);
+    };
+    mq.addEventListener("change", onSystem);
 
     return () => {
       grid.destroy();
       toggle?.removeEventListener("click", onToggle);
-      document.body.classList.remove("is-dark");
-      document.documentElement.style.colorScheme = "";
+      mq.removeEventListener("change", onSystem);
+      root.classList.remove("is-dark");
+      root.style.colorScheme = "";
     };
   }, []);
 
