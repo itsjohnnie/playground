@@ -1575,11 +1575,10 @@ strong {
   grid-row-gap: 0rem;
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
-  outline-offset: -1px;
   color: #080808;
   text-transform: uppercase;
   background-color: rgba(255, 255, 255, .68);
-  outline: 1px solid #ffffff29;
+  outline: none;
   justify-content: center;
   align-items: center;
   padding-left: .75rem;
@@ -1592,13 +1591,12 @@ strong {
 
 .toggle-mode:hover {
   background-color: #fffc;
-  outline-color: #ffffff52;
 }
 
 .toggle-mode:focus-visible, .toggle-mode[data-wf-focus-visible] {
-  outline-offset: -1px;
   background-color: #fffc;
-  outline: 1px #ffffff29;
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 
 .button-icon {
