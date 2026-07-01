@@ -110,13 +110,13 @@ body,
    animating value and finish ~twice as late — so it has none of its own. */
 
 .hero-list-wrapper {
-  /* No explicit width/height: inset:0 (top/right/bottom/left all 0) stretches
-     the canvas to the FULL viewport in both Safari (the layout viewport, behind
-     the chrome) and standalone/PWA (the whole screen, behind the status bar and
-     the home indicator). An explicit height:100lvh would override bottom:0 and,
-     in standalone, fall short of the home-indicator strip — leaving a bar at the
-     bottom. Letting the insets drive it is unit-agnostic and always edge-to-edge. */
+  /* inset:0 stretches the canvas to the full viewport (unit-agnostic). In
+     standalone/PWA, iOS stops fixed elements at the home-indicator safe-area
+     boundary, leaving a strip at the very bottom — so extend the bottom PAST it
+     by that inset to reach the true screen edge. (In the browser the inset is ~0,
+     so the extra is a no-op / harmless off-screen overflow.) */
   position: fixed; inset: 0;
+  bottom: calc(0px - env(safe-area-inset-bottom, 0px));
   overflow: hidden; cursor: grab; contain: layout paint;
   opacity: 0; transition: opacity .6s ease-out;
 }
