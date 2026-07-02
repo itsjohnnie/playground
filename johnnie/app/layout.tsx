@@ -164,7 +164,6 @@ export default function RootLayout({
 .media-badge svg {
   width: 24px; height: 24px; fill: #1b1b1b;
 }
-.media-badge.is-play svg { margin-left: 2px; }
 .project-link_block:hover .media-badge {
   transform: translate(-50%, -50%) scale(1.07);
 }
@@ -175,6 +174,15 @@ export default function RootLayout({
   .project-media .project-embed, .project-media .project-video {
     max-height: none !important; min-height: 0 !important; height: 100% !important;
   }
+  /* Badge to the top-right corner (not centered) so it reads as a small
+     "expand" affordance and doesn't sit over the middle of the thumbnail. */
+  .media-badge {
+    top: 12px; right: 12px; left: auto;
+    width: 40px; height: 40px;
+    transform: none;
+  }
+  .media-badge svg { width: 20px; height: 20px; }
+  .project-link_block:hover .media-badge { transform: scale(1.07); }
 }
 
 /* Native lightbox for project tiles ("Zoom in"): image, or the mp4 on click. */
