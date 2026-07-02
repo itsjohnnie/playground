@@ -2186,10 +2186,34 @@ em {
 }
 
 .section {
-  border-bottom: 1px solid #111;
   width: 100%;
   padding-top: 8em;
   padding-bottom: 8em;
+  position: relative;
+}
+
+/* Hand-drawn dividers: the crisp 1px rules on the section-type blocks are
+   redrawn as thin bars pushed through the #rough-line turbulence filter so
+   their edges wobble like the rough headings instead of reading as flat CAD
+   lines. One shared pseudo-element rule; the filter does the irregularity. */
+.section::after,
+.hero::after,
+.info_bar::after,
+.top_bar::after,
+.bottom_link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: #111;
+  filter: url("#rough-line");
+  pointer-events: none;
+}
+.section.b-b-none::after,
+.section.disclaimer::after {
+  content: none;
 }
 
 .section.p-b-0 {
@@ -2487,13 +2511,13 @@ em {
 }
 
 .top_bar {
-  border-bottom: 1px solid #111;
   justify-content: space-between;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
   padding: 1em 2rem;
   display: flex;
+  position: relative;
 }
 
 .top_bar.nav {
@@ -2518,8 +2542,8 @@ em {
 }
 
 .hero {
-  border-bottom: 1px solid #111;
   padding-top: 7em;
+  position: relative;
 }
 
 .text-center {
@@ -2528,11 +2552,11 @@ em {
 
 .bottom_link {
   text-align: center;
-  border-bottom: 1px solid #111;
   justify-content: center;
   align-items: center;
   text-decoration: none;
   display: flex;
+  position: relative;
 }
 
 .bottom_link.p-b-0 {
@@ -2548,10 +2572,10 @@ em {
 }
 
 .info_bar {
-  border-bottom: 1px solid #111;
   width: 100%;
   padding-top: 4em;
   padding-bottom: 4em;
+  position: relative;
 }
 
 .info_bar.p-b-0 {
@@ -2584,9 +2608,10 @@ em {
 }
 
 .divider {
-  background-color: #000;
+  background-color: #111;
   align-self: stretch;
-  width: 1px;
+  width: 2px;
+  filter: url("#rough-line");
 }
 
 .paragraph {
