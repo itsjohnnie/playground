@@ -1335,6 +1335,8 @@ strong {
 
 .form-success {
   background-color: #cdf1c5;
+  border: 2px solid #1b1b1b;
+  border-radius: 4px;
   width: auto;
   max-width: 420px;
   margin-left: auto;
@@ -1343,6 +1345,7 @@ strong {
 
 .text-block-4 {
   display: inline-block;
+  font-size: 1.4em; /* match the About-section body (.paragraph.cc-large) */
 }
 
 .blob-wrapper {
@@ -2310,6 +2313,10 @@ strong {
 
   .paragraph.cc-large {
     font-size: 1.2em;
+  }
+
+  .text-block-4 {
+    font-size: 1.2em; /* match About on mobile too */
   }
 
   .grid.cc-gap-4 {
