@@ -55,7 +55,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://use.typekit.net/uqs5mpm.css" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&family=Source+Serif+4:wght@300;400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Inconsolata:wght@400;700&family=Source+Serif+4:wght@300;400;500;600&display=swap"
         />
         {/* Native interactions CSS (replaces the Webflow JS runtime) */}
         <style
@@ -215,7 +215,7 @@ export default function RootLayout({
             takes over), so we just seed white there. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){function setMeta(c){var m=document.querySelector('meta[name=theme-color]');if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');document.head.appendChild(m);}m.setAttribute('content',c);}if(location.pathname.indexOf('/discover')!==-1){var pref=null;try{pref=localStorage.getItem('discover-theme');}catch(e){}var dk=pref?pref==='dark':(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);var dc=dk?'#080808':'#ffffff';var de=document.documentElement;de.style.setProperty('--bg',dc);de.style.colorScheme=dk?'dark':'light';if(dk)de.classList.add('is-dark');setMeta(dc);return;}var P=[[174,190,169],[233,178,151],[250,203,199],[184,166,204]],SEG=6000,n=P.length,off=Math.floor(Math.random()*SEG*n);window.__bgOffset=off;var s=Math.floor(off/SEG)%n,f=off%SEG/SEG,a=P[s],b=P[(s+1)%n],c='rgb('+Math.round(a[0]+(b[0]-a[0])*f)+', '+Math.round(a[1]+(b[1]-a[1])*f)+', '+Math.round(a[2]+(b[2]-a[2])*f)+')';document.documentElement.style.setProperty('--bg',c);setMeta(c);})();`,
+            __html: `(function(){function setMeta(c){var m=document.querySelector('meta[name=theme-color]');if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');document.head.appendChild(m);}m.setAttribute('content',c);}if(location.pathname.indexOf('/discover')!==-1){var pref=null;try{pref=localStorage.getItem('discover-theme');}catch(e){}var dk=pref?pref==='dark':(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);var dc=dk?'#080808':'#ffffff';var de=document.documentElement;de.style.setProperty('--bg',dc);de.style.colorScheme=dk?'dark':'light';if(dk)de.classList.add('is-dark');setMeta(dc);return;}if(location.pathname.indexOf('/stuff')!==-1){document.documentElement.style.setProperty('--bg','#f1f1f0');setMeta('#f1f1f0');return;}var P=[[174,190,169],[233,178,151],[250,203,199],[184,166,204]],SEG=6000,n=P.length,off=Math.floor(Math.random()*SEG*n);window.__bgOffset=off;var s=Math.floor(off/SEG)%n,f=off%SEG/SEG,a=P[s],b=P[(s+1)%n],c='rgb('+Math.round(a[0]+(b[0]-a[0])*f)+', '+Math.round(a[1]+(b[1]-a[1])*f)+', '+Math.round(a[2]+(b[2]-a[2])*f)+')';document.documentElement.style.setProperty('--bg',c);setMeta(c);})();`,
           }}
         />
       </head>

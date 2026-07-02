@@ -74,3 +74,19 @@ collections:
       - { name: name, label: "Name", widget: string }
       - { name: category, label: "Category (e.g. SaaS, Hospitality)", widget: string }
       - { name: image, label: "Image", widget: image, choose_url: false }
+
+  - name: stuff
+    label: "Stuff"
+    label_singular: "Item"
+    folder: "johnnie/content/stuff"
+    create: true
+    slug: "{{fields.order}}-{{slug}}"
+    identifier_field: name
+    sortable_fields: [order, name, category]
+    summary: "{{fields.order}} — {{name}} ({{category}})"
+    fields:
+      - { name: order, label: "Order (sort position)", widget: number, value_type: int, default: 99 }
+      - { name: name, label: "Product name", widget: string }
+      - { name: category, label: "Category (Watch, Perfume, Clothing, Shoe…)", widget: string }
+      - { name: owned, label: "Owned? (off = wishlist, shown dimmed)", widget: boolean, default: false }
+      - { name: link, label: "Info link (optional — shows the ⓘ icon)", widget: string, required: false, default: "" }

@@ -161,7 +161,15 @@ export default function Scripts() {
     // The Discover page runs its own background/theme logic (a flat white/dark
     // canvas), so the cycling color loop must not run there.
     if (pathname.indexOf("/discover") !== -1) return;
-    const stopColor = colorCycle();
+    // /stuff is a plain white page — no colour cycling; keep the chrome white too.
+    const isStuff = pathname.indexOf("/stuff") !== -1;
+    if (isStuff) {
+      document.documentElement.style.setProperty("--bg", "#f1f1f0");
+      document
+        .querySelectorAll('meta[name="theme-color"]')
+        .forEach((m) => m.setAttribute("content", "#f1f1f0"));
+    }
+    const stopColor = isStuff ? () => {} : colorCycle();
     const stopLightbox = lightbox();
     const stopAnchors = smoothAnchors();
     return () => {
