@@ -2423,14 +2423,33 @@ em {
 }
 
 .marquee-wrapper {
-  background-image: url("../images/6247779108fedf2cfba9b0d0_Asset-2.svg"), url("../images/6247779108fedf2cfba9b0d0_Asset-2.svg");
-  background-position: 0 100%, 0 0;
-  background-repeat: repeat-x, repeat-x;
-  background-size: 220px, 220px;
   width: 100vw;
   display: flex;
   overflow: hidden;
+  position: relative;
 }
+
+/* Top/bottom edges of the marquee band: a seamless sine wave (wave-line.svg
+   tiles perfectly — a full period starting and ending at the same height and
+   slope) pushed through the same #rough-line grunge filter as the dividers, so
+   the borders read as one continuous rough wavy ink line instead of crisp,
+   mis-aligned SVG tiles. Inset a few px so the filter's displacement doesn't
+   get clipped by the wrapper's overflow. */
+.marquee-wrapper::before,
+.marquee-wrapper::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 22px;
+  background: url("../images/wave-line.svg") repeat-x;
+  background-size: 110px 22px;
+  filter: url("#rough-line");
+  pointer-events: none;
+  z-index: 2;
+}
+.marquee-wrapper::before { top: 6px; }
+.marquee-wrapper::after { bottom: 6px; }
 
 .social-link {
   margin-right: 1em;
