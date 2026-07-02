@@ -115,20 +115,20 @@ export default function RootLayout({
     padding: 0 !important;
     border-top: 2px solid #1b1b1b;
     border-bottom: 2px solid #1b1b1b;
-    /* Reveal downward from under the bar. The panel sits just below the bar
-       (top:100%) and is clipped to a zero-height slice at its top edge when
-       closed, then wipes open to full height. Because it's a child of the
-       transformed navbar it would otherwise paint OVER the bar; clipping at the
-       bar's bottom edge instead makes it read as sliding out from beneath. */
+    /* Slides down from under the bar on open, and back UP under it on close —
+       symmetric, no fade. The panel sits just below the bar (top:100%) and a
+       clip mask wipes it open/closed from its top edge. It's a child of the
+       transformed navbar (so it would paint OVER the bar); clipping at the bar's
+       bottom edge makes it read as sliding out from — and retracting back under
+       — the bar. (Previously an opacity fade ran faster than the wipe on close,
+       so it looked like it faded out instead of sliding up.) */
     clip-path: inset(0 0 100% 0);
-    opacity: 0;
     pointer-events: none;
     will-change: clip-path;
-    transition: clip-path .42s cubic-bezier(.22, 1, .36, 1), opacity .26s ease;
+    transition: clip-path .42s cubic-bezier(.22, 1, .36, 1);
   }
   .navbar.is-open .nav_menu {
     clip-path: inset(0 0 0 0);
-    opacity: 1;
     pointer-events: auto;
   }
   @media (prefers-reduced-motion: reduce) {
