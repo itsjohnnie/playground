@@ -15,6 +15,7 @@ export default function StuffPage() {
   return (
     <main className="stuff-page">
       <div className="stuff-hero">
+        <a className="stuff-back" href={asset("/")}>← Johnnie&#x27;s Life</a>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={asset("/images/stuff-hero.png")}
@@ -26,7 +27,6 @@ export default function StuffPage() {
 
       <div className="stuff">
         <header className="stuff-head">
-          <a className="stuff-back" href={asset("/")}>← Johnnie&#x27;s Life</a>
           <h1>Stuff</h1>
           <p>
             Things I have — and things I&#x27;ll have, one day. The dimmed ones are
@@ -57,25 +57,29 @@ export default function StuffPage() {
 
 /* Full-bleed hero: spans the whole viewport width and sits flush at the top,
    so the render's soft left-side shadow reaches the screen edge instead of
-   showing a visible boundary in a boxed image. */
-.stuff-hero { width: 100%; margin: 0 0 clamp(1.5rem, 5vw, 2.5rem); }
+   showing a visible boundary in a boxed image. No bottom margin — the title
+   overlaps up into it. */
+.stuff-hero { position: relative; width: 100%; margin: 0; }
 .stuff-hero img { width: 100%; height: auto; display: block; }
 
+/* Back link overlaid on the top-left of the hero. */
 .stuff-back {
-  display: inline-block;
+  position: absolute; z-index: 2;
+  top: clamp(.85rem, 3.5vw, 1.4rem); left: clamp(1rem, 4vw, 1.5rem);
   font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: .8rem; letter-spacing: .01em;
-  color: #1b1b1b; opacity: .5; text-decoration: none;
-  margin-bottom: 1.25rem;
+  color: #1b1b1b; opacity: .55; text-decoration: none;
   transition: opacity .2s var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) { .stuff-back:hover { opacity: 1; } }
 
+/* Big, bold title that overlaps up into the bottom of the hero image. */
 .stuff-head h1 {
   font-family: "Geist", -apple-system, sans-serif;
-  font-size: clamp(2.5rem, 9vw, 3.5rem);
-  font-weight: 600; letter-spacing: -.03em; line-height: 1;
-  margin: 0 0 .5rem;
+  font-size: clamp(4rem, 22vw, 8rem);
+  font-weight: 700; letter-spacing: -.045em; line-height: .82;
+  margin: -.34em 0 .5rem;   /* negative top pulls it up over the image */
+  position: relative;
 }
 .stuff-head p {
   font-size: .95rem; line-height: 1.5; max-width: 44ch;

@@ -1,6 +1,6 @@
 ---
-order: 3
-name: "Rolex Milgauss"
+order: 9
+name: "Omega Speedmaster"
 category: "Watch"
 owned: false
 link: ""
