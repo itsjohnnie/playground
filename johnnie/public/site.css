@@ -1334,7 +1334,7 @@ strong {
 }
 
 .form-success {
-  background-color: #cdf1c5;
+  background-color: #aebea9; /* the palette green (rgb 174,190,169), not the off-brand mint */
   border: 2px solid #1b1b1b;
   border-radius: 4px;
   width: auto;
