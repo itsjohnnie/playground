@@ -89,4 +89,8 @@ collections:
       - { name: name, label: "Product name", widget: string }
       - { name: category, label: "Category (Watch, Perfume, Clothing, Shoe…)", widget: string }
       - { name: owned, label: "Owned? (off = wishlist, shown dimmed)", widget: boolean, default: false }
-      - { name: link, label: "Info link (optional — shows the ⓘ icon)", widget: string, required: false, default: "" }
+      - { name: brand, label: "Brand", widget: string, required: false, default: "" }
+      - { name: price, label: "Price (e.g. $5,000)", widget: string, required: false, default: "" }
+      - { name: description, label: "Description", widget: text, required: false, default: "" }
+      - { name: image, label: "Isometric image (white background)", widget: image, required: false, choose_url: false }
+      - { name: link, label: "Get-it link (optional)", widget: string, required: false, default: "" }

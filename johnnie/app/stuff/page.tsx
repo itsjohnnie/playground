@@ -25,15 +25,6 @@ export default function StuffPage() {
       </div>
 
       <div className="stuff">
-        <header className="stuff-head">
-          <h1>Stuff</h1>
-          <a className="stuff-back" href={asset("/")}>← Johnnie&#x27;s Life</a>
-          <p>
-            Things I have — and things I&#x27;ll have, one day. The dimmed ones are
-            still on the list.
-          </p>
-        </header>
-
         <StuffList items={items} />
       </div>
 
@@ -57,56 +48,32 @@ export default function StuffPage() {
 .stuff-page {
   color: #1b1b1b;
   font-family: "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  overflow-x: clip;   /* belt against any sub-pixel full-bleed overflow */
+  overflow-x: clip;
 }
-.stuff {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 0 1.5rem 6rem;
-}
+.stuff { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 6rem; }
 
-/* Full-bleed hero: spans the whole viewport width and sits flush at the top,
-   so the render's soft left-side shadow reaches the screen edge instead of
-   showing a visible boundary in a boxed image. No bottom margin — the title
-   overlaps up into it. */
+/* Full-bleed hero, flush at the top; the title overlaps up into it. */
 .stuff-hero { position: relative; width: 100%; margin: 0; }
 .stuff-hero img { width: 100%; height: auto; display: block; }
 
-/* Back link, sitting under the heading. */
-.stuff-back {
-  display: inline-block;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: .8rem; letter-spacing: .01em;
-  color: #1b1b1b; opacity: .55; text-decoration: none;
-  margin: 0 0 1.1rem;
-  transition: opacity .2s var(--ease-out);
+/* Title + sort on one line; description below. */
+.stuff-titlerow {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem;
 }
-@media (hover: hover) and (pointer: fine) { .stuff-back:hover { opacity: 1; } }
-
-/* Big, bold title that overlaps up into the bottom of the hero image. */
-.stuff-head h1 {
+.stuff-titlerow h1 {
   font-family: "Inter var", -apple-system, Helvetica, Arial, sans-serif;
-  font-size: clamp(4rem, 23vw, 9rem);
-  font-weight: 700; letter-spacing: -.07em; line-height: .82;
-  text-transform: none;       /* sentence case: "Stuff", not "STUFF" */
-  margin: -.2em 0 .55rem;     /* subtle negative top overlaps into the image */
-  position: relative;
-}
-.stuff-head p {
-  font-size: .95rem; line-height: 1.5; max-width: 44ch;
-  opacity: .55; margin: 0 0 clamp(1.5rem, 5vw, 2.5rem);
+  font-size: clamp(3.25rem, 18vw, 7.5rem);
+  font-weight: 600; letter-spacing: -.03em; line-height: .85;
+  text-transform: none;
+  margin: -.2em 0 0;   /* subtle overlap up into the hero */
 }
 
-/* Sort control, top-right above the list. */
-.stuff-toolbar {
-  display: flex; justify-content: flex-end; align-items: center;
-  padding: 0 .25rem .75rem;
-}
+/* Sort control (bottom-aligned with the title). */
 .stuff-sort {
-  display: inline-flex; align-items: center; gap: .5rem;
+  flex: none; display: inline-flex; align-items: center; gap: .5rem;
+  margin-bottom: .35rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
-  opacity: .6;
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; opacity: .6;
 }
 .stuff-sort select {
   font: inherit; text-transform: uppercase; letter-spacing: .06em;
@@ -121,35 +88,77 @@ export default function StuffPage() {
 .stuff-sort select:hover { border-bottom-color: rgba(27, 27, 27, .5); }
 .stuff-sort select:focus-visible { outline: 2px solid #1b1b1b; outline-offset: 3px; border-radius: 1px; }
 
-.stuff-grid {
-  list-style: none; margin: 0; padding: 0;
-  border-top: 1px solid rgba(27, 27, 27, .12);
+.stuff-desc {
+  font-size: .95rem; line-height: 1.5; max-width: 46ch;
+  opacity: .55; margin: .75rem 0 clamp(1.5rem, 5vw, 2.5rem);
 }
-.stuff-row {
-  display: flex; align-items: baseline; justify-content: space-between;
-  gap: 1rem; padding: 1rem .25rem;
-  border-bottom: 1px solid rgba(27, 27, 27, .12);
-  transition: opacity .25s var(--ease-out);
-}
-/* Not owned yet — dimmed. */
+
+/* List + expandable rows. */
+.stuff-grid { list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(27, 27, 27, .12); }
+.stuff-row { border-bottom: 1px solid rgba(27, 27, 27, .12); transition: opacity .25s var(--ease-out); }
 .stuff-row.is-wish { opacity: .4; }
 
-.stuff-namewrap { display: flex; align-items: center; gap: .5rem; min-width: 0; }
-.stuff-name { font-size: 1.05rem; font-weight: 500; letter-spacing: -.01em; }
-
-.stuff-info {
-  display: inline-flex; line-height: 0; color: #1b1b1b; opacity: .4;
-  transition: opacity .2s var(--ease-out), transform .16s var(--ease-out);
+.stuff-rowbtn {
+  width: 100%; display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem; padding: .6rem .25rem;
+  background: none; border: 0; cursor: pointer; text-align: left; color: inherit; font: inherit;
 }
-.stuff-info svg { display: block; }
-@media (hover: hover) and (pointer: fine) { .stuff-info:hover { opacity: .85; } }
-.stuff-info:active { transform: scale(.88); }
-
+.stuff-name { font-size: 1.05rem; font-weight: 500; letter-spacing: -.01em; }
+.stuff-rowmeta { flex: none; display: inline-flex; align-items: center; gap: .75rem; }
 .stuff-cat {
-  flex: none; align-self: center;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
-  opacity: .55; white-space: nowrap;
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; opacity: .55; white-space: nowrap;
+}
+.stuff-chev { color: #1b1b1b; opacity: .4; transition: transform .3s var(--ease-out); }
+.stuff-row.is-open .stuff-chev { transform: rotate(180deg); }
+@media (hover: hover) and (pointer: fine) {
+  .stuff-rowbtn:hover .stuff-chev { opacity: .75; }
+}
+
+/* Expand/collapse via animatable grid rows (0fr -> 1fr). */
+.stuff-panel {
+  display: grid; grid-template-rows: 0fr;
+  transition: grid-template-rows .32s var(--ease-out);
+}
+.stuff-row.is-open .stuff-panel { grid-template-rows: 1fr; }
+.stuff-panel-in {
+  overflow: hidden; min-height: 0;
+  opacity: 0; transition: opacity .25s var(--ease-out);
+  display: flex; gap: 1.25rem; padding: 0 .25rem;
+}
+.stuff-row.is-open .stuff-panel-in { opacity: 1; padding-bottom: 1.6rem; }
+
+.stuff-thumb {
+  flex: none; width: clamp(96px, 28vw, 120px); aspect-ratio: 1;
+  background: #fff; border: 1px solid rgba(27, 27, 27, .1); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.stuff-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.stuff-thumb-ph { width: 40%; height: 40%; color: #1b1b1b; opacity: .28; }
+
+.stuff-facts { flex: 1; min-width: 0; }
+.stuff-facts-dl {
+  margin: 0; display: grid; grid-template-columns: auto 1fr;
+  gap: .35rem 1rem; align-items: baseline;
+}
+.stuff-facts-dl dt {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; opacity: .5;
+}
+.stuff-facts-dl dd { margin: 0; font-size: .9rem; }
+.stuff-descr { margin: .8rem 0 0; font-size: .9rem; line-height: 1.5; opacity: .72; }
+.stuff-descr--empty { opacity: .4; font-style: italic; }
+.stuff-get {
+  display: inline-block; margin-top: .9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .78rem; color: #1b1b1b; text-decoration: none;
+  border-bottom: 1px solid rgba(27, 27, 27, .3); padding-bottom: 1px;
+  transition: border-color .2s var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) { .stuff-get:hover { border-bottom-color: #1b1b1b; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .stuff-panel, .stuff-panel-in, .stuff-chev { transition: none; }
 }
 `,
         }}
