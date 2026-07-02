@@ -822,6 +822,28 @@ strong {
   border-radius: 4px;
 }
 
+/* Sending state: marquee the long "Sending to packaging@dundermifflin.com"
+   label within the (width-frozen) button — on-brand with the hero marquee. */
+.button.form.is-sending {
+  overflow: hidden;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+}
+.send-marquee {
+  flex: none;
+  white-space: nowrap;
+  display: inline-flex;
+  animation: send-marquee 6s linear infinite;
+  will-change: transform;
+}
+@keyframes send-marquee {
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .send-marquee { animation: none; }
+}
+
 .body {
   background-color: #facbc7;
 }
