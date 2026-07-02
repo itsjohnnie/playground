@@ -111,6 +111,20 @@ body,
   transition: background-color .45s ease, color .45s ease,
     border-color .45s ease, outline-color .45s ease, box-shadow .45s ease !important;
 }
+/* Press feedback on the control-bar buttons. Re-declared after the theme rule
+   above (which sets their transition !important without transform) so the
+   colour eases stay AND a quick transform ease is added — otherwise the press
+   would snap. */
+.discover-logo,
+.toggle-mode {
+  transition: background-color .45s ease, color .45s ease, box-shadow .45s ease,
+    transform .16s var(--ease-out) !important;
+}
+.discover-logo:active,
+.toggle-mode:active { transform: scale(.95); }
+@media (prefers-reduced-motion: reduce) {
+  .discover-logo:active, .toggle-mode:active { transform: none; }
+}
 /* The icon fills via currentColor, so it already follows .toggle-mode's color
    transition. Giving the SVG its OWN color transition made it chase an already-
    animating value and finish ~twice as late — so it has none of its own. */
@@ -170,7 +184,7 @@ html.is-dark .hero-item { background-color: rgba(255, 255, 255, .06); }
   /* Blur-up: each tile eases from a soft blur to sharp as it decodes, instead
      of popping in. Per-image and brief, so it stays light on the GPU. */
   opacity: 0; filter: blur(14px);
-  transition: opacity .55s ease, filter .55s ease;
+  transition: opacity .55s var(--ease-out), filter .55s var(--ease-out);
 }
 .hero-item .hero-image.is-loaded { opacity: 1; filter: blur(0); }
 /* Phones: sharper corners on the (unstaged) website tiles. Desktop keeps 4px. */

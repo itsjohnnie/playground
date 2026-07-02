@@ -2453,15 +2453,15 @@ em {
 
 .social-link {
   margin-right: 1em;
-  transition: all .2s;
-  position: relative;
-  bottom: 0;
+  /* Animate transform (GPU), not `bottom` (layout); exact property, not `all`. */
+  transition: transform .2s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.social-link:hover {
-  position: relative;
-  bottom: 4px;
+/* Lift only on a real pointer so it doesn't fire on a mobile tap. */
+@media (hover: hover) and (pointer: fine) {
+  .social-link:hover { transform: translateY(-4px); }
 }
+.social-link:active { transform: scale(.9); }
 
 .label {
   text-transform: uppercase;
