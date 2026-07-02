@@ -2621,10 +2621,18 @@ em {
 .card {
   color: #141413;
   background-color: #fff;
-  background-image: url("../images/6287c912d8969d5c9fa1a52e_paper-rip.svg");
-  background-position: 50% 101%;
-  background-repeat: no-repeat;
-  background-size: 102%;
+  /* Torn bottom edge: instead of painting a dark strip over the card (which
+     left a hairline where the strip's colour met the section, and a sub-pixel
+     seam at the overlay edge), we MASK the card with the tear shape so its
+     real bottom is cut away and the actual dark section shows through — no
+     overlay, no colour mismatch, no seam. Two mask layers: a solid fill for
+     the body, and the tear SVG for the bottom band (1px overlap, no gap). */
+  -webkit-mask:
+    linear-gradient(#000, #000) top / 100% calc(100% - 38px) no-repeat,
+    url("../images/paper-rip-mask.svg") bottom / 100% 60px no-repeat;
+  mask:
+    linear-gradient(#000, #000) top / 100% calc(100% - 38px) no-repeat,
+    url("../images/paper-rip-mask.svg") bottom / 100% 60px no-repeat;
   border-radius: 8px;
   width: 48%;
   min-width: 520px;
@@ -2935,8 +2943,6 @@ em {
   }
 
   .card {
-    background-position: 20% 100%, 0 0;
-    background-size: 300%, auto;
     border-radius: 8px;
     width: 90%;
     min-width: auto;
