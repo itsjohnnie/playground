@@ -1,9 +1,9 @@
 ---
-order: 11
-name: "Bulgari Le Gemme Tygar"
+order: 15
+name: "YSL Babycat"
 category: "Perfume"
 owned: false
-brand: "Bvlgari"
+brand: "Yves Saint Laurent"
 price: ""
 description: ""
 image: ""

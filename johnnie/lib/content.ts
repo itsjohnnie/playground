@@ -34,7 +34,12 @@ export type StuffItem = {
   category: string;
   // Owned = full opacity; not owned (wishlist / someday) = dimmed.
   owned: boolean;
-  // Optional "see more" link behind the info icon.
+  // Expanded detail card (all optional — fill in over time via the CMS):
+  brand: string;
+  price: string;
+  description: string;
+  image: string; // isometric render on a white background
+  // "Get it" link.
   link: string;
 };
 
