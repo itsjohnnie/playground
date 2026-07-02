@@ -5,6 +5,16 @@ name = "playground"
 main = "worker/index.js"
 compatibility_date = "2025-01-01"
 
+# Custom domains (infra-as-code): serve the site at the apex + www. Applied on
+# every `wrangler deploy`. NOTE: the conflicting Webflow DNS records (the apex A
+# record and the `www` CNAME → cdn.webflow.com) must be deleted in Cloudflare
+# first — otherwise attaching fails with "hostname already has externally
+# managed DNS records." Once attached, Cloudflare manages these records.
+routes = [
+  { pattern = "johnnies.life", custom_domain = true },
+  { pattern = "www.johnnies.life", custom_domain = true },
+]
+
 # Static site (Next.js export). The Worker falls back to these for non-API paths.
 [assets]
 directory = "./johnnie/out"
