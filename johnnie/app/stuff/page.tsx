@@ -56,8 +56,11 @@ export default function StuffPage() {
 .stuff-hero { position: relative; width: 100%; margin: 0; }
 .stuff-hero img { width: 100%; height: auto; display: block; }
 
-/* Title + sort on one line; description below. */
+/* Title + sort on one line; description below. Positioned above the hero so
+   the overlapping title paints ON TOP of the image (the hero is position:
+   relative, so without this it would paint over the title). */
 .stuff-titlerow {
+  position: relative; z-index: 3;
   display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem;
 }
 .stuff-titlerow h1 {
