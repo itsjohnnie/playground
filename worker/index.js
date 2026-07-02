@@ -40,6 +40,15 @@ const json = (obj, status, origin) =>
 // Strip CR/LF so header values can't be used for header injection.
 const clean = (v) => String(v ?? "").replace(/[\r\n]+/g, " ").trim();
 
+// RFC 2047 encoded-word (UTF-8, base64) so emoji/accents in the Subject render
+// correctly in every mail client (and it stays pure ASCII in the header).
+const encodeSubject = (s) => {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return `=?UTF-8?B?${btoa(bin)}?=`;
+};
+
 async function readBody(request) {
   const type = request.headers.get("content-type") || "";
   if (type.includes("application/json")) return await request.json();
@@ -84,7 +93,7 @@ async function handleContact(request, env) {
     `From: Johnnie's Life <${from}>`,
     `To: ${to}`,
     `Reply-To: ${name} <${email}>`,
-    `Subject: ${clean(`[johnnies.life] ${subject}`)}`,
+    `Subject: ${encodeSubject(clean(`📨 ${name} via johnnies.life: ${subject}`))}`,
     `Message-ID: <${crypto.randomUUID()}@johnnies.life>`,
     `Date: ${new Date().toUTCString()}`,
     `MIME-Version: 1.0`,

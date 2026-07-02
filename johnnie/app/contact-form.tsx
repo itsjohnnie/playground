@@ -8,8 +8,13 @@ const ENDPOINT = process.env.NEXT_PUBLIC_CONTACT_ENDPOINT || "/api/contact";
 
 type Status = "idle" | "sending" | "success" | "error";
 
+const SENDING_LABEL = "Sending to packaging@dundermifflin.com";
+
 export default function ContactForm() {
   const [status, setStatus] = useState<Status>("idle");
+  // Freeze the button at its resting width while sending so the marquee scrolls
+  // inside it instead of stretching the button to the full text.
+  const [btnWidth, setBtnWidth] = useState<number | null>(null);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -24,6 +29,8 @@ export default function ContactForm() {
       return;
     }
 
+    const btn = form.querySelector<HTMLElement>('button[type="submit"]');
+    setBtnWidth(btn ? btn.offsetWidth : null);
     setStatus("sending");
     try {
       const res = await fetch(ENDPOINT, {
@@ -79,18 +86,28 @@ export default function ContactForm() {
             <label htmlFor="Company">Company</label>
             <input type="text" id="Company" name="company" tabIndex={-1} autoComplete="off" />
           </div>
-          <input
+          <button
             type="submit"
             id="ui-node-b67203ee-7bb7-116a-5a4c-5e6567b72e26-88754749"
-            className="button form ui-button"
-            value={status === "sending" ? "Sending to packaging@dundermifflin.com" : "Send message"}
+            className={`button form ui-button${status === "sending" ? " is-sending" : ""}`}
+            style={status === "sending" && btnWidth ? { width: btnWidth } : undefined}
             disabled={status === "sending"}
-          />
+            aria-label={status === "sending" ? "Sending your message" : undefined}
+          >
+            {status === "sending" ? (
+              <span className="send-marquee" aria-hidden="true">
+                <span>{SENDING_LABEL}&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+                <span>{SENDING_LABEL}&nbsp;&nbsp;·&nbsp;&nbsp;</span>
+              </span>
+            ) : (
+              "Send message"
+            )}
+          </button>
         </form>
       )}
       {status === "success" && (
         <div className="form-success ui-form-done" style={{ display: "block" }}>
-          <div className="text-block-4">Thank you! Your submission has been received!</div>
+          <div className="text-block-4">¡Gracias! Your message landed in my inbox — I&#x27;ll get back to you soon. 🙌</div>
         </div>
       )}
       {status === "error" && (
