@@ -76,9 +76,10 @@ export default function StuffPage() {
 /* Big, bold title that overlaps up into the bottom of the hero image. */
 .stuff-head h1 {
   font-family: "Geist", -apple-system, sans-serif;
-  font-size: clamp(4rem, 22vw, 8rem);
-  font-weight: 700; letter-spacing: -.045em; line-height: .82;
-  margin: -.34em 0 .5rem;   /* negative top pulls it up over the image */
+  font-size: clamp(5rem, 30vw, 12rem);
+  font-weight: 700; letter-spacing: -.07em; line-height: .82;
+  text-transform: none;       /* sentence case: "Stuff", not "STUFF" */
+  margin: -.46em 0 .5rem;     /* negative top pulls it up over the image */
   position: relative;
 }
 .stuff-head p {
