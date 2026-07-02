@@ -44,9 +44,19 @@ export default function StuffPage() {
    seamlessly into the page (overrides the cycling homepage background). */
 .body { background-color: #f1f1f0 !important; }
 
+/* Inter, self-hosted from Rasmus Andersson's official variable-font
+   distribution (rsms.me/inter) — not Google Fonts. */
+@font-face {
+  font-family: "Inter var";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+}
+
 .stuff-page {
   color: #1b1b1b;
-  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow-x: clip;   /* belt against any sub-pixel full-bleed overflow */
 }
 .stuff {
@@ -65,7 +75,7 @@ export default function StuffPage() {
 /* Back link, sitting under the heading. */
 .stuff-back {
   display: inline-block;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .8rem; letter-spacing: .01em;
   color: #1b1b1b; opacity: .55; text-decoration: none;
   margin: 0 0 1.1rem;
@@ -75,11 +85,11 @@ export default function StuffPage() {
 
 /* Big, bold title that overlaps up into the bottom of the hero image. */
 .stuff-head h1 {
-  font-family: "Geist", -apple-system, sans-serif;
+  font-family: "Inter var", -apple-system, Helvetica, Arial, sans-serif;
   font-size: clamp(4rem, 23vw, 9rem);
   font-weight: 700; letter-spacing: -.07em; line-height: .82;
   text-transform: none;       /* sentence case: "Stuff", not "STUFF" */
-  margin: -.3em 0 .55rem;     /* gentle negative top overlaps into the image */
+  margin: -.2em 0 .55rem;     /* subtle negative top overlaps into the image */
   position: relative;
 }
 .stuff-head p {
@@ -94,7 +104,7 @@ export default function StuffPage() {
 }
 .stuff-sort {
   display: inline-flex; align-items: center; gap: .5rem;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
   opacity: .6;
 }
@@ -137,7 +147,7 @@ export default function StuffPage() {
 
 .stuff-cat {
   flex: none; align-self: center;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .7rem; text-transform: uppercase; letter-spacing: .06em;
   opacity: .55; white-space: nowrap;
 }
