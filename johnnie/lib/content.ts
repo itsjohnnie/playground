@@ -28,6 +28,16 @@ export type DiscoverItem = {
   image: string;
 };
 
+export type StuffItem = {
+  order: number;
+  name: string;
+  category: string;
+  // Owned = full opacity; not owned (wishlist / someday) = dimmed.
+  owned: boolean;
+  // Optional "see more" link behind the info icon.
+  link: string;
+};
+
 function readCollection<T>(dir: string): T[] {
   const full = path.join(CONTENT, dir);
   if (!fs.existsSync(full)) return [];
@@ -48,4 +58,8 @@ export function getFeatures(): Feature[] {
 
 export function getDiscover(): DiscoverItem[] {
   return readCollection<DiscoverItem>("discover");
+}
+
+export function getStuff(): StuffItem[] {
+  return readCollection<StuffItem>("stuff");
 }
