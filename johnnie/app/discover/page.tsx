@@ -127,13 +127,16 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
 }
 
 .hero-list-wrapper {
-  /* inset:0 stretches the canvas to the full viewport (unit-agnostic). In
-     standalone/PWA, iOS stops fixed elements at the home-indicator safe-area
-     boundary, leaving a strip at the very bottom — so extend the bottom PAST it
-     by that inset to reach the true screen edge. (In the browser the inset is ~0,
-     so the extra is a no-op / harmless off-screen overflow.) */
-  position: fixed; inset: 0;
-  bottom: calc(0px - env(safe-area-inset-bottom, 0px));
+  /* Fill the whole screen, top through the home-indicator area. In iOS
+     standalone/PWA a bottom-anchored fixed element (bottom:0 / inset:0) pins to
+     the safe-area boundary and leaves a strip of bare background at the very
+     bottom. Sizing from top:0 by an explicit HEIGHT avoids that anchoring: use
+     the dynamic viewport height (full screen under viewport-fit=cover) and add
+     the bottom inset so it always reaches — or slightly overshoots — the true
+     screen edge. In the browser the inset is 0, so it's just 100dvh. */
+  position: fixed; top: 0; left: 0; right: 0;
+  height: calc(100vh + env(safe-area-inset-bottom, 0px));
+  height: calc(100dvh + env(safe-area-inset-bottom, 0px));
   overflow: hidden; cursor: grab; contain: layout paint;
   opacity: 0; transition: opacity .6s ease-out;
 }
@@ -169,6 +172,10 @@ html.is-dark .hero-item { background-color: rgba(255, 255, 255, .06); }
   transition: opacity .55s ease, filter .55s ease;
 }
 .hero-item .hero-image.is-loaded { opacity: 1; filter: blur(0); }
+/* Phones: sharper corners on the (unstaged) website tiles. Desktop keeps 4px. */
+@media (max-width: 767px) {
+  .hero-item, .hero-item .hero-image { border-radius: 2px; }
+}
 .hero-item .hero-meta_data { pointer-events: none; }
 
 /* Native dark mode. The .is-dark class lives on <html> (set pre-paint by the
