@@ -2097,7 +2097,7 @@ textarea.w-input, textarea.w-select {
 
 body {
   color: #141413;
-  background-color: #f0eee6;
+  background-color: #fff;
   font-family: Gooper, sans-serif;
   font-size: 100%;
   line-height: 1.6;
@@ -2201,7 +2201,7 @@ em {
 }
 
 .section.disclaimer {
-  color: #f0eee6;
+  color: #fff;
   background-color: #141413;
   position: relative;
 }
@@ -2357,7 +2357,7 @@ em {
 }
 
 .bg-offwhite {
-  background-color: #fafafa;
+  background-color: #fff;
 }
 
 .bg-dark {
@@ -2620,7 +2620,7 @@ em {
 
 .card {
   color: #141413;
-  background-color: #f0eee6;
+  background-color: #fff;
   background-image: url("../images/6287c912d8969d5c9fa1a52e_paper-rip.svg");
   background-position: 50% 101%;
   background-repeat: no-repeat;
@@ -2695,7 +2695,7 @@ em {
 }
 
 .body {
-  background-color: #f0eee6;
+  background-color: #fff;
 }
 
 .grid {
