@@ -64,6 +64,17 @@ class InfiniteGrid {
   rafId = 0;
   resizeTimeout = 0;
 
+  // Idle auto-focus: after IDLE_MS of no interaction (and no motion), glide the
+  // tile nearest the viewport centre into the middle with a smooth ease-in-out.
+  lastInteraction = 0;
+  snapping = false;
+  hasSnapped = false;
+  snapStartX = 0;
+  snapStartY = 0;
+  snapTargetX = 0;
+  snapTargetY = 0;
+  snapStartTime = 0;
+
   // Mobile tap-to-stage: a quick tap (not a drag/fling-stop) brings the tapped
   // tile front-and-center, enlarged, with its meta at the bottom over a dimmed
   // backdrop. Tapping the stage dismisses it.
@@ -112,6 +123,7 @@ class InfiniteGrid {
     this.createGrid();
     this.createStage();
     this.setupEventListeners();
+    this.lastInteraction = Date.now();
     this.rafId = requestAnimationFrame(this.animate);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => this.wrapper.classList.add("ready"));
@@ -250,6 +262,9 @@ class InfiniteGrid {
   onDragStart(e: MouseEvent | TouchEvent) {
     this.isDragging = true;
     this.wrapper.classList.add("dragging");
+    this.snapping = false;
+    this.hasSnapped = false;
+    this.lastInteraction = Date.now();
     // A press that lands while the grid is still gliding is a "stop", not a tap.
     this.tapCancelled = Math.hypot(this.velocityX, this.velocityY) > 1;
     this.velocityX = 0;
@@ -267,6 +282,7 @@ class InfiniteGrid {
 
   onDragMove(e: MouseEvent | TouchEvent) {
     if (!this.isDragging) return;
+    this.lastInteraction = Date.now();
     const point = "touches" in e ? e.touches[0] : e;
     const clientX = point.clientX;
     const clientY = point.clientY;
@@ -288,6 +304,8 @@ class InfiniteGrid {
     if (!this.isDragging) return;
     this.isDragging = false;
     this.wrapper.classList.remove("dragging");
+    this.lastInteraction = Date.now();
+    this.hasSnapped = false;
 
     // Mobile tap → stage the tile under the finger (only a still, brief, tap).
     if (this.tapCancelled) return;
@@ -344,18 +362,58 @@ class InfiniteGrid {
     if (!this.stage) return;
     this.stage.classList.remove("is-open");
     this.stage.setAttribute("aria-hidden", "true");
+    this.lastInteraction = Date.now();
+    this.hasSnapped = false;
     // Resume the gallery loop (velocity is ~0 after a tap, so it stays put).
     if (!this.rafId) this.rafId = requestAnimationFrame(this.animate);
   }
 
   onWheel(e: WheelEvent) {
     e.preventDefault();
+    this.snapping = false;
+    this.hasSnapped = false;
+    this.lastInteraction = Date.now();
     const deltaX = e.deltaX * this.wheelMultiplier;
     const deltaY = e.deltaY * this.wheelMultiplier;
     this.currentX -= deltaX;
     this.currentY -= deltaY;
     this.velocityX = -deltaX * 0.3;
     this.velocityY = -deltaY * 0.3;
+  }
+
+  // Pick the tile whose centre is nearest the viewport centre and set up a
+  // smooth glide (in currentX/Y space) that brings it to the middle.
+  startFocusSnap() {
+    const viewW = this.wrapper.clientWidth || window.innerWidth;
+    const viewH = this.wrapper.clientHeight || window.innerHeight;
+    const cx = viewW / 2;
+    const cy = viewH / 2;
+    const halfW = this.itemWidth / 2;
+    const halfH = this.itemHeight / 2;
+    let best: Cell | null = null;
+    let bestD = Infinity;
+    for (const it of this.items) {
+      const dx = it.lastX + halfW - cx;
+      const dy = it.lastY + halfH - cy;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) {
+        bestD = d;
+        best = it;
+      }
+    }
+    if (!best) return;
+    const dx = cx - (best.lastX + halfW);
+    const dy = cy - (best.lastY + halfH);
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
+      this.hasSnapped = true; // already centred — nothing to do
+      return;
+    }
+    this.snapStartX = this.currentX;
+    this.snapStartY = this.currentY;
+    this.snapTargetX = this.currentX + dx;
+    this.snapTargetY = this.currentY + dy;
+    this.snapStartTime = Date.now();
+    this.snapping = true;
   }
 
   animate() {
@@ -368,6 +426,27 @@ class InfiniteGrid {
         this.currentX += this.velocityX;
         this.currentY += this.velocityY;
       }
+    }
+
+    // Idle auto-focus. While gliding a tile to centre, ease it with a fixed
+    // ease-in-out; otherwise, once still + past IDLE_MS of inactivity, kick it off.
+    if (this.snapping) {
+      const t = Math.min(1, (Date.now() - this.snapStartTime) / SNAP_MS);
+      const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      this.currentX = this.snapStartX + (this.snapTargetX - this.snapStartX) * e;
+      this.currentY = this.snapStartY + (this.snapTargetY - this.snapStartY) * e;
+      if (t >= 1) {
+        this.snapping = false;
+        this.hasSnapped = true;
+      }
+    } else if (
+      !this.isDragging &&
+      !this.hasSnapped &&
+      Math.abs(this.velocityX) < 0.1 &&
+      Math.abs(this.velocityY) < 0.1 &&
+      Date.now() - this.lastInteraction > IDLE_MS
+    ) {
+      this.startFocusSnap();
     }
 
     const items = this.items;
@@ -435,6 +514,10 @@ class InfiniteGrid {
 
 const LIGHT = "#ffffff";
 const DARK = "#080808";
+
+// Idle auto-focus timing.
+const IDLE_MS = 3000; // inactivity before the camera glides to the nearest tile
+const SNAP_MS = 750; // duration of that glide
 
 function setThemeColor(color: string) {
   let metas = Array.from(

@@ -1205,9 +1205,12 @@ strong {
 }
 
 .input:focus {
-  border-width: 2px;
-  border-color: #1b1b1b;
-  padding-left: .6em;
+  /* Keep only the bottom rule, but turn it dotted (same 2px weight). No box on
+     focus (top/side borders stay transparent) and no left padding shift. */
+  border-color: #0000;
+  border-bottom-color: #1b1b1b;
+  border-bottom-style: dotted;
+  padding-left: 0;
 }
 
 .input.cc-textearea {
