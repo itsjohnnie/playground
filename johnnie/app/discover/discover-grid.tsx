@@ -569,6 +569,12 @@ export default function DiscoverGrid() {
       // color-scheme tells the browser the page itself is dark/light, which (with
       // theme-color) is what some browsers use to tint their surrounding chrome.
       root.style.colorScheme = dark ? "dark" : "light";
+      // Keep --bg in sync: the page <body> carries the global `.body { background:
+      // var(--bg) !important }` rule, and the pre-paint seed script sets --bg to
+      // the initial theme colour. Without updating it here, toggling to light after
+      // a dark load leaves the background stuck dark (everything else flips but the
+      // gaps behind the tiles stay #080808). Setting it also eases in unison.
+      root.style.setProperty("--bg", dark ? DARK : LIGHT);
       setThemeColor(dark ? DARK : LIGHT);
     };
     const saved = readSaved();
