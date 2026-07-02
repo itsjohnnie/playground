@@ -24,7 +24,7 @@ export default function DiscoverPage() {
       {/* Floating control bar: home link, page label, light/dark toggle. */}
       <div className="discover-comp">
         <a href={asset("/")} className="discover-logo">
-          <div>Johnnie Gómez Alzaga ®</div>
+          <div>Johnnie Gómez Álzaga ®</div>
         </a>
         <div className="discover-text">
           <div>Design Discovery Area</div>
@@ -87,8 +87,13 @@ export default function DiscoverPage() {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-.hero { overflow: hidden; }
-html, body { overflow: hidden; }
+/* Full-screen document so the absolutely-positioned grid below can reach the
+   true screen edges. In iOS standalone, position:fixed content is clipped to
+   the safe-area (home-indicator) boundary — leaving a bar at the bottom — but
+   an absolutely-positioned layer tied to a full-height document paints under
+   the home indicator. So html/body fill the screen and the grid is absolute. */
+html, body { overflow: hidden; height: 100%; margin: 0; }
+.hero { position: absolute; inset: 0; overflow: hidden; }
 
 /* Unified light/dark transition. Every themed surface eases on the SAME timing
    so backgrounds, text, borders, shadows and the toggle icon all change in
@@ -127,16 +132,12 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
 }
 
 .hero-list-wrapper {
-  /* Fill the whole screen, top through the home-indicator area. In iOS
-     standalone/PWA a bottom-anchored fixed element (bottom:0 / inset:0) pins to
-     the safe-area boundary and leaves a strip of bare background at the very
-     bottom. Sizing from top:0 by an explicit HEIGHT avoids that anchoring: use
-     the dynamic viewport height (full screen under viewport-fit=cover) and add
-     the bottom inset so it always reaches — or slightly overshoots — the true
-     screen edge. In the browser the inset is 0, so it's just 100dvh. */
-  position: fixed; top: 0; left: 0; right: 0;
-  height: calc(100vh + env(safe-area-inset-bottom, 0px));
-  height: calc(100dvh + env(safe-area-inset-bottom, 0px));
+  /* Absolute (not fixed) so it fills the full-height document — reaching under
+     the iOS home indicator in standalone instead of being clipped at the safe
+     area. inset:0 spans the full-screen .hero; the extra bottom overshoot is a
+     belt-and-suspenders guarantee against any residual safe-area inset. */
+  position: absolute; inset: 0;
+  bottom: calc(0px - env(safe-area-inset-bottom, 0px));
   overflow: hidden; cursor: grab; contain: layout paint;
   opacity: 0; transition: opacity .6s ease-out;
 }
