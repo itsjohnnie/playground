@@ -2206,7 +2206,7 @@ em {
   left: 0;
   right: 0;
   bottom: -1px;
-  height: 2px;
+  height: 3px;
   background: #111;
   filter: url("#rough-line");
   pointer-events: none;
@@ -2610,7 +2610,7 @@ em {
 .divider {
   background-color: #111;
   align-self: stretch;
-  width: 2px;
+  width: 3px;
   filter: url("#rough-line");
 }
 
