@@ -13,7 +13,7 @@ export default function StuffPage() {
   const items = getStuff();
 
   return (
-    <main className="stuff">
+    <main className="stuff-page">
       <div className="stuff-hero">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -24,16 +24,18 @@ export default function StuffPage() {
         />
       </div>
 
-      <header className="stuff-head">
-        <a className="stuff-back" href={asset("/")}>← Johnnie&#x27;s Life</a>
-        <h1>Stuff</h1>
-        <p>
-          Things I have — and things I&#x27;ll have, one day. The dimmed ones are
-          still on the list.
-        </p>
-      </header>
+      <div className="stuff">
+        <header className="stuff-head">
+          <a className="stuff-back" href={asset("/")}>← Johnnie&#x27;s Life</a>
+          <h1>Stuff</h1>
+          <p>
+            Things I have — and things I&#x27;ll have, one day. The dimmed ones are
+            still on the list.
+          </p>
+        </header>
 
-      <StuffList items={items} />
+        <StuffList items={items} />
+      </div>
 
       <style
         dangerouslySetInnerHTML={{
@@ -42,15 +44,21 @@ export default function StuffPage() {
    seamlessly into the page (overrides the cycling homepage background). */
 .body { background-color: #f1f1f0 !important; }
 
+.stuff-page {
+  color: #1b1b1b;
+  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: clip;   /* belt against any sub-pixel full-bleed overflow */
+}
 .stuff {
   max-width: 720px;
   margin: 0 auto;
-  padding: clamp(2rem, 5vw, 3.5rem) 1.5rem 6rem;
-  color: #1b1b1b;
-  font-family: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 0 1.5rem 6rem;
 }
 
-.stuff-hero { max-width: 520px; margin: 0 auto clamp(1.5rem, 5vw, 2.5rem); }
+/* Full-bleed hero: spans the whole viewport width and sits flush at the top,
+   so the render's soft left-side shadow reaches the screen edge instead of
+   showing a visible boundary in a boxed image. */
+.stuff-hero { width: 100%; margin: 0 0 clamp(1.5rem, 5vw, 2.5rem); }
 .stuff-hero img { width: 100%; height: auto; display: block; }
 
 .stuff-back {
