@@ -86,9 +86,17 @@ export default function RootLayout({
 .rotating_circle svg { animation: rotate-circle 22s linear infinite; transform-origin: 50% 50%; }
 @keyframes rotate-circle { to { transform: rotate(360deg); } }
 
+/* Reduced motion: stop the always-running decorative loops (they aid nothing
+   comprehension-wise, so honour the preference and hold them still). */
+@media (prefers-reduced-motion: reduce) {
+  .marquee_wrapper.cc-top .marquee_track,
+  .marquee_wrapper.cc-bottom .marquee_track,
+  .rotating_circle svg { animation: none !important; }
+}
+
 /* Hamburger button (replaces the Lottie icon). */
 .hamburger { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 44px; height: 44px; padding: 0; background: transparent; border: 0; cursor: pointer; }
-.hamburger span { display: block; width: 24px; height: 2px; margin: 0 auto; background: #1b1b1b; transition: transform .3s ease, opacity .2s ease; }
+.hamburger span { display: block; width: 24px; height: 2px; margin: 0 auto; background: #1b1b1b; transition: transform .3s var(--ease-out), opacity .2s var(--ease-out); }
 .navbar.is-open .hamburger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .navbar.is-open .hamburger span:nth-child(2) { opacity: 0; }
 .navbar.is-open .hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
@@ -164,8 +172,11 @@ export default function RootLayout({
 .media-badge svg {
   width: 24px; height: 24px; fill: #1b1b1b;
 }
-.project-link_block:hover .media-badge {
-  transform: translate(-50%, -50%) scale(1.07);
+/* Only grow on a real pointer — on touch this fires on tap (sticky hover). */
+@media (hover: hover) and (pointer: fine) {
+  .project-link_block:hover .media-badge {
+    transform: translate(-50%, -50%) scale(1.07);
+  }
 }
 
 /* Taller project thumbnails on phones so images aren't cropped so harshly. */
@@ -182,7 +193,6 @@ export default function RootLayout({
     transform: none;
   }
   .media-badge svg { width: 20px; height: 20px; }
-  .project-link_block:hover .media-badge { transform: scale(1.07); }
 }
 
 /* Native lightbox for project tiles ("Zoom in"): image, or the mp4 on click. */

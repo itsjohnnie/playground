@@ -47,6 +47,13 @@ a:active, a:hover {
   outline: 0;
 }
 
+/* Shared motion tokens (Emil Kowalski's craft): the built-in CSS easings are
+   too weak; these custom curves give animations intentional punch. */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);      /* enters / responsive UI */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);  /* on-screen movement */
+}
+
 abbr[title] {
   border-bottom: 1px dotted;
 }
@@ -786,8 +793,15 @@ strong {
   padding: 16px 28px;
   font-size: 1.1em;
   font-weight: 500;
-  transition: all .2s;
+  /* Exact properties, not `all`; add a fast press-scale so the button feels
+     like it's truly listening. */
+  transition: outline-offset .2s var(--ease-out), outline-width .2s var(--ease-out),
+    box-shadow .2s var(--ease-out), transform .16s var(--ease-out);
   box-shadow: 0 0 #1b1b1b;
+}
+
+.button:active {
+  transform: scale(.97);
 }
 
 .button:hover {
@@ -855,11 +869,18 @@ strong {
 
 .social-link_block {
   margin-right: 1em;
-  transition: all .2s;
+  transition: transform .2s var(--ease-out);
 }
 
-.social-link_block:hover {
-  transform: translate(0, -2px);
+/* Only lift on a real pointer — on touch, hover fires on tap and the icon
+   would jump as you press it. */
+@media (hover: hover) and (pointer: fine) {
+  .social-link_block:hover {
+    transform: translateY(-2px);
+  }
+}
+.social-link_block:active {
+  transform: scale(.92);
 }
 
 .social-link_block.cc-last {
@@ -941,14 +962,19 @@ strong {
   align-items: center;
   padding: 2em;
   text-decoration: none;
-  transition: all .2s;
+  transition: box-shadow .2s var(--ease-out), transform .16s var(--ease-out);
   display: grid;
   position: relative;
   box-shadow: 0 0 #1b1b1b;
 }
 
-.project-link_block:hover {
-  box-shadow: 11px 11px 0 0 #1b1b1b;
+@media (hover: hover) and (pointer: fine) {
+  .project-link_block:hover {
+    box-shadow: 11px 11px 0 0 #1b1b1b;
+  }
+}
+.project-link_block:active {
+  transform: scale(.995);
 }
 
 .project-link_block.cc-vertical {
@@ -960,8 +986,10 @@ strong {
   box-shadow: 0 0 #1b1b1b;
 }
 
-.project-link_block.cc-vertical:hover {
-  box-shadow: 14px 14px #1b1b1b;
+@media (hover: hover) and (pointer: fine) {
+  .project-link_block.cc-vertical:hover {
+    box-shadow: 14px 14px #1b1b1b;
+  }
 }
 
 .project-content-tag {
@@ -1476,10 +1504,13 @@ strong {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
 }
-/* Hover lifts the whole unit (card + callout) with one shadow, not just the card. */
-.project-item.is-featured:hover .project-link_block,
-.project-item.is-featured:hover .project-award_link {
-  box-shadow: 11px 11px 0 0 #1b1b1b;
+/* Hover lifts the whole unit (card + callout) with one shadow, not just the
+   card — only on a real pointer so it doesn't flash on a mobile tap. */
+@media (hover: hover) and (pointer: fine) {
+  .project-item.is-featured:hover .project-link_block,
+  .project-item.is-featured:hover .project-award_link {
+    box-shadow: 11px 11px 0 0 #1b1b1b;
+  }
 }
 
 .hero-list {
