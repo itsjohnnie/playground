@@ -203,7 +203,7 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
   /* Scrim follows the theme: dark in dark mode (default), light in light mode
      (override below), so opening an image respects light/dark. */
   background-color: rgba(8, 8, 8, .72);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   opacity: 0; pointer-events: none;
   transition: opacity .3s ease, background-color .45s ease;
 }

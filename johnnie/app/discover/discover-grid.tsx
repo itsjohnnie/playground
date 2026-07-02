@@ -369,10 +369,18 @@ class InfiniteGrid {
   applyZoom(animate: boolean) {
     const img = this.zImg;
     if (!img) return;
+    // Smoothly ease settled zoom in/out (double-tap, pinch/pan release) unless
+    // the user prefers reduced motion, in which case it snaps instantly.
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     img.style.transformOrigin = "center center";
-    img.style.transition = animate
-      ? "transform .3s cubic-bezier(.22, 1, .36, 1)"
-      : "none";
+    // Set with `important` so it beats the page's `.hero-image { transition:
+    // … !important }` theme rule (otherwise transform never eases and the zoom
+    // just snaps).
+    img.style.setProperty(
+      "transition",
+      animate && !reduce ? "transform .34s cubic-bezier(.22, 1, .36, 1)" : "none",
+      "important",
+    );
     img.style.transform = `translate(${this.zTx}px, ${this.zTy}px) scale(${this.zScale})`;
     img.style.cursor = this.zScale > 1 ? "grab" : "";
   }
@@ -380,8 +388,12 @@ class InfiniteGrid {
   clampZoom() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const maxX = Math.max(0, (this.zBaseW * this.zScale - vw) / 2);
-    const maxY = Math.max(0, (this.zBaseH * this.zScale - vh) / 2);
+    let maxX = Math.max(0, (this.zBaseW * this.zScale - vw) / 2);
+    let maxY = Math.max(0, (this.zBaseH * this.zScale - vh) / 2);
+    // Only pad the axes the image actually overflows, so it stays centred when
+    // it fits but gains breathing room at the edges when it doesn't.
+    if (maxX > 0) maxX += ZOOM_PAD;
+    if (maxY > 0) maxY += ZOOM_PAD;
     this.zTx = Math.max(-maxX, Math.min(maxX, this.zTx));
     this.zTy = Math.max(-maxY, Math.min(maxY, this.zTy));
   }
@@ -702,6 +714,9 @@ class InfiniteGrid {
 
 const LIGHT = "#ffffff";
 const DARK = "#080808";
+// Extra pan room past the image edges when zoomed, so you can drag a touch
+// beyond the side and still see a little breathing space.
+const ZOOM_PAD = 44;
 
 // Idle auto-focus timing.
 const IDLE_MS = 3000; // inactivity before the camera glides to the nearest tile
