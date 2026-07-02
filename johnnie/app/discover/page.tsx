@@ -199,6 +199,7 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
   position: fixed; inset: 0; z-index: 50;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 1.25rem; padding: 6vh 7vw;
+  touch-action: none;   /* we drive pinch/pan/double-tap ourselves */
   /* Scrim follows the theme: dark in dark mode (default), light in light mode
      (override below), so opening an image respects light/dark. */
   background-color: rgba(8, 8, 8, .72);
@@ -224,6 +225,12 @@ html:not(.is-dark) .discover-stage { background-color: rgba(255, 255, 255, .82);
   aspect-ratio: auto !important; object-fit: contain !important;
   border-radius: 2px; box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
   outline: none;
+  will-change: transform;   /* smooth double-tap / pinch / pan */
+}
+/* Softer, less harsh shadow on the light scrim (same smooth blur, lower
+   opacity + a gentle near layer so the falloff is gradual, not a hard halo). */
+html:not(.is-dark) .discover-stage .hero-image {
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .15), 0 6px 16px rgba(0, 0, 0, .07);
 }
 /* Caption matches the image width: name left, category right, space-between.
    width:0 + min-width:100% lets it fill the image width WITHOUT widening the
