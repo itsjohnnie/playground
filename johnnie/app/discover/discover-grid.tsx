@@ -85,6 +85,29 @@ class InfiniteGrid {
   stage: HTMLElement | null = null;
   stageInner: HTMLElement | null = null;
 
+  // Staged-image zoom: double-tap toggles ~2.5x at the tap point, pinch zooms
+  // freeform, one-finger drag pans while zoomed. A tap on the backdrop closes.
+  zImg: HTMLElement | null = null;
+  zScale = 1;
+  zTx = 0;
+  zTy = 0;
+  zBaseW = 0;
+  zBaseH = 0;
+  zPointers = new Map<number, { x: number; y: number }>();
+  zDownX = 0;
+  zDownY = 0;
+  zStartTx = 0;
+  zStartTy = 0;
+  zStartDist = 0;
+  zStartScale = 1;
+  zStartMidX = 0;
+  zStartMidY = 0;
+  zDownOnImg = false;
+  zMoved = false;
+  zLastTapTime = 0;
+  zLastTapX = 0;
+  zLastTapY = 0;
+
   constructor(
     wrapper: HTMLElement,
     list: HTMLElement,
@@ -114,6 +137,9 @@ class InfiniteGrid {
     this.onWheel = this.onWheel.bind(this);
     this.onResize = this.onResize.bind(this);
     this.closeStage = this.closeStage.bind(this);
+    this.onStagePointerDown = this.onStagePointerDown.bind(this);
+    this.onStagePointerMove = this.onStagePointerMove.bind(this);
+    this.onStagePointerUp = this.onStagePointerUp.bind(this);
 
     this.init();
   }
@@ -328,9 +354,163 @@ class InfiniteGrid {
     inner.className = "discover-stage_inner";
     stage.appendChild(inner);
     document.body.appendChild(stage);
-    stage.addEventListener("click", this.closeStage);
+    // Pointer-driven: gestures on the image zoom/pan; a tap on the backdrop
+    // (anywhere but the image) closes. (Replaces the old click-to-close so a
+    // double-tap on the image isn't swallowed as a close.)
+    stage.addEventListener("pointerdown", this.onStagePointerDown);
+    stage.addEventListener("pointermove", this.onStagePointerMove);
+    stage.addEventListener("pointerup", this.onStagePointerUp);
+    stage.addEventListener("pointercancel", this.onStagePointerUp);
     this.stage = stage;
     this.stageInner = inner;
+  }
+
+  // ---- Staged-image zoom (double-tap / pinch / pan) ----------------------
+  applyZoom(animate: boolean) {
+    const img = this.zImg;
+    if (!img) return;
+    img.style.transformOrigin = "center center";
+    img.style.transition = animate
+      ? "transform .3s cubic-bezier(.22, 1, .36, 1)"
+      : "none";
+    img.style.transform = `translate(${this.zTx}px, ${this.zTy}px) scale(${this.zScale})`;
+    img.style.cursor = this.zScale > 1 ? "grab" : "";
+  }
+
+  clampZoom() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const maxX = Math.max(0, (this.zBaseW * this.zScale - vw) / 2);
+    const maxY = Math.max(0, (this.zBaseH * this.zScale - vh) / 2);
+    this.zTx = Math.max(-maxX, Math.min(maxX, this.zTx));
+    this.zTy = Math.max(-maxY, Math.min(maxY, this.zTy));
+  }
+
+  resetZoom() {
+    this.zScale = 1;
+    this.zTx = 0;
+    this.zTy = 0;
+    this.zPointers.clear();
+    this.zMoved = false;
+    this.zLastTapTime = 0;
+    if (this.zImg) {
+      this.zImg.style.transition = "none";
+      this.zImg.style.transform = "";
+      this.zImg.style.cursor = "";
+    }
+  }
+
+  toggleZoomAt(x: number, y: number) {
+    if (!this.zImg) return;
+    if (this.zScale > 1) {
+      this.zScale = 1;
+      this.zTx = 0;
+      this.zTy = 0;
+    } else {
+      const s = 2.5;
+      const rect = this.zImg.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      this.zScale = s;
+      this.zTx = -(x - cx) * (s - 1);
+      this.zTy = -(y - cy) * (s - 1);
+      this.clampZoom();
+    }
+    this.applyZoom(true);
+  }
+
+  onStagePointerDown(e: PointerEvent) {
+    const img = this.zImg;
+    this.zPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (this.zPointers.size === 1) {
+      this.zDownOnImg = !!img && img.contains(e.target as Node);
+      this.zMoved = false;
+      this.zDownX = e.clientX;
+      this.zDownY = e.clientY;
+      this.zStartTx = this.zTx;
+      this.zStartTy = this.zTy;
+    } else if (this.zPointers.size === 2) {
+      const pts = Array.from(this.zPointers.values());
+      this.zStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+      this.zStartScale = this.zScale;
+      this.zStartMidX = (pts[0].x + pts[1].x) / 2;
+      this.zStartMidY = (pts[0].y + pts[1].y) / 2;
+      this.zStartTx = this.zTx;
+      this.zStartTy = this.zTy;
+      this.zMoved = true;
+    }
+  }
+
+  onStagePointerMove(e: PointerEvent) {
+    if (!this.zImg || !this.zPointers.has(e.pointerId)) return;
+    this.zPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (this.zPointers.size >= 2) {
+      const pts = Array.from(this.zPointers.values());
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      const midX = (pts[0].x + pts[1].x) / 2;
+      const midY = (pts[0].y + pts[1].y) / 2;
+      this.zScale = Math.max(1, Math.min(4, this.zStartScale * (dist / this.zStartDist)));
+      this.zTx = this.zStartTx + (midX - this.zStartMidX);
+      this.zTy = this.zStartTy + (midY - this.zStartMidY);
+      this.zMoved = true;
+      this.clampZoom();
+      this.applyZoom(false);
+    } else if (this.zPointers.size === 1) {
+      if (Math.hypot(e.clientX - this.zDownX, e.clientY - this.zDownY) > 6) {
+        this.zMoved = true;
+      }
+      if (this.zScale > 1 && this.zDownOnImg) {
+        this.zTx = this.zStartTx + (e.clientX - this.zDownX);
+        this.zTy = this.zStartTy + (e.clientY - this.zDownY);
+        this.clampZoom();
+        this.applyZoom(false);
+      }
+    }
+  }
+
+  onStagePointerUp(e: PointerEvent) {
+    this.zPointers.delete(e.pointerId);
+
+    // A finger lifted mid-pinch: keep the remaining one as the new pan anchor.
+    if (this.zPointers.size > 0) {
+      const rem = Array.from(this.zPointers.values())[0];
+      this.zDownX = rem.x;
+      this.zDownY = rem.y;
+      this.zStartTx = this.zTx;
+      this.zStartTy = this.zTy;
+      return;
+    }
+
+    if (this.zMoved) {
+      // End of a pinch/pan: settle to 1x (recentred) if barely zoomed.
+      if (this.zScale <= 1.02) {
+        this.zScale = 1;
+        this.zTx = 0;
+        this.zTy = 0;
+      } else {
+        this.clampZoom();
+      }
+      this.applyZoom(true);
+      return;
+    }
+
+    // A clean tap: on the backdrop → close; on the image → maybe double-tap.
+    if (!this.zDownOnImg) {
+      this.closeStage();
+      return;
+    }
+    const now = Date.now();
+    const near =
+      Math.hypot(e.clientX - this.zLastTapX, e.clientY - this.zLastTapY) < 40;
+    if (now - this.zLastTapTime < 300 && near) {
+      this.zLastTapTime = 0;
+      this.toggleZoomAt(e.clientX, e.clientY);
+    } else {
+      this.zLastTapTime = now;
+      this.zLastTapX = e.clientX;
+      this.zLastTapY = e.clientY;
+    }
   }
 
   // Find the tile whose on-screen rect contains the point and bring it on stage.
@@ -346,6 +526,12 @@ class InfiniteGrid {
         clientY <= it.lastY + itemH
       ) {
         this.stageInner.innerHTML = it.el.innerHTML;
+        this.zImg = this.stageInner.querySelector<HTMLElement>(".hero-image");
+        this.resetZoom();
+        if (this.zImg) {
+          this.zBaseW = this.zImg.offsetWidth;
+          this.zBaseH = this.zImg.offsetHeight;
+        }
         this.stage.setAttribute("aria-hidden", "false");
         // Next frame so the open transition runs from the collapsed state.
         requestAnimationFrame(() => this.stage?.classList.add("is-open"));
@@ -362,6 +548,8 @@ class InfiniteGrid {
     if (!this.stage) return;
     this.stage.classList.remove("is-open");
     this.stage.setAttribute("aria-hidden", "true");
+    this.resetZoom();
+    this.zImg = null;
     this.lastInteraction = Date.now();
     this.hasSnapped = false;
     // Resume the gallery loop (velocity is ~0 after a tap, so it stays put).
