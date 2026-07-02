@@ -1436,6 +1436,10 @@ strong {
      the callout's own shadow and reads as a double shadow at the seam. */
   position: relative;
   z-index: 1;
+  /* Match the card's shadow transition (transition: all .2s) so the two halves
+     animate in unison on hover — otherwise the callout's shadow snapped in
+     instantly while the card's eased, reading as two separate shadows. */
+  transition: box-shadow .2s;
 }
 
 /* Featured card: square off the card's bottom so the callout joins seamlessly. */
