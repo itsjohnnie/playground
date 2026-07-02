@@ -199,11 +199,14 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
   position: fixed; inset: 0; z-index: 50;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 1.25rem; padding: 6vh 7vw;
-  background: rgba(8, 8, 8, .72);
+  /* Scrim follows the theme: dark in dark mode (default), light in light mode
+     (override below), so opening an image respects light/dark. */
+  background-color: rgba(8, 8, 8, .72);
   -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
   opacity: 0; pointer-events: none;
-  transition: opacity .3s ease;
+  transition: opacity .3s ease, background-color .45s ease;
 }
+html:not(.is-dark) .discover-stage { background-color: rgba(255, 255, 255, .82); }
 .discover-stage.is-open { opacity: 1; pointer-events: auto; }
 /* fit-content so the column (and the caption beneath) is exactly as wide as the
    image, not the whole stage. */
@@ -239,6 +242,12 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
 .discover-stage .hero-meta_data-lighter {
   flex: none; white-space: nowrap; opacity: .6;
 }
+/* Light mode: dark caption text so it stays legible on the light scrim — a
+   strong primary (name) and a lighter-but-AA-legible grey secondary (category).
+   The secondary uses a solid grey rather than the dark-mode opacity trick so it
+   keeps enough contrast on the pale backdrop. */
+html:not(.is-dark) .discover-stage .hero-meta_data { color: #1b1b1b; }
+html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opacity: 1; }
 `,
         }}
       />
