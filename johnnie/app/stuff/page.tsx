@@ -15,7 +15,6 @@ export default function StuffPage() {
   return (
     <main className="stuff-page">
       <div className="stuff-hero">
-        <a className="stuff-back" href={asset("/")}>← Johnnie&#x27;s Life</a>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={asset("/images/stuff-hero.png")}
@@ -28,6 +27,7 @@ export default function StuffPage() {
       <div className="stuff">
         <header className="stuff-head">
           <h1>Stuff</h1>
+          <a className="stuff-back" href={asset("/")}>← Johnnie&#x27;s Life</a>
           <p>
             Things I have — and things I&#x27;ll have, one day. The dimmed ones are
             still on the list.
@@ -62,13 +62,13 @@ export default function StuffPage() {
 .stuff-hero { position: relative; width: 100%; margin: 0; }
 .stuff-hero img { width: 100%; height: auto; display: block; }
 
-/* Back link overlaid on the top-left of the hero. */
+/* Back link, sitting under the heading. */
 .stuff-back {
-  position: absolute; z-index: 2;
-  top: clamp(.85rem, 3.5vw, 1.4rem); left: clamp(1rem, 4vw, 1.5rem);
+  display: inline-block;
   font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: .8rem; letter-spacing: .01em;
   color: #1b1b1b; opacity: .55; text-decoration: none;
+  margin: 0 0 1.1rem;
   transition: opacity .2s var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) { .stuff-back:hover { opacity: 1; } }
@@ -76,10 +76,10 @@ export default function StuffPage() {
 /* Big, bold title that overlaps up into the bottom of the hero image. */
 .stuff-head h1 {
   font-family: "Geist", -apple-system, sans-serif;
-  font-size: clamp(5rem, 30vw, 12rem);
+  font-size: clamp(4rem, 23vw, 9rem);
   font-weight: 700; letter-spacing: -.07em; line-height: .82;
   text-transform: none;       /* sentence case: "Stuff", not "STUFF" */
-  margin: -.46em 0 .5rem;     /* negative top pulls it up over the image */
+  margin: -.3em 0 .55rem;     /* gentle negative top overlaps into the image */
   position: relative;
 }
 .stuff-head p {
