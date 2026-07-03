@@ -70,6 +70,7 @@ export default function StuffPage() {
   --s-chip-hover: #e9e9e7;
   --s-btn-bg: #1b1b1b;
   --s-btn-fg: #fff;
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* iOS-like sheet curve */
   color: var(--s-fg);
   font-family: "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow-x: clip;
@@ -169,10 +170,23 @@ export default function StuffPage() {
 
 /* List + expandable rows. */
 .stuff-grid { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--s-line); }
-.stuff-row { border-bottom: 1px solid var(--s-line); }
+/* Staggered entrance on first load. animation-fill-mode both holds the
+   from-state through the per-item delay; stable keys mean this plays once and
+   never on re-sort. */
+.stuff-row {
+  border-bottom: 1px solid var(--s-line);
+  animation: stuffRowIn .42s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 38ms);
+}
+@keyframes stuffRowIn {
+  from { opacity: 0; transform: translateY(9px); }
+  to { opacity: 1; transform: none; }
+}
 /* Dim only the row's CONTENT for wishlist items — never the row itself, so the
-   divider lines stay a consistent weight regardless of what's owned. */
-.stuff-rowbtn { transition: opacity .25s var(--ease-out); }
+   divider lines stay a consistent weight regardless of what's owned. Rows are
+   pressable (they open the modal), so give them a subtle press response. */
+.stuff-rowbtn { transition: opacity .25s var(--ease-out), transform .16s var(--ease-out); }
+.stuff-rowbtn:active { transform: scale(.99); }
 .stuff-row.is-wish .stuff-rowbtn { opacity: .4; }
 
 .stuff-rowbtn {
@@ -206,18 +220,19 @@ export default function StuffPage() {
   position: fixed; inset: 0; z-index: 100;
   background: rgba(20, 20, 19, .38);
   -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
-  opacity: 0; transition: opacity .22s var(--ease-out);
+  opacity: 0; transition: opacity .18s var(--ease-out);   /* exit: snappy */
 }
-.stuff-modal.is-open { opacity: 1; }
+.stuff-modal.is-open { opacity: 1; transition: opacity .24s var(--ease-out); } /* enter */
 .stuff-modal-card {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   background: var(--s-bg); border-radius: 0; overflow: hidden;
   display: flex; flex-direction: column;
   padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
-  transform: translateY(14px); transition: transform .26s var(--ease-out);
+  transform: translateY(14px); transition: transform .18s var(--ease-out); /* exit */
 }
-.stuff-modal.is-open .stuff-modal-card { transform: none; }
+/* Enter is a touch slower and rides the iOS sheet curve; exit stays quick. */
+.stuff-modal.is-open .stuff-modal-card { transform: none; transition: transform .3s var(--ease-drawer); }
 .stuff-modal-x {
   position: absolute; top: calc(env(safe-area-inset-top) + .8rem); right: .9rem; z-index: 3;
   width: 34px; height: 34px; border-radius: 50%;
@@ -226,7 +241,7 @@ export default function StuffPage() {
   color: var(--s-fg); cursor: pointer;
   transition: background .2s var(--ease-out), transform .16s var(--ease-out);
 }
-.stuff-modal-x:active { transform: scale(.9); }
+.stuff-modal-x:active { transform: scale(.92); }
 @media (hover: hover) and (pointer: fine) { .stuff-modal-x:hover { background: var(--s-chip-hover); } }
 
 /* Scrollable, per-item content; remounts on nav so it slides in. */
@@ -291,10 +306,16 @@ export default function StuffPage() {
 .stuff-get:active { transform: scale(.98); }
 @media (hover: hover) and (pointer: fine) { .stuff-get:hover { opacity: .88; } }
 
+/* Reduced motion: keep the opacity crossfades (they aid comprehension); drop
+   only the position/movement — the card rise, the swipe slide, the row stagger. */
 @media (prefers-reduced-motion: reduce) {
-  .stuff-modal, .stuff-modal-card, .stuff-info { transition: none; }
-  .stuff-modal-scroll[data-dir="next"], .stuff-modal-scroll[data-dir="prev"] { animation: none; }
+  .stuff-modal-card { transform: none; }
+  .stuff-modal-scroll[data-dir="next"], .stuff-modal-scroll[data-dir="prev"] {
+    animation: stuffFade .2s var(--ease-out);
+  }
+  .stuff-row { animation: none; }
 }
+@keyframes stuffFade { from { opacity: 0; } to { opacity: 1; } }
 `,
         }}
       />
