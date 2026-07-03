@@ -185,8 +185,16 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
               <div className="stuff-modal-inner">
                 <div className="stuff-modal-media">
                   {shown.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={asset(shown.image)} alt={shown.name} />
+                    <picture>
+                      {shown.image_dark && (
+                        <source
+                          srcSet={asset(shown.image_dark)}
+                          media="(prefers-color-scheme: dark)"
+                        />
+                      )}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={asset(shown.image)} alt={shown.name} />
+                    </picture>
                   ) : (
                     <IsoCube />
                   )}

@@ -5,7 +5,9 @@ category: "Perfume"
 owned: false
 brand: "Bvlgari"
 price: ""
-description: ""
+description: "From Bulgari's Le Gemme high perfumery — a warm, resinous oud and spice built for opulence. Rich, animalic and unmistakably loud, in the best way."
 image: ""
-link: ""
+image_dark: ""
+link: "https://www.bulgari.com"
+cta: "Buy it"
 ---

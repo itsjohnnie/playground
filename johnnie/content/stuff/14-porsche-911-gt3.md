@@ -5,7 +5,9 @@ category: "Car"
 owned: false
 brand: "Porsche"
 price: ""
-description: ""
+description: "The purist's 911 — a naturally aspirated flat-six that screams to 9,000 rpm, track-bred but road-legal. The one poster car I still want."
 image: ""
-link: ""
+image_dark: ""
+link: "https://www.porsche.com/usa/models/911/911-gt3-models/911-gt3/"
+cta: "Configure it"
 ---

@@ -101,6 +101,7 @@ collections:
         fields:
           - { name: label, label: "Label (e.g. Case, Weight, Volume)", widget: string }
           - { name: value, label: "Value (e.g. 40 mm, 250 g)", widget: string }
-      - { name: image, label: "Isometric image (white background)", widget: image, required: false, choose_url: false }
+      - { name: image, label: "Isometric image (light theme)", widget: image, required: false, choose_url: false }
+      - { name: image_dark, label: "Isometric image (dark theme, optional)", widget: image, required: false, choose_url: false }
       - { name: link, label: "Buy / info link (optional)", widget: string, required: false, default: "" }
       - { name: cta, label: "Button label (defaults to \"Buy it\")", widget: string, required: false, default: "" }

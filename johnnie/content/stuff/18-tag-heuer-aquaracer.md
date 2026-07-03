@@ -5,7 +5,9 @@ category: "Watch"
 owned: false
 brand: "TAG Heuer"
 price: ""
-description: ""
+description: "TAG's do-anything dive watch — 300 m water resistance, a legible dial and a bracelet that wears from the pool to the office. Solid everyday steel."
 image: ""
-link: ""
+image_dark: ""
+link: "https://www.tagheuer.com"
+cta: "Buy it"
 ---

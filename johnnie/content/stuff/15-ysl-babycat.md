@@ -5,7 +5,9 @@ category: "Perfume"
 owned: false
 brand: "Yves Saint Laurent"
 price: ""
-description: ""
+description: "A Saint Laurent piece still on my list — I want to spend proper time with it in person before it earns a permanent spot in the rotation."
 image: ""
-link: ""
+image_dark: ""
+link: "https://www.yslbeauty.com"
+cta: "Buy it"
 ---
