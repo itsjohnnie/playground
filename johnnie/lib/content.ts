@@ -28,6 +28,9 @@ export type DiscoverItem = {
   image: string;
 };
 
+// A single "stat" line in the detail card (dimensions, weight, movement…).
+export type StuffSpec = { label: string; value: string };
+
 export type StuffItem = {
   order: number;
   name: string;
@@ -38,9 +41,12 @@ export type StuffItem = {
   brand: string;
   price: string;
   description: string;
+  // Pokédex-style spec lines beyond brand/price (dimensions, weight, etc.).
+  specs: StuffSpec[];
   image: string; // isometric render on a white background
-  // "Get it" link.
+  // "Buy it" link + its call-to-action label (defaults to "Buy it").
   link: string;
+  cta: string;
 };
 
 function readCollection<T>(dir: string): T[] {
@@ -66,5 +72,10 @@ export function getDiscover(): DiscoverItem[] {
 }
 
 export function getStuff(): StuffItem[] {
-  return readCollection<StuffItem>("stuff");
+  // `specs`/`cta` are newer fields; default them so older entries stay valid.
+  return readCollection<StuffItem>("stuff").map((it) => ({
+    ...it,
+    specs: Array.isArray(it.specs) ? it.specs : [],
+    cta: typeof it.cta === "string" ? it.cta : "",
+  }));
 }

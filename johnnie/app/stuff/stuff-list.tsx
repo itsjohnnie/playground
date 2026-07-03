@@ -59,12 +59,15 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
     };
   }, [shown]);
 
+  // Pokédex-style stat block: brand, any extra specs (dimensions, weight…),
+  // then price and status. Empty values are dropped.
   const facts = (it: StuffItem): [string, string][] =>
     (
       [
         ["Brand", it.brand],
-        ["Status", it.owned ? "Owned" : "On the wishlist"],
+        ...it.specs.map((s) => [s.label, s.value] as [string, string]),
         ["Price", it.price],
+        ["Status", it.owned ? "Owned" : "On the wishlist"],
       ] as [string, string][]
     ).filter(([, v]) => v);
 
@@ -168,7 +171,7 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Get it →
+                  {shown.cta || "Buy it"} →
                 </a>
               ) : null}
             </div>
