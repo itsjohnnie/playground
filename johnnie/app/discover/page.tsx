@@ -183,6 +183,17 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
 .discover-comp {
   bottom: calc(2rem + env(safe-area-inset-bottom));
 }
+/* Phones: one consistent gutter around the control bar — the same 1rem gap on
+   the left, right, and toward the bottom. The bottom gap grows only as far as
+   the home-indicator safe area demands (max()), so in standalone mode the bar
+   hugs the bottom as closely as iOS's swipe-gesture zone allows instead of
+   floating 2rem above it. */
+@media (max-width: 479px) {
+  .discover-comp {
+    width: calc(100% - 2rem);
+    bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+}
 .hero-list-wrapper.ready { opacity: 1; }
 .hero-list-wrapper.dragging { cursor: grabbing; }
 
