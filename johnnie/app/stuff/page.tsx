@@ -101,6 +101,14 @@ export default function StuffPage() {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   box-shadow: inset 0 0 clamp(28px, 9vw, 70px) clamp(10px, 3.5vw, 26px) var(--s-bg);
 }
+/* The photo's bottom is a touch warmer than the page, which shows as a faint
+   horizontal seam where it meets the background. This taller gradient melts
+   the lower third of the render into the page colour so there's no cut. */
+.stuff-hero::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; z-index: 1;
+  height: 30%; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--s-bg));
+}
 
 /* Title + sort on one line; description below. Positioned above the hero so
    the overlapping title paints ON TOP of the image (the hero is position:
