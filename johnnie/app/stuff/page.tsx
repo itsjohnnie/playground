@@ -106,8 +106,13 @@ export default function StuffPage() {
    the lower third of the render into the page colour so there's no cut. */
 .stuff-hero::before {
   content: ""; position: absolute; left: 0; right: 0; bottom: -1px; z-index: 1;
-  height: 30%; pointer-events: none;
+  height: 12%; pointer-events: none;
   background: linear-gradient(to bottom, transparent, var(--s-bg));
+}
+/* The seam only really shows in dark (the warmer #17161b floor vs #0c0c0d),
+   so the deeper fade is dark-only; light keeps just a whisper of one. */
+@media (prefers-color-scheme: dark) {
+  .stuff-hero::before { height: 30%; }
 }
 
 /* Title + sort on one line; description below. Positioned above the hero so
@@ -124,10 +129,10 @@ export default function StuffPage() {
   text-transform: none;
   margin: clamp(1.4rem, 6vw, 3rem) 0 0;   /* clear gap between the photo and the title */
 }
-/* Small superscript registered-trademark mark tucked up by the title. */
+/* Superscript registered-trademark mark tucked up by the title. */
 .stuff-reg {
-  font-size: .18em; font-weight: 500; letter-spacing: 0;
-  vertical-align: top; position: relative; top: .12em; left: .04em;
+  font-size: .28em; font-weight: 500; letter-spacing: 0;
+  vertical-align: top; position: relative; top: .18em; left: .04em;
   opacity: .8;
 }
 
