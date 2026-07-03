@@ -75,7 +75,7 @@ export default function StuffPage() {
   font-size: clamp(3.25rem, 18vw, 7.5rem);
   font-weight: 600; letter-spacing: -.03em; line-height: .85;
   text-transform: none;
-  margin: clamp(.4rem, 2.5vw, 1rem) 0 0;   /* small gap so the title clears the photo */
+  margin: clamp(1.4rem, 6vw, 3rem) 0 0;   /* clear gap between the photo and the title */
 }
 
 /* Sort control (bottom-aligned with the title). */
