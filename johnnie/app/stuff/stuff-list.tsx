@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Fragment,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type TouchEvent,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import type { StuffItem } from "@/lib/content";
 import { asset } from "@/lib/asset";
 
@@ -203,10 +196,10 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
                   </div>
                   <dl className="stuff-facts-dl">
                     {facts(shown).map(([k, v]) => (
-                      <Fragment key={k}>
+                      <div className="stuff-fact" key={k}>
                         <dt>{k}</dt>
                         <dd>{v}</dd>
-                      </Fragment>
+                      </div>
                     ))}
                   </dl>
                   {shown.description ? (
