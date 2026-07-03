@@ -52,9 +52,16 @@ export default function StuffPage() {
 }
 .stuff { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 6rem; }
 
-/* Full-bleed hero, flush at the top; the title overlaps up into it. */
+/* Full-bleed hero, flush at the top. */
 .stuff-hero { position: relative; width: 100%; margin: 0; }
 .stuff-hero img { width: 100%; height: auto; display: block; }
+/* Inner glow in the page's background colour, feathered inward on every edge.
+   The photo's borders aren't a perfectly uniform tone, so this haze blends
+   the render into the page instead of leaving a hard, slightly-mismatched seam. */
+.stuff-hero::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 clamp(28px, 9vw, 70px) clamp(10px, 3.5vw, 26px) #f1f1f0;
+}
 
 /* Title + sort on one line; description below. Positioned above the hero so
    the overlapping title paints ON TOP of the image (the hero is position:
@@ -68,7 +75,7 @@ export default function StuffPage() {
   font-size: clamp(3.25rem, 18vw, 7.5rem);
   font-weight: 600; letter-spacing: -.03em; line-height: .85;
   text-transform: none;
-  margin: -.2em 0 0;   /* subtle overlap up into the hero */
+  margin: clamp(1.4rem, 6vw, 3rem) 0 0;   /* clear gap between the photo and the title */
 }
 
 /* Sort control (bottom-aligned with the title). */
@@ -176,14 +183,17 @@ export default function StuffPage() {
 .stuff-facts-dl dd { margin: 0; font-size: .92rem; }
 .stuff-descr { margin: 1rem 0 0; font-size: .92rem; line-height: 1.55; opacity: .75; }
 .stuff-descr--empty { opacity: .4; font-style: italic; }
+/* Prominent call-to-action button that takes you to where you can buy it. */
 .stuff-get {
-  display: inline-block; margin-top: 1.1rem;
+  display: inline-flex; align-items: center; gap: .4rem; margin-top: 1.3rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: .78rem; color: #1b1b1b; text-decoration: none;
-  border-bottom: 1px solid rgba(27, 27, 27, .3); padding-bottom: 1px;
-  transition: border-color .2s var(--ease-out);
+  font-size: .78rem; letter-spacing: .02em;
+  color: #fff; background: #1b1b1b; text-decoration: none;
+  padding: .62rem 1rem; border-radius: 999px;
+  transition: transform .16s var(--ease-out), background .2s var(--ease-out);
 }
-@media (hover: hover) and (pointer: fine) { .stuff-get:hover { border-bottom-color: #1b1b1b; } }
+.stuff-get:active { transform: scale(.97); }
+@media (hover: hover) and (pointer: fine) { .stuff-get:hover { background: #000; } }
 
 @media (prefers-reduced-motion: reduce) {
   .stuff-modal, .stuff-modal-card, .stuff-arrow { transition: none; }
