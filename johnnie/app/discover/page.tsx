@@ -207,10 +207,10 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
   .discover-comp {
     width: calc(100% - 2rem);
     bottom: max(1rem, env(safe-area-inset-bottom, 0px));
-    /* Radius matches the 1rem gutter so the bar sits concentric-ish with the
-       iPhone's big display corners — 4px read as a hard rectangle fighting
-       the screen's curve. Desktop keeps the site's editorial 4px. */
-    border-radius: 1rem;
+    /* Rounder than the site's editorial 4px so the bar doesn't read as a hard
+       rectangle against the iPhone's curved display corners, but shy of the
+       1rem gutter — at 1rem the curve cut into the rows' text padding. */
+    border-radius: 10px;
   }
 }
 .hero-list-wrapper.ready { opacity: 1; }
