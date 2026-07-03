@@ -62,7 +62,7 @@ export default function RootLayout({
         <link rel="stylesheet" href="https://use.typekit.net/uqs5mpm.css" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&family=Source+Serif+4:wght@300;400;500;600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap"
         />
         {/* Native interactions CSS (replaces the Webflow JS runtime) */}
         <style
