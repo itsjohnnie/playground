@@ -88,7 +88,7 @@ export default function StuffPage() {
     color-scheme: dark;
   }
 }
-.stuff { max-width: 600px; margin: 0 auto; padding: 0 2.1rem 6rem; }
+.stuff { max-width: 600px; margin: 0 auto; padding: 0 2.1rem 3rem; }
 
 /* Full-bleed hero, flush at the top. */
 .stuff-hero { position: relative; width: 100%; margin: 0; }
