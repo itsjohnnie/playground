@@ -266,9 +266,11 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
     /* A tad wider than the grid tiles (80vw on phones), well clear of the
        screen edges — full-bleed-minus-2rem read too wide in standalone. */
     width: 84vw;
-    /* Breathing room below: a step above the home-indicator safe area rather
-       than flush against it. */
-    bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
+    /* Bottom gap matches the 8vw side gaps ((100 - 84vw) / 2) so the bar
+       floats with even spacing all around; the max() keeps it clear of the
+       home-indicator zone in standalone, which is within a couple px of the
+       side gap anyway. */
+    bottom: max(8vw, env(safe-area-inset-bottom, 0px));
     /* Rounder than the site's editorial 4px so the bar doesn't read as a hard
        rectangle against the iPhone's curved display corners, but shy of the
        old 1rem — at 1rem the curve cut into the rows' text padding. */
