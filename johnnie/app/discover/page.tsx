@@ -187,8 +187,10 @@ body,
      when the tile was element-sized. 60px gives the bite room to travel. */
   -webkit-mask-size: 60px 60px; mask-size: 60px 60px;
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
-  -webkit-mask-position: -4px -40px; mask-position: -4px -40px;
-  transform: scale(.72);
+  /* Inverted state mapping: the glyph previews the mode you'd switch TO —
+     light mode shows the moon, dark mode shows the sun. */
+  -webkit-mask-position: -21px -27px; mask-position: -21px -27px;
+  transform: scale(1);
   transition: transform .5s var(--ease-out),
     -webkit-mask-position .5s var(--ease-out);
   transition: transform .5s var(--ease-out),
@@ -196,15 +198,16 @@ body,
     -webkit-mask-position .5s var(--ease-out);
 }
 html.is-dark .sunmoon::before {
-  transform: scale(1);
-  -webkit-mask-position: -21px -27px; mask-position: -21px -27px;
+  transform: scale(.72);
+  -webkit-mask-position: -4px -40px; mask-position: -4px -40px;
 }
 .sunmoon .ray {
   position: absolute; left: 50%; top: 50%;
   width: 2px; height: 4px; margin: -2px 0 0 -1px;
   border-radius: 1px;
   background: currentColor;
-  transform: rotate(var(--a)) translateY(-7.5px);
+  transform: rotate(var(--a)) translateY(0) scale(0);
+  opacity: 0;
   transition: transform .5s var(--ease-out), opacity .3s ease;
 }
 .sunmoon .ray:nth-child(1) { --a: 0deg; }
@@ -216,8 +219,8 @@ html.is-dark .sunmoon::before {
 .sunmoon .ray:nth-child(7) { --a: 270deg; }
 .sunmoon .ray:nth-child(8) { --a: 315deg; }
 html.is-dark .sunmoon .ray {
-  transform: rotate(var(--a)) translateY(0) scale(0);
-  opacity: 0;
+  transform: rotate(var(--a)) translateY(-7.5px) scale(1);
+  opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
   .sunmoon::before, .sunmoon .ray { transition: opacity .2s ease; }
