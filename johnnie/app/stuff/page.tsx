@@ -124,6 +124,12 @@ export default function StuffPage() {
   text-transform: none;
   margin: clamp(1.4rem, 6vw, 3rem) 0 0;   /* clear gap between the photo and the title */
 }
+/* Small superscript registered-trademark mark tucked up by the title. */
+.stuff-reg {
+  font-size: .18em; font-weight: 500; letter-spacing: 0;
+  vertical-align: top; position: relative; top: .12em; left: .04em;
+  opacity: .8;
+}
 
 /* Sort control (bottom-aligned with the title). */
 .stuff-sort {
@@ -157,8 +163,11 @@ export default function StuffPage() {
 
 /* List + expandable rows. */
 .stuff-grid { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--s-line); }
-.stuff-row { border-bottom: 1px solid var(--s-line); transition: opacity .25s var(--ease-out); }
-.stuff-row.is-wish { opacity: .4; }
+.stuff-row { border-bottom: 1px solid var(--s-line); }
+/* Dim only the row's CONTENT for wishlist items — never the row itself, so the
+   divider lines stay a consistent weight regardless of what's owned. */
+.stuff-rowbtn { transition: opacity .25s var(--ease-out); }
+.stuff-row.is-wish .stuff-rowbtn { opacity: .4; }
 
 .stuff-rowbtn {
   width: 100%; display: flex; align-items: baseline; justify-content: space-between;
