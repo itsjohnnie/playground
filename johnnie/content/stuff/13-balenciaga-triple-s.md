@@ -5,7 +5,9 @@ category: "Shoe"
 owned: false
 brand: "Balenciaga"
 price: ""
-description: ""
+description: "The chunky triple-stacked sole that defined an era of sneakers. Oversized, unapologetic, and somehow still my kind of statement shoe."
 image: ""
-link: ""
+image_dark: ""
+link: "https://www.balenciaga.com"
+cta: "Buy it"
 ---

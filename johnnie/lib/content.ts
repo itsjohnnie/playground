@@ -43,7 +43,8 @@ export type StuffItem = {
   description: string;
   // Pokédex-style spec lines beyond brand/price (dimensions, weight, etc.).
   specs: StuffSpec[];
-  image: string; // isometric render on a white background
+  image: string; // isometric render (light theme)
+  image_dark: string; // optional dark-theme variant of the render
   // "Buy it" link + its call-to-action label (defaults to "Buy it").
   link: string;
   cta: string;
@@ -77,5 +78,6 @@ export function getStuff(): StuffItem[] {
     ...it,
     specs: Array.isArray(it.specs) ? it.specs : [],
     cta: typeof it.cta === "string" ? it.cta : "",
+    image_dark: typeof it.image_dark === "string" ? it.image_dark : "",
   }));
 }

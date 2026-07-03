@@ -124,15 +124,15 @@ export default function StuffPage() {
 }
 .stuff-titlerow h1 {
   font-family: "Inter var", -apple-system, Helvetica, Arial, sans-serif;
-  font-size: clamp(3.25rem, 18vw, 7.5rem);
+  font-size: clamp(3rem, 16.5vw, 7rem);
   font-weight: 600; letter-spacing: -.03em; line-height: .85;
   text-transform: none;
   margin: clamp(1.4rem, 6vw, 3rem) 0 0;   /* clear gap between the photo and the title */
 }
-/* Superscript registered-trademark mark tucked up by the title. */
+/* Superscript registered-trademark mark, set a bit off the title. */
 .stuff-reg {
-  font-size: .28em; font-weight: 500; letter-spacing: 0;
-  vertical-align: top; position: relative; top: .18em; left: .04em;
+  font-size: .34em; font-weight: 500; letter-spacing: 0;
+  vertical-align: top; position: relative; top: .16em; left: .14em;
   opacity: .8;
 }
 
@@ -159,7 +159,8 @@ export default function StuffPage() {
   }
 }
 .stuff-sort select:hover { border-bottom-color: var(--s-fg); }
-.stuff-sort select:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 3px; border-radius: 1px; }
+/* Focus: no outline ring — just take the bottom border to full opacity. */
+.stuff-sort select:focus-visible { outline: none; border-bottom-color: var(--s-fg); }
 
 .stuff-desc {
   font-size: .95rem; line-height: 1.5; max-width: 46ch;
@@ -241,6 +242,7 @@ export default function StuffPage() {
   aspect-ratio: 4 / 3; background: var(--s-bg);
   display: flex; align-items: center; justify-content: center;
 }
+.stuff-modal-media picture { display: contents; }
 .stuff-modal-media img { width: 100%; height: 100%; object-fit: contain; }
 .stuff-thumb-ph { width: 22%; height: 22%; color: var(--s-fg); opacity: .22; }
 

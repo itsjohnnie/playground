@@ -5,7 +5,9 @@ category: "Perfume"
 owned: false
 brand: "Maison Crivelli"
 price: ""
-description: ""
+description: "Maison Crivelli's playful contrast — juicy passionfruit (maracujá) crashing into smoky oud. Fruity and dark at once, and totally addictive."
 image: ""
-link: ""
+image_dark: ""
+link: "https://www.maisoncrivelli.com"
+cta: "Buy it"
 ---
