@@ -4,7 +4,7 @@ import { asset } from "@/lib/asset";
 import DiscoverGrid from "./discover-grid";
 
 export const metadata: Metadata = {
-  title: "Design Discovery Area — Designed by Johnnie Gomez",
+  title: "Discovery Area — Designed by Johnnie Gomez",
   // Home-screen (Add to Home Screen) label — iOS uses this instead of the
   // page <title>, which stays the long form for tabs/search. capable and
   // statusBarStyle MUST be re-declared here: this object replaces the layout's
@@ -38,7 +38,7 @@ export default function DiscoverPage() {
           <div>Johnnie Gómez Álzaga ®</div>
         </a>
         <div className="discover-text">
-          <div>Design Discovery Area</div>
+          <div>Discovery Area</div>
         </div>
         <a data-theme-toggle href="#" className="toggle-mode" aria-label="Toggle light or dark mode">
           <div className="button-icon">
@@ -191,6 +191,13 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
 .discover-comp {
   bottom: calc(2rem + env(safe-area-inset-bottom));
 }
+/* Quieter page label: smaller than the 1rem it inherited (site.css sets
+   .925rem under 480px; this later sheet wins at equal specificity). */
+.discover-text { font-size: .9rem; }
+@media (max-width: 479px) {
+  .discover-text { font-size: .85rem; }
+}
+
 /* Phones: one consistent gutter around the control bar — the same 1rem gap on
    the left, right, and toward the bottom. The bottom gap grows only as far as
    the home-indicator safe area demands (max()), so in standalone mode the bar
@@ -281,7 +288,7 @@ html:not(.is-dark) .discover-stage { background-color: rgba(255, 255, 255, .82);
 .discover-stage .hero-image {
   display: block;
   width: auto !important; height: auto !important;
-  max-width: 92vw; max-height: 64vh;
+  max-width: 92vw; max-height: 70vh;
   aspect-ratio: auto !important; object-fit: contain !important;
   border-radius: 2px; box-shadow: 0 24px 60px rgba(0, 0, 0, .5);
   outline: none;
@@ -292,22 +299,25 @@ html:not(.is-dark) .discover-stage { background-color: rgba(255, 255, 255, .82);
 html:not(.is-dark) .discover-stage .hero-image {
   box-shadow: 0 24px 60px rgba(0, 0, 0, .15), 0 6px 16px rgba(0, 0, 0, .07);
 }
-/* Caption matches the image width: name left, category right, space-between.
-   width:0 + min-width:100% lets it fill the image width WITHOUT widening the
-   fit-content column (so a long name can't stretch the stage). */
+/* Caption: pinned bottom-centre of the stage (the script moves it out of the
+   image column), name on the first line, category beneath, both centred. It
+   stays put while the image zooms/pans; taps fall through to the backdrop. */
 .discover-stage .hero-meta_data {
-  width: 0; min-width: 100%;
-  gap: 1.5rem; padding: 0;
+  position: absolute; left: 0; right: 0;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; align-items: center;
+  gap: .3rem; padding: 0;
+  text-align: center; pointer-events: none;
   color: #fff; font-size: 0.875rem; line-height: 1.4;
   /* Match the control-bar logo (the full name) typeface. */
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
   letter-spacing: .01em;
 }
 .discover-stage .hero-meta_data > :first-child {
-  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 84vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .discover-stage .hero-meta_data-lighter {
-  flex: none; white-space: nowrap; opacity: .6;
+  white-space: nowrap; opacity: .6;
 }
 /* Light mode: dark caption text so it stays legible on the light scrim — a
    strong primary (name) and a lighter-but-AA-legible grey secondary (category).

@@ -93,6 +93,11 @@ class InfiniteGrid {
   zTy = 0;
   zBaseW = 0;
   zBaseH = 0;
+  // The image's resting on-screen centre (captured at stage-open). The pan
+  // clamp measures from here — assuming the viewport centre instead locked
+  // vertical panning whenever the two differed.
+  zCx0 = 0;
+  zCy0 = 0;
   zPointers = new Map<number, { x: number; y: number }>();
   zDownX = 0;
   zDownY = 0;
@@ -388,14 +393,31 @@ class InfiniteGrid {
   clampZoom() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    let maxX = Math.max(0, (this.zBaseW * this.zScale - vw) / 2);
-    let maxY = Math.max(0, (this.zBaseH * this.zScale - vh) / 2);
-    // Only pad the axes the image actually overflows, so it stays centred when
-    // it fits but gains breathing room at the edges when it doesn't.
-    if (maxX > 0) maxX += ZOOM_PAD;
-    if (maxY > 0) maxY += ZOOM_PAD;
-    this.zTx = Math.max(-maxX, Math.min(maxX, this.zTx));
-    this.zTy = Math.max(-maxY, Math.min(maxY, this.zTy));
+    const cx0 = this.zCx0 || vw / 2;
+    const cy0 = this.zCy0 || vh / 2;
+    const halfW = (this.zBaseW * this.zScale) / 2;
+    const halfH = (this.zBaseH * this.zScale) / 2;
+    // Per axis: while the scaled image fits on screen it stays centred IN THE
+    // VIEWPORT (not at its resting spot); once it overflows, it can pan until
+    // each edge meets the opposite viewport edge, plus breathing room. Both
+    // measure from the true resting centre, so vertical panning works even
+    // though the image doesn't rest exactly mid-screen.
+    if (halfW * 2 <= vw) {
+      this.zTx = vw / 2 - cx0;
+    } else {
+      this.zTx = Math.max(
+        vw - halfW - ZOOM_PAD - cx0,
+        Math.min(halfW + ZOOM_PAD - cx0, this.zTx),
+      );
+    }
+    if (halfH * 2 <= vh) {
+      this.zTy = vh / 2 - cy0;
+    } else {
+      this.zTy = Math.max(
+        vh - halfH - ZOOM_PAD - cy0,
+        Math.min(halfH + ZOOM_PAD - cy0, this.zTy),
+      );
+    }
   }
 
   resetZoom() {
@@ -538,11 +560,25 @@ class InfiniteGrid {
         clientY <= it.lastY + itemH
       ) {
         this.stageInner.innerHTML = it.el.innerHTML;
+        // Pin the caption to the stage itself (bottom-centred, fixed on
+        // screen) instead of flowing under the image — inside the column it
+        // both wasted vertical room and pulled the image's rest position off
+        // the viewport centre. The stage is untransformed, so absolute
+        // positioning inside it sticks while the image zooms and pans.
+        this.stage.querySelector(":scope > .hero-meta_data")?.remove();
+        const meta = this.stageInner.querySelector(".hero-meta_data");
+        if (meta) this.stage.appendChild(meta);
         this.zImg = this.stageInner.querySelector<HTMLElement>(".hero-image");
         this.resetZoom();
         if (this.zImg) {
           this.zBaseW = this.zImg.offsetWidth;
           this.zBaseH = this.zImg.offsetHeight;
+          // Resting centre for the pan clamp. The inner wrapper's open/close
+          // scale is centre-origin, so the centre point is already final here
+          // even while that transition runs.
+          const r = this.zImg.getBoundingClientRect();
+          this.zCx0 = r.left + r.width / 2;
+          this.zCy0 = r.top + r.height / 2;
         }
         this.stage.setAttribute("aria-hidden", "false");
         // Next frame so the open transition runs from the collapsed state.
