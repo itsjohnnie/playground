@@ -5,6 +5,9 @@ import DiscoverGrid from "./discover-grid";
 
 export const metadata: Metadata = {
   title: "Design Discovery Area — Designed by Johnnie Gomez",
+  // Home-screen (Add to Home Screen) label — iOS uses this instead of the
+  // page <title>, which stays the long form for tabs/search.
+  appleWebApp: { title: "Discovery" },
 };
 
 // Discover-only: paint edge-to-edge into the iOS safe areas so the gallery
