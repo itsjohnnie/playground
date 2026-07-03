@@ -50,7 +50,7 @@ export default function StuffPage() {
   font-family: "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow-x: clip;
 }
-.stuff { max-width: 720px; margin: 0 auto; padding: 0 1.5rem 6rem; }
+.stuff { max-width: 600px; margin: 0 auto; padding: 0 2.1rem 6rem; }
 
 /* Full-bleed hero, flush at the top. */
 .stuff-hero { position: relative; width: 100%; margin: 0; }
