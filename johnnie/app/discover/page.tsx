@@ -47,29 +47,19 @@ export default function DiscoverPage() {
           <div>Discovery Area</div>
         </div>
         <a data-theme-toggle href="#" className="toggle-mode" aria-label="Toggle light or dark mode">
-          <div className="button-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-              <title>Toggle light/dark</title>
-              <g fill="currentColor">
-                <path
-                  d="M20.25,15.418l2.357-2.357a1.5,1.5,0,0,0,0-2.121L20.25,8.583V5.25a1.5,1.5,0,0,0-1.5-1.5H15.417L13.061,1.393a1.5,1.5,0,0,0-2.122,0L8.583,3.75H5.25a1.5,1.5,0,0,0-1.5,1.5V8.583L1.393,10.94a1.5,1.5,0,0,0,0,2.121L3.75,15.418V18.75a1.5,1.5,0,0,0,1.5,1.5H8.583l2.356,2.357a1.5,1.5,0,0,0,2.122,0l2.356-2.357H18.75a1.5,1.5,0,0,0,1.5-1.5Z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.5px"
-                />
-                <path
-                  d="M12,6.75a5.194,5.194,0,0,0-2.25.525,5.222,5.222,0,0,1,0,9.451A5.243,5.243,0,1,0,12,6.75Z"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="1.5px"
-                />
-              </g>
-            </svg>
-          </div>
+          {/* Sun/moon morph: a disc that masks into a crescent (moon) while
+              eight rays fold in; back out to a smaller disc + rays (sun).
+              Pure CSS, state-driven by html.is-dark — styles below. */}
+          <span className="button-icon sunmoon" aria-hidden="true">
+            <span className="ray" />
+            <span className="ray" />
+            <span className="ray" />
+            <span className="ray" />
+            <span className="ray" />
+            <span className="ray" />
+            <span className="ray" />
+            <span className="ray" />
+          </span>
         </a>
       </div>
 
@@ -173,6 +163,61 @@ body,
    transition. Giving the SVG its OWN color transition made it chase an already-
    animating value and finish ~twice as late — so it has none of its own. */
 
+/* Sun/moon morph icon. The disc is ::before; a radial-gradient mask carves a
+   bite out of it. Sun (light mode): the bite parks off-disc (full circle),
+   the disc shrinks, rays extend. Moon (dark): the bite slides to the top-right
+   for a crescent, the disc grows, rays fold into the centre. mask-position and
+   transform are both animatable, so the whole change is one smooth morph.
+   Geometry: element 12px; mask image 24px with a 5px hole at its centre, so
+   mask-position (x,y) puts the bite centre at (x+12, y+12). */
+.sunmoon { position: relative; display: flex; align-items: center; justify-content: center; }
+.sunmoon::before {
+  content: ""; display: block;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: currentColor;
+  -webkit-mask-image: radial-gradient(circle 5px at 30px 30px, transparent 4.5px, #000 5px);
+  mask-image: radial-gradient(circle 5px at 30px 30px, transparent 4.5px, #000 5px);
+  /* The mask tile must keep covering the whole disc at BOTH positions —
+     anything outside the tile is masked out (no-repeat), which ate the disc
+     when the tile was element-sized. 60px gives the bite room to travel. */
+  -webkit-mask-size: 60px 60px; mask-size: 60px 60px;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-position: -4px -40px; mask-position: -4px -40px;
+  transform: scale(.72);
+  transition: transform .5s var(--ease-out),
+    -webkit-mask-position .5s var(--ease-out);
+  transition: transform .5s var(--ease-out),
+    mask-position .5s var(--ease-out),
+    -webkit-mask-position .5s var(--ease-out);
+}
+html.is-dark .sunmoon::before {
+  transform: scale(1);
+  -webkit-mask-position: -21px -27px; mask-position: -21px -27px;
+}
+.sunmoon .ray {
+  position: absolute; left: 50%; top: 50%;
+  width: 2px; height: 4px; margin: -2px 0 0 -1px;
+  border-radius: 1px;
+  background: currentColor;
+  transform: rotate(var(--a)) translateY(-7.5px);
+  transition: transform .5s var(--ease-out), opacity .3s ease;
+}
+.sunmoon .ray:nth-child(1) { --a: 0deg; }
+.sunmoon .ray:nth-child(2) { --a: 45deg; }
+.sunmoon .ray:nth-child(3) { --a: 90deg; }
+.sunmoon .ray:nth-child(4) { --a: 135deg; }
+.sunmoon .ray:nth-child(5) { --a: 180deg; }
+.sunmoon .ray:nth-child(6) { --a: 225deg; }
+.sunmoon .ray:nth-child(7) { --a: 270deg; }
+.sunmoon .ray:nth-child(8) { --a: 315deg; }
+html.is-dark .sunmoon .ray {
+  transform: rotate(var(--a)) translateY(0) scale(0);
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sunmoon::before, .sunmoon .ray { transition: opacity .2s ease; }
+}
+
 /* Vignette edge colour as REGISTERED custom properties so the fade can be
    ANIMATED — a raw background-image gradient can't transition, so it used to
    snap while everything else eased. These ride the exact same .45s ease, so the
@@ -218,11 +263,15 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
    floating 2rem above it. */
 @media (max-width: 479px) {
   .discover-comp {
-    width: calc(100% - 2rem);
-    bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    /* A tad wider than the grid tiles (80vw on phones), well clear of the
+       screen edges — full-bleed-minus-2rem read too wide in standalone. */
+    width: 84vw;
+    /* Breathing room below: a step above the home-indicator safe area rather
+       than flush against it. */
+    bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
     /* Rounder than the site's editorial 4px so the bar doesn't read as a hard
        rectangle against the iPhone's curved display corners, but shy of the
-       1rem gutter — at 1rem the curve cut into the rows' text padding. */
+       old 1rem — at 1rem the curve cut into the rows' text padding. */
     border-radius: 10px;
   }
 }
