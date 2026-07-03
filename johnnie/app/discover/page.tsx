@@ -5,6 +5,12 @@ import DiscoverGrid from "./discover-grid";
 
 export const metadata: Metadata = {
   title: "Discovery Area — Designed by Johnnie Gomez",
+  // Web app manifest: iOS 26 deprecated the apple-mobile-web-app-* metas; the
+  // manifest's display:"standalone" is what current Add to Home Screen reads
+  // to run the page as a true full-screen web app. The metas below stay for
+  // older iOS. (The manifest is baked into the web clip at add-time — icons
+  // added before this shipped keep their old chrome until re-added.)
+  manifest: asset("/discover.webmanifest"),
   // Home-screen (Add to Home Screen) label — iOS uses this instead of the
   // page <title>, which stays the long form for tabs/search. capable and
   // statusBarStyle MUST be re-declared here: this object replaces the layout's
@@ -116,8 +122,15 @@ body { position: relative; }
    document instead of the short standalone viewport. */
 @media (display-mode: standalone), (display-mode: fullscreen) {
   /* Only <html> gets the extra inset — <body> is height:100% OF html, so
-     putting the calc on both would compound to 2× the inset. */
-  html { height: calc(100% + env(safe-area-inset-top, 0px)); }
+     putting the calc on both would compound to 2× the inset.
+     The extension is capped by --vp-shortfall (screen height minus
+     innerHeight, set pre-paint in the head script): iOS has shipped THREE
+     standalone geometries — legacy black-translucent (viewport at screen
+     top, short by the status bar: env-top 62 / shortfall 62 → extend),
+     default-chrome (webview below the status bar: env-top 0 → don't), and
+     manifest-standalone (full viewport: shortfall 0 → don't, or the bar
+     would push below the screen). min() picks correctly in all three. */
+  html { height: calc(100% + min(env(safe-area-inset-top, 0px), var(--vp-shortfall, 0px))); }
   .hero-gradient.cc-white,
   .discover-comp,
   .discover-stage { position: absolute; }
