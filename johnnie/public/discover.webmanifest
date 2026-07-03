@@ -1,0 +1,17 @@
+{
+  "name": "Discovery",
+  "short_name": "Discovery",
+  "description": "Design Discovery Area — designed by Johnnie Gomez",
+  "display": "standalone",
+  "start_url": "/discover/",
+  "scope": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/images/webclip.png",
+      "sizes": "256x256",
+      "type": "image/png"
+    }
+  ]
+}
