@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type TouchEvent,
+} from "react";
 import type { StuffItem } from "@/lib/content";
 import { asset } from "@/lib/asset";
 
@@ -47,7 +54,7 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
   };
   const close = () => {
     setOpen(false);
-    setTimeout(() => setIdx(null), 240);
+    setTimeout(() => setIdx(null), 200); // match the faster exit transition
   };
   // Move to the previous/next item (clamped at the ends).
   const go = (d: number) => {
@@ -134,7 +141,11 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
 
       <ul className="stuff-grid" role="list">
         {sorted.map((it, i) => (
-          <li key={it.name} className={`stuff-row${it.owned ? "" : " is-wish"}`}>
+          <li
+            key={it.name}
+            className={`stuff-row${it.owned ? "" : " is-wish"}`}
+            style={{ "--i": Math.min(i, 12) } as CSSProperties}
+          >
             <button
               type="button"
               className="stuff-rowbtn"
