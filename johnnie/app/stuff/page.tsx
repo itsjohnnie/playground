@@ -15,13 +15,21 @@ export default function StuffPage() {
   return (
     <main className="stuff-page">
       <div className="stuff-hero">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={asset("/images/stuff-hero.png")}
-          alt="Johnnie at his desk with his two monitors and his dog Honey"
-          width={1024}
-          height={1024}
-        />
+        {/* Light and dark renders of the same scene; the browser picks by the
+            system colour-scheme preference. */}
+        <picture>
+          <source
+            srcSet={asset("/images/stuff-hero-dark.png")}
+            media="(prefers-color-scheme: dark)"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={asset("/images/stuff-hero.png")}
+            alt="Johnnie at his desk with his two monitors and his dog Honey"
+            width={1024}
+            height={1024}
+          />
+        </picture>
       </div>
 
       <div className="stuff">
@@ -32,8 +40,13 @@ export default function StuffPage() {
         dangerouslySetInnerHTML={{
           __html: `
 /* Background matches the hero image's studio backdrop so the render blends
-   seamlessly into the page (overrides the cycling homepage background). */
+   seamlessly into the page (overrides the cycling homepage background). The
+   page follows the system light/dark preference — light uses the #f1f1f0
+   studio render, dark uses the near-black (#0c0c0d) render. */
 .body { background-color: #f1f1f0 !important; }
+@media (prefers-color-scheme: dark) {
+  .body { background-color: #0c0c0d !important; }
+}
 
 /* Inter, self-hosted from Rasmus Andersson's official variable-font
    distribution (rsms.me/inter) — not Google Fonts. */
@@ -45,22 +58,48 @@ export default function StuffPage() {
   src: url("/fonts/InterVariable.woff2") format("woff2");
 }
 
+/* Theme tokens: one set of colours drives the whole page + modal so the two
+   themes stay in lock-step. The modal background is --s-bg, i.e. the page bg. */
 .stuff-page {
-  color: #1b1b1b;
+  --s-bg: #f1f1f0;
+  --s-fg: #1b1b1b;
+  --s-line: rgba(27, 27, 27, .12);
+  --s-line-soft: rgba(27, 27, 27, .1);
+  --s-faint: rgba(27, 27, 27, .08);
+  --s-chip: rgba(241, 241, 240, .92);
+  --s-chip-hover: #e9e9e7;
+  --s-btn-bg: #1b1b1b;
+  --s-btn-fg: #fff;
+  color: var(--s-fg);
   font-family: "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow-x: clip;
+}
+@media (prefers-color-scheme: dark) {
+  .stuff-page {
+    --s-bg: #0c0c0d;
+    --s-fg: #ececed;
+    --s-line: rgba(255, 255, 255, .14);
+    --s-line-soft: rgba(255, 255, 255, .1);
+    --s-faint: rgba(255, 255, 255, .09);
+    --s-chip: rgba(38, 38, 42, .92);
+    --s-chip-hover: #303035;
+    --s-btn-bg: #ececed;
+    --s-btn-fg: #0c0c0d;
+    color-scheme: dark;
+  }
 }
 .stuff { max-width: 600px; margin: 0 auto; padding: 0 2.1rem 6rem; }
 
 /* Full-bleed hero, flush at the top. */
 .stuff-hero { position: relative; width: 100%; margin: 0; }
+.stuff-hero picture { display: block; }
 .stuff-hero img { width: 100%; height: auto; display: block; }
 /* Inner glow in the page's background colour, feathered inward on every edge.
    The photo's borders aren't a perfectly uniform tone, so this haze blends
    the render into the page instead of leaving a hard, slightly-mismatched seam. */
 .stuff-hero::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
-  box-shadow: inset 0 0 clamp(28px, 9vw, 70px) clamp(10px, 3.5vw, 26px) #f1f1f0;
+  box-shadow: inset 0 0 clamp(28px, 9vw, 70px) clamp(10px, 3.5vw, 26px) var(--s-bg);
 }
 
 /* Title + sort on one line; description below. Positioned above the hero so
@@ -87,16 +126,21 @@ export default function StuffPage() {
 }
 .stuff-sort select {
   font: inherit; text-transform: uppercase; letter-spacing: .06em;
-  color: #1b1b1b; background: transparent;
-  border: none; border-bottom: 1px solid rgba(27, 27, 27, .25);
+  color: var(--s-fg); background: transparent;
+  border: none; border-bottom: 1px solid var(--s-line);
   padding: .15rem 1.15rem .15rem .1rem; cursor: pointer;
   appearance: none; -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%231b1b1b' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right .05rem center; background-size: .62rem;
   transition: border-color .2s var(--ease-out);
 }
-.stuff-sort select:hover { border-bottom-color: rgba(27, 27, 27, .5); }
-.stuff-sort select:focus-visible { outline: 2px solid #1b1b1b; outline-offset: 3px; border-radius: 1px; }
+@media (prefers-color-scheme: dark) {
+  .stuff-sort select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%23ececed' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  }
+}
+.stuff-sort select:hover { border-bottom-color: var(--s-fg); }
+.stuff-sort select:focus-visible { outline: 2px solid var(--s-fg); outline-offset: 3px; border-radius: 1px; }
 
 .stuff-desc {
   font-size: .95rem; line-height: 1.5; max-width: 46ch;
@@ -106,8 +150,8 @@ export default function StuffPage() {
 .stuff-hint { display: block; margin-top: .45rem; }
 
 /* List + expandable rows. */
-.stuff-grid { list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(27, 27, 27, .12); }
-.stuff-row { border-bottom: 1px solid rgba(27, 27, 27, .12); transition: opacity .25s var(--ease-out); }
+.stuff-grid { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--s-line); }
+.stuff-row { border-bottom: 1px solid var(--s-line); transition: opacity .25s var(--ease-out); }
 .stuff-row.is-wish { opacity: .4; }
 
 .stuff-rowbtn {
@@ -128,7 +172,7 @@ export default function StuffPage() {
 }
 /* Row indicator: a small right-chevron; tapping the row opens a modal. */
 .stuff-arrow {
-  color: #1b1b1b; opacity: .35; flex: none;
+  color: var(--s-fg); opacity: .35; flex: none;
   transition: transform .16s var(--ease-out), opacity .2s var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
@@ -147,7 +191,7 @@ export default function StuffPage() {
 .stuff-modal-card {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
-  background: #fff; border-radius: 0; overflow: hidden;
+  background: var(--s-bg); border-radius: 0; overflow: hidden;
   display: flex; flex-direction: column;
   padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
   transform: translateY(14px); transition: transform .26s var(--ease-out);
@@ -157,12 +201,12 @@ export default function StuffPage() {
   position: absolute; top: calc(env(safe-area-inset-top) + .8rem); right: .9rem; z-index: 3;
   width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(241, 241, 240, .92); border: 1px solid rgba(27, 27, 27, .08);
-  color: #1b1b1b; cursor: pointer;
+  background: var(--s-chip); border: 1px solid var(--s-faint);
+  color: var(--s-fg); cursor: pointer;
   transition: background .2s var(--ease-out), transform .16s var(--ease-out);
 }
 .stuff-modal-x:active { transform: scale(.9); }
-@media (hover: hover) and (pointer: fine) { .stuff-modal-x:hover { background: #e9e9e7; } }
+@media (hover: hover) and (pointer: fine) { .stuff-modal-x:hover { background: var(--s-chip-hover); } }
 
 /* Scrollable, per-item content; remounts on nav so it slides in. */
 .stuff-modal-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -174,11 +218,11 @@ export default function StuffPage() {
 .stuff-modal-inner { max-width: 560px; margin: 0 auto; padding-bottom: 2.5rem; }
 
 .stuff-modal-media {
-  aspect-ratio: 4 / 3; background: #fff;
+  aspect-ratio: 4 / 3; background: var(--s-bg);
   display: flex; align-items: center; justify-content: center;
 }
 .stuff-modal-media img { width: 100%; height: 100%; object-fit: contain; }
-.stuff-thumb-ph { width: 22%; height: 22%; color: #1b1b1b; opacity: .22; }
+.stuff-thumb-ph { width: 22%; height: 22%; color: var(--s-fg); opacity: .22; }
 
 .stuff-modal-body { padding: 1.5rem 1.6rem 0; }
 .stuff-modal-head {
@@ -195,23 +239,21 @@ export default function StuffPage() {
 }
 .stuff-modal-head .stuff-cat { flex: none; }
 
-/* Two equal columns, with a continuous hairline divider between each row.
-   Column gap comes from the label's right padding (not grid gap) so the two
-   cells' top borders meet in the middle instead of leaving a break. */
-.stuff-facts-dl {
-  margin: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 0;
+/* Each fact is a flex row (label | value) so the whole-width divider stays
+   continuous, and the label aligns to the FIRST-LINE baseline of the value
+   (not the vertical middle of the cell) even when the value wraps. */
+.stuff-facts-dl { margin: 0; }
+.stuff-fact {
+  display: flex; align-items: baseline;
+  padding: .62rem 0; border-top: 1px solid var(--s-line-soft);
 }
-.stuff-facts-dl dt, .stuff-facts-dl dd {
-  padding: .62rem 0; border-top: 1px solid rgba(27, 27, 27, .1);
-  display: flex; align-items: center;
-}
-.stuff-facts-dl dt { padding-right: 1rem; }
-.stuff-facts-dl dt:first-of-type, .stuff-facts-dl dd:first-of-type { border-top: 0; }
+.stuff-fact:first-child { border-top: 0; }
 .stuff-facts-dl dt {
+  flex: 0 0 50%; padding-right: 1rem; margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; opacity: .5;
 }
-.stuff-facts-dl dd { margin: 0; font-size: .92rem; }
+.stuff-facts-dl dd { flex: 1; margin: 0; font-size: .92rem; }
 .stuff-descr { margin: 1.25rem 0 0; font-size: .92rem; line-height: 1.55; opacity: .75; }
 .stuff-descr--empty { opacity: .4; font-style: italic; }
 /* Full-width call-to-action button that takes you to where you can buy it. */
@@ -220,12 +262,12 @@ export default function StuffPage() {
   width: 100%; margin-top: 1.5rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .82rem; letter-spacing: .02em;
-  color: #fff; background: #1b1b1b; text-decoration: none;
+  color: var(--s-btn-fg); background: var(--s-btn-bg); text-decoration: none;
   padding: .95rem 1rem; border-radius: 12px;
-  transition: transform .16s var(--ease-out), background .2s var(--ease-out);
+  transition: transform .16s var(--ease-out), opacity .2s var(--ease-out);
 }
 .stuff-get:active { transform: scale(.98); }
-@media (hover: hover) and (pointer: fine) { .stuff-get:hover { background: #000; } }
+@media (hover: hover) and (pointer: fine) { .stuff-get:hover { opacity: .88; } }
 
 @media (prefers-reduced-motion: reduce) {
   .stuff-modal, .stuff-modal-card, .stuff-arrow { transition: none; }

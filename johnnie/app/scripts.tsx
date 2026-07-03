@@ -161,15 +161,26 @@ export default function Scripts() {
     // The Discover page runs its own background/theme logic (a flat white/dark
     // canvas), so the cycling color loop must not run there.
     if (pathname.indexOf("/discover") !== -1) return;
-    // /stuff is a plain white page — no colour cycling; keep the chrome white too.
+    // /stuff has no colour cycling; it follows the system light/dark preference
+    // (light → #f1f1f0 studio backdrop, dark → #0c0c0d), keeping the nav chrome
+    // and browser theme-color in sync — live-updating if the preference flips.
     const isStuff = pathname.indexOf("/stuff") !== -1;
+    let stopStuff = () => {};
     if (isStuff) {
-      document.documentElement.style.setProperty("--bg", "#f1f1f0");
-      document
-        .querySelectorAll('meta[name="theme-color"]')
-        .forEach((m) => m.setAttribute("content", "#f1f1f0"));
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const applyStuff = () => {
+        const c = mq.matches ? "#0c0c0d" : "#f1f1f0";
+        document.documentElement.style.setProperty("--bg", c);
+        document.documentElement.style.colorScheme = mq.matches ? "dark" : "light";
+        document
+          .querySelectorAll('meta[name="theme-color"]')
+          .forEach((m) => m.setAttribute("content", c));
+      };
+      applyStuff();
+      mq.addEventListener("change", applyStuff);
+      stopStuff = () => mq.removeEventListener("change", applyStuff);
     }
-    const stopColor = isStuff ? () => {} : colorCycle();
+    const stopColor = isStuff ? stopStuff : colorCycle();
     const stopLightbox = lightbox();
     const stopAnchors = smoothAnchors();
     return () => {
