@@ -88,12 +88,32 @@ export default function DiscoverPage() {
         dangerouslySetInnerHTML={{
           __html: `
 /* Full-screen document so the absolutely-positioned grid below can reach the
-   true screen edges. In iOS standalone, position:fixed content is clipped to
-   the safe-area (home-indicator) boundary — leaving a bar at the bottom — but
-   an absolutely-positioned layer tied to a full-height document paints under
-   the home indicator. So html/body fill the screen and the grid is absolute. */
+   true screen edges. html/body fill the screen and the grid is absolute.
+   <body> is the positioning root (relative) so every absolute layer sizes to
+   the document box we control below — NOT the initial containing block, which
+   iOS sizes short in standalone mode. */
 html, body { overflow: hidden; height: 100%; margin: 0; }
+body { position: relative; }
 .hero { position: absolute; inset: 0; overflow: hidden; }
+
+/* iOS standalone (Add to Home Screen): WebKit resolves the 100%-height
+   document as (screen minus the status bar) but paints it from the very TOP
+   of the screen — so the layout ends a status-bar-height short of the BOTTOM,
+   leaving a page-coloured bar above the home indicator. Grow the document by
+   the top inset so its bottom edge lands on the true screen bottom, and pin
+   the page's fixed layers (vignette, control bar, stage) to that corrected
+   document instead of the short standalone viewport. */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  /* Only <html> gets the extra inset — <body> is height:100% OF html, so
+     putting the calc on both would compound to 2× the inset. */
+  html { height: calc(100% + env(safe-area-inset-top, 0px)); }
+  .hero-gradient.cc-white,
+  .discover-comp,
+  .discover-stage { position: absolute; }
+  /* The vignette's base class sets height:100dvh, which beats inset:0 —
+     let inset:0 govern so it covers the extended document. */
+  .hero-gradient.cc-white { height: auto; }
+}
 
 /* Unified light/dark transition. Every themed surface eases on the SAME timing
    so backgrounds, text, borders, shadows and the toggle icon all change in
