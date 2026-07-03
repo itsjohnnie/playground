@@ -6,8 +6,16 @@ import DiscoverGrid from "./discover-grid";
 export const metadata: Metadata = {
   title: "Design Discovery Area — Designed by Johnnie Gomez",
   // Home-screen (Add to Home Screen) label — iOS uses this instead of the
-  // page <title>, which stays the long form for tabs/search.
-  appleWebApp: { title: "Discovery" },
+  // page <title>, which stays the long form for tabs/search. capable and
+  // statusBarStyle MUST be re-declared here: this object replaces the layout's
+  // appleWebApp wholesale, and omitting statusBarStyle makes Next emit
+  // "default", which shoves the standalone webview below the status bar
+  // (the top-bar regression this comment exists to prevent).
+  appleWebApp: {
+    capable: true,
+    title: "Discovery",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 // Discover-only: paint edge-to-edge into the iOS safe areas so the gallery
