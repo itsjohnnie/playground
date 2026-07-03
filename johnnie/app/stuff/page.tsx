@@ -129,11 +129,11 @@ export default function StuffPage() {
   text-transform: none;
   margin: clamp(1.4rem, 6vw, 3rem) 0 0;   /* clear gap between the photo and the title */
 }
-/* Superscript registered-trademark mark, set a bit off the title. */
+/* Superscript registered-trademark mark, set a bit off the title. Same colour
+   as the heading (no dimming). */
 .stuff-reg {
-  font-size: .34em; font-weight: 500; letter-spacing: 0;
-  vertical-align: top; position: relative; top: .16em; left: .14em;
-  opacity: .8;
+  font-size: .4em; font-weight: 500; letter-spacing: 0;
+  vertical-align: top; position: relative; top: .14em; left: .14em;
 }
 
 /* Sort control (bottom-aligned with the title). */
