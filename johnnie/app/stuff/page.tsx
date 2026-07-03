@@ -102,6 +102,8 @@ export default function StuffPage() {
   font-size: .95rem; line-height: 1.5; max-width: 46ch;
   opacity: .55; margin: .75rem 0 clamp(1.5rem, 5vw, 2.5rem);
 }
+/* The "tap for details" hint sits on its own line for a cleaner block. */
+.stuff-hint { display: block; margin-top: .45rem; }
 
 /* List + expandable rows. */
 .stuff-grid { list-style: none; margin: 0; padding: 0; border-top: 1px solid rgba(27, 27, 27, .12); }
@@ -113,7 +115,12 @@ export default function StuffPage() {
   gap: 1rem; padding: .6rem .25rem;
   background: none; border: 0; cursor: pointer; text-align: left; color: inherit; font: inherit;
 }
-.stuff-name { font-size: 1.05rem; font-weight: 500; letter-spacing: -.01em; }
+/* Name flexes and truncates with an ellipsis when it's too long for the row. */
+.stuff-name {
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 1.05rem; font-weight: 500; letter-spacing: -.01em;
+}
 .stuff-rowmeta { flex: none; display: inline-flex; align-items: center; gap: .75rem; }
 .stuff-cat {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -128,25 +135,27 @@ export default function StuffPage() {
   .stuff-rowbtn:hover .stuff-arrow { opacity: .7; transform: translateX(2px); }
 }
 
-/* Detail modal (centered dialog, closed via the ✕, backdrop, or Escape). */
+/* Full-screen detail sheet. Closed via the ✕, backdrop, or Escape; swipe (or
+   ←/→) pages between items. */
 .stuff-modal {
   position: fixed; inset: 0; z-index: 100;
-  display: flex; align-items: center; justify-content: center; padding: 1.25rem;
   background: rgba(20, 20, 19, .38);
   -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   opacity: 0; transition: opacity .22s var(--ease-out);
 }
 .stuff-modal.is-open { opacity: 1; }
 .stuff-modal-card {
-  position: relative;
-  width: 100%; max-width: 400px; max-height: 88vh; overflow-y: auto;
-  background: #fff; border-radius: 14px; box-shadow: 0 24px 64px rgba(0, 0, 0, .3);
-  transform: scale(.96); transition: transform .24s var(--ease-out);
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  background: #fff; border-radius: 0; overflow: hidden;
+  display: flex; flex-direction: column;
+  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  transform: translateY(14px); transition: transform .26s var(--ease-out);
 }
-.stuff-modal.is-open .stuff-modal-card { transform: scale(1); }
+.stuff-modal.is-open .stuff-modal-card { transform: none; }
 .stuff-modal-x {
-  position: absolute; top: .7rem; right: .7rem; z-index: 2;
-  width: 30px; height: 30px; border-radius: 50%;
+  position: absolute; top: calc(env(safe-area-inset-top) + .8rem); right: .9rem; z-index: 3;
+  width: 34px; height: 34px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: rgba(241, 241, 240, .92); border: 1px solid rgba(27, 27, 27, .08);
   color: #1b1b1b; cursor: pointer;
@@ -155,48 +164,72 @@ export default function StuffPage() {
 .stuff-modal-x:active { transform: scale(.9); }
 @media (hover: hover) and (pointer: fine) { .stuff-modal-x:hover { background: #e9e9e7; } }
 
+/* Scrollable, per-item content; remounts on nav so it slides in. */
+.stuff-modal-scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.stuff-modal-scroll[data-dir="next"] { animation: stuffSlideNext .28s var(--ease-out); }
+.stuff-modal-scroll[data-dir="prev"] { animation: stuffSlidePrev .28s var(--ease-out); }
+@keyframes stuffSlideNext { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+@keyframes stuffSlidePrev { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+/* Content column stays readable even on a wide (desktop) full-screen sheet. */
+.stuff-modal-inner { max-width: 560px; margin: 0 auto; padding-bottom: 2.5rem; }
+
 .stuff-modal-media {
-  aspect-ratio: 4 / 3; background: #fff; border-radius: 14px 14px 0 0;
+  aspect-ratio: 4 / 3; background: #fff;
   display: flex; align-items: center; justify-content: center;
-  border-bottom: 1px solid rgba(27, 27, 27, .07);
 }
 .stuff-modal-media img { width: 100%; height: 100%; object-fit: contain; }
-.stuff-thumb-ph { width: 26%; height: 26%; color: #1b1b1b; opacity: .22; }
+.stuff-thumb-ph { width: 22%; height: 22%; color: #1b1b1b; opacity: .22; }
 
-.stuff-modal-body { padding: 1.25rem 1.4rem 1.5rem; }
+.stuff-modal-body { padding: 1.5rem 1.6rem 0; }
 .stuff-modal-head {
   display: flex; align-items: baseline; justify-content: space-between;
-  gap: 1rem; margin-bottom: 1.1rem;
+  gap: .9rem; margin-bottom: 1.25rem;
 }
+/* Product name: same Inter face as the rest of the page (not condensed),
+   truncated with an ellipsis if it's too long. */
 .stuff-modal-head h2 {
-  font-size: 1.35rem; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; margin: 0;
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: "Inter var", -apple-system, Helvetica, Arial, sans-serif;
+  font-size: 1.5rem; font-weight: 600; letter-spacing: -.01em; line-height: 1.15; margin: 0;
 }
+.stuff-modal-head .stuff-cat { flex: none; }
 
+/* Two equal columns, with a continuous hairline divider between each row.
+   Column gap comes from the label's right padding (not grid gap) so the two
+   cells' top borders meet in the middle instead of leaving a break. */
 .stuff-facts-dl {
-  margin: 0; display: grid; grid-template-columns: auto 1fr;
-  gap: .4rem 1rem; align-items: baseline;
+  margin: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 0;
 }
+.stuff-facts-dl dt, .stuff-facts-dl dd {
+  padding: .62rem 0; border-top: 1px solid rgba(27, 27, 27, .1);
+  display: flex; align-items: center;
+}
+.stuff-facts-dl dt { padding-right: 1rem; }
+.stuff-facts-dl dt:first-of-type, .stuff-facts-dl dd:first-of-type { border-top: 0; }
 .stuff-facts-dl dt {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .66rem; text-transform: uppercase; letter-spacing: .06em; opacity: .5;
 }
 .stuff-facts-dl dd { margin: 0; font-size: .92rem; }
-.stuff-descr { margin: 1rem 0 0; font-size: .92rem; line-height: 1.55; opacity: .75; }
+.stuff-descr { margin: 1.25rem 0 0; font-size: .92rem; line-height: 1.55; opacity: .75; }
 .stuff-descr--empty { opacity: .4; font-style: italic; }
-/* Prominent call-to-action button that takes you to where you can buy it. */
+/* Full-width call-to-action button that takes you to where you can buy it. */
 .stuff-get {
-  display: inline-flex; align-items: center; gap: .4rem; margin-top: 1.3rem;
+  display: flex; align-items: center; justify-content: center; gap: .4rem;
+  width: 100%; margin-top: 1.5rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: .78rem; letter-spacing: .02em;
+  font-size: .82rem; letter-spacing: .02em;
   color: #fff; background: #1b1b1b; text-decoration: none;
-  padding: .62rem 1rem; border-radius: 999px;
+  padding: .95rem 1rem; border-radius: 12px;
   transition: transform .16s var(--ease-out), background .2s var(--ease-out);
 }
-.stuff-get:active { transform: scale(.97); }
+.stuff-get:active { transform: scale(.98); }
 @media (hover: hover) and (pointer: fine) { .stuff-get:hover { background: #000; } }
 
 @media (prefers-reduced-motion: reduce) {
   .stuff-modal, .stuff-modal-card, .stuff-arrow { transition: none; }
+  .stuff-modal-scroll[data-dir="next"], .stuff-modal-scroll[data-dir="prev"] { animation: none; }
 }
 `,
         }}
