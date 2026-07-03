@@ -146,8 +146,6 @@ export default function StuffPage() {
   font-size: .95rem; line-height: 1.5; max-width: 46ch;
   opacity: .55; margin: .75rem 0 clamp(1.5rem, 5vw, 2.5rem);
 }
-/* The "tap for details" hint sits on its own line for a cleaner block. */
-.stuff-hint { display: block; margin-top: .45rem; }
 
 /* List + expandable rows. */
 .stuff-grid { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--s-line); }
@@ -170,13 +168,13 @@ export default function StuffPage() {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; opacity: .55; white-space: nowrap;
 }
-/* Row indicator: a small right-chevron; tapping the row opens a modal. */
-.stuff-arrow {
-  color: var(--s-fg); opacity: .35; flex: none;
-  transition: transform .16s var(--ease-out), opacity .2s var(--ease-out);
+/* Row indicator: an info (ⓘ) glyph; tapping the row opens the detail modal. */
+.stuff-info {
+  color: var(--s-fg); opacity: .32; flex: none;
+  transition: opacity .2s var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
-  .stuff-rowbtn:hover .stuff-arrow { opacity: .7; transform: translateX(2px); }
+  .stuff-rowbtn:hover .stuff-info { opacity: .6; }
 }
 
 /* Full-screen detail sheet. Closed via the ✕, backdrop, or Escape; swipe (or
@@ -270,7 +268,7 @@ export default function StuffPage() {
 @media (hover: hover) and (pointer: fine) { .stuff-get:hover { opacity: .88; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .stuff-modal, .stuff-modal-card, .stuff-arrow { transition: none; }
+  .stuff-modal, .stuff-modal-card, .stuff-info { transition: none; }
   .stuff-modal-scroll[data-dir="next"], .stuff-modal-scroll[data-dir="prev"] { animation: none; }
 }
 `,

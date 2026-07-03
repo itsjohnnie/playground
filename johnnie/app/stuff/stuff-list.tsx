@@ -128,7 +128,6 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
       <p className="stuff-desc">
         Things I have — and things I&#x27;ll have, one day. The dimmed ones are
         still on the list.
-        <span className="stuff-hint">Tap an item for the details.</span>
       </p>
 
       <ul className="stuff-grid" role="list">
@@ -142,8 +141,10 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
               <span className="stuff-name">{it.name}</span>
               <span className="stuff-rowmeta">
                 <span className="stuff-cat">{it.category}</span>
-                <svg className="stuff-arrow" viewBox="0 0 12 12" width="11" height="11" aria-hidden="true">
-                  <path d="M4.5 2.5 8 6l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <svg className="stuff-info" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true">
+                  <circle cx="10" cy="10" r="8.3" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                  <circle cx="10" cy="6.4" r="1.05" fill="currentColor" />
+                  <path d="M10 9.1v5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                 </svg>
               </span>
             </button>
