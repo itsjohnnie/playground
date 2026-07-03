@@ -19,13 +19,20 @@ export const metadata: Metadata = {
     title: "Johnnie's Life — An ongoing work in progress",
     images: [asset("/images/opengraph.jpg")],
   },
+  // Transparent status bar in standalone (Add to Home Screen) mode so content
+  // paints behind it edge-to-edge, instead of "default"'s opaque bar that
+  // pushes the whole webview down. Pairs with viewport-fit=cover + safe-area
+  // insets. NOTE: a page-level `appleWebApp` REPLACES this object wholesale
+  // (Next merges metadata shallowly), so any page that sets it must re-declare
+  // capable + statusBarStyle or iOS falls back to "default" and gains a bar.
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+  },
   other: {
+    // Next's appleWebApp.capable emits only the modern mobile-web-app-capable;
+    // older iOS keys standalone mode off the apple- prefixed variant.
     "apple-mobile-web-app-capable": "yes",
-    "mobile-web-app-capable": "yes",
-    // Transparent status bar in standalone (Add to Home Screen) mode so content
-    // paints behind it edge-to-edge, instead of "default"'s opaque white bar
-    // that pushes the page down. Pairs with viewport-fit=cover + safe-area insets.
-    "apple-mobile-web-app-status-bar-style": "black-translucent",
   },
 };
 

@@ -6,8 +6,16 @@ import DiscoverGrid from "./discover-grid";
 export const metadata: Metadata = {
   title: "Design Discovery Area — Designed by Johnnie Gomez",
   // Home-screen (Add to Home Screen) label — iOS uses this instead of the
-  // page <title>, which stays the long form for tabs/search.
-  appleWebApp: { title: "Discovery" },
+  // page <title>, which stays the long form for tabs/search. capable and
+  // statusBarStyle MUST be re-declared here: this object replaces the layout's
+  // appleWebApp wholesale, and omitting statusBarStyle makes Next emit
+  // "default", which shoves the standalone webview below the status bar
+  // (the top-bar regression this comment exists to prevent).
+  appleWebApp: {
+    capable: true,
+    title: "Discovery",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 // Discover-only: paint edge-to-edge into the iOS safe areas so the gallery
@@ -192,6 +200,10 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
   .discover-comp {
     width: calc(100% - 2rem);
     bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+    /* Radius matches the 1rem gutter so the bar sits concentric-ish with the
+       iPhone's big display corners — 4px read as a hard rectangle fighting
+       the screen's curve. Desktop keeps the site's editorial 4px. */
+    border-radius: 1rem;
   }
 }
 .hero-list-wrapper.ready { opacity: 1; }
