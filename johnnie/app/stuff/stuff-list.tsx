@@ -110,7 +110,9 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
   return (
     <>
       <div className="stuff-titlerow">
-        <h1>Stuff</h1>
+        <h1>
+          Stuff<span className="stuff-reg" aria-hidden="true">®</span>
+        </h1>
         <label className="stuff-sort">
           <span>Sort</span>
           <select
