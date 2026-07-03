@@ -170,7 +170,12 @@ body,
    transform are both animatable, so the whole change is one smooth morph.
    Geometry: element 12px; mask image 24px with a 5px hole at its centre, so
    mask-position (x,y) puts the bite centre at (x+12, y+12). */
-.sunmoon { position: relative; display: flex; align-items: center; justify-content: center; }
+.sunmoon {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  /* Uniform shrink of the whole glyph (disc + rays) — full-size it crowded
+     the button. Scaling the container keeps the morph geometry intact. */
+  transform: scale(.8);
+}
 .sunmoon::before {
   content: ""; display: block;
   width: 12px; height: 12px; border-radius: 50%;
@@ -264,13 +269,13 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
 @media (max-width: 479px) {
   .discover-comp {
     /* A tad wider than the grid tiles (80vw on phones), well clear of the
-       screen edges — full-bleed-minus-2rem read too wide in standalone. */
-    width: 84vw;
-    /* Bottom gap matches the 8vw side gaps ((100 - 84vw) / 2) so the bar
-       floats with even spacing all around; the max() keeps it clear of the
-       home-indicator zone in standalone, which is within a couple px of the
-       side gap anyway. */
-    bottom: max(8vw, env(safe-area-inset-bottom, 0px));
+       screen edges — full-bleed-minus-2rem read too wide in standalone.
+       Fixed 2rem gutters (not 8vw) so the frame is an even 32px, not 32.2. */
+    width: calc(100% - 4rem);
+    /* Bottom gap matches the 2rem side gaps so the bar floats with even
+       spacing all around; the max() keeps it clear of the home-indicator
+       zone in standalone, which is within a couple px of the sides anyway. */
+    bottom: max(2rem, env(safe-area-inset-bottom, 0px));
     /* Rounder than the site's editorial 4px so the bar doesn't read as a hard
        rectangle against the iPhone's curved display corners, but shy of the
        old 1rem — at 1rem the curve cut into the rows' text padding. */
