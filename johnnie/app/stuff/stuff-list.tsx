@@ -120,7 +120,7 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
             onChange={(e) => setSort(e.target.value as SortMode)}
             aria-label="Sort items"
           >
-            <option value="status">Have first</option>
+            <option value="status">Purchased</option>
             <option value="category">Category</option>
             <option value="az">A–Z</option>
           </select>
