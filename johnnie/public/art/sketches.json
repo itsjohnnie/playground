@@ -1,105 +1,7 @@
 {
   "project": "a daily generative art practice, after Zach Lieberman",
-  "batch_note": "008 — diez estudios de un partido · pick the ones that stay.",
+  "batch_note": "008 — ocho estudios de un partido · curated 06·07.",
   "sketches": [
-    {
-      "n": "001",
-      "title": "pool",
-      "date": "2026-07-06",
-      "file": "sketches/001.html",
-      "medium": "webgl shader",
-      "tags": [
-        "gradients",
-        "color blending",
-        "blobs"
-      ],
-      "status": "candidate",
-      "note": "Soft color-field blobs breathing into each other, pigment-style mixing on cream paper."
-    },
-    {
-      "n": "002",
-      "title": "hills",
-      "date": "2026-07-06",
-      "file": "sketches/002.html",
-      "medium": "webgl shader",
-      "tags": [
-        "dithering",
-        "1-bit",
-        "landscape"
-      ],
-      "status": "candidate",
-      "note": "Rolling noise terrain through an 8×8 Bayer matrix. One bit of ink; the machine pretends to be a printer."
-    },
-    {
-      "n": "003",
-      "title": "misregistration",
-      "date": "2026-07-06",
-      "file": "sketches/003.html",
-      "medium": "webgl shader",
-      "tags": [
-        "moiré",
-        "riso",
-        "stripes"
-      ],
-      "status": "candidate",
-      "note": "Two riso ink layers of warped stripes printed slightly off-register. The moiré is the drawing."
-    },
-    {
-      "n": "004",
-      "title": "lenses",
-      "date": "2026-07-06",
-      "file": "sketches/004.html",
-      "medium": "canvas 2d",
-      "tags": [
-        "dot grid",
-        "refraction",
-        "optics"
-      ],
-      "status": "candidate",
-      "note": "A quiet grid of dots disturbed by invisible glass. Three lenses wander the field."
-    },
-    {
-      "n": "005",
-      "title": "plume",
-      "date": "2026-07-06",
-      "file": "sketches/005.html",
-      "medium": "canvas 2d",
-      "tags": [
-        "flow field",
-        "particles",
-        "additive"
-      ],
-      "status": "candidate",
-      "note": "Particles ride a slowly turning noise field, drawing additive light. Long exposure of something that was never there."
-    },
-    {
-      "n": "006",
-      "title": "wash",
-      "date": "2026-07-06",
-      "file": "sketches/006.html",
-      "medium": "canvas 2d",
-      "tags": [
-        "watercolor",
-        "layering",
-        "grain"
-      ],
-      "status": "candidate",
-      "note": "Translucent deformed circles settle on paper one at a time, like watercolor drying in layers."
-    },
-    {
-      "n": "007",
-      "title": "taffy",
-      "date": "2026-07-06",
-      "file": "sketches/007.html",
-      "medium": "canvas 2d feedback",
-      "tags": [
-        "feedback",
-        "smear",
-        "glow"
-      ],
-      "status": "candidate",
-      "note": "Video feedback in software: the canvas redraws into itself, rotated and zoomed, while three lights orbit."
-    },
     {
       "n": "008j",
       "title": "órbitas",
@@ -144,17 +46,17 @@
     },
     {
       "n": "008g",
-      "title": "transmisión",
+      "title": "aerosol",
       "date": "2026-07-06",
       "file": "sketches/008g.html",
-      "medium": "slit-scan · feedback",
+      "medium": "glsl · spray grain",
       "tags": [
-        "data",
-        "slit-scan",
-        "crt"
+        "gradients",
+        "spray",
+        "poster"
       ],
       "status": "candidate",
-      "note": "A chart-recorder scans the match's color signal into a degraded broadcast; goals leave hot scars."
+      "note": "One spray stroke around the match clock — celeste 64%, rose 36%, five bursts at the goals, the own goal drips. Sprayed once, then finished."
     },
     {
       "n": "008f",
@@ -200,17 +102,17 @@
     },
     {
       "n": "008c",
-      "title": "constelación",
+      "title": "marea",
       "date": "2026-07-06",
       "file": "sketches/008c.html",
-      "medium": "three.js · star chart",
+      "medium": "glsl · dither scene",
       "tags": [
-        "data",
-        "stars",
-        "additive"
+        "gradients",
+        "dither",
+        "scene"
       ],
       "status": "candidate",
-      "note": "All 38 shots as stars on a vertical time axis; the five goals burn brightest, the own goal wears a hollow halo."
+      "note": "A dusk shoreline: six ridges carry the real per-phase pressure, a gold sun hangs at minute 111. The tide comes in once, then rests."
     },
     {
       "n": "008b",
@@ -228,17 +130,17 @@
     },
     {
       "n": "008a",
-      "title": "río",
+      "title": "bruma",
       "date": "2026-07-06",
       "file": "sketches/008a.html",
-      "medium": "canvas 2d · dos tintas",
+      "medium": "glsl · dithered gradients",
       "tags": [
-        "data",
-        "riso",
-        "river"
+        "gradients",
+        "dither",
+        "settle"
       ],
       "status": "candidate",
-      "note": "Two risograph inks share one page; the boundary is the real balance of the game, goals bend the river."
+      "note": "The match as weather: five soft gradient forms — the own goal a hollow ring — drift in, settle, and rest. The dither lives in the pigment."
     }
   ]
 }

@@ -60,8 +60,12 @@ with **the composition always in the middle**, and since 008 every piece lives
 inside **the frame** (`johnnie/public/art/frame.js`):
 
 - A **3:4 portrait stage**, centered, with a fixed Swiss overlay: a **6×8
-  hairline grid**, one font (**Fragment Mono**, self-hosted in `art/lib/`),
-  one weight, one small size, all lowercase.
+  hairline grid**, set in **Geist Mono** (the Geist family — Sans, Mono,
+  Pixel Square — is self-hosted in `art/lib/fonts/` and @font-face'd by
+  frame.js for pieces to use). Frame type is **mostly uppercase**, one small
+  size, **two weights**: regular, with a bolder lead line per cell (piece
+  number, score). URLs stay lowercase (`.lc`). Geist Pixel is for expressive
+  moments inside pieces (e.g. minutos' giant counter), never for the frame.
 - The frame holds the constants — piece number/variant, title, date, Johnnie's
   info, the data line, the tech stamp — in fixed grid slots. It never changes.
   All creativity happens on the canvas layer *behind* it.
@@ -70,12 +74,39 @@ inside **the frame** (`johnnie/public/art/frame.js`):
   for determinism. See `sketches/008a.html` (canvas), `008b.html` (three.js —
   vendored at `art/lib/three.module.min.js`, import map included), and the
   other 008 studies for GLSL / DOM patterns.
-- Compose for portrait 3:4; keep focal content inside the middle ~86% (frame
-  rows 1 and 8 carry the fixed type). Temporal pieces use the shared replay
-  idiom: `cycle = t % 34; clock = min(120, cycle/26*120)`.
+- **Mobile is full-bleed**: on screens ≤700px the stage fills 100dvw×100dvh —
+  the art IS the screen, no ground visible. Desktop stays a centered 3:4.
+  Compose width-anchored: shader pieces use the design-space remap
+  `q = vec2(p.x*0.75, (p.y-0.5)*0.75/aspect + 0.5)` so the composition keeps
+  its proportions and the scene extends vertically on tall screens; three.js
+  pieces dolly the camera back when `aspect < 0.75` (see 008b/008d).
+- **Navigation lives in the frame**: the "← art" breadcrumb is a frame cell
+  (top-right), and frame.js adds prev/next ‹ › affordances + swipe (touch) +
+  arrow keys between pieces, ordered per the manifest. Nothing floats
+  outside the stage.
+- `F.setTone(dark)` re-inks the frame at runtime — for pieces that change
+  register mid-life (minutos' night ending).
+- Temporal replay pieces use `cycle = t % 34; clock = min(120, cycle/26*120)`;
+  settle pieces animate 0→100 once and stop their rAF loop.
 - Batch 001 (001–007) predates the frame and uses the legacy square
   `ART.fit`/`ART.chrome` — leave those as history.
 - Gallery previews load each piece with `?thumb=1` — handled by frame.js.
+
+### Taste profile (learned from Johnnie's curation — read before making anything)
+
+- **2026-07-06:** Batch 001 (001–007) retired entirely — below the bar the 008
+  studies set. From the 008 studies, **río, constelación, transmisión were
+  retired** (the chart-adjacent / screen-effect ones). Replaced with **bruma,
+  marea, aerosol**: abstract shapes composing a *scene*, gradients passed
+  through dithering, poster-level confidence. Reference Johnnie shared:
+  OFF/GRID internship posters (fixed Helvetica type system over wildly
+  different grainy/spray/gradient backgrounds, one hot accent on black).
+  Lean that way: bold figure-ground, heavy grain, few colors, composition
+  over diagram.
+- **Motion principle:** not everything loops. A piece may animate 0→100 —
+  elements arriving, settling — and then REST as a finished composition
+  (stop the rAF loop). The arrival is the performance; the final frame is
+  the artwork.
 
 ### House rules (adapted from Lieberman's)
 

@@ -5,209 +5,136 @@
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
 <script src="data-008.js"></script>
+<script id="frag" type="x-shader">
+precision highp float;
+uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
+
+// 008 — a · bruma — the match as weather. Five soft gradient forms —
+// one per goal, the own goal a hollow ring — drift in and settle into
+// one composition on warm paper; 38 specks of dust are the shots.
+// Every gradient passes through an 8×8 bayer dither, so the air reads
+// as print, not screen. The animation arrives once and rests.
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+
+float bayer2(vec2 a){ a = floor(a); return fract(a.x/2.0 + a.y*a.y*0.75); }
+float bayer4(vec2 a){ return bayer2(0.5*a)*0.25 + bayer2(a); }
+float bayer8(vec2 a){ return bayer4(0.5*a)*0.25 + bayer2(a); }
+
+float ease(float t){ t = clamp(t, 0.0, 1.0); return 1.0 - pow(1.0 - t, 3.0); }
+
+// staggered sub-progress for element i of n
+float sub(float i){ return ease((u_p*10.0 - i*1.1) / 5.5); }
+
+// soft two-tone ink form; accumulates coverage so the print pass knows
+// where the ink lives
+vec3 form(vec3 col, inout float cov, vec2 q, vec2 c0, vec2 c1, float r, vec3 core, vec3 edge, float s, float hollow){
+  if (s <= 0.0) return col;
+  vec2 c = mix(c0, c1, s);
+  float rr = r * mix(1.5, 1.0, s);
+  float d = length(q - c);
+  float g = 1.0 - smoothstep(0.0, rr, d);
+  if (hollow > 0.5) g *= smoothstep(rr*0.40, rr*0.62, d);   // ring, mist inside
+  vec3 ink = mix(core, edge, pow(smoothstep(0.0, rr, d), 0.8));
+  float a = g * s;
+  cov += a;
+  return col * mix(vec3(1.0), ink * mix(vec3(1.0), vec3(1.08), g*g), a); // multiply
+}
+
+void main(){
+  vec2 p = gl_FragCoord.xy / u_res;
+  float aspect = u_res.x / u_res.y;
+  // width-anchored design space: x∈[0,0.75], y extends on taller screens
+  vec2 q = vec2(p.x * 0.75, (p.y - 0.5) * 0.75 / max(aspect, 0.001) + 0.5);
+
+  // paper: warm cream breathing into blush at the top
+  vec3 col = mix(vec3(0.918, 0.898, 0.845), vec3(0.936, 0.885, 0.845), pow(p.y, 1.6));
+
+  float cov0 = 0.0;
+  // a pale gold field behind everything — the stadium's light
+  {
+    float s = ease(u_p*10.0/6.0);
+    float d = length(q - vec2(0.42, 0.62));
+    float g = (1.0 - smoothstep(0.05, 0.38, d)) * 0.10 * s;
+    col = col * (1.0 - g) + vec3(0.955, 0.83, 0.55) * g;
+    cov0 = g * 3.0;
+  }
+
+  vec3 celCore = vec3(0.72, 0.87, 0.95), celEdge = vec3(0.20, 0.45, 0.67);
+  vec3 rojCore = vec3(0.97, 0.72, 0.56), rojEdge = vec3(0.63, 0.19, 0.13);
+
+  float cov = cov0;
+  // five goals, in order, drifting from offstage to their places
+  col = form(col, cov, q, vec2(0.05, 0.95), vec2(0.24, 0.660), 0.215, celCore, celEdge, sub(0.0), 0.0); // 29' messi
+  col = form(col, cov, q, vec2(0.80, 0.80), vec2(0.52, 0.545), 0.160, rojCore, rojEdge, sub(1.0), 0.0); // 59' duarte
+  col = form(col, cov, q, vec2(0.30, 0.02), vec2(0.375, 0.405), 0.195, celCore, celEdge, sub(2.0), 0.0); // 92' l. martínez
+  col = form(col, cov, q, vec2(-0.06, 0.20), vec2(0.170, 0.290), 0.135, rojCore, rojEdge, sub(3.0), 0.0); // 103' cabral
+  col = form(col, cov, q, vec2(0.85, 0.10), vec2(0.555, 0.258), 0.150, celCore, celEdge, sub(4.0), 1.0); // 111' og — hollow
+
+  // one small gold seed beside the ring — the moment itself
+  {
+    float s = sub(4.6);
+    float d = length(q - vec2(0.612, 0.332));
+    float g = (1.0 - smoothstep(0.0, 0.020, d)) * s;
+    col = mix(col, vec3(0.84, 0.65, 0.18), g*0.9);
+  }
+
+  // 38 dust specks — the shots, settled
+  {
+    float s = ease((u_p*10.0 - 6.0)/3.0);
+    for (int i = 0; i < 38; i++){
+      float fi = float(i);
+      vec2 sp = vec2(0.06 + hash(vec2(fi, 1.7))*0.63,
+                     0.14 + hash(vec2(fi, 9.2))*0.72);
+      float d = length(q - sp);
+      float a = (1.0 - smoothstep(0.0, 0.0035, d)) * s * (0.25 + 0.5*hash(vec2(fi, 4.4)));
+      vec3 ink = hash(vec2(fi, 2.2)) < 0.58 ? vec3(0.28, 0.45, 0.60) : vec3(0.58, 0.24, 0.18);
+      col = mix(col, ink, a);
+    }
+  }
+
+  // the print pass: the dither lives where the ink lives — the paper
+  // stays calm, the gradients halftone
+  float cell = max(2.0, floor(u_res.y / 340.0));
+  float th = bayer8(gl_FragCoord.xy / cell) - 0.5;
+  float levels = 6.0;
+  vec3 dithered = floor(col * levels + 0.5 + th * 0.95) / levels;
+  col = mix(col, dithered, clamp(cov * 1.5 + 0.05, 0.0, 1.0));
+
+  // grain + breath of a vignette
+  float g2 = hash(gl_FragCoord.xy * 0.7);
+  col += (g2 - 0.5) * 0.022;
+  float vig = smoothstep(1.25, 0.45, length(p - vec2(0.5, 0.52)));
+  col *= mix(0.965, 1.0, vig);
+
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
 <script>
-// 008 — a · río — the match as two risograph inks sharing one page.
-// Time flows down; the boundary is the real balance of the game
-// (possession blended with per-phase xG). Goals bend the river toward
-// the conceding side. Every shot is a stitch on its team's bank.
-// Replays the 120 minutes in 26 seconds, top to bottom.
-
 const seed = ART.seed("2026-07-06-008a");
-const N = ART.makeNoise(seed);
 const M = window.M8;
+let sh = null, done = false, start = null;
 
-let W, H, DPR, grain, ticks;
 const F = FRAME.mount({
-  n: "008", v: "a", title: "río", date: "06·07·2026",
-  data: M.frameData, tech: "canvas 2d · dos tintas",
+  n: "008", v: "a", title: "bruma", date: "06·07·2026",
+  data: M.frameData, tech: "glsl · dithered gradients",
   dark: false,
-  onResize(w, h, dpr) {
-    W = w; H = h; DPR = dpr;
-    const Rt = ART.rng(seed + "ticks");
-    ticks = [];
-    for (const team of ["arg", "cpv"]) {
-      const all = [];
-      M.shotsPhase[team].forEach((count, pi) => {
-        const [a, b] = [[0, 45], [45, 90], [90, 120]][pi];
-        for (let i = 0; i < count; i++) all.push(a + 2 + Rt() * (b - a - 4));
-      });
-      for (let i = all.length - 1; i > 0; i--) {
-        const j = (Rt() * (i + 1)) | 0;
-        [all[i], all[j]] = [all[j], all[i]];
-      }
-      all.forEach((min, i) => ticks.push({ team, min, on: i < M.onTarget[team] }));
-    }
-    grain = document.createElement("canvas");
-    grain.width = W; grain.height = H;
-    const g = grain.getContext("2d");
-    const img = g.createImageData(W, H);
-    const Rg = ART.rng(seed + "grain");
-    for (let i = 0; i < img.data.length; i += 4) {
-      const v = 118 + Rg() * 20 | 0;
-      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-      img.data[i + 3] = 24;
-    }
-    g.putImageData(img, 0, 0);
+  onResize() {
+    if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
+    done = false;          // re-render after resize
+    requestAnimationFrame(loop);
   },
 });
-const ctx = F.canvas.getContext("2d");
+const sf = ART.rng(seed)() * 100;
 
-// band occupies the middle four grid columns, rows 2–7
-const L = () => W * (1 / 6) * 0.9, Rr = () => W * (5 / 6) + W / 6 * 0.1;
-const T = () => H / 8, B = () => H * 7 / 8;
-const yFor = (min) => T() + (min / 120) * (B() - T());
-
-function baseFlow(min) {
-  const pts = [[22.5, 0], [67.5, 1], [105, 2]].map(([m, i]) => ({
-    m, f: 0.64 * 0.68 + (M.xgPhase.arg[i] / (M.xgPhase.arg[i] + M.xgPhase.cpv[i])) * 0.32,
-  }));
-  if (min <= pts[0].m) return pts[0].f;
-  if (min >= pts[2].m) return pts[2].f;
-  const i = min < pts[1].m ? 0 : 1;
-  const t = (min - pts[i].m) / (pts[i + 1].m - pts[i].m);
-  return pts[i].f + (pts[i + 1].f - pts[i].f) * (t * t * (3 - 2 * t));
+// arrives once (10s), then the composition rests — no loop
+function loop(tms) {
+  if (!sh || done) return;
+  if (start === null) start = tms;
+  const p = Math.min(1, (tms - start) / 10000);
+  sh.gl.uniform1f(sh.extra.u_p, p);
+  sh.draw(tms / 1000, sf);
+  if (p >= 1) { done = true; return; }
+  requestAnimationFrame(loop);
 }
-
-function boundary(min, z) {
-  let f = baseFlow(min) + 0.075 * N.fbm3(min * 0.09, 7.3, z, 3);
-  f = Math.max(0.2, Math.min(0.9, f));
-  let x = L() + f * (Rr() - L());
-  for (const g of M.goals) {
-    const d = min - g.min;
-    // a goal bends the river toward the side that conceded
-    x += (g.team === "arg" ? 1 : -1) * 0.11 * (Rr() - L()) * Math.exp(-(d * d) / 9.5);
-  }
-  return x;
-}
-
-function ribbon(z, xLeftOf, xRightOf, hex, alpha, dx, dy) {
-  ctx.save();
-  ctx.translate(dx, dy);
-  ctx.globalCompositeOperation = "multiply";
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = hex;
-  ctx.beginPath();
-  const step = Math.max(2, H / 420);
-  for (let y = T(); y <= B(); y += step) {
-    const min = ((y - T()) / (B() - T())) * 120;
-    y === T() ? ctx.moveTo(xLeftOf(min), y) : ctx.lineTo(xLeftOf(min), y);
-  }
-  for (let y = B(); y >= T(); y -= step) {
-    const min = ((y - T()) / (B() - T())) * 120;
-    ctx.lineTo(xRightOf(min), y);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.restore();
-}
-
-function draw(tms) {
-  const t = tms / 1000, z = t * 0.025;
-  const cycle = t % 34, prog = Math.min(1, cycle / 26);
-  const fs = Math.max(0.0205 * W, 9 * DPR);
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = M.ink.paper;
-  ctx.fillRect(0, 0, W, H);
-
-  const sweepY = T() + prog * (B() - T() + 4);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, W, sweepY);
-  ctx.clip();
-
-  const xL = (min) => L() + 0.012 * W * N.fbm3(min * 0.05 + 3.1, 1.7, z, 3);
-  const xR = (min) => Rr() + 0.012 * W * N.fbm3(min * 0.05 + 9.4, 5.2, z, 3);
-  const xB = (min) => boundary(min, z);
-
-  // goal beams — horizontal light through the page
-  for (const g of M.goals) {
-    const gy = yFor(g.min);
-    const hex = g.team === "arg" ? M.ink.arg : M.ink.cpv;
-    const grad = ctx.createLinearGradient(0, gy - 0.035 * H, 0, gy + 0.035 * H);
-    grad.addColorStop(0, hex + "00");
-    grad.addColorStop(0.5, hex + "4d");
-    grad.addColorStop(1, hex + "00");
-    ctx.globalCompositeOperation = "multiply";
-    ctx.fillStyle = grad;
-    ctx.fillRect(0.06 * W, gy - 0.035 * H, 0.88 * W, 0.07 * H);
-  }
-
-  // two inks, double-printed off register
-  ribbon(z, xL, xB, M.ink.arg, 0.42, 1.6 * DPR, -1.1 * DPR);
-  ribbon(z, xL, xB, M.ink.arg, 0.78, 0, 0);
-  ribbon(z, xB, xR, M.ink.cpv, 0.40, -1.4 * DPR, 1.2 * DPR);
-  ribbon(z, xB, xR, M.ink.cpv, 0.72, 0, 0);
-
-  // period lines + hydration slits
-  ctx.globalCompositeOperation = "source-over";
-  ctx.font = fs + "px 'Fragment Mono', ui-monospace, monospace";
-  for (const m of M.periods) {
-    ctx.fillStyle = "rgba(233,227,213,0.92)";
-    ctx.fillRect(0.10 * W, yFor(m) - 1.2 * DPR, 0.80 * W, 2.4 * DPR);
-    ctx.fillStyle = "rgba(23,21,17,0.4)";
-    ctx.textAlign = "right";
-    ctx.fillText(m + "’", L() - 0.012 * W, yFor(m) + fs * 0.35);
-  }
-  for (const m of M.breaks) {
-    ctx.fillStyle = "rgba(233,227,213,0.5)";
-    ctx.fillRect(0.13 * W, yFor(m) - 0.6 * DPR, 0.74 * W, 1.2 * DPR);
-  }
-
-  // shot stitches on each bank; solid = on target
-  for (const s of ticks) {
-    const y = yFor(s.min);
-    const left = s.team === "arg";
-    ctx.strokeStyle = (left ? M.ink.argDeep : M.ink.cpvDeep) + (s.on ? "d9" : "59");
-    ctx.lineWidth = 1.6 * DPR;
-    ctx.beginPath();
-    const x0 = left ? L() + 0.006 * W : Rr() - 0.006 * W;
-    ctx.moveTo(x0, y);
-    ctx.lineTo(x0 + (left ? 0.022 * W : -0.022 * W), y);
-    ctx.stroke();
-  }
-
-  // cards in the margins
-  for (const c of M.cards) {
-    const y = yFor(c.min);
-    const x = c.team === "arg" ? L() - 0.045 * W : Rr() + 0.03 * W;
-    ctx.fillStyle = M.ink.gold;
-    ctx.fillRect(x, y - 0.008 * H, 0.014 * W, 0.014 * H);
-  }
-
-  // goals: marker on the boundary + scorer label on the scorer's side
-  for (const g of M.goals) {
-    const gy = yFor(g.min), gx = xB(g.min);
-    const deep = g.team === "arg" ? M.ink.argDeep : M.ink.cpvDeep;
-    ctx.lineWidth = 2 * DPR;
-    ctx.beginPath();
-    ctx.arc(gx, gy, 0.016 * W, 0, Math.PI * 2);
-    if (g.og) {
-      ctx.fillStyle = M.ink.paper; ctx.strokeStyle = deep;
-      ctx.fill(); ctx.stroke();
-    } else {
-      ctx.fillStyle = deep; ctx.fill();
-    }
-    const left = g.team === "arg";
-    ctx.fillStyle = deep;
-    ctx.textAlign = left ? "left" : "right";
-    const lx = left ? L() + 0.02 * W : Rr() - 0.02 * W;
-    ctx.fillText(g.min + "’ " + g.player, lx, gy - fs * 0.8);
-  }
-  ctx.restore();
-
-  // the current minute rides the reveal front
-  if (prog < 1) {
-    ctx.fillStyle = "rgba(23,21,17,0.45)";
-    ctx.textAlign = "left";
-    ctx.font = fs + "px 'Fragment Mono', ui-monospace, monospace";
-    ctx.fillText(Math.round(prog * 120) + "’", Rr() + 0.03 * W, sweepY + fs * 0.35);
-  }
-
-  ctx.globalCompositeOperation = "multiply";
-  ctx.drawImage(grain, 0, 0);
-  ctx.globalCompositeOperation = "source-over";
-  requestAnimationFrame(draw);
-}
-requestAnimationFrame(draw);
 </script>

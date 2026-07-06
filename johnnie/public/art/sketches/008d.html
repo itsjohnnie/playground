@@ -30,7 +30,7 @@ const C_ARG = -0.42, C_CPV = 0.42;         // team centres across the pitch (w i
 const INK = new THREE.Color("#171511");
 const PAPER = new THREE.Color(M.ink.paper);
 
-let renderer, scene, camera, built = false;
+let renderer, scene, camera, built = false, dollyK = 1;
 let terraMat, pins = [], grainTex, grainScene, grainCam;
 
 const F = FRAME.mount({
@@ -43,6 +43,9 @@ const F = FRAME.mount({
     renderer.setSize(w / dpr, h / dpr, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    // full-bleed stages are narrower than 3:4 — dolly back so the whole
+    // plate (and its captions) stays inside the frame
+    dollyK = Math.max(1, (0.75 / camera.aspect) * 1.03);
   },
 });
 
@@ -105,10 +108,10 @@ function textSprite(str, hex, px) {
   const dpr = 3, pad = 8;
   const c = document.createElement("canvas");
   const g = c.getContext("2d");
-  g.font = px * dpr + "px 'Fragment Mono', ui-monospace, monospace";
+  g.font = px * dpr + "px 'Geist Mono', ui-monospace, monospace";
   c.width = Math.ceil(g.measureText(str).width) + pad * 2;
   c.height = px * dpr + pad * 2;
-  g.font = px * dpr + "px 'Fragment Mono', ui-monospace, monospace";
+  g.font = px * dpr + "px 'Geist Mono', ui-monospace, monospace";
   g.fillStyle = hex;
   g.textBaseline = "middle";
   g.fillText(str, pad, c.height / 2);
@@ -308,7 +311,7 @@ function loop(tms) {
 
   // slow elevated 3/4 drift — museum vitrine walk-around
   const az = 0.09 * Math.sin(t * 0.045) + 0.02;
-  const d = 6.3 + 0.16 * Math.sin(t * 0.031);
+  const d = (6.3 + 0.16 * Math.sin(t * 0.031)) * dollyK;
   camera.position.set(Math.sin(az) * d * 0.6 + 0.22, 2.75 + 0.12 * Math.sin(t * 0.026), Math.cos(az) * d);
   camera.lookAt(0, 0.09, 0);
 
