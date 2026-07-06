@@ -1,0 +1,19 @@
+# Workers Static Assets custom headers.
+# The art section iterates fast — don't let the edge pin old versions.
+/art/sketches.json
+  Cache-Control: no-store
+
+/art/index.html
+  Cache-Control: max-age=60, must-revalidate
+
+/art/
+  Cache-Control: max-age=60, must-revalidate
+
+/art/sketches/*
+  Cache-Control: max-age=60, must-revalidate
+
+/art/frame.js
+  Cache-Control: max-age=60, must-revalidate
+
+/art/art.js
+  Cache-Control: max-age=60, must-revalidate
