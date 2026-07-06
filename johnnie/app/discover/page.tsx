@@ -363,21 +363,22 @@ html.stage-open .discover-comp {
 html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s ease; }
 
 /* The rows' frosted backdrop-filter smears whatever it passes over while the
-   bar travels — a blurry sweep, most visible rising bottom-to-top on close.
-   Cut the blur instantly when the stage opens (the bar is disappearing
-   anyway) and bring it back only AFTER the bar has settled (1s = .45s flight
-   + .55s rise), so it never blurs in motion. The full !important lists
-   re-declare the press/theme rules above, with backdrop-filter appended. */
+   bar travels — cut it instantly when the stage opens (the bar is
+   disappearing anyway). On close it re-frosts WHILE STILL PARKED below the
+   screen edge (.2s fade done by .4s, before the .45s-delayed rise begins), so
+   the bar enters already glassed — no defrosted-to-frosted pop after landing.
+   The full !important lists re-declare the press/theme rules above, with
+   backdrop-filter appended. */
 .discover-logo,
 .toggle-mode {
   transition: background-color .45s ease, color .45s ease, box-shadow .45s ease,
     transform .16s var(--ease-out),
-    -webkit-backdrop-filter .3s ease 1s, backdrop-filter .3s ease 1s !important;
+    -webkit-backdrop-filter .2s ease .2s, backdrop-filter .2s ease .2s !important;
 }
 .discover-text {
   transition: background-color .45s ease, color .45s ease,
     border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
-    -webkit-backdrop-filter .3s ease 1s, backdrop-filter .3s ease 1s !important;
+    -webkit-backdrop-filter .2s ease .2s, backdrop-filter .2s ease .2s !important;
 }
 html.stage-open .discover-logo,
 html.stage-open .discover-text,
