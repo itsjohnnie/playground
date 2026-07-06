@@ -618,13 +618,10 @@ class InfiniteGrid {
         // screen — the tile itself appears to travel.
         requestAnimationFrame(() => {
           this.stage?.classList.add("is-open");
-          // The grid scene recedes with the stage: vignette + control bar
-          // fade out (CSS on this class) so the flying image never pops in
-          // front of the layers the tile was sitting behind. bar-defrost
-          // kills the rows' backdrop blur for the whole trip (JS-timed on
-          // close — see closeStage).
+          // The grid scene recedes with the stage: the vignette fades and the
+          // control bar slides off (CSS on this class) so the flying image
+          // never pops in front of the layers the tile was sitting behind.
           document.documentElement.classList.add("stage-open");
-          document.documentElement.classList.add("bar-defrost");
           it.el.style.visibility = "hidden";
           this.stagedCell = it;
         });
@@ -645,10 +642,6 @@ class InfiniteGrid {
     // control bar return on DELAYED transitions (see the page CSS) so both
     // re-enter only after the image has landed and swapped for the tile.
     document.documentElement.classList.remove("stage-open");
-    // The frost layers bloom back in via a delayed OPACITY transition (see
-    // the ::before rules) — plain opacity timing is reliable on iOS, unlike
-    // delayed backdrop-filter transitions.
-    document.documentElement.classList.remove("bar-defrost");
     const img = this.zImg;
     const cell = this.stagedCell;
     this.zImg = null;
