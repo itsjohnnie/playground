@@ -1,20 +1,20 @@
 {
   "project": "a daily generative art practice, after Zach Lieberman",
-  "batch_note": "008 — diez estudios de un partido · tercera curaduría 06·07.",
+  "batch_note": "008 — diez estudios de un partido · cuarta curaduría 06·07.",
   "sketches": [
     {
       "n": "008j",
       "title": "órbitas",
       "date": "2026-07-06",
       "file": "sketches/008j.html",
-      "medium": "canvas · gravity",
+      "medium": "canvas · kepler 3d",
       "tags": [
-        "data",
         "orbits",
-        "additive"
+        "3d",
+        "gravity"
       ],
       "status": "candidate",
-      "note": "The goal as gravity: 38 shots in orbit, on-target tighter, the five goals spiral in and ring the bell."
+      "note": "The goal as gravity, seen from above the plane: 33 shots on inclined Kepler ellipses around a glowing torus; the five goals spiral in at their minute and leave standing bells."
     },
     {
       "n": "008i",
@@ -133,14 +133,14 @@
       "title": "bruma",
       "date": "2026-07-06",
       "file": "sketches/008a.html",
-      "medium": "glsl · dithered gradients",
+      "medium": "glsl · fluid dither",
       "tags": [
-        "gradients",
+        "fluid",
         "dither",
         "settle"
       ],
       "status": "candidate",
-      "note": "The match as weather: five soft gradient forms — the own goal a hollow ring — drift in, settle, and rest. The dither lives in the pigment."
+      "note": "The match as weather: five pigments arrive and melt through a nested domain warp into fluid tongues — ink in slow water. The dither lives in the pigment; flows once, then rests."
     }
   ]
 }
