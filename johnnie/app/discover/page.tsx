@@ -362,6 +362,30 @@ html.stage-open .discover-comp {
 .hero-gradient.cc-white { transition: opacity .3s ease; }
 html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s ease; }
 
+/* The rows' frosted backdrop-filter smears whatever it passes over while the
+   bar travels — a blurry sweep, most visible rising bottom-to-top on close.
+   Cut the blur instantly when the stage opens (the bar is disappearing
+   anyway) and bring it back only AFTER the bar has settled (1s = .45s flight
+   + .55s rise), so it never blurs in motion. The full !important lists
+   re-declare the press/theme rules above, with backdrop-filter appended. */
+.discover-logo,
+.toggle-mode {
+  transition: background-color .45s ease, color .45s ease, box-shadow .45s ease,
+    transform .16s var(--ease-out),
+    -webkit-backdrop-filter .3s ease 1s, backdrop-filter .3s ease 1s !important;
+}
+.discover-text {
+  transition: background-color .45s ease, color .45s ease,
+    border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
+    -webkit-backdrop-filter .3s ease 1s, backdrop-filter .3s ease 1s !important;
+}
+html.stage-open .discover-logo,
+html.stage-open .discover-text,
+html.stage-open .toggle-mode {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  transition: none !important;
+}
+
 /* Mobile tap-to-stage: the tapped tile, front-and-center and enlarged, over a
    dimmed backdrop with its meta beneath. Tapping anywhere dismisses it. */
 .discover-stage {
