@@ -1,0 +1,323 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<body>
+<script src="../art.js"></script>
+<script src="../frame.js"></script>
+<script src="data-008.js"></script>
+<script type="importmap">{ "imports": { "three": "../lib/three.module.min.js" } }</script>
+<script type="module">
+// 008 — d · terreno — the match as a topographic paper relief.
+// A carved plate: x = the 120 minutes, height = attacking pressure,
+// depth = the width of the pitch (argentina works one half, cabo verde
+// the other). Broad swells come from per-phase xG rates, hills from all
+// 38 shots (taller when on target), mountains from the five goals. Ink
+// contour lines are drawn onto the paper by a plotter cursor over a 26s
+// replay; summits are tinted celeste / red and flagged with pins.
+// data: counts and phase xG exact from M8; individual shot minutes and
+// across-pitch placement seeded (no location data exists); the og (111')
+// rises on argentina's half — it is argentina's goal.
+// three.js · relief.
+
+import * as THREE from "three";
+
+const seed = ART.seed("2026-07-06-008d");
+const M = window.M8;
+
+const TL = 3.0, WL = 1.32;                 // world length (time) / depth (pitch width)
+const SEG_T = 120, SEG_W = 48;
+const C_ARG = -0.42, C_CPV = 0.42;         // team centres across the pitch (w in -1..1)
+const INK = new THREE.Color("#171511");
+const PAPER = new THREE.Color(M.ink.paper);
+
+let renderer, scene, camera, built = false;
+let terraMat, pins = [], grainTex, grainScene, grainCam;
+
+const F = FRAME.mount({
+  n: "008", v: "d", title: "terreno", date: "06·07·2026",
+  data: M.frameData, tech: "three.js · relief",
+  dark: false,
+  onResize(w, h, dpr) {
+    if (!built) build();
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(w / dpr, h / dpr, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  },
+});
+
+/* ---------- the heightmap ---------- */
+const gauss = (d, s) => Math.exp(-(d * d) / (2 * s * s));
+
+// per-phase xG as a rate (per 45'), smoothly interpolated across the match
+function phaseRate(team, min) {
+  const rate = M.xgPhase[team].map((v, i) => v / [45, 45, 30][i] * 45);
+  const mids = [22.5, 67.5, 105];
+  if (min <= mids[0]) return rate[0];
+  if (min >= mids[2]) return rate[2];
+  const i = min < mids[1] ? 0 : 1;
+  const t = (min - mids[i]) / (mids[i + 1] - mids[i]);
+  return rate[i] + (rate[i + 1] - rate[i]) * (t * t * (3 - 2 * t));
+}
+
+// seeded shot events (real per-phase counts; goals at their true minutes)
+function events(team) {
+  const Rt = ART.rng(seed + "-ev-" + team);
+  const phases = [[0, 45], [45, 90], [90, 120]];
+  const goals = M.goals.filter((g) => g.team === team);
+  const ev = [];
+  M.shotsPhase[team].forEach((count, pi) => {
+    const [a, b] = phases[pi];
+    const gHere = goals.filter((g) => g.min > a && g.min <= b).length;
+    for (let i = 0; i < count - gHere; i++)
+      ev.push({ min: a + 2 + Rt() * (b - a - 4), goal: null });
+  });
+  for (let i = ev.length - 1; i > 0; i--) {
+    const j = (Rt() * (i + 1)) | 0;
+    [ev[i], ev[j]] = [ev[j], ev[i]];
+  }
+  const nOn = M.onTarget[team] - goals.filter((g) => !g.og).length;
+  ev.forEach((e, i) => (e.on = i < nOn));
+  goals.forEach((g) => ev.push({ min: g.exact || g.min, on: true, goal: g }));
+  const c = team === "arg" ? C_ARG : C_CPV;
+  ev.forEach((e) => {
+    e.w = c + (Rt() - 0.5) * (e.goal ? 0.22 : 0.55);
+    e.amp = e.goal ? (e.goal.og ? 0.17 : 0.225) : e.on ? 0.052 : 0.028;
+    e.sMin = e.goal ? 2.6 : 1.5;
+    e.sW = e.goal ? 0.27 : 0.17;
+  });
+  return ev;
+}
+const EV = { arg: events("arg"), cpv: events("cpv") };
+
+// height + signed team dominance at (minute, w)
+function field(min, w) {
+  let hA = 0, hC = 0;
+  hA += phaseRate("arg", min) * 0.055 * (0.25 + 0.75 * gauss(w - C_ARG, 0.5));
+  hC += phaseRate("cpv", min) * 0.055 * (0.25 + 0.75 * gauss(w - C_CPV, 0.5));
+  for (const e of EV.arg) hA += e.amp * gauss(min - e.min, e.sMin) * gauss(w - e.w, e.sW);
+  for (const e of EV.cpv) hC += e.amp * gauss(min - e.min, e.sMin) * gauss(w - e.w, e.sW);
+  return { h: hA + hC, tint: (hC - hA) / (hA + hC + 1e-5) };
+}
+
+/* ---------- text sprites (after the mono font loads) ---------- */
+function textSprite(str, hex, px) {
+  const dpr = 3, pad = 8;
+  const c = document.createElement("canvas");
+  const g = c.getContext("2d");
+  g.font = px * dpr + "px 'Fragment Mono', ui-monospace, monospace";
+  c.width = Math.ceil(g.measureText(str).width) + pad * 2;
+  c.height = px * dpr + pad * 2;
+  g.font = px * dpr + "px 'Fragment Mono', ui-monospace, monospace";
+  g.fillStyle = hex;
+  g.textBaseline = "middle";
+  g.fillText(str, pad, c.height / 2);
+  const tex = new THREE.CanvasTexture(c);
+  const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false });
+  const sp = new THREE.Sprite(m);
+  const hWorld = 0.062 * (px / 12);
+  sp.scale.set(hWorld * c.width / c.height, hWorld, 1);
+  return sp;
+}
+
+/* ---------- build ---------- */
+function build() {
+  built = true;
+  renderer = new THREE.WebGLRenderer({ canvas: F.canvas, antialias: true });
+  renderer.autoClear = false;
+  scene = new THREE.Scene();
+  scene.background = PAPER.clone();
+  camera = new THREE.PerspectiveCamera(20, 3 / 4, 0.1, 30);
+
+  const world = new THREE.Group();
+  world.rotation.y = -0.72;                  // the plate sits diagonally in the portrait
+  world.scale.setScalar(0.655);
+  world.position.x = -0.05;
+  scene.add(world);
+
+  // --- terrain geometry with baked heights
+  const geo = new THREE.PlaneGeometry(TL, WL, SEG_T, SEG_W);
+  geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  const n = p.count;
+  const aH = new Float32Array(n), aTint = new Float32Array(n), aMin = new Float32Array(n);
+  let maxH = 0;
+  const raw = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const min = (p.getX(i) / TL + 0.5) * 120;
+    const w = p.getZ(i) / (WL / 2);
+    const f = field(min, w);
+    raw[i] = f.h;
+    aTint[i] = f.tint;
+    aMin[i] = min;
+    if (f.h > maxH) maxH = f.h;
+  }
+  const H_SCALE = 0.46 / maxH;               // tallest summit = 0.46 world
+  for (let i = 0; i < n; i++) {
+    p.setY(i, raw[i] * H_SCALE);
+    aH[i] = raw[i] / maxH;
+  }
+  p.needsUpdate = true;
+  geo.setAttribute("aH", new THREE.BufferAttribute(aH, 1));
+  geo.setAttribute("aTint", new THREE.BufferAttribute(aTint, 1));
+  geo.setAttribute("aMin", new THREE.BufferAttribute(aMin, 1));
+
+  terraMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uPaper: { value: PAPER },
+      uInk: { value: INK },
+      uArg: { value: new THREE.Color(M.ink.argDeep) },
+      uCpv: { value: new THREE.Color(M.ink.cpvDeep) },
+      uLevels: { value: 24.0 },
+      uClock: { value: 0 },
+      uSweep: { value: 1 },
+    },
+    vertexShader: `
+      attribute float aH, aTint, aMin;
+      varying float vH, vTint, vMin, vZ;
+      varying vec2 vUv;
+      void main(){
+        vH = aH; vTint = aTint; vMin = aMin; vUv = uv;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vZ = -mv.z;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      precision highp float;
+      uniform vec3 uPaper, uInk, uArg, uCpv;
+      uniform float uLevels, uClock, uSweep;
+      varying float vH, vTint, vMin, vZ;
+      varying vec2 vUv;
+      float contour(float lv, float th){
+        float f = fract(lv);
+        float d = min(f, 1.0 - f);
+        float w = fwidth(lv);
+        return 1.0 - smoothstep(w * th * 0.6, w * th * 1.6, d);
+      }
+      void main(){
+        // contour ink: minor lines + heavier index lines every 5th
+        float minor = contour(vH * uLevels, 1.0) * 0.42;
+        float major = contour(vH * uLevels / 5.0, 1.15) * 0.55;
+        float a = max(minor, major) * smoothstep(0.006, 0.02, vH);
+        // plate border
+        float bd = min(min(vUv.x, 1.0 - vUv.x) / fwidth(vUv.x),
+                       min(vUv.y, 1.0 - vUv.y) / fwidth(vUv.y));
+        a = max(a, (1.0 - smoothstep(0.7, 1.8, bd)) * 0.55);
+        // period rules at 45 / 90 / 105
+        float wm = fwidth(vMin) * 1.1;
+        float pr = 0.0;
+        pr = max(pr, 1.0 - smoothstep(wm * 0.6, wm * 1.7, abs(vMin - 45.0)));
+        pr = max(pr, 1.0 - smoothstep(wm * 0.6, wm * 1.7, abs(vMin - 90.0)));
+        pr = max(pr, 1.0 - smoothstep(wm * 0.6, wm * 1.7, abs(vMin - 105.0)));
+        a = max(a, pr * 0.20);
+        // the plotter draws left → right with the replay clock
+        float drawn = 1.0 - smoothstep(uClock - 1.2, uClock + 1.2, vMin);
+        a *= mix(0.13, 1.0, max(drawn, 1.0 - uSweep));
+        // plotter cursor: a fine rule at the current minute
+        float cur = (1.0 - smoothstep(wm * 0.7, wm * 2.2, abs(vMin - uClock))) * uSweep;
+        a = max(a, cur * 0.5);
+        // summit tint — celeste toward argentina's peaks, red toward cabo verde's
+        float e = smoothstep(0.34, 0.8, vH);
+        vec3 team = vTint < 0.0 ? uArg : uCpv;
+        vec3 lineCol = mix(uInk, team, e * min(1.0, abs(vTint) * 1.6) * 0.9);
+        vec3 base = mix(uPaper, team, e * abs(vTint) * 0.10);
+        base *= 0.985 + 0.03 * vH;
+        vec3 col = mix(base, lineCol, min(a, 1.0));
+        // distance fade into the paper (atmosphere, not fog-gray)
+        col = mix(col, uPaper, smoothstep(5.6, 8.8, vZ) * 0.45);
+        gl_FragColor = vec4(col, 1.0);
+        #include <colorspace_fragment>
+      }`,
+  });
+  world.add(new THREE.Mesh(geo, terraMat));
+
+  // --- goal pins + labels
+  const labels = [];
+  for (const g of M.goals) {
+    const e = EV[g.team].find((x) => x.goal === g);
+    const x = (e.min / 120 - 0.5) * TL;
+    const z = e.w * (WL / 2);
+    const y = field(e.min, e.w).h * H_SCALE;
+    const pinGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(x, y + 0.012, z), new THREE.Vector3(x, y + 0.20, z)]);
+    const pinMat = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0 });
+    world.add(new THREE.Line(pinGeo, pinMat));
+    pins.push({ g, mat: pinMat, sprite: null });
+    labels.push({ g, x, y, z });
+  }
+  document.fonts.ready.then(() => {
+    for (const l of labels) {
+      const deep = l.g.team === "arg" ? "rgba(43,106,153,.95)" : "rgba(168,44,34,.95)";
+      const s = textSprite(l.g.min + "’ " + l.g.player, l.g.og ? "rgba(23,21,17,.8)" : deep, 12);
+      s.center.set(l.g.min > 70 ? 1 : 0, 0);   // late-game peaks label leftward, into the frame
+      s.position.set(l.x, l.y + 0.215, l.z);
+      s.material.opacity = 0;
+      world.add(s);
+      pins.find((pp) => pp.g === l.g).sprite = s;
+    }
+    // engraved captions off the near corner of the plate
+    const a = textSprite("argentina · xg 2.16 · 22 tiros", "rgba(43,106,153,.85)", 11);
+    a.center.set(0, 0.5);
+    a.position.set(-TL / 2 + 0.72, -0.115, WL / 2 + 0.30);
+    world.add(a);
+    const c = textSprite("cabo verde · xg 0.45 · 16 tiros", "rgba(168,44,34,.85)", 11);
+    c.center.set(0, 0.5);
+    c.position.set(-TL / 2 + 0.72, -0.205, WL / 2 + 0.30);
+    world.add(c);
+  });
+
+  // --- paper grain overlay (multiply pass)
+  const gc = document.createElement("canvas");
+  gc.width = gc.height = 256;
+  const gg = gc.getContext("2d");
+  const img = gg.createImageData(256, 256);
+  const Rg = ART.rng(seed + "-grain");
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = 243 + (Rg() * 13) | 0;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  gg.putImageData(img, 0, 0);
+  grainTex = new THREE.CanvasTexture(gc);
+  grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping;
+  grainTex.repeat.set(3, 4);
+  grainScene = new THREE.Scene();
+  grainCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  grainScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2),
+    new THREE.MeshBasicMaterial({ map: grainTex, blending: THREE.MultiplyBlending,
+      premultipliedAlpha: true, depthTest: false, depthWrite: false })));
+}
+
+/* ---------- loop ---------- */
+let raf;
+function loop(tms) {
+  const t = tms / 1000;
+  const cycle = t % 34;
+  const clock = Math.min(120, (cycle / 26) * 120);
+
+  terraMat.uniforms.uClock.value = clock;
+  terraMat.uniforms.uSweep.value = cycle > 26 ? 0 : 1;
+
+  // pins & labels appear as the replay reaches each goal
+  for (const pin of pins) {
+    const k = Math.min(1, Math.max(0, (clock - pin.g.min) / 3));
+    const o = cycle > 26 ? 1 : k;
+    pin.mat.opacity = o * 0.6;
+    if (pin.sprite) pin.sprite.material.opacity = o * 0.95;
+  }
+
+  // slow elevated 3/4 drift — museum vitrine walk-around
+  const az = 0.09 * Math.sin(t * 0.045) + 0.02;
+  const d = 6.3 + 0.16 * Math.sin(t * 0.031);
+  camera.position.set(Math.sin(az) * d * 0.6 + 0.22, 2.75 + 0.12 * Math.sin(t * 0.026), Math.cos(az) * d);
+  camera.lookAt(0, 0.09, 0);
+
+  grainTex.offset.set((t * 1.3) % 1, (t * 1.9) % 1);
+
+  renderer.clear();
+  renderer.render(scene, camera);
+  renderer.render(grainScene, grainCam);
+  raf = requestAnimationFrame(loop);
+}
+queueMicrotask(() => { if (!built) build(); raf || requestAnimationFrame(loop); });
+</script>

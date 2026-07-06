@@ -1,0 +1,262 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<body>
+<script src="../art.js"></script>
+<script src="../frame.js"></script>
+<script src="data-008.js"></script>
+<script id="vert" type="x-shader">
+attribute vec2 a;
+varying vec2 v;
+void main(){ v = a*0.5 + 0.5; gl_Position = vec4(a, 0.0, 1.0); }
+</script>
+<script id="update" type="x-shader">
+precision mediump float;
+varying vec2 v;
+uniform sampler2D u_prev;
+uniform vec2  u_sim;
+uniform float u_head;    // v of the write head (1 = minute 0, top)
+uniform float u_rowW;    // write band half-width, v units
+uniform float u_write;   // 1 while scanning, 0 during the hold
+uniform float u_mode;    // 0 flow · 1 goal · 2 card · 3 dropout
+uniform vec3  u_colA;    // argentina ink
+uniform vec3  u_colB;    // cabo verde ink
+uniform vec3  u_colE;    // event ink (white / gold / black)
+uniform float u_flow;    // arg share of this minute
+uniform float u_time, u_seed;
+
+// accumulation pass: keep the history, bloom the hot scars, write the head.
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+
+void main(){
+  float px = 1.0 / u_sim.y;
+  vec3 c0 = texture2D(u_prev, v).rgb;
+  vec3 nb = 0.5*(texture2D(u_prev, v + vec2(0.0, px)).rgb
+               + texture2D(u_prev, v - vec2(0.0, px)).rgb);
+  float lum = max(nb.r, max(nb.g, nb.b));
+  // gentle diffusion everywhere, strong bloom only where it burns
+  vec3 c = mix(c0, nb, 0.018 + 0.20*smoothstep(0.78, 1.15, lum)) * 0.9999;
+
+  float d = abs(v.y - u_head);
+  float m = u_write * (1.0 - smoothstep(u_rowW*0.35, u_rowW, d));
+
+  // the live signal: pure color split by who holds the minute
+  float jit = (hash(vec2(floor(u_time*47.0), 1.0)) - 0.5)*0.035;
+  float bnd = (hash(vec2(floor(v.x*u_sim.x), floor(u_time*31.0))) - 0.5)*0.05;
+  vec3 sig = mix(u_colA, u_colB, smoothstep(-0.006, 0.006, v.x - (u_flow + jit + bnd)));
+  float tx = hash(vec2(floor(v.x*u_sim.x), floor(u_time*53.0)));
+  sig *= 0.80 + 0.38*tx;
+  if (u_mode > 0.5 && u_mode < 1.5) sig = u_colE * (0.92 + 0.35*tx);            // goal flash
+  if (u_mode > 1.5 && u_mode < 2.5){ sig = u_colE; m *= step(0.55, fract(v.x*7.0 + 0.2)); } // gold ticks
+  if (u_mode > 2.5) sig = u_colE;                                               // dropout
+
+  gl_FragColor = vec4(mix(c, sig, m), 1.0);
+}
+</script>
+<script id="display" type="x-shader">
+precision highp float;
+varying vec2 v;
+uniform sampler2D u_tex;
+uniform vec2  u_res;
+uniform float u_time, u_seed, u_head, u_write;
+uniform vec4  u_bands;   // seeded tape-noise bands: offset/speed ×2
+
+// display pass: the accumulation replayed through a bad 1980s recording —
+// barrel, chroma bleed, scanlines, phosphor triads, wandering tape bands.
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+
+void main(){
+  vec2 cc = v*2.0 - 1.0;
+  float r2 = dot(cc, cc);
+  vec2 buv = (cc * (1.0 + 0.045*r2))*0.5 + 0.5;
+
+  // tape noise bands wander and skew the raster
+  float band = 0.0;
+  float b1 = fract(u_bands.x + u_time*u_bands.y);
+  float b2 = fract(u_bands.z + u_time*u_bands.w);
+  band += exp(-abs(v.y - b1)*70.0);
+  band += exp(-abs(v.y - b2)*110.0)*0.8;
+  float rowN = hash(vec2(floor(v.y*u_res.y*0.5), floor(u_time*26.0)));
+  buv.x += band * (rowN - 0.5) * 0.020;
+
+  float co = 0.0016*(1.0 + 1.6*r2);
+  vec3 col;
+  col.r = texture2D(u_tex, buv + vec2(co, 0.0)).r;
+  col.g = texture2D(u_tex, buv).g;
+  col.b = texture2D(u_tex, buv - vec2(co, 0.0)).b;
+
+  // scanlines + phosphor triads
+  col *= 0.88 + 0.12*sin(gl_FragCoord.y*2.4 + 0.7);
+  float m3 = mod(floor(gl_FragCoord.x), 3.0);
+  col.r *= 0.93 + 0.15*(1.0 - step(0.5, m3));
+  col.g *= 0.93 + 0.15*step(0.5, m3)*(1.0 - step(1.5, m3));
+  col.b *= 0.93 + 0.15*step(1.5, m3);
+
+  // static inside the bands
+  float sn = hash(vec2(floor(gl_FragCoord.x*0.5) + floor(u_time*29.0)*13.0, floor(gl_FragCoord.y)));
+  col = col*(1.0 - band*0.45) + band*sn*vec3(0.20, 0.21, 0.24);
+
+  // the live head, a hot line riding the raster
+  float hd = abs(v.y - u_head);
+  col += u_write * vec3(1.0, 0.97, 0.90) * 0.85 * exp(-hd*380.0);
+
+  // night lift, vignette, bezel shade, grain
+  col += vec3(0.030, 0.030, 0.040);
+  col *= mix(0.50, 1.0, smoothstep(1.7, 0.30, r2));
+  col *= mix(0.68, 1.0, smoothstep(0.0, 0.09, v.y)*smoothstep(1.0, 0.91, v.y));
+  float g = hash(gl_FragCoord.xy + fract(u_time)*vec2(17.0, 9.0));
+  col += (g - 0.5)*0.05;
+
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+<script>
+// 008 · g · transmisión — slit-scan chart recorder. a one-line signal — the
+// two inks split by who holds the current replay minute (possession + phase
+// xg), white flash at goals, gold ticks at cards, black dropout at 45/90/105 —
+// is written into a gpu accumulation (ping-pong feedback) that fills the
+// stage over the 26s replay, holds 8s, then rescans over its own ghost.
+// within-minute boundary jitter and the tape-noise bands are seeded
+// approximations; every event and share is the data.
+
+const seed = ART.seed("2026-07-06-008g");
+const R = ART.rng(seed);
+const M = window.M8;
+
+const F = FRAME.mount({
+  n: "008", v: "g", title: "transmisión", date: "06·07·2026",
+  data: M.frameData, tech: "slit-scan · feedback", dark: true,
+  onResize() {},
+});
+
+const gl = F.canvas.getContext("webgl", { antialias: false, preserveDrawingBuffer: false });
+const SW = 360, SH = 480;
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+function program(fsId) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, document.getElementById("vert").textContent));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, document.getElementById(fsId).textContent));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const U = {};
+  const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) U[gl.getActiveUniform(p, i).name] = gl.getUniformLocation(p, gl.getActiveUniform(p, i).name);
+  return { p, U, a: gl.getAttribLocation(p, "a") };
+}
+const upd = program("update");
+const dsp = program("display");
+
+const quad = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+function attrib(loc) {
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+}
+
+function makeTarget() {
+  const tx = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tx);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, SW, SH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tx, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return { tx, fb };
+}
+let A = makeTarget(), B = makeTarget();
+
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255);
+const ARG = hex(M.ink.arg), CPV = hex(M.ink.cpv), GOLD = hex(M.ink.gold);
+const sf = ART.rng(seed)() * 100;
+const bands = [R(), 0.010 + R() * 0.016, R(), -(0.014 + R() * 0.020)];
+
+// who holds the minute — possession blended with per-phase xg (008a's flow)
+const pts = [[22.5, 0], [67.5, 1], [105, 2]].map(([m, i]) => ({
+  m, f: (M.possession.arg / 100) * 0.68 +
+        (M.xgPhase.arg[i] / (M.xgPhase.arg[i] + M.xgPhase.cpv[i])) * 0.32,
+}));
+function flow(min) {
+  if (min <= pts[0].m) return pts[0].f;
+  if (min >= pts[2].m) return pts[2].f;
+  const i = min < pts[1].m ? 0 : 1;
+  const t = (min - pts[i].m) / (pts[i + 1].m - pts[i].m);
+  return pts[i].f + (pts[i + 1].f - pts[i].f) * (t * t * (3 - 2 * t));
+}
+
+function loop(tms) {
+  const t = tms / 1000;
+  const cycle = t % 34;
+  const prog = Math.min(1, cycle / 26);
+  const clock = prog * 120;
+  const writing = cycle < 26 ? 1 : 0;
+  const head = 1 - prog;
+
+  // event modes at the head
+  let mode = 0, colE = [1, 0.98, 0.94], rowW = 1.7 / SH;
+  for (const g of M.goals)
+    if (Math.abs(clock - g.min) < 0.55) {
+      mode = 1; rowW = 5.0 / SH;
+      const tc = g.team === "arg" ? ARG : CPV;
+      colE = [1 - 0.12 * (1 - tc[0]), 1 - 0.12 * (1 - tc[1]), 1 - 0.12 * (1 - tc[2])];
+    }
+  if (!mode) for (const c of M.cards)
+    if (Math.abs(clock - c.min) < 0.4) { mode = 2; colE = GOLD; rowW = 2.2 / SH; }
+  if (!mode) for (const p of M.periods)
+    if (Math.abs(clock - p) < 0.5) { mode = 3; colE = [0, 0, 0]; rowW = 3.0 / SH; }
+
+  // accumulate: A → B
+  gl.bindFramebuffer(gl.FRAMEBUFFER, B.fb);
+  gl.viewport(0, 0, SW, SH);
+  gl.useProgram(upd.p);
+  attrib(upd.a);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, A.tx);
+  gl.uniform1i(upd.U.u_prev, 0);
+  gl.uniform2f(upd.U.u_sim, SW, SH);
+  gl.uniform1f(upd.U.u_head, head);
+  gl.uniform1f(upd.U.u_rowW, rowW);
+  gl.uniform1f(upd.U.u_write, writing);
+  gl.uniform1f(upd.U.u_mode, mode);
+  gl.uniform3fv(upd.U.u_colA, ARG);
+  gl.uniform3fv(upd.U.u_colB, CPV);
+  gl.uniform3fv(upd.U.u_colE, colE);
+  gl.uniform1f(upd.U.u_flow, flow(clock));
+  gl.uniform1f(upd.U.u_time, t);
+  gl.uniform1f(upd.U.u_seed, sf);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  // display: B → screen
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, F.canvas.width, F.canvas.height);
+  gl.useProgram(dsp.p);
+  attrib(dsp.a);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, B.tx);
+  gl.uniform1i(dsp.U.u_tex, 0);
+  gl.uniform2f(dsp.U.u_res, F.canvas.width, F.canvas.height);
+  gl.uniform1f(dsp.U.u_time, t);
+  gl.uniform1f(dsp.U.u_seed, sf);
+  gl.uniform1f(dsp.U.u_head, head);
+  gl.uniform1f(dsp.U.u_write, writing);
+  gl.uniform4fv(dsp.U.u_bands, bands);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+  [A, B] = [B, A];
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>

@@ -1,0 +1,142 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<body>
+<script src="../art.js"></script>
+<script src="../frame.js"></script>
+<script src="data-008.js"></script>
+<script id="frag" type="x-shader">
+#extension GL_OES_standard_derivatives : enable
+precision highp float;
+uniform vec2  u_res;
+uniform float u_time;
+uniform float u_seed;
+uniform float u_clock;      // replay minute 0..120
+uniform vec4  u_goals[5];   // x, y (comp coords, y down), minute, team (+1 arg / -1 cpv)
+uniform vec2  u_freq;       // wave number per emitter  ∝ shots  (22 / 16)
+uniform vec2  u_amp;        // amplitude per emitter    ∝ possession (.64 / .36)
+uniform vec2  u_emit;       // emitter |x| offsets
+
+// 008 · e · interferencia — two wave systems in tension. argentina emits
+// from the left, cabo verde from the right; frequency from shots, amplitude
+// from possession. the sum is engraved as thin isolines, a wave-tank long
+// exposure. the five goals are phase scars on a vertical time axis (0' top,
+// 120' bottom) that the moving field wraps around; each flashes once as the
+// 26s replay clock crosses its minute. emitter/scar x placement and ring
+// pitch are seeded aesthetics; everything else is the data.
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+
+void main(){
+  vec2 uv = vec2(gl_FragCoord.x - 0.5*u_res.x, 0.5*u_res.y - gl_FragCoord.y) / u_res.y; // y down
+  float t = u_time;
+
+  // the whole field breathes
+  float br = 0.90 + 0.10*sin(t*0.23);
+  vec2 e1 = vec2(-u_emit.x, 0.045*sin(t*0.13));        // argentina
+  vec2 e2 = vec2( u_emit.y, 0.050*sin(t*0.11 + 2.2));  // cabo verde
+  float d1 = length(uv - e1), d2 = length(uv - e2);
+
+  // goal phase scars
+  float ph = 0.0, ring = 0.0, glow = 0.0, damp = 1.0, scTint = 0.0, scar = 0.0;
+  for (int i = 0; i < 5; i++){
+    vec4 g = u_goals[i];
+    float dg = length(uv - g.xy);
+    // phase discontinuity: the traveling waves wrap around the scar
+    ph += 3.14159 * g.w * exp(-dg/0.055);
+    // one flash as the replay clock crosses this goal's minute
+    // (max() keeps the exponent ≤ 0: exp of a large positive overflows to NaN)
+    float fl = step(g.z, u_clock) * exp(-max(u_clock - g.z, 0.0)*1.15);
+    // the scar's own concentric rings, frozen in the plate
+    ring += (0.55 + 1.8*fl) * sin(dg*(120.0 + 14.0*hash(vec2(g.z,3.0))) - t*0.7) * exp(-dg*10.0);
+    // one crisp engraved circle marks the wound itself
+    scar = max(scar, (0.55 + 1.5*fl) * (1.0 - smoothstep(0.0025, 0.0060, abs(dg - 0.027))));
+    glow += fl * exp(-dg*16.0);
+    scTint += g.w * exp(-dg*7.0) * 0.4;
+    damp *= 1.0 - 0.85*exp(-dg*dg/0.0018);   // dead core: field is burned out
+  }
+
+  float a1 = u_amp.x * br * exp(-d1*2.1);
+  float a2 = u_amp.y * br * exp(-d2*2.1);
+  float v = (a1*sin(d1*u_freq.x - t*0.55 + ph)
+           + a2*sin(d2*u_freq.y + t*0.47 - ph)) * damp
+           + ring;
+
+  // engraved isolines of the signed field
+  float s  = v * 2.6;
+  float w  = fwidth(s);
+  float iso  = abs(fract(s) - 0.5);
+  float line = 1.0 - smoothstep(0.032, 0.032 + max(w, 0.012), iso);
+  float energy = a1 + a2 + abs(ring)*0.5;
+  float li = line * (0.06 + 0.94*smoothstep(0.04, 0.50, energy));
+
+  // vignette keeps the plate inside the frame
+  float vig = smoothstep(1.02, 0.36, length(uv*vec2(1.70, 1.34)));
+  li *= mix(0.06, 1.0, vig);
+
+  // ground: near-black, faintly tinted by whichever emitter dominates
+  vec3 celeste = vec3(0.424, 0.671, 0.839);
+  vec3 rojo    = vec3(0.835, 0.286, 0.235);
+  float dom = a1 - a2 + scTint;
+  vec3 col = vec3(0.039, 0.039, 0.047);
+  col += celeste * max(dom, 0.0) * 0.27 * vig;
+  col += rojo    * max(-dom, 0.0) * 0.27 * vig;
+
+  // warm white engraving with a restrained duotone shimmer
+  vec3 warm = vec3(0.957, 0.918, 0.845);
+  vec3 irid = warm * (0.86 + 0.14*cos(v*2.6 + vec3(0.0, 0.45, 1.05)));
+  col += irid * li;
+  col += warm * scar * 0.9 * mix(0.3, 1.0, vig);
+  col += warm * glow * 0.55 * vig;
+
+  // plate grain
+  float g = hash(gl_FragCoord.xy);
+  col += (g - 0.5)*0.045;
+
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+<script>
+const seed = ART.seed("2026-07-06-008e");
+const R = ART.rng(seed);
+const M = window.M8;
+
+const F = FRAME.mount({
+  n: "008", v: "e", title: "interferencia", date: "06·07·2026",
+  data: M.frameData, tech: "glsl · interference", dark: true,
+  onResize() {},
+});
+
+// enable derivatives before ART.shader compiles on the same context
+F.canvas.getContext("webgl", { antialias: false, preserveDrawingBuffer: false })
+  .getExtension("OES_standard_derivatives");
+
+const sh = ART.shader(F.canvas, document.getElementById("frag").textContent,
+  ["u_clock", "u_goals", "u_freq", "u_amp", "u_emit"]);
+const gl = sh.gl;
+const sf = ART.rng(seed)() * 100;
+
+// goals on the vertical time axis: minute 0 top → 120 bottom, x by team side
+const goals = [];
+for (const g of M.goals) {
+  const side = g.team === "arg" ? -1 : 1;
+  goals.push(
+    side * (0.150 + (R() - 0.5) * 0.05),           // x (seeded jitter)
+    -0.375 + (g.min / 120) * 0.75,                 // y on the time axis
+    g.min,
+    g.team === "arg" ? 1 : -1
+  );
+}
+gl.uniform4fv(sh.extra.u_goals, goals);
+gl.uniform2f(sh.extra.u_freq, M.shots.arg * 4.5, M.shots.cpv * 4.5);
+gl.uniform2f(sh.extra.u_amp, M.possession.arg / 100, M.possession.cpv / 100);
+gl.uniform2f(sh.extra.u_emit, 0.225 + R() * 0.03, 0.225 + R() * 0.03);
+
+(function loop(t) {
+  const cycle = (t / 1000) % 34;
+  const clock = Math.min(120, (cycle / 26) * 120);
+  gl.uniform1f(sh.extra.u_clock, clock);
+  sh.draw(t / 1000, sf);
+  requestAnimationFrame(loop);
+})(0);
+</script>

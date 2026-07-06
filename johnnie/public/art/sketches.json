@@ -1,6 +1,6 @@
 {
   "project": "a daily generative art practice, after Zach Lieberman",
-  "batch_note": "batch 002 underway · batch 001 awaiting curation.",
+  "batch_note": "008 — diez estudios de un partido · pick the ones that stay.",
   "sketches": [
     {
       "n": "001",
@@ -8,7 +8,11 @@
       "date": "2026-07-06",
       "file": "sketches/001.html",
       "medium": "webgl shader",
-      "tags": ["gradients", "color blending", "blobs"],
+      "tags": [
+        "gradients",
+        "color blending",
+        "blobs"
+      ],
       "status": "candidate",
       "note": "Soft color-field blobs breathing into each other, pigment-style mixing on cream paper."
     },
@@ -18,7 +22,11 @@
       "date": "2026-07-06",
       "file": "sketches/002.html",
       "medium": "webgl shader",
-      "tags": ["dithering", "1-bit", "landscape"],
+      "tags": [
+        "dithering",
+        "1-bit",
+        "landscape"
+      ],
       "status": "candidate",
       "note": "Rolling noise terrain through an 8×8 Bayer matrix. One bit of ink; the machine pretends to be a printer."
     },
@@ -28,7 +36,11 @@
       "date": "2026-07-06",
       "file": "sketches/003.html",
       "medium": "webgl shader",
-      "tags": ["moiré", "riso", "stripes"],
+      "tags": [
+        "moiré",
+        "riso",
+        "stripes"
+      ],
       "status": "candidate",
       "note": "Two riso ink layers of warped stripes printed slightly off-register. The moiré is the drawing."
     },
@@ -38,7 +50,11 @@
       "date": "2026-07-06",
       "file": "sketches/004.html",
       "medium": "canvas 2d",
-      "tags": ["dot grid", "refraction", "optics"],
+      "tags": [
+        "dot grid",
+        "refraction",
+        "optics"
+      ],
       "status": "candidate",
       "note": "A quiet grid of dots disturbed by invisible glass. Three lenses wander the field."
     },
@@ -48,7 +64,11 @@
       "date": "2026-07-06",
       "file": "sketches/005.html",
       "medium": "canvas 2d",
-      "tags": ["flow field", "particles", "additive"],
+      "tags": [
+        "flow field",
+        "particles",
+        "additive"
+      ],
       "status": "candidate",
       "note": "Particles ride a slowly turning noise field, drawing additive light. Long exposure of something that was never there."
     },
@@ -58,7 +78,11 @@
       "date": "2026-07-06",
       "file": "sketches/006.html",
       "medium": "canvas 2d",
-      "tags": ["watercolor", "layering", "grain"],
+      "tags": [
+        "watercolor",
+        "layering",
+        "grain"
+      ],
       "status": "candidate",
       "note": "Translucent deformed circles settle on paper one at a time, like watercolor drying in layers."
     },
@@ -68,19 +92,153 @@
       "date": "2026-07-06",
       "file": "sketches/007.html",
       "medium": "canvas 2d feedback",
-      "tags": ["feedback", "smear", "glow"],
+      "tags": [
+        "feedback",
+        "smear",
+        "glow"
+      ],
       "status": "candidate",
       "note": "Video feedback in software: the canvas redraws into itself, rotated and zoomed, while three lights orbit."
     },
     {
-      "n": "008",
-      "title": "miami",
+      "n": "008j",
+      "title": "órbitas",
       "date": "2026-07-06",
-      "file": "sketches/008.html",
-      "medium": "canvas 2d · real match data",
-      "tags": ["data", "fútbol", "riso"],
+      "file": "sketches/008j.html",
+      "medium": "canvas · gravity",
+      "tags": [
+        "data",
+        "orbits",
+        "additive"
+      ],
       "status": "candidate",
-      "note": "Argentina 3–2 Cabo Verde (aet), World Cup 2026 R32, printed as two riso inks sharing one river. Goals, shots, cards, possession and xG are the real numbers; the piece replays the 120 minutes in 26 seconds."
+      "note": "The goal as gravity: 38 shots in orbit, on-target tighter, the five goals spiral in and ring the bell."
+    },
+    {
+      "n": "008i",
+      "title": "minutos",
+      "date": "2026-07-06",
+      "file": "sketches/008i.html",
+      "medium": "dom · kinetic type",
+      "tags": [
+        "data",
+        "typography",
+        "swiss"
+      ],
+      "status": "candidate",
+      "note": "The match told only in type: 120 minutes tick by, goal numerals slam full-width and stack into the ledger."
+    },
+    {
+      "n": "008h",
+      "title": "sismógrafo",
+      "date": "2026-07-06",
+      "file": "sketches/008h.html",
+      "medium": "canvas · plotter",
+      "tags": [
+        "data",
+        "traces",
+        "plotter"
+      ],
+      "status": "candidate",
+      "note": "120 stacked seismic traces, one per minute; shots tremble, goals spike off the chart."
+    },
+    {
+      "n": "008g",
+      "title": "transmisión",
+      "date": "2026-07-06",
+      "file": "sketches/008g.html",
+      "medium": "slit-scan · feedback",
+      "tags": [
+        "data",
+        "slit-scan",
+        "crt"
+      ],
+      "status": "candidate",
+      "note": "A chart-recorder scans the match's color signal into a degraded broadcast; goals leave hot scars."
+    },
+    {
+      "n": "008f",
+      "title": "bufanda",
+      "date": "2026-07-06",
+      "file": "sketches/008f.html",
+      "medium": "glsl · woven",
+      "tags": [
+        "data",
+        "textile",
+        "riso"
+      ],
+      "status": "candidate",
+      "note": "The match woven as a fan scarf: weft rows by minute, goals as pulled threads, cards as gold yarn."
+    },
+    {
+      "n": "008e",
+      "title": "interferencia",
+      "date": "2026-07-06",
+      "file": "sketches/008e.html",
+      "medium": "glsl · interference",
+      "tags": [
+        "data",
+        "waves",
+        "engraving"
+      ],
+      "status": "candidate",
+      "note": "Two wave systems — frequency by shots, amplitude by possession — engrave an interference field; goals scar the phase."
+    },
+    {
+      "n": "008d",
+      "title": "terreno",
+      "date": "2026-07-06",
+      "file": "sketches/008d.html",
+      "medium": "three.js · relief",
+      "tags": [
+        "data",
+        "topography",
+        "plotter"
+      ],
+      "status": "candidate",
+      "note": "A topographic paper relief of match pressure: shots as hills, goals as mountains, contours in ink."
+    },
+    {
+      "n": "008c",
+      "title": "constelación",
+      "date": "2026-07-06",
+      "file": "sketches/008c.html",
+      "medium": "three.js · star chart",
+      "tags": [
+        "data",
+        "stars",
+        "additive"
+      ],
+      "status": "candidate",
+      "note": "All 38 shots as stars on a vertical time axis; the five goals burn brightest, the own goal wears a hollow halo."
+    },
+    {
+      "n": "008b",
+      "title": "64.478",
+      "date": "2026-07-06",
+      "file": "sketches/008b.html",
+      "medium": "three.js · gpu points",
+      "tags": [
+        "data",
+        "particles",
+        "crowd"
+      ],
+      "status": "candidate",
+      "note": "Every person in the stadium, one gpu point each — 64,478 souls leaning with the match; goals ripple through the crowd."
+    },
+    {
+      "n": "008a",
+      "title": "río",
+      "date": "2026-07-06",
+      "file": "sketches/008a.html",
+      "medium": "canvas 2d · dos tintas",
+      "tags": [
+        "data",
+        "riso",
+        "river"
+      ],
+      "status": "candidate",
+      "note": "Two risograph inks share one page; the boundary is the real balance of the game, goals bend the river."
     }
   ]
 }
