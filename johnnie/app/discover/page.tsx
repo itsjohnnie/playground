@@ -340,13 +340,26 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
    the theme eases !important + opacity — the theme block's own !important
    shorthand (above) would otherwise drop the opacity ease. */
 .discover-comp {
+  /* These timings are the RETURN (class removed on close): the bar slides
+     back up and refills while the image flies home. */
   transition: background-color .45s ease, color .45s ease,
     border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
-    opacity .3s ease !important;
+    opacity .3s ease, transform .35s var(--ease-out) !important;
 }
-html.stage-open .discover-comp { opacity: 0; pointer-events: none; }
+html.stage-open .discover-comp {
+  opacity: 0;
+  /* Slide clean off the bottom edge (keep the centring -50% X); include the
+     bar's own offset + home-indicator inset so no sliver survives. */
+  transform: translate(-50%, calc(100% + 3rem + env(safe-area-inset-bottom, 0px)));
+  pointer-events: none;
+  /* Departure is snappier than the return — it must clear the scene during
+     the first third of the image's .5s flight. */
+  transition: background-color .45s ease, color .45s ease,
+    border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
+    opacity .22s ease, transform .25s var(--ease-out) !important;
+}
 .hero-gradient.cc-white { transition: opacity .3s ease; }
-html.stage-open .hero-gradient.cc-white { opacity: 0; }
+html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s ease; }
 
 /* Mobile tap-to-stage: the tapped tile, front-and-center and enlarged, over a
    dimmed backdrop with its meta beneath. Tapping anywhere dismisses it. */
