@@ -84,6 +84,9 @@ class InfiniteGrid {
   tapCancelled = false;
   stage: HTMLElement | null = null;
   stageInner: HTMLElement | null = null;
+  // The grid cell whose image is on stage — hidden while staged so the tile
+  // reads as having travelled to the centre, restored on close.
+  stagedCell: Cell | null = null;
 
   // Staged-image zoom: double-tap toggles ~2.5x at the tap point, pinch zooms
   // freeform, one-finger drag pans while zoomed. A tap on the backdrop closes.
@@ -491,7 +494,10 @@ class InfiniteGrid {
       this.clampZoom();
       this.applyZoom(false);
     } else if (this.zPointers.size === 1) {
-      if (Math.hypot(e.clientX - this.zDownX, e.clientY - this.zDownY) > 6) {
+      // Generous tap slop: quick thumb taps drift well past 6px, which used
+      // to read as a pan and silently swallow backdrop-taps meant to close
+      // (most noticeable in the standalone home-screen app).
+      if (Math.hypot(e.clientX - this.zDownX, e.clientY - this.zDownY) > 12) {
         this.zMoved = true;
       }
       if (this.zScale > 1 && this.zDownOnImg) {
@@ -607,7 +613,14 @@ class InfiniteGrid {
           img.style.transform = "translate(0px, 0px) scale(1)";
         }
         // Next frame so the open transition runs from the collapsed state.
-        requestAnimationFrame(() => this.stage?.classList.add("is-open"));
+        // The source tile hides in the SAME frame the staged copy becomes
+        // visible (is-open), so exactly one instance of the image is ever on
+        // screen — the tile itself appears to travel.
+        requestAnimationFrame(() => {
+          this.stage?.classList.add("is-open");
+          it.el.style.visibility = "hidden";
+          this.stagedCell = it;
+        });
         // The grid is now static behind a backdrop-blur — stop the rAF so the
         // blur isn't recompositing a moving layer every frame (GPU finesse).
         cancelAnimationFrame(this.rafId);
@@ -621,8 +634,30 @@ class InfiniteGrid {
     if (!this.stage) return;
     this.stage.classList.remove("is-open");
     this.stage.setAttribute("aria-hidden", "true");
-    this.resetZoom();
+    // Bring the source tile back as the staged copy fades out over it.
+    if (this.stagedCell) {
+      this.stagedCell.el.style.visibility = "";
+      this.stagedCell = null;
+    }
+    const img = this.zImg;
     this.zImg = null;
+    // Reset gesture state now (gestures are dead with zImg null)…
+    this.zScale = 1;
+    this.zTx = 0;
+    this.zTy = 0;
+    this.zPointers.clear();
+    this.zMoved = false;
+    this.zLastTapTime = 0;
+    if (img) {
+      // …but let the image fade out IN PLACE first: dropping the inline
+      // transition hands control to the stylesheet's opacity fade (the inline
+      // one only lists transform, which would make the close a hard pop).
+      img.style.removeProperty("transition");
+      window.setTimeout(() => {
+        img.style.transform = "";
+        img.style.cursor = "";
+      }, 320);
+    }
     this.lastInteraction = Date.now();
     this.hasSnapped = false;
     // Resume the gallery loop (velocity is ~0 after a tap, so it stays put).
