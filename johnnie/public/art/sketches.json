@@ -1,20 +1,20 @@
 {
   "project": "a daily generative art practice, after Zach Lieberman",
-  "batch_note": "008 — diez estudios de un partido · tercera curaduría 06·07.",
+  "batch_note": "008 — diez estudios de un partido · cuarta curaduría 06·07.",
   "sketches": [
     {
       "n": "008j",
       "title": "órbitas",
       "date": "2026-07-06",
       "file": "sketches/008j.html",
-      "medium": "canvas · gravity",
+      "medium": "canvas · kepler 3d",
       "tags": [
-        "data",
         "orbits",
-        "additive"
+        "3d",
+        "gravity"
       ],
       "status": "candidate",
-      "note": "The goal as gravity: 38 shots in orbit, on-target tighter, the five goals spiral in and ring the bell."
+      "note": "The goal as gravity, seen from above the plane: 33 shots on inclined Kepler ellipses around a glowing torus; the five goals spiral in at their minute and leave standing bells."
     },
     {
       "n": "008i",
@@ -46,17 +46,17 @@
     },
     {
       "n": "008g",
-      "title": "mosaico",
+      "title": "pileta",
       "date": "2026-07-06",
       "file": "sketches/008g.html",
-      "medium": "canvas · glazed shards",
+      "medium": "glsl · caustics",
       "tags": [
-        "mosaic",
-        "craft",
-        "clock"
+        "water",
+        "caustics",
+        "night"
       ],
       "status": "candidate",
-      "note": "A sidewalk mosaic read like a clock: each glazed shard coloured by who held that minute, gold shards at the five goals — the own goal unglazed. Assembled ring by ring."
+      "note": "A miami hotel pool at night, from above: caustic filaments over the depth gradient, tile grid wobbling under the same refraction. Five standing ripple rings at the goal minutes on an invisible 120' clock — the 111' own goal rings twice. Settles, then the water keeps barely breathing."
     },
     {
       "n": "008f",
@@ -74,17 +74,17 @@
     },
     {
       "n": "008e",
-      "title": "papel",
+      "title": "resonancia",
       "date": "2026-07-06",
       "file": "sketches/008e.html",
-      "medium": "canvas · torn collage",
+      "medium": "glsl · chladni",
       "tags": [
-        "collage",
-        "paper",
-        "craft"
+        "chladni",
+        "physics",
+        "sand"
       ],
       "status": "candidate",
-      "note": "Torn-paper collage: five hand-torn shapes (the own goal torn as a ring), 38 confetti shots, white torn rims and real shadows. Placed once, then pressed flat."
+      "note": "A chladni plate sings the match: sand on dark steel migrates to the nodal lines as the drive sweeps five resonance modes, one per goal — agitated between tones, crisp when locked. Every finished mode leaves ~8% of its figure behind. Then the plate rests."
     },
     {
       "n": "008d",
@@ -102,17 +102,17 @@
     },
     {
       "n": "008c",
-      "title": "vitral",
+      "title": "organismo",
       "date": "2026-07-06",
       "file": "sketches/008c.html",
-      "medium": "glsl · stained glass",
+      "medium": "canvas · physarum",
       "tags": [
-        "glass",
-        "craft",
-        "light"
+        "physarum",
+        "simulation",
+        "organism"
       ],
       "status": "candidate",
-      "note": "The match as stained glass: leaded panes split 64/36, five rose-window roundels at the goal minutes — the own goal left clear. The light rises once, then the window glows."
+      "note": "The match as a living culture: two physarum colonies (argentina 64%, cabo verde 36%) grow a transport network across a petri dish, feeding on five food bodies set at the goal minutes. The colonies braid, wall each other off at a dark seam, then the network is fixed."
     },
     {
       "n": "008b",
@@ -133,14 +133,14 @@
       "title": "bruma",
       "date": "2026-07-06",
       "file": "sketches/008a.html",
-      "medium": "glsl · dithered gradients",
+      "medium": "glsl · fluid dither",
       "tags": [
-        "gradients",
+        "fluid",
         "dither",
         "settle"
       ],
       "status": "candidate",
-      "note": "The match as weather: five soft gradient forms — the own goal a hollow ring — drift in, settle, and rest. The dither lives in the pigment."
+      "note": "The match as weather: five pigments arrive and melt through a nested domain warp into fluid tongues — ink in slow water. The dither lives in the pigment; flows once, then rests."
     }
   ]
 }

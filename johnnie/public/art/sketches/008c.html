@@ -5,153 +5,354 @@
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
 <script src="data-008.js"></script>
-<script id="frag" type="x-shader">
-precision highp float;
-uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
-
-// 008 — c · vitral — the match as stained glass. A leaded field of
-// hand-set panes: celeste glass for argentina's 64% of the ball, ember
-// for cabo verde's 36%, a few clear panes for the paper between. Five
-// roundels sit at the goal minutes, top to bottom — petalled rose
-// windows, the own goal left as clear glass in a leaded ring. Light
-// rises behind the window once, pane by pane; then it simply glows.
-
-float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
-float vnoise(vec2 p){
-  vec2 i = floor(p), f = fract(p);
-  f = f*f*(3.0-2.0*f);
-  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
-             mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
-}
-float fbm(vec2 p){
-  float s = 0.0, a = 0.5;
-  for (int i = 0; i < 4; i++){ s += a*vnoise(p); p = p*2.03 + 11.7; a *= 0.5; }
-  return s;
-}
-float ease(float t){ t = clamp(t, 0.0, 1.0); return 1.0 - pow(1.0 - t, 3.0); }
-
-// glass palette — deep transmissive colors
-vec3 glass(float h, float clearish){
-  if (clearish > 0.5)       return vec3(0.88, 0.86, 0.78);   // clear antique
-  if (h < 0.42)             return vec3(0.16, 0.38, 0.60);   // celeste deep
-  if (h < 0.64)             return vec3(0.34, 0.58, 0.78);   // celeste pale
-  if (h < 0.78)             return vec3(0.62, 0.18, 0.12);   // ruby
-  if (h < 0.93)             return vec3(0.78, 0.40, 0.16);   // amber
-  return vec3(0.80, 0.62, 0.22);                             // gold
-}
-
-void main(){
-  vec2 p = gl_FragCoord.xy / u_res;
-  float aspect = u_res.x / u_res.y;
-  // width-anchored design space
-  vec2 q = vec2(p.x * 0.75, (p.y - 0.5) * 0.75 / max(aspect, 0.001) + 0.5);
-  float t10 = u_p * 10.0;
-
-  // organic leading: warp the space, then cut it on a grid
-  vec2 w = q * vec2(9.0, 12.0);
-  w += 0.55 * vec2(fbm(q * 5.1 + 3.7), fbm(q * 5.1 + 9.2)) - 0.275;
-  vec2 cell = floor(w);
-  vec2 f = fract(w);
-  float came = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)); // distance to lead
-
-  // per-pane character
-  float h = hash(cell * 1.7 + 0.31);
-  float clearish = step(0.92, hash(cell * 3.1 + 7.7));
-  vec3 pane = glass(h, clearish);
-  // streaks in the glass, each pane rolled in its own direction
-  float ang = hash(cell * 2.3) * 6.2832;
-  vec2 dir = vec2(cos(ang), sin(ang));
-  float streak = fbm(vec2(dot(q, dir) * 26.0, dot(q, vec2(-dir.y, dir.x)) * 5.0));
-  pane *= 0.82 + 0.36 * streak;
-  // seeds and bubbles
-  float bubble = step(0.994, hash(floor(q * 430.0)));
-  pane += bubble * 0.10;
-
-  // ---- five roundels at the goal minutes, time falling top to bottom ----
-  // x positions composed by hand; petals in the scorer's glass
-  for (int i = 0; i < 5; i++){
-    float gm = i==0 ? 29.0 : i==1 ? 59.0 : i==2 ? 92.0 : i==3 ? 103.0 : 111.0;
-    float isArg = (i==0 || i==2 || i==4) ? 1.0 : 0.0;
-    float og = i==4 ? 1.0 : 0.0;
-    vec2 c = vec2(
-      i==0 ? 0.245 : i==1 ? 0.525 : i==2 ? 0.230 : i==3 ? 0.510 : 0.375,
-      mix(0.86, 0.14, gm / 120.0)
-    );
-    float r = i==4 ? 0.070 : 0.088;
-    float d = length(q - c);
-    if (d < r + 0.012){
-      float petal = 0.0;
-      float a2 = atan(q.y - c.y, q.x - c.x);
-      // radial cames: 8 petals + hub ring
-      float spokes = abs(mod(a2 * 1.2732 + 8.0, 1.0) - 0.5) * 2.0; // 8 sectors
-      float ringD = min(abs(d - r), min(abs(d - r * 0.42), spokes * d * 1.4)) * 3.2;
-      if (og > 0.5){
-        pane = glass(0.0, 1.0) * (0.9 + 0.2 * streak);       // clear rose
-      } else {
-        float ph = hash(vec2(float(i) * 3.3, floor(a2 * 1.2732 + 8.0)));
-        pane = isArg > 0.5 ? glass(ph * 0.6, 0.0) : glass(0.66 + ph * 0.3, 0.0);
-        pane *= 0.84 + 0.3 * streak;
-        if (d < r * 0.42) pane = vec3(0.80, 0.62, 0.22) * (0.8 + 0.3 * streak); // gold hub
-      }
-      came = min(ringD * 7.0, came);
-      petal = 1.0;
-    }
-  }
-
-  // ---- the light behind the window rises once ----
-  // panes wake in a staggered order as the light reaches them
-  float sun = ease(t10 / 7.5);
-  vec2 lightC = vec2(0.375, 1.05);
-  float fall = 1.0 - clamp(length(q - lightC) / 1.35, 0.0, 1.0);
-  float wake = ease((sun * 1.6 - hash(cell * 5.3) * 0.55 - (1.0 - fall)) * 2.2);
-  float light = (0.08 + 0.80 * sun * (0.32 + 0.68 * fall)) * (0.22 + 0.78 * wake);
-
-  vec3 col = pane * light;
-  // transmission bloom on the brightest glass
-  col += pane * pow(light, 3.0) * 0.35;
-
-  // the lead: dark, soft-edged, slightly lit on top
-  float lead = 1.0 - smoothstep(0.035, 0.085, came);
-  vec3 leadC = vec3(0.075, 0.065, 0.06) + vec3(0.06) * light * 0.3;
-  col = mix(col, leadC, lead);
-
-  // stone dark around everything the light hasn't reached
-  col *= 0.35 + 0.65 * smoothstep(0.0, 0.15, light);
-
-  // grain + vignette
-  col += (hash(gl_FragCoord.xy * 0.73) - 0.5) * 0.028;
-  float vig = smoothstep(1.5, 0.55, length(p - vec2(0.5, 0.5)));
-  col *= mix(0.78, 1.0, vig);
-
-  gl_FragColor = vec4(col, 1.0);
-}
-</script>
 <script>
+// 008 — c · organismo — the match as a living culture. A physarum
+// (slime-mould) transport network, Jones' deposit/sense/steer model, run
+// in a petri dish. Two species share the plate: argentina (64% of the
+// agents, celeste-white veins) and cabo verde (36%, rojo-ember). Five
+// food bodies sit on an invisible clock at the goal minutes — 29', 59',
+// 92', 103', 111' — each feeding its scorer's colony (the 111' own goal
+// feeds argentina). The colonies grow from seeded blobs, thread the food
+// into pulsing veins, and wall each other off at a dark seam. It grows
+// for ~14 seconds, then the network is fixed — the plate is photographed.
+
 const seed = ART.seed("2026-07-06-008c");
-const M = window.M8;
-let sh = null, done = false, start = null;
+const rng = ART.rng(seed);
+
+let W, H, DPR;
+let gw, gh, NC;            // grid dims + cell count
+let TA, TB, SA, SB;        // trail maps A/B + scratch
+let ax, ay, ah, asp;      // agent x, y, heading, species (0=A arg, 1=B cpv)
+let NAGT;
+let foods = [];            // {gx, gy, sx, sy, map, min}
+let off, offCtx, imgData;
+let grain, vignette;
+let done = false, start = null;
+let lutA, lutB;
+
+const DURATION = 8200;     // grow into the braided mesh, then rest
+const TAU = Math.PI * 2;
+
+// ---- tunables (Jones physarum, tuned for dendritic veins) ----
+const CELL_TARGET = 190000; // grid cells (fine enough for filaments)
+const SENSE_DIST = 4.2;    // cells ahead the sensors reach
+const SENSE_ANG  = 0.39;   // ±22.5° sensor spread
+const TURN_ANG   = 0.66;   // ~38° steer — RA > SA gives reticular networks
+const MOVE       = 1.0;    // cells per step
+const DEPOSIT    = 1.0;    // own-trail drop
+const OTHER_REP  = 0.72;   // how strongly the other species repels
+const DECAY      = 0.90;   // multiplicative decay after diffuse
+const DIFF_CTR   = 1;      // centre weight in the 3×3 diffusion (1 = pure mean)
+const FOOD_PEAK  = 0.60;   // gaussian food deposit peak
+const K_NORM     = 0.30;   // trail -> intensity soft mapping
 
 const F = FRAME.mount({
-  n: "008", v: "c", title: "vitral", date: "06·07·2026",
-  data: M.frameData, tech: "glsl · stained glass",
-  dark: true,
-  onResize() {
-    if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
-    done = false;
-    start = null;
+  n: "008", v: "c", title: "organismo", date: "06·07·2026",
+  data: window.M8.frameData, tech: "canvas · physarum", dark: true,
+  onResize(w, h, dpr) {
+    W = w; H = h; DPR = dpr;
+    build();
+    done = false; start = null;
     requestAnimationFrame(loop);
   },
 });
-const sf = ART.rng(seed)() * 100;
+const ctx = F.canvas.getContext("2d");
 
-// the light rises once (10s), then the window glows still — no loop
+// ---- colour ramps: 3 stops each, driven by trail intensity ----
+const CELESTE = [[0.086, 0.227, 0.361], [0.424, 0.671, 0.839], [0.918, 0.957, 0.984]]; // #163a5c → #6cabd6 → near-white
+const EMBER   = [[0.227, 0.070, 0.047], [0.765, 0.290, 0.220], [0.941, 0.690, 0.537]]; // #3a120c → #c34a38 → #f0b089
+
+function ramp3(st, t) {
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  const s = t < 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
+  const a = t < 0.5 ? st[0] : st[1], b = t < 0.5 ? st[1] : st[2];
+  return [a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, a[2] + (b[2] - a[2]) * s];
+}
+
+// precompute 256-entry LUTs: contribution colour already scaled by intensity
+function buildLUT(st) {
+  const L = new Float32Array(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    const s = i / 255;
+    const c = ramp3(st, s);
+    // fade brightness in with intensity so low trail ≈ black (screen-safe)
+    const g = Math.pow(s, 0.82);
+    L[i * 3] = c[0] * g; L[i * 3 + 1] = c[1] * g; L[i * 3 + 2] = c[2] * g;
+  }
+  return L;
+}
+
+function build() {
+  // grid matched to stage aspect
+  const target = CELL_TARGET;
+  gh = Math.max(40, Math.round(Math.sqrt(target * H / W)));
+  gw = Math.max(40, Math.round(target / gh));
+  NC = gw * gh;
+
+  TA = new Float32Array(NC); TB = new Float32Array(NC);
+  SA = new Float32Array(NC); SB = new Float32Array(NC);
+
+  lutA = buildLUT(CELESTE); lutB = buildLUT(EMBER);
+
+  // food on the invisible clock: minute 0 at top, clockwise
+  const cx = gw / 2, cy = gh / 2;
+  const foodR = 0.32 * Math.min(gw, gh);
+  const G = window.M8.goals;
+  // map each goal minute -> scorer's trail map (og at 111' feeds arg = A)
+  foods = G.map((gl) => {
+    const th = (gl.min / window.M8.totalMin) * TAU;   // clockwise from top
+    const fx = cx + foodR * Math.sin(th);
+    const fy = cy - foodR * Math.cos(th);
+    const isA = gl.og ? true : gl.team === "arg";
+    return { gx: fx, gy: fy, map: isA ? "A" : "B", min: gl.min };
+  });
+
+  // ---- agents, 64/36 split, seeded blobs inside the dish ----
+  NAGT = 32000;
+  const nA = Math.round(NAGT * 0.64);
+  ax = new Float32Array(NAGT); ay = new Float32Array(NAGT);
+  ah = new Float32Array(NAGT); asp = new Uint8Array(NAGT);
+
+  // seeded blob centres per species, scattered within the food ring
+  function blobs(n) {
+    const arr = [];
+    for (let i = 0; i < n; i++) {
+      const a = rng() * TAU, r = (0.2 + rng() * 0.72) * foodR;
+      arr.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+    return arr;
+  }
+  const blobA = blobs(5), blobB = blobs(4);
+  const sd = Math.max(gw, gh) * 0.035;
+  function gauss() { // box-muller-ish via two uniforms
+    let u = 0, v = 0;
+    while (u === 0) u = rng();
+    v = rng();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v);
+  }
+  for (let i = 0; i < NAGT; i++) {
+    const isA = i < nA;
+    const bl = isA ? blobA : blobB;
+    const b = bl[(rng() * bl.length) | 0];
+    let x = b[0] + gauss() * sd, y = b[1] + gauss() * sd;
+    x = Math.max(1, Math.min(gw - 2, x));
+    y = Math.max(1, Math.min(gh - 2, y));
+    ax[i] = x; ay[i] = y; ah[i] = rng() * TAU; asp[i] = isA ? 0 : 1;
+  }
+
+  // stage-space food nodes for labels
+  foods.forEach((f) => { f.sx = f.gx / gw * W; f.sy = f.gy / gh * H; });
+
+  // offscreen grid canvas + reusable ImageData
+  off = document.createElement("canvas");
+  off.width = gw; off.height = gh;
+  offCtx = off.getContext("2d");
+  imgData = offCtx.createImageData(gw, gh);
+
+  buildGrain();
+  buildVignette();
+}
+
+// ---- one simulation step ----
+function sense(own, other, x, y, ca, sa) {
+  const sx = x + ca * SENSE_DIST, sy = y + sa * SENSE_DIST;
+  let cxi = sx | 0, cyi = sy | 0;
+  if (cxi < 0) cxi = 0; else if (cxi >= gw) cxi = gw - 1;
+  if (cyi < 0) cyi = 0; else if (cyi >= gh) cyi = gh - 1;
+  const idx = cyi * gw + cxi;
+  return own[idx] - OTHER_REP * other[idx];
+}
+
+function step() {
+  for (let i = 0; i < NAGT; i++) {
+    const A = asp[i] === 0;
+    const own = A ? TA : TB, other = A ? TB : TA;
+    let h = ah[i];
+    const x = ax[i], y = ay[i];
+
+    const cf = Math.cos(h), sf = Math.sin(h);
+    const hl = h - SENSE_ANG, hr = h + SENSE_ANG;
+    const F0 = sense(own, other, x, y, cf, sf);
+    const L0 = sense(own, other, x, y, Math.cos(hl), Math.sin(hl));
+    const R0 = sense(own, other, x, y, Math.cos(hr), Math.sin(hr));
+
+    if (F0 > L0 && F0 > R0) {
+      // straight
+    } else if (F0 < L0 && F0 < R0) {
+      h += (rng() < 0.5 ? -1 : 1) * TURN_ANG;
+    } else if (L0 < R0) {
+      h += TURN_ANG;
+    } else if (R0 < L0) {
+      h -= TURN_ANG;
+    } else {
+      h += (rng() < 0.5 ? -1 : 1) * TURN_ANG;
+    }
+
+    let nx = x + Math.cos(h) * MOVE, ny = y + Math.sin(h) * MOVE;
+    // bounce in the dish
+    if (nx < 1) { nx = 1; h = Math.PI - h; }
+    else if (nx > gw - 2) { nx = gw - 2; h = Math.PI - h; }
+    if (ny < 1) { ny = 1; h = -h; }
+    else if (ny > gh - 2) { ny = gh - 2; h = -h; }
+
+    ax[i] = nx; ay[i] = ny; ah[i] = h;
+    const idx = (ny | 0) * gw + (nx | 0);
+    own[idx] += DEPOSIT;
+  }
+}
+
+// ---- diffuse (centre-weighted 3×3) + decay, map -> scratch, swap ----
+// A gentle blur (centre weight DIFF_CTR) keeps filaments crisp where a pure
+// mean would smear them into fat ribbons.
+const DIFF_NORM = 1 / (DIFF_CTR + 8);
+function diffuse(src, dst) {
+  for (let y = 0; y < gh; y++) {
+    const y0 = y > 0 ? y - 1 : 0, y1 = y < gh - 1 ? y + 1 : gh - 1;
+    const r0 = y0 * gw, r1 = y * gw, r2 = y1 * gw;
+    for (let x = 0; x < gw; x++) {
+      const x0 = x > 0 ? x - 1 : 0, x1 = x < gw - 1 ? x + 1 : gw - 1;
+      const c = src[r1 + x];
+      const s =
+        src[r0 + x0] + src[r0 + x] + src[r0 + x1] +
+        src[r1 + x0] + c + src[r1 + x1] +
+        src[r2 + x0] + src[r2 + x] + src[r2 + x1] +
+        c * (DIFF_CTR - 1);
+      dst[r1 + x] = (s * DIFF_NORM) * DECAY;
+    }
+  }
+}
+
+// ---- food: gaussian deposit into the right map ----
+const FR = 3;
+function feed() {
+  for (const f of foods) {
+    const map = f.map === "A" ? TA : TB;
+    const cx = f.gx | 0, cy = f.gy | 0;
+    for (let dy = -FR; dy <= FR; dy++) {
+      const yy = cy + dy; if (yy < 0 || yy >= gh) continue;
+      for (let dx = -FR; dx <= FR; dx++) {
+        const xx = cx + dx; if (xx < 0 || xx >= gw) continue;
+        const d2 = dx * dx + dy * dy;
+        map[yy * gw + xx] += FOOD_PEAK * Math.exp(-d2 / 5.0);
+      }
+    }
+  }
+}
+
+// ---- render trail maps into the ImageData ----
+function render() {
+  const d = imgData.data;
+  const baseR = 10, baseG = 10, baseB = 12;   // #0a0a0c
+  for (let i = 0, p = 0; i < NC; i++, p += 4) {
+    const ta = TA[i], tb = TB[i];
+    let ia = 1 - Math.exp(-K_NORM * ta);
+    let ib = 1 - Math.exp(-K_NORM * tb);
+    let ai = (ia * 255) | 0; if (ai > 255) ai = 255;
+    let bi = (ib * 255) | 0; if (bi > 255) bi = 255;
+    const ja = ai * 3, jb = bi * 3;
+    // screen-blend base + A + B (in 0..255)
+    let r = baseR, g = baseG, b = baseB;
+    // A contribution
+    const ar = lutA[ja] * 255, ag = lutA[ja + 1] * 255, ab = lutA[ja + 2] * 255;
+    r = 255 - (255 - r) * (255 - ar) / 255;
+    g = 255 - (255 - g) * (255 - ag) / 255;
+    b = 255 - (255 - b) * (255 - ab) / 255;
+    // B contribution
+    const br = lutB[jb] * 255, bg = lutB[jb + 1] * 255, bb = lutB[jb + 2] * 255;
+    r = 255 - (255 - r) * (255 - br) / 255;
+    g = 255 - (255 - g) * (255 - bg) / 255;
+    b = 255 - (255 - b) * (255 - bb) / 255;
+    d[p] = r; d[p + 1] = g; d[p + 2] = b; d[p + 3] = 255;
+  }
+  offCtx.putImageData(imgData, 0, 0);
+}
+
+// ---- static grain (pre-rendered, multiplied) ----
+function buildGrain() {
+  grain = document.createElement("canvas");
+  grain.width = W; grain.height = H;
+  const g = grain.getContext("2d");
+  const img = g.createImageData(W, H);
+  const rg = ART.rng(seed + "grain");
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = 205 + (rg() * 50 | 0);
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 30;
+  }
+  g.putImageData(img, 0, 0);
+}
+
+function buildVignette() {
+  vignette = document.createElement("canvas");
+  vignette.width = W; vignette.height = H;
+  const v = vignette.getContext("2d");
+  const grd = v.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.30,
+    W / 2, H / 2, Math.max(W, H) * 0.72);
+  grd.addColorStop(0, "rgba(0,0,0,0)");
+  grd.addColorStop(1, "rgba(0,0,0,0.55)");
+  v.fillStyle = grd;
+  v.fillRect(0, 0, W, H);
+}
+
+// ---- composite everything to the visible canvas ----
+function paint() {
+  ctx.fillStyle = "#0a0a0c";
+  ctx.fillRect(0, 0, W, H);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(off, 0, 0, gw, gh, 0, 0, W, H);
+
+  // vignette
+  ctx.drawImage(vignette, 0, 0);
+
+  // grain
+  ctx.globalCompositeOperation = "multiply";
+  ctx.drawImage(grain, 0, 0);
+  ctx.globalCompositeOperation = "source-over";
+
+  // food nodes: tiny bone-white dots + minute in Geist Mono
+  const dot = Math.max(1.4, 1.7 * DPR);
+  ctx.font = (8.5 * DPR) + "px 'Geist Mono', ui-monospace, monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const f of foods) {
+    ctx.beginPath();
+    ctx.arc(f.sx, f.sy, dot, 0, TAU);
+    ctx.fillStyle = "rgba(244,240,229,0.82)";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(f.sx, f.sy, dot * 2.6, 0, TAU);
+    ctx.strokeStyle = "rgba(244,240,229,0.14)";
+    ctx.lineWidth = Math.max(1, DPR * 0.6);
+    ctx.stroke();
+    // label offset outward from centre
+    const dx = f.sx - W / 2, dy = f.sy - H / 2;
+    const dl = Math.hypot(dx, dy) || 1;
+    const lx = f.sx + (dx / dl) * 15 * DPR;
+    const ly = f.sy + (dy / dl) * 15 * DPR;
+    ctx.fillStyle = "rgba(244,240,229,0.34)";
+    ctx.fillText(f.min + "’", lx, ly);
+  }
+}
+
 function loop(tms) {
-  if (!sh || done) return;
+  if (done) return;
   if (start === null) start = tms;
-  const p = Math.min(1, (tms - start) / 10000);
-  sh.gl.uniform1f(sh.extra.u_p, p);
-  sh.draw(tms / 1000, sf);
-  if (p >= 1) { done = true; return; }
+  const elapsed = tms - start;
+
+  // 2 sim substeps per frame for faster network formation
+  for (let s = 0; s < 2; s++) {
+    step();
+    diffuse(TA, SA); diffuse(TB, SB);
+    let t = TA; TA = SA; SA = t;
+    t = TB; TB = SB; SB = t;
+    feed();
+  }
+
+  render();
+  paint();
+
+  if (elapsed >= DURATION) { done = true; return; }
   requestAnimationFrame(loop);
 }
 </script>

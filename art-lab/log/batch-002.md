@@ -115,3 +115,24 @@ the river; grain pass; Spanish captions (it's a love letter). Direction probed:
   abstracted argentine flag. Lesson recorded: when a motif turns to mush at
   knot resolution, swap it for a bolder cultural symbol rather than adding
   detail.
+
+## Fourth curation pass — Johnnie, late night 2026-07-06
+
+- **Direction:** 8a "too circular — make it fluid"; 8c/8e/8g/8j "replace or
+  massively improve. MIT level. 3d models, svg paths, textures, filters."
+- **008a bruma** — kept, made fluid: a nested domain warp melts the five
+  pigments into tongues and filaments, ink in slow water.
+- **008c → organismo** — real two-species physarum simulation (32k agents,
+  Jones algorithm): argentina (64%, celeste) vs cabo verde (36%, ember)
+  competing for five food nodes at the goal minutes. Key finding: freeze
+  mid-consolidation (~8s) — the braided mesh is the beautiful state.
+- **008e → resonancia** — chladni plate: true sand grains migrating through
+  five resonance modes (one per goal), 8% residue per mode (the plate
+  remembers), machined steel, corner bolts.
+- **008g → pileta** — night pool caustics over depth, refracted tile floor,
+  five standing ripple rings at the goal clock (og = double ring), gold
+  glint; settles to a 12% gentle idle (frozen water reads wrong).
+- **008j órbitas** — massively improved: tilted 3D Kepler system, inclined
+  elliptical shells, depth-graded trails, glowing torus, standing bells.
+- Taste addendum: "MIT level" = simulations and instruments with real
+  physics/algorithms behind them, photographed-experiment finishing.
