@@ -372,6 +372,10 @@ html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s e
    removed at close start; plain opacity delays are reliable everywhere). */
 .discover-logo, .discover-text, .toggle-mode {
   position: relative;
+  /* Relative positioning (needed for the frost layer) activates dormant
+     bottom/right offsets site.css puts on .toggle-mode at phone widths —
+     neutralise them so nothing shifts. */
+  top: auto; right: auto; bottom: auto; left: auto;
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
 .discover-logo::before, .discover-text::before, .toggle-mode::before {
