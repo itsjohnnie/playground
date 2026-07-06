@@ -340,15 +340,16 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
    the theme eases !important + opacity — the theme block's own !important
    shorthand (above) would otherwise drop the opacity ease. */
 .discover-comp {
-  /* These timings are the RETURN (class removed on close): the bar WAITS for
-     the image to land (.45s flight), then glides back up on a long, soft
-     ease — returning during the flight read as two animations colliding. */
+  /* The bar moves as a FINISHED, solid, frosted object — no opacity fade and
+     no frost state changes, ever (mixing motion with material changes is what
+     read as smears/pops). These timings are the RETURN (class removed on
+     close): it WAITS for the image to land (.45s flight), then glides back up
+     on a long, soft ease. */
   transition: background-color .45s ease, color .45s ease,
     border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
-    opacity .4s ease .45s, transform .55s var(--ease-out) .45s !important;
+    transform .55s var(--ease-out) .45s !important;
 }
 html.stage-open .discover-comp {
-  opacity: 0;
   /* Slide clean off the bottom edge (keep the centring -50% X); include the
      bar's own offset + home-indicator inset so no sliver survives. */
   transform: translate(-50%, calc(100% + 3rem + env(safe-area-inset-bottom, 0px)));
@@ -357,7 +358,7 @@ html.stage-open .discover-comp {
      the first third of the image's .5s flight. */
   transition: background-color .45s ease, color .45s ease,
     border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
-    opacity .22s ease, transform .25s var(--ease-out) !important;
+    transform .25s var(--ease-out) !important;
 }
 /* Vignette sequencing on close: the flying copy travels ABOVE the gradient,
    so it always lands undimmed — restoring the vignette during the flight made
@@ -368,14 +369,11 @@ html.stage-open .discover-comp {
 .hero-gradient.cc-white { transition: opacity .4s ease .5s; }
 html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s ease; }
 
-/* Animatable frost: iOS can't transition backdrop-filter itself, but it
-   fades the OPACITY of an always-blurred layer flawlessly. Each row's frost
-   therefore lives on a ::before (the rows' own backdrop-filter is disabled),
-   and the glass blooms/dissolves via opacity. Departure: it dissolves fast as
-   the bar drops. Return: the bar rises and the glass materializes through the
-   last stretch, settling exactly as it parks — a visible, seamless frost
-   transition instead of a pop. Driven by .bar-defrost (on with the stage,
-   removed at close start; plain opacity delays are reliable everywhere). */
+/* The frost is PERMANENT — the bar is solid frosted glass that slides as one
+   finished object, exactly like native iOS bars. It lives on ::before layers
+   (kept from the animatable-frost experiment; equivalent rendering, and the
+   rows' own backdrop-filter stays disabled). No frost state ever changes, so
+   there is nothing to pop or smear. */
 .discover-logo, .discover-text, .toggle-mode {
   position: relative;
   /* Relative positioning (needed for the frost layer) activates dormant
@@ -387,17 +385,7 @@ html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s e
 .discover-logo::before, .discover-text::before, .toggle-mode::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-  opacity: 1;
   pointer-events: none;
-  /* Return: bloom in across the rise (.45s flight + .55s rise). */
-  transition: opacity .5s ease .5s;
-}
-html.bar-defrost .discover-logo::before,
-html.bar-defrost .discover-text::before,
-html.bar-defrost .toggle-mode::before {
-  opacity: 0;
-  /* Departure: dissolve immediately. */
-  transition: opacity .15s ease;
 }
 
 /* Mobile tap-to-stage: the tapped tile, front-and-center and enlarged, over a
