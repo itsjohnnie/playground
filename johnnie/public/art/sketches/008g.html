@@ -93,7 +93,7 @@ void main(){
            + vec2(sin(q.y*36.0 + t*0.7), sin(q.x*31.0 - t*0.6))*0.0045;
   vec2 tf = abs(fract(tuv/0.085) - 0.5);
   float tl = smoothstep(0.42, 0.485, max(tf.x, tf.y));
-  col *= 1.0 - tl * 0.10 * mix(1.0, 0.35, diag) * (0.55 + 0.45*clamp(ca, 0.0, 1.0));
+  col *= 1.0 - tl * 0.14 * mix(1.0, 0.30, diag) * (0.50 + 0.50*clamp(ca, 0.0, 1.0));
 
   // the light
   col += vec3(0.72, 0.90, 1.0) * ca * 0.62 * mix(1.05, 0.45, diag) * (1.0 + gA*1.6);
