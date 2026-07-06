@@ -581,6 +581,31 @@ class InfiniteGrid {
           this.zCy0 = r.top + r.height / 2;
         }
         this.stage.setAttribute("aria-hidden", "false");
+        // Shared-element open: the staged image starts at the tapped tile's
+        // exact rect (translate + non-uniform scale from its final resting
+        // rect) and flies to place while the backdrop fades in under it. The
+        // caption's own delayed fade is in CSS. Reduced motion skips the
+        // flight and keeps the plain fade.
+        if (
+          this.zImg &&
+          !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ) {
+          const img = this.zImg;
+          const dx = it.lastX + itemW / 2 - this.zCx0;
+          const dy = it.lastY + itemH / 2 - this.zCy0;
+          // `important` beats the page's `.hero-image { transition …
+          // !important }` theme rule, same trick as applyZoom.
+          img.style.setProperty("transition", "none", "important");
+          img.style.transformOrigin = "center center";
+          img.style.transform = `translate(${dx}px, ${dy}px) scale(${itemW / this.zBaseW}, ${itemH / this.zBaseH})`;
+          void img.offsetWidth; // commit the start frame before easing out
+          img.style.setProperty(
+            "transition",
+            "transform .5s cubic-bezier(.22, 1, .36, 1)",
+            "important",
+          );
+          img.style.transform = "translate(0px, 0px) scale(1)";
+        }
         // Next frame so the open transition runs from the collapsed state.
         requestAnimationFrame(() => this.stage?.classList.add("is-open"));
         // The grid is now static behind a backdrop-blur — stop the rAF so the

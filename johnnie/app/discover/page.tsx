@@ -344,19 +344,17 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
   background-color: rgba(8, 8, 8, .72);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   opacity: 0; pointer-events: none;
-  transition: opacity .3s ease, background-color .45s ease;
+  transition: opacity .35s ease, background-color .45s ease;
 }
 html:not(.is-dark) .discover-stage { background-color: rgba(255, 255, 255, .82); }
 .discover-stage.is-open { opacity: 1; pointer-events: auto; }
-/* fit-content so the column (and the caption beneath) is exactly as wide as the
-   image, not the whole stage. */
+/* fit-content so the column is exactly as wide as the image, not the whole
+   stage. No transform of its own — the entrance is the image's shared-element
+   flight (set inline by the script), so a parent scale would fight it. */
 .discover-stage_inner {
   display: flex; flex-direction: column; align-items: center; gap: 1rem;
   width: fit-content; max-width: 92vw;
-  transform: scale(.92);
-  transition: transform .35s cubic-bezier(.22, 1, .36, 1);
 }
-.discover-stage.is-open .discover-stage_inner { transform: scale(1); }
 .discover-stage .hero-image {
   display: block;
   width: auto !important; height: auto !important;
@@ -384,6 +382,17 @@ html:not(.is-dark) .discover-stage .hero-image {
   /* Match the control-bar logo (the full name) typeface. */
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
   letter-spacing: .01em;
+  /* Entrance: a subtle rise + fade that starts once the image is landing
+     (the .18s delay below); exits with the stage fade, no delay. */
+  opacity: 0; transform: translateY(8px);
+  transition: opacity .35s ease, transform .5s var(--ease-out);
+}
+.discover-stage.is-open .hero-meta_data {
+  opacity: 1; transform: none;
+  transition-delay: .18s, .18s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .discover-stage .hero-meta_data { transform: none; transition: opacity .25s ease; }
 }
 .discover-stage .hero-meta_data > :first-child {
   max-width: 84vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
