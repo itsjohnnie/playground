@@ -332,6 +332,22 @@ html.is-dark .toggle-mode:hover { background-color: rgba(36, 36, 36, .72); }
 html.is-dark .discover-text { border-color: #ffffff14; }
 html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #00000052; }
 
+/* While the stage is open the grid scene recedes: the vignette and control
+   bar fade out so the flying image never pops in front of layers the tile was
+   sitting behind (it starts under the gradient/bar, but the stage paints above
+   them). They fade back in under the return flight, so the tile lands already
+   dimmed by the restored vignette. The .discover-comp transition re-declares
+   the theme eases !important + opacity — the theme block's own !important
+   shorthand (above) would otherwise drop the opacity ease. */
+.discover-comp {
+  transition: background-color .45s ease, color .45s ease,
+    border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
+    opacity .3s ease !important;
+}
+html.stage-open .discover-comp { opacity: 0; pointer-events: none; }
+.hero-gradient.cc-white { transition: opacity .3s ease; }
+html.stage-open .hero-gradient.cc-white { opacity: 0; }
+
 /* Mobile tap-to-stage: the tapped tile, front-and-center and enlarged, over a
    dimmed backdrop with its meta beneath. Tapping anywhere dismisses it. */
 .discover-stage {

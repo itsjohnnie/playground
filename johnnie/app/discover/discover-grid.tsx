@@ -618,6 +618,10 @@ class InfiniteGrid {
         // screen — the tile itself appears to travel.
         requestAnimationFrame(() => {
           this.stage?.classList.add("is-open");
+          // The grid scene recedes with the stage: vignette + control bar
+          // fade out (CSS on this class) so the flying image never pops in
+          // front of the layers the tile was sitting behind.
+          document.documentElement.classList.add("stage-open");
           it.el.style.visibility = "hidden";
           this.stagedCell = it;
         });
@@ -634,6 +638,9 @@ class InfiniteGrid {
     if (!this.stage) return;
     this.stage.classList.remove("is-open");
     this.stage.setAttribute("aria-hidden", "true");
+    // Vignette + control bar fade back in (.3s) under the .45s return flight,
+    // so the tile lands already dimmed by the restored gradient.
+    document.documentElement.classList.remove("stage-open");
     const img = this.zImg;
     const cell = this.stagedCell;
     this.zImg = null;
