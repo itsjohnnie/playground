@@ -620,8 +620,11 @@ class InfiniteGrid {
           this.stage?.classList.add("is-open");
           // The grid scene recedes with the stage: vignette + control bar
           // fade out (CSS on this class) so the flying image never pops in
-          // front of the layers the tile was sitting behind.
+          // front of the layers the tile was sitting behind. bar-defrost
+          // kills the rows' backdrop blur for the whole trip (JS-timed on
+          // close — see closeStage).
           document.documentElement.classList.add("stage-open");
+          document.documentElement.classList.add("bar-defrost");
           it.el.style.visibility = "hidden";
           this.stagedCell = it;
         });
@@ -641,6 +644,13 @@ class InfiniteGrid {
     // Vignette + control bar fade back in (.3s) under the .45s return flight,
     // so the tile lands already dimmed by the restored gradient.
     document.documentElement.classList.remove("stage-open");
+    // Re-frost the bar while it is still parked below the screen edge (its
+    // rise starts at .45s) — an instant, invisible flip. A timer instead of a
+    // transition delay because iOS mis-times delayed backdrop-filter
+    // transitions and frosted the bar mid-rise.
+    window.setTimeout(() => {
+      document.documentElement.classList.remove("bar-defrost");
+    }, 400);
     const img = this.zImg;
     const cell = this.stagedCell;
     this.zImg = null;

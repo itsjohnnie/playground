@@ -363,28 +363,16 @@ html.stage-open .discover-comp {
 html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s ease; }
 
 /* The rows' frosted backdrop-filter smears whatever it passes over while the
-   bar travels — cut it instantly when the stage opens (the bar is
-   disappearing anyway). On close it re-frosts WHILE STILL PARKED below the
-   screen edge (.2s fade done by .4s, before the .45s-delayed rise begins), so
-   the bar enters already glassed — no defrosted-to-frosted pop after landing.
-   The full !important lists re-declare the press/theme rules above, with
-   backdrop-filter appended. */
-.discover-logo,
-.toggle-mode {
-  transition: background-color .45s ease, color .45s ease, box-shadow .45s ease,
-    transform .16s var(--ease-out),
-    -webkit-backdrop-filter .2s ease .2s, backdrop-filter .2s ease .2s !important;
-}
-.discover-text {
-  transition: background-color .45s ease, color .45s ease,
-    border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
-    -webkit-backdrop-filter .2s ease .2s, backdrop-filter .2s ease .2s !important;
-}
-html.stage-open .discover-logo,
-html.stage-open .discover-text,
-html.stage-open .toggle-mode {
+   bar travels. The frost is therefore driven by an explicit JS-timed class —
+   NOT transition delays, which iOS interprets differently for backdrop-filter
+   and ended up frosting mid-rise. .bar-defrost goes on with the stage (blur
+   cuts the instant the bar starts leaving) and is removed by a timer while
+   the bar is provably still parked below the screen edge, so it always rises
+   already glassed. Instant flips, no transitions to misread. */
+html.bar-defrost .discover-logo,
+html.bar-defrost .discover-text,
+html.bar-defrost .toggle-mode {
   -webkit-backdrop-filter: none; backdrop-filter: none;
-  transition: none !important;
 }
 
 /* Mobile tap-to-stage: the tapped tile, front-and-center and enlarged, over a
