@@ -88,13 +88,20 @@
 
   /* ---------------- canvas fitting ---------------- */
 
+  // The composition always sits in the middle: a square stage, sized
+  // mobile-first (nearly full width on a phone, capped and centered on
+  // desktop). With ?thumb=1 the stage fills the whole viewport — used by
+  // the gallery's preview iframes.
+  ART.isThumb = new URLSearchParams(location.search).has("thumb");
+
   ART.fit = function (canvas, onResize) {
     function resize(defer) {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(innerWidth * dpr);
-      canvas.height = Math.round(innerHeight * dpr);
-      canvas.style.width = innerWidth + "px";
-      canvas.style.height = innerHeight + "px";
+      const frac = ART.isThumb ? 1 : 0.92;
+      const cap = ART.isThumb ? 1e9 : 720;
+      const css = Math.round(Math.min(Math.min(innerWidth, innerHeight) * frac, cap));
+      canvas.width = canvas.height = Math.round(css * dpr);
+      canvas.style.width = canvas.style.height = css + "px";
       if (!onResize) return;
       const run = () => onResize(canvas.width, canvas.height, dpr);
       // The first call happens while the sketch's own consts are still being
@@ -154,26 +161,42 @@
 
   /* ---------------- caption chrome ---------------- */
 
-  // Injects the standard chrome: number/title/date caption, back link,
-  // click-to-reseed. Pass {n, title, date, dark} — dark flips text color.
+  // Injects the standard chrome: the centered stage layout, number/title/date
+  // caption under the piece, back link, tap-to-reseed. Pass {n, title, date,
+  // dark} — dark flips the ground and text for pieces that live on black.
+  // In ?thumb=1 mode only the layout is applied (no caption, no links).
   ART.chrome = function (opts) {
     document.title = opts.n + " · " + opts.title + " — art";
-    const c = opts.dark ? "rgba(255,255,255,.55)" : "rgba(20,18,14,.55)";
+    const fav = document.createElement("link");
+    fav.rel = "icon";
+    fav.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>" +
+      "<circle cx='38' cy='44' r='30' fill='%23f5578c' opacity='.85'/>" +
+      "<circle cx='62' cy='56' r='30' fill='%232a49b9' opacity='.75'/></svg>";
+    document.head.appendChild(fav);
+    const ground = opts.dark ? "#0b0b0e" : "#eae4d6";
+    const c = opts.dark ? "rgba(255,255,255,.5)" : "rgba(20,18,14,.5)";
     const ch = opts.dark ? "rgba(255,255,255,.9)" : "rgba(20,18,14,.9)";
+    const frame = opts.dark
+      ? "0 0 0 1px rgba(255,255,255,.08)"
+      : "0 1px 2px rgba(23,21,18,.10), 0 12px 40px rgba(23,21,18,.14), 0 0 0 1px rgba(23,21,18,.05)";
     const css = document.createElement("style");
     css.textContent =
-      "html,body{margin:0;height:100%;overflow:hidden;background:#000}" +
-      "canvas{display:block}" +
-      ".art-chrome{position:fixed;left:20px;bottom:18px;z-index:9;font:11px/1.6 ui-monospace,'SF Mono',Menlo,monospace;" +
-      "letter-spacing:.08em;color:" + c + ";user-select:none;pointer-events:none;text-transform:lowercase}" +
+      "html,body{margin:0;background:" + ground + "}" +
+      "body{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;" +
+      "padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}" +
+      "canvas{display:block;box-shadow:" + (ART.isThumb ? "none" : frame) + "}" +
+      ".art-chrome{margin-top:16px;text-align:center;font:11px/1.7 ui-monospace,'SF Mono',Menlo,monospace;" +
+      "letter-spacing:.08em;color:" + c + ";user-select:none;-webkit-user-select:none;text-transform:lowercase}" +
       ".art-chrome b{font-weight:400;color:" + ch + "}" +
-      ".art-back{position:fixed;left:20px;top:18px;z-index:9;font:11px/1 ui-monospace,'SF Mono',Menlo,monospace;" +
-      "letter-spacing:.08em;color:" + c + ";text-decoration:none;transition:color .2s}" +
+      ".art-back{position:fixed;left:max(20px,env(safe-area-inset-left));top:max(18px,env(safe-area-inset-top));z-index:9;" +
+      "font:12px/1 ui-monospace,'SF Mono',Menlo,monospace;letter-spacing:.08em;color:" + c + ";" +
+      "text-decoration:none;padding:8px;margin:-8px;transition:color .2s}" +
       ".art-back:hover{color:" + ch + "}";
     document.head.appendChild(css);
+    if (ART.isThumb) return;
     const cap = document.createElement("div");
     cap.className = "art-chrome";
-    cap.innerHTML = "<b>" + opts.n + " · " + opts.title + "</b><br>" + opts.date + " · click to reseed";
+    cap.innerHTML = "<b>" + opts.n + " · " + opts.title + "</b><br>" + opts.date + " · tap to reseed";
     document.body.appendChild(cap);
     const back = document.createElement("a");
     back.className = "art-back";
