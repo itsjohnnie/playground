@@ -136,7 +136,7 @@ function draw(tms) {
     // the minute rides the rim, at the impact angle
     const lx = cx + Math.cos(g.hitAng) * r, ly = cy + Math.sin(g.hitAng) * r;
     ctx.globalAlpha = Math.min(0.85, a + 0.3);
-    ctx.font = fs + "px 'Fragment Mono', ui-monospace, monospace";
+    ctx.font = fs + "px 'Geist Mono', ui-monospace, monospace";
     ctx.textAlign = Math.cos(g.hitAng) < 0 ? "right" : "left";
     ctx.strokeStyle = M.ink.night; // knockout so the ring doesn't slice the type
     ctx.lineWidth = 3.5 * DPR;

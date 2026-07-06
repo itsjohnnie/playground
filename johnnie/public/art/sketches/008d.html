@@ -105,10 +105,10 @@ function textSprite(str, hex, px) {
   const dpr = 3, pad = 8;
   const c = document.createElement("canvas");
   const g = c.getContext("2d");
-  g.font = px * dpr + "px 'Fragment Mono', ui-monospace, monospace";
+  g.font = px * dpr + "px 'Geist Mono', ui-monospace, monospace";
   c.width = Math.ceil(g.measureText(str).width) + pad * 2;
   c.height = px * dpr + pad * 2;
-  g.font = px * dpr + "px 'Fragment Mono', ui-monospace, monospace";
+  g.font = px * dpr + "px 'Geist Mono', ui-monospace, monospace";
   g.fillStyle = hex;
   g.textBaseline = "middle";
   g.fillText(str, pad, c.height / 2);

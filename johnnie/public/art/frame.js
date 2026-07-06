@@ -1,8 +1,10 @@
 /* frame.js — the constant.
    Every piece lives behind the same fixed layer: a 3:4 portrait stage with a
-   6-column × 8-row Swiss grid, one font (Fragment Mono), one weight, one small
-   size. The frame holds the facts — number, date, data, tech, author — and
-   never changes. Everything creative happens on the canvas behind it.
+   6-column × 8-row Swiss grid, set in Geist Mono — mostly uppercase, one
+   small size, two weights (regular + a bolder lead). The frame holds the
+   facts — number, date, data, tech, author — and never changes. Everything
+   creative happens on the canvas behind it. The whole Geist family (Sans,
+   Mono, Pixel) is @font-face'd here for pieces to use.
    Requires art.js (seed/rng/reseed + isThumb). */
 (function () {
   const FRAME = {};
@@ -25,7 +27,9 @@
 
     const css = document.createElement("style");
     css.textContent = `
-@font-face{font-family:'Fragment Mono';src:url('../lib/FragmentMono.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Geist';src:url('../lib/fonts/Geist-Variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:'Geist Mono';src:url('../lib/fonts/GeistMono-Variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:'Geist Pixel';src:url('../lib/fonts/GeistPixel-Square.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
 html,body{margin:0;background:${ground}}
 body{min-height:100dvh;display:flex;align-items:center;justify-content:center;
 padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
@@ -35,9 +39,11 @@ background:${ground};box-shadow:${o.dark ? "0 0 0 1px rgba(244,240,229,.09)" : "
 .stage canvas.art{position:absolute;inset:0;width:100%;height:100%;display:block}
 .frame{position:absolute;inset:0;z-index:5;pointer-events:none;
 display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(8,1fr);
-font-family:'Fragment Mono',ui-monospace,Menlo,monospace;font-weight:400;
-font-size:clamp(6.5px,2.05cqw,12.5px);line-height:1.45;letter-spacing:.04em;
-color:rgba(${ink},.92);text-transform:lowercase}
+font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-weight:400;
+font-size:clamp(6.5px,1.95cqw,12px);line-height:1.5;letter-spacing:.075em;
+color:rgba(${ink},.9);text-transform:uppercase}
+.frame b{font-weight:640;color:rgba(${ink},.97)}
+.frame .lc{text-transform:lowercase}
 .frame .hair{position:absolute;inset:0;
 background:
  repeating-linear-gradient(to right, rgba(${ink},.07) 0 1px, transparent 1px calc(100%/6)),
@@ -51,7 +57,7 @@ background-position:-1px -1px}
 .frame .bl{grid-area:8/1/9/5;align-self:end}
 .frame .br{grid-area:8/5/9/7;text-align:right;align-self:end}
 .art-back{position:fixed;left:max(16px,env(safe-area-inset-left));top:max(14px,env(safe-area-inset-top));z-index:9;
-font-family:'Fragment Mono',ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.05em;
+font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.05em;
 color:rgba(${o.dark ? "244,240,229" : "23,21,17"},.5);text-decoration:none;padding:8px;margin:-8px;display:inline-block;
 transition:color 150ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1)}
 @media (hover:hover) and (pointer:fine){.art-back:hover{color:rgba(${ink},.95)}}
@@ -72,15 +78,22 @@ transition:color 150ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1)}
       stage.appendChild(canvas);
     }
 
+    // two weights: the lead line of a cell is bolder, the rest regular
+    const lead = (s) => {
+      if (!s) return "";
+      const i = s.indexOf("<br>");
+      return i < 0 ? "<b>" + s + "</b>" : "<b>" + s.slice(0, i) + "</b>" + s.slice(i);
+    };
     const frame = document.createElement("div");
     frame.className = "frame";
     frame.innerHTML =
       '<div class="hair"></div>' +
-      '<div class="cell tl">' + o.n + (o.v ? " — " + o.v : "") +
+      '<div class="cell tl"><b>' + o.n + (o.v ? " — " + o.v : "") + "</b>" +
         (o.title ? '<br><span class="dim">' + o.title + "</span>" : "") + "</div>" +
       '<div class="cell tr">' + (o.date || "") + "</div>" +
-      '<div class="cell ml dim">' + (o.info || "johnnie · daily practice<br>johnnies.life/art") + "</div>" +
-      '<div class="cell bl">' + (o.data || "") + "</div>" +
+      '<div class="cell ml dim">' +
+        (o.info || 'johnnie · daily practice<br><span class="lc">johnnies.life/art</span>') + "</div>" +
+      '<div class="cell bl">' + lead(o.data || "") + "</div>" +
       '<div class="cell br dim">' + (o.tech || "") + "</div>";
     stage.appendChild(frame);
 

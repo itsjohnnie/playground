@@ -60,8 +60,12 @@ with **the composition always in the middle**, and since 008 every piece lives
 inside **the frame** (`johnnie/public/art/frame.js`):
 
 - A **3:4 portrait stage**, centered, with a fixed Swiss overlay: a **6×8
-  hairline grid**, one font (**Fragment Mono**, self-hosted in `art/lib/`),
-  one weight, one small size, all lowercase.
+  hairline grid**, set in **Geist Mono** (the Geist family — Sans, Mono,
+  Pixel Square — is self-hosted in `art/lib/fonts/` and @font-face'd by
+  frame.js for pieces to use). Frame type is **mostly uppercase**, one small
+  size, **two weights**: regular, with a bolder lead line per cell (piece
+  number, score). URLs stay lowercase (`.lc`). Geist Pixel is for expressive
+  moments inside pieces (e.g. minutos' giant counter), never for the frame.
 - The frame holds the constants — piece number/variant, title, date, Johnnie's
   info, the data line, the tech stamp — in fixed grid slots. It never changes.
   All creativity happens on the canvas layer *behind* it.

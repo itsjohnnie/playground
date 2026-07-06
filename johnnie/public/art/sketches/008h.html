@@ -172,7 +172,7 @@ function drawLine(g, i, clip) {
     dot(pts[pts.length - 1], 1.15 * DPR, INK + "0.55)");
     for (const p of L.peaks) dot(p, 1.35 * DPR, p.tint || INK + "0.75)");
     if (L.label) {
-      g.font = fs + "px 'Fragment Mono', ui-monospace, monospace";
+      g.font = fs + "px 'Geist Mono', ui-monospace, monospace";
       g.fillStyle = L.label.col;
       g.textAlign = L.label.left ? "right" : "left";
       const lx = L.label.left ? X0 - 0.015 * W : X1 + 0.015 * W;
@@ -204,7 +204,7 @@ function draw(tms) {
     // travelling minute readout (skipped next to right-margin goal labels)
     const nearCpvLabel = (k) => k >= 0 && k < 120 && lines[k].label && !lines[k].label.left;
     if (!nearCpvLabel(i) && !nearCpvLabel(i - 1) && !nearCpvLabel(i + 1)) {
-      ctx.font = fs + "px 'Fragment Mono', ui-monospace, monospace";
+      ctx.font = fs + "px 'Geist Mono', ui-monospace, monospace";
       ctx.fillStyle = INK + "0.4)";
       ctx.textAlign = "left";
       ctx.fillText((i + 1) + "’", X1 + 0.02 * W, lines[i].y + fs * 0.35);
