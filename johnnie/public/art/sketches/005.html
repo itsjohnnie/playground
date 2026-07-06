@@ -1,0 +1,78 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<canvas id="c"></canvas>
+<script src="../art.js"></script>
+<script>
+// 005 · plume — particles ride a slowly turning noise field, drawing
+// additive light. Long exposure of something that was never there.
+
+const seed = ART.seed("2026-07-06-005");
+const R = ART.rng(seed);
+const N = ART.makeNoise(seed);
+const canvas = ART.fit(document.getElementById("c"), init);
+const ctx = canvas.getContext("2d");
+
+const COUNT = 900;
+let parts = [];
+const hueBase = R() * 360;
+
+function spawn(W, H) {
+  return {
+    x: R() * W, y: R() * H,
+    px: 0, py: 0,
+    life: 60 + R() * 260,
+    hue: hueBase + (R() - 0.5) * 90,
+  };
+}
+
+function init(W, H) {
+  ctx.fillStyle = "#07070a";
+  ctx.fillRect(0, 0, W, H);
+  parts = [];
+  for (let i = 0; i < COUNT; i++) parts.push(spawn(W, H));
+  parts.forEach((p) => { p.px = p.x; p.py = p.y; });
+}
+
+function draw(tms) {
+  const t = tms / 1000;
+  const W = canvas.width, H = canvas.height;
+  const m = Math.min(W, H);
+
+  // gentle fade — trails linger
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "rgba(7,7,10,0.035)";
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.globalCompositeOperation = "lighter";
+  ctx.lineCap = "round";
+
+  const sc = 1.7 / m;
+  for (const p of parts) {
+    // flow angle from noise; slow z-drift turns the whole field
+    const a = N.fbm3(p.x * sc, p.y * sc, t * 0.06, 3) * Math.PI * 3.0;
+    const sp = m * 0.0022;
+    p.px = p.x; p.py = p.y;
+    p.x += Math.cos(a) * sp;
+    p.y += Math.sin(a) * sp;
+    p.life -= 1;
+
+    if (p.life <= 0 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) {
+      Object.assign(p, spawn(W, H));
+      p.px = p.x; p.py = p.y;
+      continue;
+    }
+
+    const fade = Math.min(1, p.life / 60);
+    ctx.strokeStyle = `hsla(${(p.hue + t * 4) % 360}, 90%, 60%, ${0.28 * fade})`;
+    ctx.lineWidth = m * 0.0028;
+    ctx.beginPath();
+    ctx.moveTo(p.px, p.py);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+ART.chrome({ n: "005", title: "plume", date: "2026-07-06", dark: true });
+</script>

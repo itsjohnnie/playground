@@ -1,0 +1,71 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<canvas id="c"></canvas>
+<script src="../art.js"></script>
+<script id="frag" type="x-shader">
+precision highp float;
+uniform vec2 u_res; uniform float u_time; uniform float u_seed;
+
+// 002 · hills — slow rolling noise terrain pushed through an 8×8 Bayer
+// matrix. One bit of ink on paper; the machine pretends to be a printer.
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+             mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+}
+float fbm(vec2 p){
+  float s = 0.0, a = 0.5;
+  for (int i = 0; i < 5; i++){ s += a*vnoise(p); p = p*2.03 + 11.7; a *= 0.5; }
+  return s;
+}
+
+// ordered dithering: bayer 2 → 4 → 8 by recursion
+float bayer2(vec2 a){ a = floor(a); return fract(a.x/2.0 + a.y*a.y*0.75); }
+float bayer4(vec2 a){ return bayer2(0.5*a)*0.25 + bayer2(a); }
+float bayer8(vec2 a){ return bayer4(0.5*a)*0.25 + bayer2(a); }
+
+void main(){
+  float px = max(3.0, 4.0 * (u_res.y/900.0));   // chunky printer cells
+  vec2 cell = floor(gl_FragCoord.xy / px);
+  vec2 uv = cell*px / u_res.y;
+
+  float t = u_time*0.05;
+
+  // layered hills, far (top, light) to near (bottom, dark);
+  // each ridge catches light at its crest
+  float v = 0.05;                                 // sky
+  for (int i = 0; i < 5; i++){
+    float fi = float(i);
+    float ridge = 0.88 - fi*0.17
+      + 0.13*fbm(vec2(uv.x*(1.1+fi*0.4) + fi*7.0 + t*(0.3+fi*0.25), fi*3.7));
+    float below = smoothstep(ridge+0.003, ridge-0.003, uv.y);
+    float tone = 0.17 + fi*0.14;                  // 0.17 → 0.73
+    float crest = smoothstep(0.05, 0.0, ridge - uv.y) * 0.14;
+    v = mix(v, tone - crest, below);
+  }
+  // faint haze so flats aren't dead
+  v += 0.05*fbm(uv*3.0 + t*0.8) - 0.025;
+
+  float threshold = bayer8(cell) + 0.5/64.0;
+  float ink = step(threshold, v);
+
+  vec3 paper = vec3(0.964, 0.945, 0.905);
+  vec3 inkc  = vec3(0.118, 0.106, 0.114);
+  gl_FragColor = vec4(mix(paper, inkc, ink), 1.0);
+}
+</script>
+<script>
+  const seed = ART.seed("2026-07-06-002");
+  const canvas = ART.fit(document.getElementById("c"));
+  const sh = ART.shader(canvas, document.getElementById("frag").textContent);
+  const sf = ART.rng(seed)() * 100;
+  (function loop(t) {
+    sh.draw(t / 1000, sf);
+    requestAnimationFrame(loop);
+  })(0);
+  ART.chrome({ n: "002", title: "hills", date: "2026-07-06" });
+</script>

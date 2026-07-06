@@ -1,0 +1,118 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<canvas id="c"></canvas>
+<script src="../art.js"></script>
+<script>
+// 006 · wash — translucent deformed circles settle on paper one at a
+// time, like watercolor drying in layers. Grain on top. Nothing moves
+// fast; the piece finishes itself in about a minute.
+
+const seed = ART.seed("2026-07-06-006");
+const R = ART.rng(seed);
+const N = ART.makeNoise(seed);
+const canvas = ART.fit(document.getElementById("c"), init);
+const ctx = canvas.getContext("2d");
+
+// muted pigment set — pick 4 of 7 per seed
+const PIGMENTS = [
+  [196, 84, 38],   // burnt sienna
+  [41, 96, 118],   // prussian blue
+  [214, 168, 44],  // yellow ochre
+  [118, 141, 78],  // sap green
+  [161, 74, 104],  // quinacridone rose
+  [88, 78, 138],   // violet
+  [206, 108, 60],  // orange oxide
+];
+const inks = PIGMENTS.slice().sort(() => R() - 0.5).slice(0, 4);
+
+const TOTAL = 70;
+let layer = 0;
+let blobs = [];
+
+// gaussian-ish sample from the seeded rng
+const gauss = () => (R() + R() + R() - 1.5) / 1.5;
+
+function makeBlob(cluster, m) {
+  const ink = inks[(R() * inks.length) | 0];
+  return {
+    x: cluster.x + gauss() * cluster.spread,
+    y: cluster.y + gauss() * cluster.spread,
+    r: m * (0.04 + R() * R() * 0.16),
+    ink,
+    ns: 1.2 + R() * 2.2,     // edge wobble frequency
+    na: 0.25 + R() * 0.45,   // edge wobble amount
+    zs: R() * 100,
+  };
+}
+
+function init(W, H) {
+  const m = Math.min(W, H);
+  layer = 0;
+  blobs = [];
+  // 2–3 pools of pigment spaced around the sheet, plenty of paper left dry
+  const nc = 2 + (R() * 2 | 0);
+  const clusters = [];
+  const base = R() * Math.PI * 2;
+  for (let i = 0; i < nc; i++) {
+    const a = base + (i / nc) * Math.PI * 2 + (R() - 0.5) * 0.8;
+    const d = m * (0.14 + R() * 0.14);
+    clusters.push({
+      x: W / 2 + Math.cos(a) * d,
+      y: H / 2 + Math.sin(a) * d,
+      spread: m * (0.10 + R() * 0.10),
+    });
+  }
+  for (let i = 0; i < TOTAL; i++)
+    blobs.push(makeBlob(clusters[(R() * nc) | 0], m));
+  ctx.fillStyle = "#f5f0e4";
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawBlob(b) {
+  ctx.beginPath();
+  const STEPS = 90;
+  for (let i = 0; i <= STEPS; i++) {
+    const a = (i / STEPS) * Math.PI * 2;
+    const w = N.fbm3(Math.cos(a) * b.ns, Math.sin(a) * b.ns, b.zs, 3);
+    const r = b.r * (1 + w * b.na);
+    const x = b.x + Math.cos(a) * r;
+    const y = b.y + Math.sin(a) * r;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.closePath();
+  const [r, g, bl] = b.ink;
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = `rgba(${r},${g},${bl},0.06)`;
+  ctx.fill();
+  // darker rim, like pigment pooling at the edge
+  ctx.strokeStyle = `rgba(${r * 0.8 | 0},${g * 0.8 | 0},${bl * 0.8 | 0},0.05)`;
+  ctx.lineWidth = Math.max(1, b.r * 0.02);
+  ctx.stroke();
+  ctx.globalCompositeOperation = "source-over";
+}
+
+function grain(W, H) {
+  const img = ctx.getImageData(0, 0, W, H);
+  const d = img.data;
+  const Rg = ART.rng(seed + "grain");
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Rg() - 0.5) * 14;
+    d[i] += n; d[i + 1] += n; d[i + 2] += n;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+let last = 0;
+function tick(tms) {
+  // a few layers per beat — watching it dry is part of the piece
+  if (layer < TOTAL && tms - last > 90) {
+    drawBlob(blobs[layer++]);
+    last = tms;
+    if (layer === TOTAL) grain(canvas.width, canvas.height);
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+ART.chrome({ n: "006", title: "wash", date: "2026-07-06" });
+</script>

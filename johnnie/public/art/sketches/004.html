@@ -1,0 +1,72 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<canvas id="c"></canvas>
+<script src="../art.js"></script>
+<script>
+// 004 · lenses — a quiet grid of dots, disturbed by invisible glass.
+// Three lenses wander the field; dots swell and slide as they pass.
+// After Lieberman's magnifying-lens studies.
+
+const seed = ART.seed("2026-07-06-004");
+const R = ART.rng(seed);
+const canvas = ART.fit(document.getElementById("c"));
+const ctx = canvas.getContext("2d");
+
+const lenses = [];
+for (let i = 0; i < 3; i++) {
+  lenses.push({
+    // lissajous parameters — each lens on its own slow figure
+    ax: 0.25 + R() * 0.3, ay: 0.25 + R() * 0.3,
+    fx: 0.11 + R() * 0.13, fy: 0.09 + R() * 0.12,
+    px: R() * Math.PI * 2, py: R() * Math.PI * 2,
+    r: 0.16 + R() * 0.14,      // radius, in min-dimension units
+    mag: 1.8 + R() * 1.6,      // magnification strength
+  });
+}
+
+function draw(tms) {
+  const t = tms / 1000;
+  const W = canvas.width, H = canvas.height;
+  const m = Math.min(W, H);
+  ctx.fillStyle = "#111015";
+  ctx.fillRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H / 2;
+  const pos = lenses.map((L) => ({
+    x: cx + Math.sin(t * L.fx * Math.PI * 2 + L.px) * L.ax * W,
+    y: cy + Math.sin(t * L.fy * Math.PI * 2 + L.py) * L.ay * H,
+    r: L.r * m, mag: L.mag,
+  }));
+
+  const gap = m / 42;
+  const r0 = gap * 0.16;
+  ctx.fillStyle = "#efe9dc";
+
+  for (let x = gap / 2; x < W + gap; x += gap) {
+    for (let y = gap / 2; y < H + gap; y += gap) {
+      let dx = 0, dy = 0, scale = 1;
+      for (const L of pos) {
+        const ox = x - L.x, oy = y - L.y;
+        const d = Math.hypot(ox, oy);
+        if (d < L.r && d > 1e-4) {
+          const n = d / L.r;
+          // bulge: pull points outward from center, ease at rim
+          const k = (1 - n) * (1 - n);
+          const push = k * L.r * 0.35 * (L.mag - 1) * 0.5;
+          dx += (ox / d) * push;
+          dy += (oy / d) * push;
+          scale += k * (L.mag - 1);
+        }
+      }
+      const rr = r0 * scale;
+      ctx.beginPath();
+      ctx.arc(x + dx, y + dy, rr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+ART.chrome({ n: "004", title: "lenses", date: "2026-07-06", dark: true });
+</script>
