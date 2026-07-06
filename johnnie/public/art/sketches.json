@@ -1,6 +1,6 @@
 {
   "project": "a daily generative art practice, after Zach Lieberman",
-  "batch_note": "008 — ocho estudios de un partido · curated 06·07.",
+  "batch_note": "008 — diez estudios de un partido · tercera curaduría 06·07.",
   "sketches": [
     {
       "n": "008j",
@@ -46,45 +46,45 @@
     },
     {
       "n": "008g",
-      "title": "aerosol",
+      "title": "mosaico",
       "date": "2026-07-06",
       "file": "sketches/008g.html",
-      "medium": "glsl · spray grain",
+      "medium": "canvas · glazed shards",
       "tags": [
-        "gradients",
-        "spray",
-        "poster"
+        "mosaic",
+        "craft",
+        "clock"
       ],
       "status": "candidate",
-      "note": "One spray stroke around the match clock — celeste 64%, rose 36%, five bursts at the goals, the own goal drips. Sprayed once, then finished."
+      "note": "A sidewalk mosaic read like a clock: each glazed shard coloured by who held that minute, gold shards at the five goals — the own goal unglazed. Assembled ring by ring."
     },
     {
       "n": "008f",
-      "title": "bufanda",
+      "title": "tapiz",
       "date": "2026-07-06",
       "file": "sketches/008f.html",
-      "medium": "glsl · woven",
+      "medium": "glsl · tapestry",
       "tags": [
-        "data",
-        "textile",
+        "tapestry",
+        "craft",
         "riso"
       ],
       "status": "candidate",
-      "note": "The match woven as a fan scarf: weft rows by minute, goals as pulled threads, cards as gold yarn."
+      "note": "The match hand-knotted as a pampa tapestry: guarda-pampa bands at the goal minutes, carved relief that catches the light, yarn twist, abrash, fringe — woven once on a bare warp."
     },
     {
       "n": "008e",
-      "title": "interferencia",
+      "title": "papel",
       "date": "2026-07-06",
       "file": "sketches/008e.html",
-      "medium": "glsl · interference",
+      "medium": "canvas · torn collage",
       "tags": [
-        "data",
-        "waves",
-        "engraving"
+        "collage",
+        "paper",
+        "craft"
       ],
       "status": "candidate",
-      "note": "Two wave systems — frequency by shots, amplitude by possession — engrave an interference field; goals scar the phase."
+      "note": "Torn-paper collage: five hand-torn shapes (the own goal torn as a ring), 38 confetti shots, white torn rims and real shadows. Placed once, then pressed flat."
     },
     {
       "n": "008d",
@@ -102,17 +102,17 @@
     },
     {
       "n": "008c",
-      "title": "marea",
+      "title": "vitral",
       "date": "2026-07-06",
       "file": "sketches/008c.html",
-      "medium": "glsl · dither scene",
+      "medium": "glsl · stained glass",
       "tags": [
-        "gradients",
-        "dither",
-        "scene"
+        "glass",
+        "craft",
+        "light"
       ],
       "status": "candidate",
-      "note": "A dusk shoreline: six ridges carry the real per-phase pressure, a gold sun hangs at minute 111. The tide comes in once, then rests."
+      "note": "The match as stained glass: leaded panes split 64/36, five rose-window roundels at the goal minutes — the own goal left clear. The light rises once, then the window glows."
     },
     {
       "n": "008b",

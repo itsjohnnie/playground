@@ -93,3 +93,25 @@ the river; grain pass; Spanish captions (it's a love letter). Direction probed:
   into the frame; swipe/arrows/‹ › navigation between pieces; Geist family
   everywhere (Mono frame, Pixel for expressive numerals).
 - Gallery now holds only the 008 studies — batch 001 removed earlier stands.
+
+## Third curation pass — Johnnie, night of 2026-07-06
+
+- **Retired:** 008c marea, 008e interferencia, 008g aerosol. With earlier
+  retirements the pattern is now unmistakable: crafted OBJECTS and calm
+  abstractions stay; screen-effects, literal scenes, and diagram-adjacent
+  pieces go.
+- **Replacements — a trilogy of materials, all settle-and-rest:**
+  - [x] 008c **vitral** — stained glass; leaded panes 64/36, five rose-window
+    roundels at the goal minutes, the own goal in clear glass; light rises once
+  - [x] 008e **papel** — torn-paper collage; five hand-torn shapes (og torn as
+    a ring), white torn rims, real shadows, 38 confetti shots
+  - [x] 008g **mosaico** — sidewalk mosaic read as the match clock; shards by
+    possession share, gold shards at the goals, the own goal unglazed
+- **008f bufanda → tapiz** ("should be tapestry... improve until my jaw
+  drops"): carved relief lighting (motifs stand proud and catch light),
+  two-lobe yarn twist + plied dye, cloth undulation with fold shading, top
+  edge sagging between hanging loops, wooden rod, and the ball medallion
+  replaced with a woven **sol de mayo** — the tapestry now reads as an
+  abstracted argentine flag. Lesson recorded: when a motif turns to mush at
+  knot resolution, swap it for a bolder cultural symbol rather than adding
+  detail.

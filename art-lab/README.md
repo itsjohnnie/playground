@@ -103,6 +103,12 @@ inside **the frame** (`johnnie/public/art/frame.js`):
   different grainy/spray/gradient backgrounds, one hot accent on black).
   Lean that way: bold figure-ground, heavy grain, few colors, composition
   over diagram.
+- **2026-07-06 (later):** marea, interferencia, aerosol also retired. The
+  stable signal: **crafted objects win** (tapestry, relief, plotter, glass,
+  paper, tile) and calm abstractions (bruma, órbitas); screen-effects (CRT,
+  spray, moiré), literal scenes, and chart-shaped pieces lose. Cultural
+  motifs woven in abstractly (sol de mayo, guarda pampa) landed well.
+  "Jaw-drop" bar: material realism — light, relief, shadow, imperfection.
 - **Motion principle:** not everything loops. A piece may animate 0→100 —
   elements arriving, settling — and then REST as a finished composition
   (stop the rAF loop). The arrival is the performance; the final frame is
