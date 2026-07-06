@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>art — a daily sketch practice</title>
+<meta name="description" content="One small piece of generative art every day. After Zach Lieberman.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='38' cy='44' r='30' fill='%23f5578c' opacity='.85'/><circle cx='62' cy='56' r='30' fill='%232a49b9' opacity='.75'/></svg>">
+<style>
+  :root {
+    --paper: #f4f0e6;
+    --ink: #171512;
+    --ink-soft: rgba(23, 21, 18, 0.55);
+    --ink-faint: rgba(23, 21, 18, 0.28);
+    --line: rgba(23, 21, 18, 0.12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--paper); color: var(--ink); }
+  body {
+    font: 14px/1.65 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: 0.02em;
+    padding: clamp(20px, 4vw, 56px);
+  }
+  header { max-width: 640px; margin-bottom: clamp(36px, 6vw, 72px); }
+  h1 {
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+    text-transform: lowercase;
+  }
+  header p { color: var(--ink-soft); margin: 0 0 8px; }
+  header a { color: var(--ink); }
+  .batch {
+    margin: 10px 0 0;
+    font-size: 12px;
+    color: var(--ink-faint);
+    text-transform: lowercase;
+    letter-spacing: 0.08em;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: clamp(16px, 2.5vw, 28px);
+  }
+  .card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid var(--line);
+    background: #fff;
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(23, 21, 18, 0.12);
+  }
+  .thumb {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: #111015;
+  }
+  .thumb iframe {
+    position: absolute;
+    top: 0; left: 0;
+    width: 200%; height: 200%;
+    transform: scale(0.5);
+    transform-origin: 0 0;
+    border: 0;
+    pointer-events: none;
+  }
+  .meta { padding: 12px 14px 14px; border-top: 1px solid var(--line); }
+  .meta .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .meta b { font-weight: 400; }
+  .meta .date { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+  .meta .tags {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+  }
+  footer {
+    margin-top: clamp(48px, 8vw, 96px);
+    font-size: 12px;
+    color: var(--ink-faint);
+    max-width: 640px;
+  }
+  footer a { color: var(--ink-soft); }
+</style>
+
+<header>
+  <h1>art</h1>
+  <p>One small piece a day — algorithms trying to not look like algorithms.
+     Gradients, dither, ink, optics, feedback. After
+     <a href="https://zach.li" rel="noopener">Zach Lieberman</a>'s daily sketch practice.</p>
+  <p class="batch" id="batch"></p>
+</header>
+
+<main class="grid" id="grid" aria-label="sketches"></main>
+
+<footer>
+  <p>Every piece is seeded by its date — reload and it's the same; click it and it's reborn.
+     Made with WebGL and canvas, one file per day.</p>
+  <p><a href="/">johnnies.life</a></p>
+</footer>
+
+<script>
+  fetch("sketches.json")
+    .then((r) => r.json())
+    .then((data) => {
+      document.getElementById("batch").textContent = data.batch_note || "";
+      const grid = document.getElementById("grid");
+      const items = data.sketches.slice().reverse(); // newest first
+      for (const s of items) {
+        const a = document.createElement("a");
+        a.className = "card";
+        a.href = s.file;
+        a.innerHTML =
+          '<div class="thumb"><iframe loading="lazy" src="' + s.file +
+          '" title="' + s.n + " · " + s.title + '" tabindex="-1"></iframe></div>' +
+          '<div class="meta"><div class="row"><b>' + s.n + " · " + s.title +
+          "</b><span class='date'>" + s.date + "</span></div>" +
+          '<div class="tags">' + s.medium + " — " + s.tags.join(", ") + "</div></div>";
+        grid.appendChild(a);
+      }
+    });
+</script>
+</html>
