@@ -1,6 +1,6 @@
 {
   "project": "a daily generative art practice, after Zach Lieberman",
-  "batch_note": "Batch 001 — seven candidates in seven directions, awaiting curation.",
+  "batch_note": "batch 002 underway · batch 001 awaiting curation.",
   "sketches": [
     {
       "n": "001",
@@ -71,6 +71,16 @@
       "tags": ["feedback", "smear", "glow"],
       "status": "candidate",
       "note": "Video feedback in software: the canvas redraws into itself, rotated and zoomed, while three lights orbit."
+    },
+    {
+      "n": "008",
+      "title": "miami",
+      "date": "2026-07-06",
+      "file": "sketches/008.html",
+      "medium": "canvas 2d · real match data",
+      "tags": ["data", "fútbol", "riso"],
+      "status": "candidate",
+      "note": "Argentina 3–2 Cabo Verde (aet), World Cup 2026 R32, printed as two riso inks sharing one river. Goals, shots, cards, possession and xG are the real numbers; the piece replays the 120 minutes in 26 seconds."
     }
   ]
 }
