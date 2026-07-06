@@ -641,8 +641,9 @@ class InfiniteGrid {
     if (!this.stage) return;
     this.stage.classList.remove("is-open");
     this.stage.setAttribute("aria-hidden", "true");
-    // Vignette + control bar fade back in (.3s) under the .45s return flight,
-    // so the tile lands already dimmed by the restored gradient.
+    // Removing the class starts the close choreography: the vignette and the
+    // control bar return on DELAYED transitions (see the page CSS) so both
+    // re-enter only after the image has landed and swapped for the tile.
     document.documentElement.classList.remove("stage-open");
     // The frost layers bloom back in via a delayed OPACITY transition (see
     // the ::before rules) — plain opacity timing is reliable on iOS, unlike

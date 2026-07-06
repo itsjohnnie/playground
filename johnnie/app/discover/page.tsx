@@ -359,7 +359,13 @@ html.stage-open .discover-comp {
     border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
     opacity .22s ease, transform .25s var(--ease-out) !important;
 }
-.hero-gradient.cc-white { transition: opacity .3s ease; }
+/* Vignette sequencing on close: the flying copy travels ABOVE the gradient,
+   so it always lands undimmed — restoring the vignette during the flight made
+   the handover jump (bright copy → suddenly-dimmed tile). The return
+   therefore WAITS for the landing swap (~.46s), then blooms over the whole
+   static grid — a lighting change, never a layer crossing. Departure stays
+   immediate. */
+.hero-gradient.cc-white { transition: opacity .4s ease .5s; }
 html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s ease; }
 
 /* Animatable frost: iOS can't transition backdrop-filter itself, but it
