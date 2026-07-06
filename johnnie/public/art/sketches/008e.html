@@ -5,158 +5,179 @@
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
 <script src="data-008.js"></script>
+<script id="frag" type="x-shader">
+precision highp float;
+uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
+
+// 008 — e · resonancia — a chladni plate sings the match. Fine sand on a
+// dark steel plate migrates to the nodal lines while the drive frequency
+// sweeps five resonance modes, one per goal — (2,3) 29' … (5,6) 111' —
+// agitated while the tone moves, locking crisp when it lands. Every
+// finished mode leaves ~8% of its figure behind: the plate remembers.
+// Arrives once over 10s, then rests.
+
+const float PI = 3.14159265358979;
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1.,0.)), f.x),
+             mix(hash(i+vec2(0.,1.)), hash(i+vec2(1.,1.)), f.x), f.y);
+}
+
+// square-plate chladni function, x,y in [-1,1]
+float chl(vec2 pc, float n, float m){
+  return cos(n*PI*pc.x)*cos(m*PI*pc.y) - cos(m*PI*pc.x)*cos(n*PI*pc.y);
+}
+
+void main(){
+  vec2 p = gl_FragCoord.xy / u_res;
+  float aspect = u_res.x / u_res.y;
+  vec2 q = vec2(p.x*0.75, (p.y-0.5)*0.75/max(aspect,0.001) + 0.5);
+
+  // the plate: square, centered, side 86% of the design width
+  float hs = 0.3225;
+  vec2 pc = (q - vec2(0.375, 0.5)) / hs;
+  float ed = max(abs(pc.x), abs(pc.y));
+  float inPlate = 1.0 - smoothstep(0.985, 1.0, ed);
+
+  // ---- the drive: five modes, 2s each, smooth crossfades ----
+  float m5 = clamp(u_p*5.0 - 0.5, 0.0, 4.0);
+  float mi = floor(min(m5, 3.999));
+  float mf = m5 - mi;
+  float cf = smoothstep(0.25, 0.75, mf);
+  float ms = mi + cf;                        // plateau-crossfade mode position
+  float agit = cf*(1.0-cf)*4.0;              // crossfade derivative → agitation
+
+  float w0 = clamp(1.0-abs(ms-0.0), 0.0, 1.0);
+  float w1 = clamp(1.0-abs(ms-1.0), 0.0, 1.0);
+  float w2 = clamp(1.0-abs(ms-2.0), 0.0, 1.0);
+  float w3 = clamp(1.0-abs(ms-3.0), 0.0, 1.0);
+  float w4 = clamp(1.0-abs(ms-4.0), 0.0, 1.0);
+
+  // ---- sand as grains: one cell ≈ one grain ----
+  float cell = max(1.25, u_res.x/430.0);
+  vec2 id = floor(gl_FragCoord.xy / cell);
+  float shake = step(0.05, agit);
+  float h0 = hash(id + vec2(3.1, 17.0));
+  vec2 jid = id + shake*floor(u_time*16.0 + h0*6.0)*vec2(3.0, 17.0);
+  float h1 = hash(jid);
+  float h2 = hash(jid + vec2(19.3, 7.7));
+
+  // evaluate the field at the grain's cell center → whole grains, not gradients
+  vec2 fc = (id + 0.5) * cell;
+  vec2 pcen = fc / u_res;
+  vec2 qc = vec2(pcen.x*0.75, (pcen.y-0.5)*0.75/max(aspect,0.001) + 0.5);
+  vec2 pcc = (qc - vec2(0.375, 0.5)) / hs;
+  // per-grain positional jitter while the plate is being retuned
+  vec2 pj = pcc + (vec2(h1, h2) - 0.5) * 0.055 * agit;
+
+  float A = w0*chl(pj,2.,3.) + w1*chl(pj,3.,4.) + w2*chl(pj,3.,5.)
+          + w3*chl(pj,4.,5.) + w4*chl(pj,5.,6.);
+
+  float sandIn = smoothstep(0.0, 0.06, u_p);
+  float th = 0.30 + 0.26*agit;               // sand spreads while agitated
+  float dens = pow(smoothstep(th, 0.0, abs(A)), 1.35);
+
+  // rounded grain footprint inside the cell
+  float shape = smoothstep(0.56, 0.30, length(fract(gl_FragCoord.xy/cell) - 0.5));
+
+  float grain = step(1.0 - dens*0.92*sandIn, h1) * (0.55 + 0.45*h2);
+
+  // stray grains scattered in the low-|A| basins
+  float basin = smoothstep(1.15, 0.15, abs(A));
+  float h3 = hash(id + vec2(57.0, 3.1));
+  float stray = step(1.0 - 0.05*basin*sandIn, h3) * (0.30 + 0.40*h2);
+
+  // sand in flight while the tone changes
+  float h4 = hash(jid + vec2(101.0, 47.0));
+  float flight = agit * 0.55 * step(0.962, h4);
+
+  // ghost residue — each finished mode leaves ~8% of its figure
+  float r0 = smoothstep(0.80, 1.05, ms);
+  float r1 = smoothstep(1.80, 2.05, ms);
+  float r2 = smoothstep(2.80, 3.05, ms);
+  float r3 = smoothstep(3.80, 4.00, ms);
+  float resDens =
+      r0*smoothstep(0.16, 0.0, abs(chl(pcc,2.,3.)))
+    + r1*smoothstep(0.16, 0.0, abs(chl(pcc,3.,4.)))
+    + r2*smoothstep(0.16, 0.0, abs(chl(pcc,3.,5.)))
+    + r3*smoothstep(0.16, 0.0, abs(chl(pcc,4.,5.)));
+  float h5 = hash(id + vec2(211.0, 5.0));
+  float resg = step(1.0 - clamp(resDens, 0.0, 1.0)*0.085, h5) * (0.35 + 0.30*h2);
+
+  float sand = clamp(grain + stray + resg + flight, 0.0, 1.0) * shape;
+
+  // the four bolts keep their circle clear of sand
+  float bd = length(abs(pc) - vec2(0.90));
+  sand *= smoothstep(0.045, 0.075, bd);
+  sand *= inPlate * smoothstep(1.0, 0.965, ed);
+
+  // ---- materials ----
+  float lit = 1.0 - 0.5*smoothstep(0.0, 1.4, length(pc));        // center-lit
+  float brush = vnoise(vec2(pc.y*230.0, pc.x*7.0));              // brushed along x
+  vec3 plate = vec3(0.052, 0.055, 0.062) * (0.55 + 0.95*lit)
+             + (brush - 0.5) * 0.022;
+  vec3 voidc = vec3(0.012, 0.013, 0.016) * (0.8 + 0.5*p.y);
+  vec3 col = mix(voidc, plate, inPlate);
+
+  // machined rim: dark cut inside, lit chamfer just outside
+  float litDir = 0.40 + 0.60*clamp(0.5 + 0.55*pc.y - 0.20*pc.x, 0.0, 1.0);
+  float cut = smoothstep(0.014, 0.002, abs(ed - 0.992));
+  col = mix(col, vec3(0.020, 0.021, 0.024), cut*0.8);
+  float rim = smoothstep(0.010, 0.003, abs(ed - 1.012));
+  col = mix(col, vec3(0.33, 0.34, 0.37)*litDir, rim*0.9);
+
+  // corner bolts, barely lit
+  float boltR = 0.034;
+  float bolt = smoothstep(boltR, boltR - 0.010, bd) * inPlate;
+  col = mix(col, vec3(0.070, 0.072, 0.078)*(0.7 + 0.6*lit), bolt);
+  float boltRim = smoothstep(0.007, 0.0, abs(bd - boltR)) * inPlate;
+  col = mix(col, vec3(0.22, 0.23, 0.25)*litDir, boltRim*0.5);
+
+  // sand: warm bone with a hint of gold; celeste in argentina's modes,
+  // warm in cabo verde's, neutral in the final superposition
+  vec3 sandc = vec3(0.905, 0.865, 0.760);
+  sandc = mix(sandc, vec3(0.700, 0.855, 0.950), (w0 + w2)*0.22);
+  sandc = mix(sandc, vec3(0.945, 0.800, 0.640), (w1 + w3)*0.22);
+  sandc *= 0.82 + 0.22*lit;
+  col = mix(col, sandc, sand);
+
+  // grain + vignette
+  float g2 = hash(gl_FragCoord.xy*0.7);
+  col += (g2 - 0.5)*0.028;
+  float vig = smoothstep(1.30, 0.42, length(p - vec2(0.5)));
+  col *= mix(0.78, 1.0, vig);
+
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
 <script>
-// 008 — e · papel — the match as a torn-paper collage. Five shapes
-// torn by hand — three celeste, two rojo, the own goal torn as a ring —
-// settle onto layered paper fields, each with its white torn rim and
-// its own shadow. 38 torn confetti bits are the shots (22 and 16), a
-// gold scrap marks the moment at 111'. Placed once, then pressed flat.
-
 const seed = ART.seed("2026-07-06-008e");
-const R = ART.rng(seed);
-const N = ART.makeNoise(seed);
+let sh = null, done = false, start = null;
 
-let W, H, DPR, pieces = [], grain, done = false, start = null;
 const F = FRAME.mount({
-  n: "008", v: "e", title: "papel", date: "06·07·2026",
-  data: window.M8.frameData, tech: "canvas · torn collage",
-  dark: false,
-  onResize(w, h, dpr) {
-    W = w; H = h; DPR = dpr;
-    build();
-    done = false; start = null;
+  n: "008", v: "e", title: "resonancia", date: "06·07·2026",
+  data: window.M8.frameData, tech: "glsl · chladni",
+  dark: true,
+  onResize() {
+    if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
+    done = false;          // re-render after resize
     requestAnimationFrame(loop);
   },
 });
-const ctx = F.canvas.getContext("2d");
+const sf = ART.rng(seed)() * 100;
 
-// design → device px (width-anchored: x∈[0,0.75])
-const U = () => W / 0.75;
-const P = (x, y) => [x * U(), H / 2 + (y - 0.5) * U()];
-
-// a torn edge: low-frequency shape + high-frequency tear jaggies
-function tornPath(r, elong, rot, zs) {
-  const pts = [];
-  const Rt = ART.rng(seed + "torn" + zs);
-  const STEPS = 110;
-  for (let i = 0; i <= STEPS; i++) {
-    const a = (i / STEPS) * Math.PI * 2;
-    const low = N.fbm3(Math.cos(a) * 1.4, Math.sin(a) * 1.4, zs, 3) * 0.30;
-    const jag = (Rt() - 0.5) * 0.05;
-    const rr = r * (1 + low + jag) * (1 + elong * Math.abs(Math.cos(a - rot)));
-    pts.push([Math.cos(a) * rr, Math.sin(a) * rr]);
-  }
-  return pts;
-}
-
-function build() {
-  pieces = [];
-  const u = U();
-  // paper fields underneath — the bed of the composition
-  pieces.push({ c: [0.42, 0.80], r: 0.40, elong: 0.55, rot: 0.3, col: "#ded5c0", zs: 11, d: 0.0 });
-  pieces.push({ c: [0.30, 0.22], r: 0.32, elong: 0.75, rot: 1.8, col: "#e4dccb", zs: 23, d: 0.6 });
-
-  // the five goals, in minute order; the own goal is a torn ring
-  const goals = [
-    { c: [0.245, 0.645], r: 0.150, col: "#7fb3d5", zs: 31 },
-    { c: [0.525, 0.560], r: 0.118, col: "#c34a38", zs: 43 },
-    { c: [0.360, 0.415], r: 0.142, col: "#4a7ba6", zs: 57 },
-    { c: [0.168, 0.298], r: 0.098, col: "#8e3325", zs: 69 },
-    { c: [0.548, 0.268], r: 0.115, col: "#a9c8dd", zs: 81, hole: true },
-  ];
-  goals.forEach((g, i) =>
-    pieces.push({ elong: 0.15 + R() * 0.2, rot: R() * 3.14, d: 1.6 + i * 0.9, ...g }));
-
-  // the gold scrap beside the ring
-  pieces.push({ c: [0.618, 0.335], r: 0.028, elong: 0.3, rot: 1.0, col: "#d9a72e", zs: 93, d: 6.4 });
-
-  // 38 confetti — 22 celeste, 16 rojo
-  for (let i = 0; i < 38; i++) {
-    pieces.push({
-      c: [0.06 + R() * 0.63, 0.10 + R() * 0.80],
-      r: 0.007 + R() * 0.011,
-      elong: R() * 0.8, rot: R() * 3.14,
-      col: i < 22 ? (R() < 0.5 ? "#7fb3d5" : "#4a7ba6") : (R() < 0.5 ? "#c34a38" : "#8e3325"),
-      zs: 100 + i * 3, d: 7.0 + (i / 38) * 2.0, bit: true,
-    });
-  }
-
-  // precompute torn outlines (device px)
-  for (const pc of pieces) {
-    pc.pts = tornPath(pc.r * u, pc.elong, pc.rot, pc.zs);
-    if (pc.hole) pc.hpts = tornPath(pc.r * u * 0.45, 0.1, pc.rot + 1, pc.zs + 5).reverse();
-  }
-
-  grain = document.createElement("canvas");
-  grain.width = W; grain.height = H;
-  const g = grain.getContext("2d");
-  const img = g.createImageData(W, H);
-  const Rg = ART.rng(seed + "grain");
-  for (let i = 0; i < img.data.length; i += 4) {
-    const v = 116 + Rg() * 24 | 0;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 22;
-  }
-  g.putImageData(img, 0, 0);
-}
-
-const easeOut = (t) => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
-
-function drawPiece(pc, s) {
-  if (s <= 0) return;
-  const [px, py] = P(pc.c[0], pc.c[1]);
-  const scale = 1.10 - 0.10 * s;               // pressed flat as it lands
-  const lift = 1 - s;
-
-  ctx.save();
-  ctx.translate(px, py);
-  ctx.rotate(lift * 0.10 * (pc.zs % 2 ? 1 : -1));
-  ctx.scale(scale, scale);
-  ctx.globalAlpha = Math.min(1, s * 1.6);
-
-  const path = () => {
-    ctx.beginPath();
-    pc.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-    ctx.closePath();
-    if (pc.hpts) {
-      pc.hpts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-      ctx.closePath();
-    }
-  };
-
-  // shadow + the white torn core (exposed fibre)
-  ctx.shadowColor = "rgba(40,32,22," + (0.20 + lift * 0.25) + ")";
-  ctx.shadowBlur = (6 + lift * 26) * DPR;
-  ctx.shadowOffsetX = (3 + lift * 8) * DPR;
-  ctx.shadowOffsetY = (5 + lift * 14) * DPR;
-  ctx.fillStyle = "#f2ede0";
-  path(); ctx.fill();
-  ctx.shadowColor = "transparent";
-
-  // the coloured face, inset and offset — the torn rim stays visible
-  ctx.save();
-  ctx.translate(-1.8 * DPR, -2.2 * DPR);
-  ctx.scale(0.982, 0.982);
-  ctx.fillStyle = pc.col;
-  path(); ctx.fill();
-  ctx.restore();
-  ctx.restore();
-}
-
+// the drive sweeps once (10s), locks the fifth figure, then the plate rests
 function loop(tms) {
-  if (done) return;
+  if (!sh || done) return;
   if (start === null) start = tms;
-  const t10 = Math.min(10, (tms - start) / 1000);
-
-  ctx.fillStyle = "#e9e3d5";
-  ctx.fillRect(0, 0, W, H);
-  for (const pc of pieces) drawPiece(pc, easeOut((t10 - pc.d) / 1.4));
-
-  ctx.globalCompositeOperation = "multiply";
-  ctx.drawImage(grain, 0, 0);
-  ctx.globalCompositeOperation = "source-over";
-
-  if (t10 >= 10) { done = true; return; }
+  const p = Math.min(1, (tms - start) / 10000);
+  sh.gl.uniform1f(sh.extra.u_p, p);
+  sh.draw(tms / 1000, sf);
+  if (p >= 1) { done = true; return; }
   requestAnimationFrame(loop);
 }
 </script>

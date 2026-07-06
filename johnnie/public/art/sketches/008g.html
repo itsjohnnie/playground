@@ -5,207 +5,149 @@
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
 <script src="data-008.js"></script>
+<script id="frag" type="x-shader">
+precision highp float;
+uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
+
+// 008 — g · pileta — a miami hotel pool at night, shot from above. Two
+// layers of caustic filaments over the depth gradient; the pool floor's
+// tile grid wobbles under the same refraction. Five standing ripple
+// rings sit at the goal minutes on an invisible 120' clock — argentina's
+// bleach the light toward white, cabo verde's tint it rose; the 111'
+// own goal rings twice. NOTE: this piece deliberately never freezes —
+// after the 10s settle the loop idles at ~12% time so the water still
+// breathes (frozen water reads as wrong).
+
+const float TAU = 6.28318530718;
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+float ease(float t){ t = clamp(t, 0.0, 1.0); return 1.0 - pow(1.0 - t, 3.0); }
+
+// classic iterated caustic field — filament webs, tileable
+float caus(vec2 uv, float t){
+  vec2 k = mod(uv*TAU, TAU) - 250.0;
+  vec2 i = k;
+  float c = 1.0;
+  const float inten = 0.005;
+  for (int n = 0; n < 5; n++){
+    float tt = t * (1.0 - 3.5/float(n + 1));
+    i = k + vec2(cos(tt - i.x) + sin(tt + i.y), sin(tt - i.y) + cos(tt + i.x));
+    c += 1.0/length(vec2(k.x/(sin(i.x + tt)/inten), k.y/(cos(i.y + tt)/inten)));
+  }
+  c /= 5.0;
+  c = 1.17 - pow(c, 1.4);
+  return pow(abs(c), 8.0);
+}
+
+// minute 0 at the top of an invisible clock, clockwise
+vec2 clockPos(float minute){
+  float a = minute/120.0*TAU;
+  return vec2(0.375, 0.5) + 0.240*vec2(sin(a), cos(a));
+}
+
+void ring(vec2 q, float minute, float order, float dbl, float team,
+          inout vec2 disp, inout float gA, inout float gC){
+  float e = ease((u_p*10.0 - 0.8 - order*1.30)/3.0);
+  if (e <= 0.001) return;
+  vec2 c = clockPos(minute);
+  float d = length(q - c);
+  float R = 0.050*e;
+  float w = 0.011;
+  float env = exp(-pow((d - R)/w, 2.0));
+  if (dbl > 0.5) env = max(env, 0.8*exp(-pow((d - R + 0.017)/w, 2.0)));
+  disp += (q - c)/max(d, 1e-4) * env * sin(d*170.0) * 0.010 * e;
+  gA += env*e*team;
+  gC += env*e*(1.0 - team);
+}
+
+void main(){
+  vec2 p = gl_FragCoord.xy / u_res;
+  float aspect = u_res.x / u_res.y;
+  vec2 q = vec2(p.x*0.75, (p.y-0.5)*0.75/max(aspect,0.001) + 0.5);
+  float t = u_time;
+
+  // five standing rings — 29' 92' 111' argentina, 59' 103' cabo verde
+  vec2 disp = vec2(0.0); float gA = 0.0, gC = 0.0;
+  ring(q,  29.0, 0.0, 0.0, 1.0, disp, gA, gC);
+  ring(q,  59.0, 1.0, 0.0, 0.0, disp, gA, gC);
+  ring(q,  92.0, 2.0, 0.0, 1.0, disp, gA, gC);
+  ring(q, 103.0, 3.0, 0.0, 0.0, disp, gA, gC);
+  ring(q, 111.0, 4.0, 1.0, 1.0, disp, gA, gC);
+
+  vec2 qd = q + disp;
+  vec2 so = vec2(u_seed*0.013, u_seed*0.007);
+
+  // two caustic layers, different scale and drift
+  float c1 = caus(qd*1.8 + so, t*0.60);
+  float c2 = caus(qd*3.3 + so.yx*3.0 + 1.7, 2.0 - t*0.43);
+  float ca = c1*0.80 + c2*0.42;
+  ca = ca/(1.0 + 0.45*ca);                    // soft shoulder — night, not noon
+
+  // depth: shallow celeste top-left → deep bottom-right
+  float diag = smoothstep(0.0, 1.0, clamp((p.x + (1.0 - p.y))*0.60, 0.0, 1.0));
+  vec3 col = mix(vec3(0.227, 0.498, 0.682), vec3(0.039, 0.125, 0.200), diag);
+  col *= 0.82;                                 // the pool sits in the dark
+
+  // pool-floor tiles, refracted by the same water
+  vec2 tuv = q + disp*1.6
+           + vec2(sin(q.y*36.0 + t*0.7), sin(q.x*31.0 - t*0.6))*0.0045;
+  vec2 tf = abs(fract(tuv/0.085) - 0.5);
+  float tl = smoothstep(0.42, 0.485, max(tf.x, tf.y));
+  col *= 1.0 - tl * 0.10 * mix(1.0, 0.35, diag) * (0.55 + 0.45*clamp(ca, 0.0, 1.0));
+
+  // the light
+  col += vec3(0.72, 0.90, 1.0) * ca * 0.62 * mix(1.05, 0.45, diag) * (1.0 + gA*1.6);
+  col += vec3(1.00, 0.99, 0.95) * gA * (0.08 + ca*0.50);            // argentina → white
+  col  = mix(col, vec3(0.82, 0.44, 0.42), clamp(gC, 0.0, 1.0)*0.26); // cabo verde → rose
+  col += vec3(0.95, 0.62, 0.52) * gC * ca * 0.40;
+  col += (gA + gC) * 0.035;                                          // the ridge itself
+
+  // one gold sun-glint across the upper water, barely there —
+  // it lives only in the caustic filaments, like low sun on ripples
+  {
+    vec2 gc = q - vec2(0.38, 0.84);
+    vec2 gd = normalize(vec2(0.97, -0.24));
+    float gu = dot(gc, gd), gv = dot(gc, vec2(-gd.y, gd.x));
+    float glint = exp(-gv*gv/0.0004) * exp(-gu*gu/0.040);
+    col += vec3(0.96, 0.74, 0.34) * glint * (0.04 + 0.55*ca);
+  }
+
+  // grain + vignette
+  float gn = hash(gl_FragCoord.xy*0.7);
+  col += (gn - 0.5)*0.025;
+  float vig = smoothstep(1.35, 0.45, length(p - vec2(0.5)));
+  col *= mix(0.78, 1.0, vig);
+
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
 <script>
-// 008 — g · mosaico — the match as a broken-tile mosaic, the kind set
-// into buenos aires sidewalks. One great circle read like a clock:
-// 0' at the top, each glazed shard coloured by who held the game at
-// that minute (possession blended with phase xG — the same flow as the
-// other studies). Five gold shards burn at the goal angles; the own
-// goal is an unglazed one. Assembled ring by ring from the centre,
-// then the grout dries and it stays.
-
 const seed = ART.seed("2026-07-06-008g");
-const R = ART.rng(seed);
 const M = window.M8;
+let sh = null, start = null, last = null, wt = 0;
 
-let W, H, DPR, shards = [], grain, done = false, start = null;
 const F = FRAME.mount({
-  n: "008", v: "g", title: "mosaico", date: "06·07·2026",
-  data: M.frameData, tech: "canvas · glazed shards",
-  dark: false,
-  onResize(w, h, dpr) {
-    W = w; H = h; DPR = dpr;
-    build();
-    done = false; start = null;
-    requestAnimationFrame(loop);
+  n: "008", v: "g", title: "pileta", date: "06·07·2026",
+  data: M.frameData, tech: "glsl · caustics",
+  dark: true,
+  onResize() {
+    if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
   },
 });
-const ctx = F.canvas.getContext("2d");
+const sf = ART.rng(seed)() * 100;
+const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t*t*(3 - 2*t); };
 
-// minute → argentina share (possession + phase-xG blend)
-function flow(min) {
-  const pts = [[22.5, 0], [67.5, 1], [105, 2]].map(([m, i]) => ({
-    m, f: 0.64 * 0.68 + (M.xgPhase.arg[i] / (M.xgPhase.arg[i] + M.xgPhase.cpv[i])) * 0.32,
-  }));
-  if (min <= pts[0].m) return pts[0].f;
-  if (min >= pts[2].m) return pts[2].f;
-  const i = min < pts[1].m ? 0 : 1;
-  const t = (min - pts[i].m) / (pts[i + 1].m - pts[i].m);
-  return pts[i].f + (pts[i + 1].f - pts[i].f) * (t * t * (3 - 2 * t));
-}
-
-const TILE = {
-  celes: ["#7fb3d5", "#5f97c0", "#a9c8dd", "#4a7ba6"],
-  rojos: ["#c34a38", "#a63a2a", "#d9705c", "#8e3325"],
-  gold: "#d9a72e",
-  bone: "#e6ddc6",
-  coal: "#2b241d",
-};
-
-function build() {
-  shards = [];
-  const u = Math.min(W, H * 0.75);
-  const cx = W / 2, cyy = H / 2 - u * 0.02;
-  const R0 = u * 0.062;                 // rosette radius
-  const R1 = u * 0.435;                 // outer radius
-  const RINGS = 7;
-  const Rt = ART.rng(seed + "shards");
-
-  // centre rosette — bone & coal
-  for (let s = 0; s < 10; s++) {
-    const a0 = (s / 10) * Math.PI * 2, a1 = ((s + 1) / 10) * Math.PI * 2;
-    shards.push(mkShard(cx, cyy, u * 0.012, R0 - u * 0.004, a0, a1, s % 2 ? TILE.bone : TILE.coal, 0, Rt));
-  }
-
-  for (let r = 0; r < RINGS; r++) {
-    const rIn = R0 + (r / RINGS) * (R1 - R0);
-    const rOut = R0 + ((r + 1) / RINGS) * (R1 - R0);
-    const count = Math.round(10 + r * 5.5);
-    let a = Rt() * 0.4;
-    for (let s = 0; s < count; s++) {
-      const span = (Math.PI * 2) / count;
-      const a0 = a + s * span + (Rt() - 0.5) * span * 0.22;
-      const a1 = a + (s + 1) * span - (Rt() - 0.5) * span * 0.10;
-      const mid = (a0 + a1) / 2;
-      // the clock: minute 0 at the top, clockwise
-      const minute = ((mid + Math.PI / 2) / (Math.PI * 2) % 1 + 1) % 1 * 120;
-
-      let col = null, unglazed = false;
-      // goal shards: gold at the five angles (outer three rings only)
-      for (const g of M.goals) {
-        if (r >= RINGS - 3 && Math.abs(minute - g.min) < 2.4) {
-          col = TILE.gold;
-          unglazed = !!g.og;
-        }
-      }
-      if (!col) {
-        const argy = Rt() < flow(minute);   // shard by possession share
-        const set = argy ? TILE.celes : TILE.rojos;
-        col = set[(Rt() * set.length) | 0];
-        // bone breathing room scattered through the field
-        if (Rt() < 0.07) col = TILE.bone;
-      }
-      shards.push(mkShard(cx, cyy, rIn, rOut, a0, a1, col, 0.6 + r * 0.85, Rt, unglazed));
-    }
-  }
-
-  // a few strays past the rim, like the sidewalk crew ran out of circle
-  for (let i = 0; i < 26; i++) {
-    const a = Rt() * Math.PI * 2;
-    const rr = R1 + u * (0.02 + Rt() * 0.05);
-    shards.push(mkShard(cx, cyy, rr, rr + u * (0.018 + Rt() * 0.02),
-      a, a + 0.10 + Rt() * 0.12,
-      Rt() < 0.5 ? TILE.bone : (Rt() < 0.64 ? TILE.celes[0] : TILE.rojos[0]),
-      7.2 + Rt() * 1.4, Rt));
-  }
-
-  grain = document.createElement("canvas");
-  grain.width = W; grain.height = H;
-  const g = grain.getContext("2d");
-  const img = g.createImageData(W, H);
-  const Rg = ART.rng(seed + "grain");
-  for (let i = 0; i < img.data.length; i += 4) {
-    const v = 114 + Rg() * 26 | 0;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 20;
-  }
-  g.putImageData(img, 0, 0);
-}
-
-// one glazed shard: an irregular polar quad, inset for grout
-function mkShard(cx, cyy, rIn, rOut, a0, a1, col, delay, Rt, unglazed) {
-  const gap = 0.012;                          // grout, in radians-ish
-  const j = () => (Rt() - 0.5) * (rOut - rIn) * 0.16;
-  const pts = [
-    [a0 + gap, rIn + Math.abs(j())], [a1 - gap, rIn + Math.abs(j())],
-    [a1 - gap + (Rt() - 0.5) * 0.02, rOut - Math.abs(j())],
-    [a0 + gap + (Rt() - 0.5) * 0.02, rOut - Math.abs(j())],
-  ].map(([a, r]) => [cx + Math.cos(a) * r, cyy + Math.sin(a) * r]);
-  return {
-    pts, col, delay, unglazed,
-    hx: (Rt() - 0.5) * 0.5 + 0.3,             // highlight offset
-    hy: (Rt() - 0.5) * 0.5 - 0.3,
-    tone: 0.92 + Rt() * 0.16,
-  };
-}
-
-const easeOut = (t) => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
-
-function drawShard(sh, s) {
-  if (s <= 0) return;
-  const pts = sh.pts;
-  const mx = (pts[0][0] + pts[2][0]) / 2, my = (pts[0][1] + pts[2][1]) / 2;
-
-  ctx.save();
-  ctx.translate(mx, my);
-  ctx.scale(0.7 + 0.3 * s, 0.7 + 0.3 * s);
-  ctx.rotate((1 - s) * 0.2);
-  ctx.translate(-mx, -my);
-  ctx.globalAlpha = Math.min(1, s * 2);
-
-  ctx.beginPath();
-  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-  ctx.closePath();
-
-  // tile body
-  ctx.fillStyle = sh.col;
-  ctx.save();
-  ctx.globalAlpha *= sh.tone > 1 ? 1 : sh.tone;
-  ctx.fill();
-  ctx.restore();
-
-  // bevel shade at the lower edge
-  ctx.strokeStyle = "rgba(30,22,14,0.30)";
-  ctx.lineWidth = 1.4 * DPR;
-  ctx.stroke();
-
-  if (!sh.unglazed) {
-    // glaze: a soft window-light highlight
-    const r = Math.hypot(pts[2][0] - pts[0][0], pts[2][1] - pts[0][1]) * 0.5;
-    const gx = mx + sh.hx * r, gy = my + sh.hy * r;
-    const gr = ctx.createRadialGradient(gx, gy, 0, gx, gy, r * 1.1);
-    gr.addColorStop(0, "rgba(255,252,240,0.42)");
-    gr.addColorStop(0.5, "rgba(255,252,240,0.08)");
-    gr.addColorStop(1, "rgba(255,252,240,0)");
-    ctx.fillStyle = gr;
-    ctx.fill();
-  } else {
-    // the own goal: matte, dusty
-    ctx.fillStyle = "rgba(60,50,34,0.25)";
-    ctx.fill();
-  }
-  ctx.restore();
-}
-
+// settles for 10s, then idles at ~12% time — the water must keep breathing,
+// so unlike the other settle pieces the rAF loop never stops (intentional)
 function loop(tms) {
-  if (done) return;
-  if (start === null) start = tms;
-  const t10 = Math.min(10, (tms - start) / 1000);
-
-  // plaster
-  const g0 = ctx.createLinearGradient(0, 0, 0, H);
-  g0.addColorStop(0, "#ddd4c2");
-  g0.addColorStop(1, "#cfc5b0");
-  ctx.fillStyle = g0;
-  ctx.fillRect(0, 0, W, H);
-
-  for (const sh of shards) drawShard(sh, easeOut((t10 - sh.delay) / 1.3));
-
-  ctx.globalCompositeOperation = "multiply";
-  ctx.drawImage(grain, 0, 0);
-  ctx.globalCompositeOperation = "source-over";
-
-  if (t10 >= 10) { done = true; return; }
   requestAnimationFrame(loop);
+  if (!sh) return;
+  if (start === null) { start = tms; last = tms; }
+  const p = Math.min(1, (tms - start) / 10000);
+  const dt = Math.min(0.05, (tms - last) / 1000); last = tms;
+  wt += dt * (1.0 - 0.88 * ss(0.85, 1.0, p));
+  sh.gl.uniform1f(sh.extra.u_p, p);
+  sh.draw(wt, sf);
 }
+requestAnimationFrame(loop);
 </script>
