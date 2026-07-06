@@ -369,23 +369,19 @@ html.stage-open .discover-comp {
 .hero-gradient.cc-white { transition: opacity .4s ease .5s; }
 html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s ease; }
 
-/* The frost is PERMANENT — the bar is solid frosted glass that slides as one
-   finished object, exactly like native iOS bars. It lives on ::before layers
-   (kept from the animatable-frost experiment; equivalent rendering, and the
-   rows' own backdrop-filter stays disabled). No frost state ever changes, so
-   there is nothing to pop or smear. */
-.discover-logo, .discover-text, .toggle-mode {
-  position: relative;
-  /* Relative positioning (needed for the frost layer) activates dormant
-     bottom/right offsets site.css puts on .toggle-mode at phone widths —
-     neutralise them so nothing shifts. */
-  top: auto; right: auto; bottom: auto; left: auto;
-  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
-}
-.discover-logo::before, .discover-text::before, .toggle-mode::before {
+/* The frost is PERMANENT and ONE SHEET — a single blur layer spanning the
+   whole bar (clipped by its radius), with the segments contributing only
+   their translucent tints on top. Per-segment frost patches met at 1px
+   negative-margin seams where rounding + double blur sampling left odd
+   unfrosted hairlines; one glass sheet has no seams, reads as one object,
+   and renders cheaper. The rows' own backdrop-filter (site.css) stays off. */
+.discover-comp::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
   pointer-events: none;
+}
+.discover-logo, .discover-text, .toggle-mode {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
 
 /* Mobile tap-to-stage: the tapped tile, front-and-center and enlarged, over a
