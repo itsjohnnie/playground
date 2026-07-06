@@ -56,13 +56,26 @@ johnnie/public/art/          ← the live site (johnnies.life/art)
 ### Presentation (don't break this)
 
 Johnnie views the site primarily on his phone. Presentation is **mobile-first**
-with **the composition always in the middle**: `art.js` renders every piece on
-a centered square stage (~92% of the short viewport side, capped at 720px on
-desktop), caption beneath, ground color behind (`dark: true` for pieces on
-black). Compose for a square — `ART.fit` gives you a square canvas; don't
-assume landscape. The gallery previews load each sketch with `?thumb=1`
-(stage fills the iframe, chrome hidden) — nothing extra to do, just use
-`ART.fit` + `ART.chrome` as usual.
+with **the composition always in the middle**, and since 008 every piece lives
+inside **the frame** (`johnnie/public/art/frame.js`):
+
+- A **3:4 portrait stage**, centered, with a fixed Swiss overlay: a **6×8
+  hairline grid**, one font (**Fragment Mono**, self-hosted in `art/lib/`),
+  one weight, one small size, all lowercase.
+- The frame holds the constants — piece number/variant, title, date, Johnnie's
+  info, the data line, the tech stamp — in fixed grid slots. It never changes.
+  All creativity happens on the canvas layer *behind* it.
+- Usage: `FRAME.mount({n, v, title, date, data, tech, dark, noCanvas,
+  onResize})` → `{stage, canvas, W, H, DPR}`. Use `ART.seed/rng/makeNoise`
+  for determinism. See `sketches/008a.html` (canvas), `008b.html` (three.js —
+  vendored at `art/lib/three.module.min.js`, import map included), and the
+  other 008 studies for GLSL / DOM patterns.
+- Compose for portrait 3:4; keep focal content inside the middle ~86% (frame
+  rows 1 and 8 carry the fixed type). Temporal pieces use the shared replay
+  idiom: `cycle = t % 34; clock = min(120, cycle/26*120)`.
+- Batch 001 (001–007) predates the frame and uses the legacy square
+  `ART.fit`/`ART.chrome` — leave those as history.
+- Gallery previews load each piece with `?thumb=1` — handled by frame.js.
 
 ### House rules (adapted from Lieberman's)
 

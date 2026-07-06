@@ -1,6 +1,30 @@
 # Batch 002 — week of 2026-07-06
 
-## 008 · miami — 2026-07-06 — data portrait (Johnnie's request)
+## 008 · diez estudios — 2026-07-06 — the frame is born
+
+Johnnie reframed the practice mid-day: not one answer per day but — for this
+match — **ten competing studies**, as if ten different engineers each turned
+the same data into art with different stacks. And a new constant: **the
+frame** — 3:4 stage, 6×8 Swiss hairline grid, Fragment Mono, one weight, one
+small size, fixed slots for number/date/info/data/tech. See README →
+Presentation. The original square `008 miami` was rebuilt as study `a`.
+
+| v | title | stack | idea |
+|---|-------|-------|------|
+| a | río | canvas 2d | two riso inks share the page; boundary = match balance |
+| b | 64.478 | three.js points | every attendee as a gpu point; goals ripple the crowd |
+| c | constelación | three.js sprites | 38 shots as a star chart on a time axis |
+| d | terreno | three.js relief | pressure topography, contour ink on paper |
+| e | interferencia | glsl | two wave systems (freq=shots, amp=possession) interfere; goals scar the phase |
+| f | bufanda | glsl | the match woven as a fan scarf; goals = pulled threads |
+| g | transmisión | glsl feedback | slit-scan broadcast; goals leave hot scars |
+| h | sismógrafo | canvas plotter | 120 stacked traces; goals spike off the chart |
+| i | minutos | dom kinetic type | the match told only in typography |
+| j | órbitas | canvas gravity | shots orbit the goalmouth; goals ring the bell |
+
+All ten share `sketches/data-008.js` — single source of truth.
+
+### Original notes (study a inherits these)
 
 Argentina 3–2 Cabo Verde (a.e.t.), World Cup 2026 Round of 32, Hard Rock
 Stadium, 3 July 2026. Johnnie asked for a piece about the match built from
@@ -32,6 +56,15 @@ Craft notes: double-printed ribbons ~1.5px off register; goal beams behind
 the river; grain pass; Spanish captions (it's a love letter). Direction probed:
 **data art** — new to the practice, not from the idea bank.
 
-## Curation
+## Curation — keep / retire / iterate per study
 
-- [ ] 008 miami —
+- [ ] 008a río —
+- [ ] 008b 64.478 —
+- [ ] 008c constelación —
+- [ ] 008d terreno —
+- [ ] 008e interferencia —
+- [ ] 008f bufanda —
+- [ ] 008g transmisión —
+- [ ] 008h sismógrafo —
+- [ ] 008i minutos —
+- [ ] 008j órbitas —
