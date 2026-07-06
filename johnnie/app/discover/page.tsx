@@ -340,11 +340,12 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
    the theme eases !important + opacity — the theme block's own !important
    shorthand (above) would otherwise drop the opacity ease. */
 .discover-comp {
-  /* These timings are the RETURN (class removed on close): the bar slides
-     back up and refills while the image flies home. */
+  /* These timings are the RETURN (class removed on close): the bar WAITS for
+     the image to land (.45s flight), then glides back up on a long, soft
+     ease — returning during the flight read as two animations colliding. */
   transition: background-color .45s ease, color .45s ease,
     border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
-    opacity .3s ease, transform .35s var(--ease-out) !important;
+    opacity .4s ease .45s, transform .55s var(--ease-out) .45s !important;
 }
 html.stage-open .discover-comp {
   opacity: 0;
