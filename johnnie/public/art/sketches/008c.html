@@ -9,12 +9,12 @@
 precision highp float;
 uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
 
-// 008 — c · marea — the match as a dusk shoreline. Six ridge lines —
-// argentina and cabo verde through the three phases of the night —
-// rise from the water and settle; their silhouettes carry the real
-// per-phase xG and seeded swells stand in for the shots. A low gold
-// sun hangs at minute 111 of 120. Dithered like an old travel poster.
-// The tide comes in once, then the scene rests.
+// 008 — c · vitral — the match as stained glass. A leaded field of
+// hand-set panes: celeste glass for argentina's 64% of the ball, ember
+// for cabo verde's 36%, a few clear panes for the paper between. Five
+// roundels sit at the goal minutes, top to bottom — petalled rose
+// windows, the own goal left as clear glass in a leaded ring. Light
+// rises behind the window once, pane by pane; then it simply glows.
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
 float vnoise(vec2 p){
@@ -28,98 +28,100 @@ float fbm(vec2 p){
   for (int i = 0; i < 4; i++){ s += a*vnoise(p); p = p*2.03 + 11.7; a *= 0.5; }
   return s;
 }
-
-float bayer2(vec2 a){ a = floor(a); return fract(a.x/2.0 + a.y*a.y*0.75); }
-float bayer4(vec2 a){ return bayer2(0.5*a)*0.25 + bayer2(a); }
-float bayer8(vec2 a){ return bayer4(0.5*a)*0.25 + bayer2(a); }
-
 float ease(float t){ t = clamp(t, 0.0, 1.0); return 1.0 - pow(1.0 - t, 3.0); }
 
-float swell(float x, float m, float h){
-  float d = x - m/120.0;
-  return h * exp(-d*d/0.00028);
+// glass palette — deep transmissive colors
+vec3 glass(float h, float clearish){
+  if (clearish > 0.5)       return vec3(0.88, 0.86, 0.78);   // clear antique
+  if (h < 0.42)             return vec3(0.16, 0.38, 0.60);   // celeste deep
+  if (h < 0.64)             return vec3(0.34, 0.58, 0.78);   // celeste pale
+  if (h < 0.78)             return vec3(0.62, 0.18, 0.12);   // ruby
+  if (h < 0.93)             return vec3(0.78, 0.40, 0.16);   // amber
+  return vec3(0.80, 0.62, 0.22);                             // gold
 }
 
 void main(){
   vec2 p = gl_FragCoord.xy / u_res;
+  float aspect = u_res.x / u_res.y;
+  // width-anchored design space
+  vec2 q = vec2(p.x * 0.75, (p.y - 0.5) * 0.75 / max(aspect, 0.001) + 0.5);
   float t10 = u_p * 10.0;
 
-  float horizon = 0.585;
+  // organic leading: warp the space, then cut it on a grid
+  vec2 w = q * vec2(9.0, 12.0);
+  w += 0.55 * vec2(fbm(q * 5.1 + 3.7), fbm(q * 5.1 + 9.2)) - 0.275;
+  vec2 cell = floor(w);
+  vec2 f = fract(w);
+  float came = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y)); // distance to lead
 
-  // dusk sky: indigo falling into ember at the waterline
-  vec3 indigo = vec3(0.082, 0.098, 0.196);
-  vec3 ember  = vec3(0.485, 0.222, 0.196);
-  vec3 glowc  = vec3(0.845, 0.492, 0.252);
-  vec3 col;
-  if (p.y > horizon) {
-    float sy = (p.y - horizon) / (1.0 - horizon);
-    col = mix(ember, indigo, pow(sy, 0.72));
-    col = mix(glowc, col, smoothstep(0.0, 0.30, sy));
-  } else {
-    // water: the sky remembered, darker
-    float wy = (horizon - p.y) / horizon;
-    col = mix(ember*0.85, indigo*0.55, pow(wy, 0.8));
-  }
+  // per-pane character
+  float h = hash(cell * 1.7 + 0.31);
+  float clearish = step(0.92, hash(cell * 3.1 + 7.7));
+  vec3 pane = glass(h, clearish);
+  // streaks in the glass, each pane rolled in its own direction
+  float ang = hash(cell * 2.3) * 6.2832;
+  vec2 dir = vec2(cos(ang), sin(ang));
+  float streak = fbm(vec2(dot(q, dir) * 26.0, dot(q, vec2(-dir.y, dir.x)) * 5.0));
+  pane *= 0.82 + 0.36 * streak;
+  // seeds and bubbles
+  float bubble = step(0.994, hash(floor(q * 430.0)));
+  pane += bubble * 0.10;
 
-  // the sun — minute 111 of 120 across the sky, low and gold, risen once
-  {
-    float s = ease((t10 - 0.6)/5.0);
-    float aspect = u_res.x / u_res.y;
-    vec2 q = vec2(p.x * aspect, p.y);         // metric-true so the disc stays round
-    vec2 c = vec2(aspect * 0.835, mix(horizon-0.12, horizon+0.105, s));
+  // ---- five roundels at the goal minutes, time falling top to bottom ----
+  // x positions composed by hand; petals in the scorer's glass
+  for (int i = 0; i < 5; i++){
+    float gm = i==0 ? 29.0 : i==1 ? 59.0 : i==2 ? 92.0 : i==3 ? 103.0 : 111.0;
+    float isArg = (i==0 || i==2 || i==4) ? 1.0 : 0.0;
+    float og = i==4 ? 1.0 : 0.0;
+    vec2 c = vec2(
+      i==0 ? 0.245 : i==1 ? 0.525 : i==2 ? 0.230 : i==3 ? 0.510 : 0.375,
+      mix(0.86, 0.14, gm / 120.0)
+    );
+    float r = i==4 ? 0.070 : 0.088;
     float d = length(q - c);
-    float disc = 1.0 - smoothstep(0.050, 0.056, d);
-    float glow = (1.0 - smoothstep(0.0, 0.34, d)) * 0.26 * s;
-    vec3 gold = vec3(0.94, 0.72, 0.30);
-    col += gold * glow;
-    col = mix(col, gold, disc * s);
-    // its path on the water
-    float refl = (1.0 - smoothstep(0.0, 0.05, abs(p.x - 0.835))) *
-                 smoothstep(horizon, horizon - 0.45, p.y) * 0.14 * s;
-    col += gold * refl;
+    if (d < r + 0.012){
+      float petal = 0.0;
+      float a2 = atan(q.y - c.y, q.x - c.x);
+      // radial cames: 8 petals + hub ring
+      float spokes = abs(mod(a2 * 1.2732 + 8.0, 1.0) - 0.5) * 2.0; // 8 sectors
+      float ringD = min(abs(d - r), min(abs(d - r * 0.42), spokes * d * 1.4)) * 3.2;
+      if (og > 0.5){
+        pane = glass(0.0, 1.0) * (0.9 + 0.2 * streak);       // clear rose
+      } else {
+        float ph = hash(vec2(float(i) * 3.3, floor(a2 * 1.2732 + 8.0)));
+        pane = isArg > 0.5 ? glass(ph * 0.6, 0.0) : glass(0.66 + ph * 0.3, 0.0);
+        pane *= 0.84 + 0.3 * streak;
+        if (d < r * 0.42) pane = vec3(0.80, 0.62, 0.22) * (0.8 + 0.3 * streak); // gold hub
+      }
+      came = min(ringD * 7.0, came);
+      petal = 1.0;
+    }
   }
 
-  // six ridges, far→near, alternating team; amplitude ∝ that phase's xG
-  for (int i = 0; i < 6; i++){
-    float fi = float(i);
-    float s = ease((t10 - (1.6 + fi*0.85)) / 4.2);
-    if (s <= 0.0) continue;
+  // ---- the light behind the window rises once ----
+  // panes wake in a staggered order as the light reaches them
+  float sun = ease(t10 / 7.5);
+  vec2 lightC = vec2(0.375, 1.05);
+  float fall = 1.0 - clamp(length(q - lightC) / 1.35, 0.0, 1.0);
+  float wake = ease((sun * 1.6 - hash(cell * 5.3) * 0.55 - (1.0 - fall)) * 2.2);
+  float light = (0.08 + 0.80 * sun * (0.32 + 0.68 * fall)) * (0.22 + 0.78 * wake);
 
-    float isArg = mod(fi, 2.0) < 1.0 ? 1.0 : 0.0;
-    float xg    = i==0 ? 0.46 : i==1 ? 0.08 : i==2 ? 1.31 : i==3 ? 0.23 : i==4 ? 0.58 : 0.45;
-    float base  = horizon - 0.030 - fi * 0.078;
-    float amp   = 0.030 + xg * 0.072;
+  vec3 col = pane * light;
+  // transmission bloom on the brightest glass
+  col += pane * pow(light, 3.0) * 0.35;
 
-    float x = p.x;
-    float ridge = base
-      + amp * (fbm(vec2(x*3.1 + fi*17.0, fi*7.3)) - 0.35)
-      + swell(x, 12.0 + hash(vec2(fi,1.0))*30.0, amp*0.30)
-      + swell(x, 48.0 + hash(vec2(fi,2.0))*38.0, amp*0.24)
-      + swell(x, 92.0 + hash(vec2(fi,3.0))*26.0, amp*0.28);
+  // the lead: dark, soft-edged, slightly lit on top
+  float lead = 1.0 - smoothstep(0.035, 0.085, came);
+  vec3 leadC = vec3(0.075, 0.065, 0.06) + vec3(0.06) * light * 0.3;
+  col = mix(col, leadC, lead);
 
-    ridge = mix(ridge - 0.28, ridge, s);   // rises out of the water
-
-    float m = smoothstep(ridge + 0.0018, ridge - 0.0018, p.y);
-
-    vec3 argC = mix(vec3(0.295, 0.435, 0.585), vec3(0.052, 0.092, 0.158), fi/5.0);
-    vec3 cpvC = mix(vec3(0.492, 0.238, 0.205), vec3(0.108, 0.048, 0.058), fi/5.0);
-    vec3 ink = mix(cpvC, argC, isArg);
-    ink *= mix(1.0, 0.82, clamp((ridge - p.y)*6.0, 0.0, 1.0));
-
-    col = mix(col, ink, m * s);
-  }
-
-  // print pass: bayer-dithered poster quantization
-  float cell = max(2.0, floor(u_res.y / 340.0));
-  float th = bayer8(gl_FragCoord.xy / cell) - 0.5;
-  float levels = 5.0;
-  col = floor(col * levels + 0.5 + th * 0.95) / levels;
+  // stone dark around everything the light hasn't reached
+  col *= 0.35 + 0.65 * smoothstep(0.0, 0.15, light);
 
   // grain + vignette
-  float g2 = hash(gl_FragCoord.xy * 0.7);
-  col += (g2 - 0.5) * 0.03;
-  float vig = smoothstep(1.35, 0.5, length(p - vec2(0.5, 0.5)));
-  col *= mix(0.90, 1.0, vig);
+  col += (hash(gl_FragCoord.xy * 0.73) - 0.5) * 0.028;
+  float vig = smoothstep(1.5, 0.55, length(p - vec2(0.5, 0.5)));
+  col *= mix(0.78, 1.0, vig);
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -130,8 +132,8 @@ const M = window.M8;
 let sh = null, done = false, start = null;
 
 const F = FRAME.mount({
-  n: "008", v: "c", title: "marea", date: "06·07·2026",
-  data: M.frameData, tech: "glsl · dither scene",
+  n: "008", v: "c", title: "vitral", date: "06·07·2026",
+  data: M.frameData, tech: "glsl · stained glass",
   dark: true,
   onResize() {
     if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
@@ -142,7 +144,7 @@ const F = FRAME.mount({
 });
 const sf = ART.rng(seed)() * 100;
 
-// the tide comes in once (10s), then the scene rests — no loop
+// the light rises once (10s), then the window glows still — no loop
 function loop(tms) {
   if (!sh || done) return;
   if (start === null) start = tms;
