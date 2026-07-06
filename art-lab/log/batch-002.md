@@ -74,3 +74,22 @@ the river; grain pass; Spanish captions (it's a love letter). Direction probed:
   - [x] 008g **aerosol** — one spray stroke around the match clock, 64/36
     celeste/rose, goal bursts, the 111' og drips; sprayed once, then finished
 - Remaining studies (b, d, e, f, h, i, j) stay as candidates pending verdicts.
+
+## Second curation pass — Johnnie, later that evening
+
+- **008f bufanda → matra**: liked the rug association ("like Argentine rugs")
+  but "not realistic enough." Rebuilt as a hand-knotted pampa wall rug:
+  guarda-pampa diamond bands at the five goal minutes, gold card rows,
+  stepped ball medallion, 64/36 possession speckle; knot domes, heathered
+  yarn, abrash rows, selvedge, fringe, wall shadow; weaves itself bottom-up
+  on a bare warp, then hangs still. Lesson: intricate CRAFT patterns beat
+  simulated cloth; motifs may reference the day's subject abstractly.
+- **008i minutos**: "large time going up is attractive… the ending is
+  lacking." Ending rebuilt: goal slams get a team-color wash; at 120' night
+  falls (stage floods dark, frame re-inks via F.setTone), the score lands as
+  giant Geist Pixel numerals, ledger in team inks — and the piece RESTS
+  (plays once, no loop).
+- **System**: mobile now full-bleed (the art is the screen); breadcrumb baked
+  into the frame; swipe/arrows/‹ › navigation between pieces; Geist family
+  everywhere (Mono frame, Pixel for expressive numerals).
+- Gallery now holds only the 008 studies — batch 001 removed earlier stands.

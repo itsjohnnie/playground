@@ -64,8 +64,9 @@ void main(){
   // the sun — minute 111 of 120 across the sky, low and gold, risen once
   {
     float s = ease((t10 - 0.6)/5.0);
-    vec2 q = vec2(p.x*0.75, p.y);
-    vec2 c = vec2(0.75*0.835, mix(horizon-0.12, horizon+0.105, s));
+    float aspect = u_res.x / u_res.y;
+    vec2 q = vec2(p.x * aspect, p.y);         // metric-true so the disc stays round
+    vec2 c = vec2(aspect * 0.835, mix(horizon-0.12, horizon+0.105, s));
     float d = length(q - c);
     float disc = 1.0 - smoothstep(0.050, 0.056, d);
     float glow = (1.0 - smoothstep(0.0, 0.34, d)) * 0.26 * s;

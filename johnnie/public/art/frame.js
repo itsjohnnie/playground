@@ -36,35 +36,43 @@ padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-
 .stage{position:relative;aspect-ratio:3/4;container-type:inline-size;overflow:hidden;
 width:${thumb ? "min(100vw, 75vh)" : "min(92dvw, 66dvh, 620px)"};
 background:${ground};box-shadow:${o.dark ? "0 0 0 1px rgba(244,240,229,.09)" : "0 1px 2px rgba(23,21,17,.10), 0 14px 44px rgba(23,21,17,.16)"}}
+${thumb ? "" : `@media (max-width: 700px){
+body{padding:0}
+.stage{width:100dvw;height:100dvh;aspect-ratio:auto;box-shadow:none;animation:none}
+}`}
 .stage canvas.art{position:absolute;inset:0;width:100%;height:100%;display:block}
-.frame{position:absolute;inset:0;z-index:5;pointer-events:none;
+.frame{--fink:${ink};position:absolute;inset:0;z-index:5;pointer-events:none;transition:--fink .6s ease;
 display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(8,1fr);
+padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-weight:400;
 font-size:clamp(6.5px,1.95cqw,12px);line-height:1.5;letter-spacing:.075em;
-color:rgba(${ink},.9);text-transform:uppercase}
-.frame b{font-weight:640;color:rgba(${ink},.97)}
+color:rgba(var(--fink),.9);text-transform:uppercase}
+.frame b{font-weight:640;color:rgba(var(--fink),.97)}
 .frame .lc{text-transform:lowercase}
+.frame .crumb{pointer-events:auto;color:rgba(var(--fink),.55);text-decoration:none;
+font-weight:640;transition:color 150ms ease}
+@media (hover:hover) and (pointer:fine){.frame .crumb:hover{color:rgba(var(--fink),.97)}}
+.frame .nav{position:absolute;top:50%;transform:translateY(-50%);z-index:6;pointer-events:auto;
+padding:18px 12px;color:rgba(var(--fink),.38);text-decoration:none;
+font-size:max(16px,3.4cqw);line-height:1;transition:color 150ms ease}
+.frame .nav.prev{left:0}
+.frame .nav.next{right:0}
+@media (hover:hover) and (pointer:fine){.frame .nav:hover{color:rgba(var(--fink),.95)}}
 .frame .hair{position:absolute;inset:0;
 background:
- repeating-linear-gradient(to right, rgba(${ink},.07) 0 1px, transparent 1px calc(100%/6)),
- repeating-linear-gradient(to bottom, rgba(${ink},.07) 0 1px, transparent 1px calc(100%/8));
+ repeating-linear-gradient(to right, rgba(var(--fink),.07) 0 1px, transparent 1px calc(100%/6)),
+ repeating-linear-gradient(to bottom, rgba(var(--fink),.07) 0 1px, transparent 1px calc(100%/8));
 background-position:-1px -1px}
 .frame .cell{padding:.65em .8em;position:relative}
-.frame .dim{color:rgba(${ink},.48)}
+.frame .dim{color:rgba(var(--fink),.48)}
 .frame .tl{grid-area:1/1/2/4}
 .frame .tr{grid-area:1/5/2/7;text-align:right}
 .frame .ml{grid-area:2/1/3/3}
 .frame .bl{grid-area:8/1/9/5;align-self:end}
 .frame .br{grid-area:8/5/9/7;text-align:right;align-self:end}
-.art-back{position:fixed;left:max(16px,env(safe-area-inset-left));top:max(14px,env(safe-area-inset-top));z-index:9;
-font-family:'Geist Mono',ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.05em;
-color:rgba(${o.dark ? "244,240,229" : "23,21,17"},.5);text-decoration:none;padding:8px;margin:-8px;display:inline-block;
-transition:color 150ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1)}
-@media (hover:hover) and (pointer:fine){.art-back:hover{color:rgba(${ink},.95)}}
-.art-back:active{transform:scale(0.96)}
 .stage{animation:stage-in 400ms cubic-bezier(0.23,1,0.32,1)}
 @keyframes stage-in{from{opacity:0;transform:scale(0.985)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.stage{animation:stage-fade 200ms ease}@keyframes stage-fade{from{opacity:0}to{opacity:1}}.art-back:active{transform:none}}`;
+@media (prefers-reduced-motion:reduce){.stage{animation:stage-fade 200ms ease}@keyframes stage-fade{from{opacity:0}to{opacity:1}}}`;
     document.head.appendChild(css);
 
     const stage = document.createElement("div");
@@ -90,7 +98,9 @@ transition:color 150ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1)}
       '<div class="hair"></div>' +
       '<div class="cell tl"><b>' + o.n + (o.v ? " — " + o.v : "") + "</b>" +
         (o.title ? '<br><span class="dim">' + o.title + "</span>" : "") + "</div>" +
-      '<div class="cell tr">' + (o.date || "") + "</div>" +
+      '<div class="cell tr">' +
+        (thumb ? "" : '<a class="crumb" href="../">← art</a><br>') +
+        (o.date || "") + "</div>" +
       '<div class="cell ml dim">' +
         (o.info || 'johnnie · daily practice<br><span class="lc">johnnies.life/art</span>') + "</div>" +
       '<div class="cell bl">' + lead(o.data || "") + "</div>" +
@@ -98,19 +108,69 @@ transition:color 150ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1)}
     stage.appendChild(frame);
 
     if (!thumb) {
-      const back = document.createElement("a");
-      back.className = "art-back";
-      back.href = "../";
-      back.textContent = "← art";
-      document.body.appendChild(back);
+      let lastSwipe = 0;
       addEventListener("click", (e) => {
         if (e.target.closest("a")) return;
+        if (Date.now() - lastSwipe < 500) return;   // a swipe is not a tap
         ART.reseed();
       });
       addEventListener("keydown", (e) => { if (e.key === "r") ART.reseed(); });
+
+      // one-by-one navigation: swipe on touch, arrows on keyboards,
+      // ‹ › affordances at the frame's edges
+      fetch("../sketches.json")
+        .then((r) => r.json())
+        .then((d) => {
+          const list = d.sketches.slice().reverse().map((s) => s.file.split("/").pop());
+          const cur = location.pathname.split("/").pop();
+          const i = list.indexOf(cur);
+          if (i < 0 || list.length < 2) return;
+          const prev = list[(i - 1 + list.length) % list.length];
+          const next = list[(i + 1) % list.length];
+
+          const go = (file, dir) => {
+            stage.style.transition = "transform 180ms ease, opacity 180ms ease";
+            stage.style.transform = "translateX(" + dir * -26 + "px)";
+            stage.style.opacity = "0.5";
+            setTimeout(() => { location.href = file; }, 160);
+          };
+          const mk = (cls, file, glyph, dir) => {
+            const a = document.createElement("a");
+            a.className = "nav " + cls;
+            a.href = file;
+            a.textContent = glyph;
+            a.setAttribute("aria-label", cls === "prev" ? "previous piece" : "next piece");
+            a.addEventListener("click", (e) => { e.preventDefault(); go(file, dir); });
+            frame.appendChild(a);
+          };
+          mk("prev", prev, "‹", -1);
+          mk("next", next, "›", 1);
+
+          let sx = 0, sy = 0;
+          addEventListener("touchstart", (e) => {
+            sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+          }, { passive: true });
+          addEventListener("touchend", (e) => {
+            const t = e.changedTouches[0];
+            const dx = t.clientX - sx, dy = t.clientY - sy;
+            if (Math.abs(dx) > 60 && Math.abs(dx) > 1.8 * Math.abs(dy)) {
+              lastSwipe = Date.now();
+              dx < 0 ? go(next, 1) : go(prev, -1);
+            }
+          }, { passive: true });
+          addEventListener("keydown", (e) => {
+            if (e.key === "ArrowRight") go(next, 1);
+            if (e.key === "ArrowLeft") go(prev, -1);
+          });
+        })
+        .catch(() => {});
     }
 
     const F = { stage, canvas, W: 0, H: 0, DPR: 1 };
+    // for pieces that change register mid-life (e.g. night falls at the end):
+    // re-inks the frame so the constant stays legible over the new ground
+    F.setTone = (dark) =>
+      frame.style.setProperty("--fink", dark ? "244,240,229" : "23,21,17");
     function resize(defer) {
       // offsetWidth: layout size, immune to the entrance-scale transform
       F.DPR = Math.min(devicePixelRatio || 1, 2);

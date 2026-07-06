@@ -74,9 +74,20 @@ inside **the frame** (`johnnie/public/art/frame.js`):
   for determinism. See `sketches/008a.html` (canvas), `008b.html` (three.js —
   vendored at `art/lib/three.module.min.js`, import map included), and the
   other 008 studies for GLSL / DOM patterns.
-- Compose for portrait 3:4; keep focal content inside the middle ~86% (frame
-  rows 1 and 8 carry the fixed type). Temporal pieces use the shared replay
-  idiom: `cycle = t % 34; clock = min(120, cycle/26*120)`.
+- **Mobile is full-bleed**: on screens ≤700px the stage fills 100dvw×100dvh —
+  the art IS the screen, no ground visible. Desktop stays a centered 3:4.
+  Compose width-anchored: shader pieces use the design-space remap
+  `q = vec2(p.x*0.75, (p.y-0.5)*0.75/aspect + 0.5)` so the composition keeps
+  its proportions and the scene extends vertically on tall screens; three.js
+  pieces dolly the camera back when `aspect < 0.75` (see 008b/008d).
+- **Navigation lives in the frame**: the "← art" breadcrumb is a frame cell
+  (top-right), and frame.js adds prev/next ‹ › affordances + swipe (touch) +
+  arrow keys between pieces, ordered per the manifest. Nothing floats
+  outside the stage.
+- `F.setTone(dark)` re-inks the frame at runtime — for pieces that change
+  register mid-life (minutos' night ending).
+- Temporal replay pieces use `cycle = t % 34; clock = min(120, cycle/26*120)`;
+  settle pieces animate 0→100 once and stop their rAF loop.
 - Batch 001 (001–007) predates the frame and uses the legacy square
   `ART.fit`/`ART.chrome` — leave those as history.
 - Gallery previews load each piece with `?thumb=1` — handled by frame.js.

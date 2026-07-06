@@ -28,6 +28,8 @@ css.textContent = `
   font-family:'Geist Mono',ui-monospace,monospace;
   text-transform:lowercase;color:rgb(23,21,17);
   --arg:${M.ink.argDeep};--cpv:${M.ink.cpvDeep}}
+#flood{position:absolute;inset:0;background:#0d0d13;opacity:0;transition:opacity .9s ease}
+#wash{position:absolute;inset:0;opacity:0;transition:opacity .45s ease-out}
 .k .cut,.k .cut *{transition:none !important}
 #rulTrack{position:absolute;left:6.8%;top:14%;height:72.5%;width:1px;
   background:rgba(23,21,17,.14)}
@@ -43,7 +45,16 @@ css.textContent = `
 #ctr.slam{transform:scale(1.7)}
 #ctr.slam.arg{color:var(--arg)}
 #ctr.slam.cpv{color:var(--cpv)}
-#ctr.final{transform:scale(1.5);color:rgba(23,21,17,.92)}
+#ctr.final{font-family:'Geist Pixel','Geist Mono',ui-monospace,monospace;
+  font-size:30cqw;transform:none;color:rgba(244,240,229,.92);
+  transition:transform .5s cubic-bezier(.2,.9,.2,1),color .6s ease,font-size .5s cubic-bezier(.2,.9,.2,1)}
+.k.night{color:rgba(244,240,229,.9)}
+.k.night #rulTrack{background:rgba(244,240,229,.16)}
+.k.night #rul{background:rgba(244,240,229,.85)}
+.k.night #sub{color:rgba(244,240,229,.6);text-transform:uppercase;letter-spacing:.36em}
+.k.night #ledger .p{color:rgba(244,240,229,.72)}
+.k.night #ledger .m.arg{color:#8fc6ea}
+.k.night #ledger .m.cpv{color:#ff6b8f}
 #sub{margin-top:3cqw;font-size:3.1cqw;letter-spacing:.3em;min-height:4.4cqw;
   color:rgba(23,21,17,.6);opacity:0;transition:opacity .25s ease-out}
 #sub.on{opacity:1}
@@ -75,6 +86,7 @@ document.head.appendChild(css);
 const K = document.createElement("div");
 K.className = "k";
 K.innerHTML = `
+  <div id="flood"></div><div id="wash"></div>
   <div id="rulTrack"><div id="rul"></div></div>
   <div id="ctrWrap"><div id="ctr">1’</div><div id="sub"></div></div>
   <div id="stamp"></div>
@@ -83,7 +95,8 @@ K.innerHTML = `
 F.stage.appendChild(K);
 const $ = (id) => K.querySelector("#" + id);
 const ctr = $("ctr"), sub = $("sub"), stamp = $("stamp"),
-      band = $("band"), ledger = $("ledger"), rul = $("rul");
+      band = $("band"), ledger = $("ledger"), rul = $("rul"),
+      flood = $("flood"), wash = $("wash");
 
 // ---- timeline: 26 s replay = ticking + freeze beats ----
 const GOAL_DUR = 1.5, BREAK_DUR = 0.9;
@@ -109,8 +122,8 @@ function stateAt(c) {
   return { mode: "tick", min: Math.min(120, (c - frozen) * RATE) };
 }
 
-// ---- state machine ----
-let active = null, fired = new Set(), finalOn = false, lastCycle = 1e9;
+// ---- state machine: the match plays ONCE, then the score rests ----
+let active = null, fired = new Set(), finalOn = false, t0 = null, ended = false;
 
 function ledgerEntry(g) {
   const e = document.createElement("div");
@@ -134,9 +147,9 @@ function reset() {
 }
 
 function tick(now) {
-  const t = now / 1000, cycle = t % 34;
-  if (cycle < lastCycle) reset();
-  lastCycle = cycle;
+  if (ended) return;
+  if (t0 === null) t0 = now;
+  const cycle = (now - t0) / 1000;
 
   if (cycle < 26) {
     const st = stateAt(cycle);
@@ -166,6 +179,9 @@ function tick(now) {
           stamp.classList.add("on");
           sub.className = "on " + e.goal.team;
           sub.textContent = "";
+          // the stadium gasps — a wash of the scorer's color
+          wash.style.background = e.goal.team === "arg" ? M.ink.arg : M.ink.cpv;
+          wash.style.opacity = 0.16;
         } else {
           band.textContent = e.label;
           band.classList.add("show");
@@ -182,27 +198,34 @@ function tick(now) {
           ctr.classList.remove("slam", "arg", "cpv");
           stamp.style.opacity = 0;
           sub.classList.remove("on");
+          wash.style.opacity = 0;
           if (!fired.has(e.min)) { fired.add(e.min); ledgerEntry(e.goal); }
         }
       } else if (p > 0.8) {
         band.classList.remove("show");
       }
     }
-  } else if (!finalOn) { // ---- final tableau, holds 8 s ----
+  } else if (!finalOn) { // ---- the final: night falls, the score stays ----
     finalOn = true;
     rul.style.transform = "scaleY(1)";
     for (const e of events) // safety: full ledger even if a beat was skipped
       if (e.goal && !fired.has(e.min)) { fired.add(e.min); ledgerEntry(e.goal); }
+    wash.style.opacity = 0;
+    stamp.style.opacity = 0;
+    band.classList.remove("show");
+    K.classList.add("night");
+    flood.style.opacity = 1;
+    F.setTone(true);   // the frame stays legible as night falls
     ctr.classList.remove("slam", "arg", "cpv");
     ctr.classList.add("final");
     ctr.innerHTML =
-      `<span style="color:var(--arg)">3</span>` +
-      `<span style="color:rgba(23,21,17,.28)">–</span>` +
-      `<span style="color:var(--cpv)">2</span>`;
+      `<span style="color:#8fc6ea">3</span>` +
+      `<span style="color:rgba(244,240,229,.3)">–</span>` +
+      `<span style="color:#ff6b8f">2</span>`;
     sub.className = "on";
-    sub.textContent = "prórroga · 120’";
-    stamp.style.opacity = 0;
-    band.classList.remove("show");
+    sub.textContent = "prórroga · miami · 03·07";
+    // the poster is finished — stop the clock for good
+    setTimeout(() => { ended = true; }, 2000);
   }
   requestAnimationFrame(tick);
 }

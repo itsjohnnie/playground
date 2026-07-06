@@ -7,191 +7,228 @@
 <script src="data-008.js"></script>
 <script id="frag" type="x-shader">
 precision highp float;
-uniform vec2  u_res;
-uniform float u_time;
-uniform float u_seed;
-uniform vec4  u_goals[5];   // minute, snag x, team (+1 arg / -1 cpv), unused
-uniform vec2  u_cards;      // 69', 115'
-uniform vec3  u_periods;    // 45, 90, 105
-uniform vec3  u_flowF;      // possession+xg blend per phase (who holds the minute)
+uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
 
-// 008 · f · bufanda — the match woven as a fan scarf. one weft row per
-// minute, 0' at the top; each row is dyed for the team holding that minute
-// (possession blended with per-phase xg, plus seeded per-row wool lottery —
-// minute-level possession isn't published, so the row draw is a seeded
-// approximation of the real 64/36 + phase-xg balance). the five goals are
-// snags: pulled weft, a hole showing the warp, loose loops drifting. the two
-// yellow cards are single gold threads. 45/90/105 are cream separators.
-// snag x positions are seeded aesthetics.
-
-const float PI = 3.14159265;
+// 008 — f · matra — the match hand-knotted as a pampa wall rug.
+// Every knot is placed: guarda-pampa diamond bands sit at the five goal
+// minutes (celeste chains for argentina, rojo for cabo verde, the own
+// goal an outlined hollow chain), single gold weft rows at the two
+// yellow cards, a stepped ball medallion resting mid-field, and the
+// field speckle splits 64/36 like the possession. Heathered yarn,
+// abrash rows, selvedge, fringe. It weaves itself bottom-up on a bare
+// warp, then hangs still.
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
-float hash1(float n){ return fract(sin(n*127.1 + u_seed*311.7)*43758.5453); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+             mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+}
+float ease(float t){ t = clamp(t, 0.0, 1.0); return 1.0 - pow(1.0 - t, 3.0); }
 
-float flowAt(float m){
-  float f = mix(u_flowF.x, u_flowF.y, smoothstep(22.5, 67.5, m));
-  return mix(f, u_flowF.z, smoothstep(67.5, 105.0, m));
+// wool palette
+vec3 pal(float i){
+  if (i < 0.5) return vec3(0.898, 0.862, 0.768);   // 0 cream
+  if (i < 1.5) return vec3(0.478, 0.671, 0.800);   // 1 celeste
+  if (i < 2.5) return vec3(0.173, 0.278, 0.396);   // 2 indigo
+  if (i < 3.5) return vec3(0.741, 0.333, 0.243);   // 3 rojo
+  if (i < 4.5) return vec3(0.416, 0.169, 0.133);   // 4 wine
+  if (i < 5.5) return vec3(0.833, 0.647, 0.204);   // 5 gold
+  return vec3(0.180, 0.145, 0.114);                // 6 charcoal
+}
+
+const float KC = 64.0;    // knots across the rug
+const float KR = 86.0;    // knot rows
+
+// ---- the pattern: knot (cx, rowFromTop) → palette index ----
+float diamondBand(float cx, float rLoc, float inner, float bg, float outline, float hollow){
+  // guarda pampa: a chain of stepped diamonds, band is 7 rows tall
+  float dx = abs(mod(cx, 8.0) - 4.0);
+  float dr = abs(rLoc - 3.0);
+  float d = dx + dr;
+  if (d <= 2.0) return hollow > 0.5 ? bg : inner;
+  if (d <= 3.0) return outline;
+  return bg;
+}
+
+float pattern(float cx, float rt){
+  // 0..1 edge binding · 2..6 zigzag guard · 7..8 cream — mirrored at bottom
+  float rb = (KR - 1.0) - rt;                    // rows from bottom
+  float edge = min(rt, rb);
+  if (edge < 2.0) return 6.0;
+  if (edge < 7.0){                               // zigzag guard, diagonal weave
+    float r = edge - 2.0;
+    return mod(cx + r, 6.0) < 3.0 ? 1.0 : 2.0;
+  }
+  if (edge < 9.0) return 0.0;
+
+  // field rows map the 120 minutes, top to bottom
+  float f0 = 9.0, f1 = KR - 10.0;
+  float minute = (rt - f0) / (f1 - f0) * 120.0;
+
+  // gold card rows — 69' and 115'
+  if (abs(minute - 69.0) < 0.9 || abs(minute - 115.0) < 0.9) return 5.0;
+
+  // five goal bands (7 rows tall) — guarda pampa chains
+  for (int i = 0; i < 5; i++){
+    float gm  = i==0 ? 29.0 : i==1 ? 59.0 : i==2 ? 92.0 : i==3 ? 103.0 : 111.0;
+    float arg = (i==0 || i==2 || i==4) ? 1.0 : 0.0;
+    float og  = i==4 ? 1.0 : 0.0;
+    float gr = f0 + gm / 120.0 * (f1 - f0);      // band centre row
+    float rLoc = rt - gr + 3.0;
+    if (rLoc >= 0.0 && rLoc < 7.0){
+      if (arg > 0.5) return diamondBand(cx, rLoc, 1.0, 2.0, 0.0, og);
+      return diamondBand(cx, rLoc, 3.0, 4.0, 0.0, og);
+    }
+  }
+
+  // the ball — a stepped medallion resting between the 59' and 92' bands
+  {
+    float bx = KC * 0.5 - 0.5;
+    float br = f0 + 75.5 / 120.0 * (f1 - f0);
+    vec2 d2 = vec2(cx - bx, (rt - br) * 1.15);   // knots are a touch tall
+    float d = length(d2);
+    if (d < 8.6){
+      if (d > 7.4) return 6.0;                   // outline
+      if (d < 2.7) return 6.0;                   // solid hub
+      // radial spokes, five of them — a wheel, a ball
+      float ang = atan(d2.y, d2.x) + 0.31416;
+      float spoke = abs(mod(ang, 1.2566) - 0.6283);
+      if (spoke < 0.13 && d > 3.4) return 6.0;
+      return 0.0;
+    }
+  }
+
+  // field: cream with a possession speckle — 64% celeste, 36% rojo
+  float h = hash(vec2(cx * 3.7, rt * 1.9));
+  if (h < 0.075)
+    return hash(vec2(cx * 1.3, rt * 7.7)) < 0.64 ? 1.0 : 3.0;
+  return 0.0;
 }
 
 void main(){
+  vec2 p = gl_FragCoord.xy / u_res;
   float aspect = u_res.x / u_res.y;
-  vec2 p = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y) / u_res.y;   // y down
-  float t = u_time;
+  // width-anchored design space: x∈[0,0.75], y extends on taller screens
+  vec2 q = vec2(p.x * 0.75, (p.y - 0.5) * 0.75 / max(aspect, 0.001) + 0.5);
 
-  // cloth undulation
-  float w1 = sin(p.y*6.5 + t*0.42 + p.x*2.2);
-  float w2 = sin(p.y*12.5 - t*0.30 + 1.7 + p.x*1.1);
-  vec2 c = p;
-  c.x += 0.011*w1 + 0.0045*w2;
-  c.y += 0.005*sin(p.x*8.0 + t*0.36);
-  // self-shadow along the folds
-  float fold = 0.011*6.5*cos(p.y*6.5 + t*0.42 + p.x*2.2)
-             + 0.0045*12.5*cos(p.y*12.5 - t*0.30 + 1.7 + p.x*1.1);
-  float shade = clamp(1.0 - 1.6*fold, 0.84, 1.12);
+  // the wall
+  vec3 col = mix(vec3(0.902, 0.878, 0.824), vec3(0.869, 0.838, 0.774), pow(1.0 - p.y, 1.4));
 
-  // scarf body
-  float x0 = 0.045, x1 = aspect - 0.045;
-  float y0 = 0.125, y1 = 0.875;
-  float rh = (y1 - y0) / 120.0;                 // one row = one minute
-  float mnRaw = (c.y - y0) / rh;
+  // rug box in design space
+  float X0 = 0.055, X1 = 0.695, Y0 = 0.075, Y1 = 0.925;
+  float k = (X1 - X0) / KC;                       // knot size
+  float weave = ease(u_p * 10.0 / 9.3);           // woven rows, bottom → up
+  float fell = mix(Y0, Y1, weave);                // the loom's working edge
 
-  // goal snags: local damage field + sagging weft + loose loops
-  float holeAll = 0.0, sag = 0.0, loopM = 0.0;
-  vec3 loopCol = vec3(0.0);
-  for (int i = 0; i < 5; i++){
-    vec4 g = u_goals[i];
-    float gy = y0 + g.x * rh;
-    float dyr = (c.y - gy) / rh;
-    float dx  = c.x - g.y;
-    float env = exp(-dyr*dyr/9.0) * exp(-dx*dx/0.0028);
-    holeAll = max(holeAll, env);
-    sag += env * 2.4 * sin(c.x*52.0 + t*0.5 + g.x*0.37);
-    vec3 wool = g.z > 0.0 ? vec3(0.169,0.416,0.600) : vec3(0.659,0.173,0.133);
-    for (int k = 0; k < 2; k++){
-      float fk = float(k);
-      float ly = gy + rh*(2.6 + 2.3*fk)
-               + rh*1.5*sin(c.x*36.0 + t*(0.55 + 0.22*fk) + g.x + fk*2.1);
-      float sm = exp(-pow((c.y - ly)/(rh*0.40), 2.0))
-               * smoothstep(0.085, 0.03, abs(dx));
-      if (sm > loopM){ loopM = sm; loopCol = wool; }
+  // soft shadow the rug throws on the wall
+  {
+    vec2 sq = q - vec2(0.012, -0.016);
+    float inx = smoothstep(X0-0.02, X0+0.02, sq.x) * smoothstep(X1+0.02, X1-0.02, sq.x);
+    float iny = smoothstep(Y0-0.02, Y0+0.02, sq.y) * smoothstep(min(fell, Y1)+0.02, min(fell, Y1)-0.02, sq.y);
+    col *= 1.0 - 0.16 * inx * iny;
+  }
+
+  // hanging edges wobble a little — cloth, not paper
+  float edgeWob = (vnoise(vec2(q.y * 9.0, 3.7)) - 0.5) * k * 0.8;
+  float inRugX = step(X0 + edgeWob, q.x) * step(q.x, X1 + edgeWob * 0.7);
+  float inRugY = step(Y0, q.y) * step(q.y, Y1);
+
+  // fringe: warp strands escaping top and bottom
+  float fringe = 0.0;
+  {
+    float fl = 4.0 * k;
+    float strand = mod(q.x - X0, k * 0.667);
+    float sHash = hash(vec2(floor((q.x - X0) / (k * 0.667)), 5.5));
+    float wobble = sin(q.y * 90.0 + sHash * 6.28) * k * 0.22;
+    float on = step(abs(strand - k * 0.333 + wobble), k * 0.14);
+    float below = step(Y0 - fl * (0.6 + sHash * 0.5), q.y) * step(q.y, Y0);
+    float above = step(Y1, q.y) * step(q.y, Y1 + fl * (0.4 + sHash * 0.45)) * weave;
+    fringe = on * max(below, above) * step(X0, q.x) * step(q.x, X1);
+  }
+  if (fringe > 0.5 && inRugY < 0.5){
+    col = mix(col, pal(0.0) * (0.82 + 0.3 * hash(q * 40.0)), 0.9);
+  }
+
+  if (inRugX > 0.5 && inRugY > 0.5){
+    // knot coordinates; alternate rows sit half a knot over, like bricks
+    float rowY = (Y1 - q.y) / k;
+    float rt = floor(rowY);
+    float brick = mod(rt, 2.0) * 0.5;
+    // weft wobble: each row wanders a hair
+    float wj = (hash(vec2(rt, 8.1)) - 0.5) * 0.3;
+    float colX = (q.x - X0) / k + brick + wj;
+    float cx = floor(colX);
+
+    if (q.y <= fell){
+      // ---- woven ----
+      float idx = pattern(cx, rt);
+      // selvedge: the outermost knot column is bound in dark wool
+      if (cx <= 0.0 || cx >= KC - 1.0) idx = mod(rt, 4.0) < 2.0 ? 6.0 : 4.0;
+      vec3 wool = pal(idx);
+
+      // heather: every knot is its own dye lot
+      wool *= 0.92 + 0.16 * hash(vec2(cx * 7.1, rt * 3.3));
+      // abrash: whole rows drift, like hand-dyed batches
+      wool *= 0.96 + 0.08 * vnoise(vec2(rt * 0.23, 2.2));
+
+      // the knot itself: a little dome of pile with seams between
+      vec2 cell = vec2(fract(colX), fract(rowY));
+      float dome = (1.0 - pow(abs(cell.x - 0.5) * 2.0, 2.2))
+                 * (1.0 - pow(abs(cell.y - 0.5) * 2.0, 1.6));
+      wool *= 0.74 + 0.34 * dome;
+      // fibre flecks
+      wool += (hash(gl_FragCoord.xy * 0.9) - 0.5) * 0.055;
+      // pile sheen: light falls from above
+      wool *= 0.965 + 0.07 * (1.0 - p.y);
+
+      // the working row glows faintly while the loom is alive
+      if (weave < 1.0 && abs(q.y - fell) < k * 1.2) wool *= 1.10;
+
+      col = wool;
+    } else {
+      // ---- not yet woven: the bare warp ----
+      float warp = step(abs(fract(colX) - 0.5), 0.16);
+      vec3 thread = pal(0.0) * (0.86 + 0.2 * hash(vec2(cx, 1.1)));
+      col = mix(col, thread, warp * 0.55);
     }
   }
-  float mn = mnRaw + sag * smoothstep(0.12, 0.55, holeAll);
-  float hole = smoothstep(0.55, 0.90, holeAll);
 
-  // weave coordinates: ~92 warp threads
-  float pitch = (x1 - x0) / 92.0;
-  float wx = (c.x - x0) / pitch;
-  float wi = floor(wx), wf = fract(wx);
-  float ri = floor(mn), rf = fract(mn);
-
-  // weft wool for this minute
-  float isArg = step(hash1(ri*7.31), flowAt(ri + 0.5));
-  vec3 argW = mix(vec3(0.169,0.416,0.600), vec3(0.424,0.671,0.839), 0.30 + 0.50*hash1(ri*3.7 + 1.0));
-  vec3 cpvW = mix(vec3(0.659,0.173,0.133), vec3(0.835,0.286,0.235), 0.30 + 0.50*hash1(ri*5.1 + 2.0));
-  vec3 weftC = mix(cpvW, argW, isArg);
-  if (abs(ri - u_periods.x) < 0.5 || abs(ri - u_periods.y) < 0.5 || abs(ri - u_periods.z) < 0.5)
-    weftC = vec3(0.905, 0.875, 0.805);                     // cream separators
-  if (abs(ri - u_cards.x) < 0.5 || abs(ri - u_cards.y) < 0.5)
-    weftC = vec3(0.914, 0.702, 0.165);                     // gold card threads
-
-  // thread cross-sections (yarn cylinders) — weft-faced 2/1 twill so the
-  // wool reads as cloth, the cream warp as thin ticks on a diagonal wale
-  float pw = max(cos((wf - 0.5)*PI*1.35), 0.0) * (1.0 - 0.12*hole);
-  float pf = max(cos((rf - 0.5)*PI*0.82), 0.0);
-  float over = 1.0 - step(mod(wi + ri*2.0, 3.0), 0.99);    // 0: warp over (1 in 3)
-  float weftOn = step(0.0, mn) * step(mn, 120.0) * (1.0 - hole);
-  float zw = pw * (over < 0.5 ? 1.0 : 0.45);
-  float zf = pf * (over < 0.5 ? 0.62 : 1.0) * weftOn;
-  zw = mix(zw, pw, hole);          // bare warp in the snag: every thread exposed
-  if (wi < 2.0 || wi > 90.0) zw = max(zw, pw*0.96);        // selvedge
-  float wTop = smoothstep(0.10, -0.10, zw - zf);           // 1 → weft on top
-
-  vec3 warpC = vec3(0.918, 0.885, 0.815) * (0.90 + 0.12*hash1(wi*3.3));
-  vec3 warpS = warpC * (0.50 + 0.58*pow(pw, 0.65)) * (0.80 + 0.20*pf);
-  vec3 weftS = weftC * (0.48 + 0.62*pow(pf, 0.65)) * (0.82 + 0.18*pw);
-  vec3 cloth = mix(warpS, weftS, wTop);
-  cloth = mix(vec3(0.315, 0.280, 0.230), cloth, smoothstep(0.03, 0.30, max(zw, zf)));
-  cloth = mix(cloth, vec3(0.165, 0.135, 0.105), hole * (1.0 - pw));  // hole backing
-
-  // fibre grain, elongated along each thread
-  float gW = hash(vec2(floor(gl_FragCoord.x*0.9), floor(gl_FragCoord.y*0.16)));
-  float gF = hash(vec2(floor(gl_FragCoord.x*0.16), floor(gl_FragCoord.y*0.9)));
-  cloth *= 0.91 + 0.17*mix(gW, gF, wTop);
-
-  // loose loops pulled from the snag
-  cloth = mix(cloth, loopCol * (0.62 + 0.30*pow(max(sin(loopM*PI), 0.0), 0.7)),
-              smoothstep(0.25, 0.8, loopM));
-  cloth *= shade;
-
-  // paper ground + soft cast shadow under the cloth
-  vec3 col = vec3(0.914, 0.890, 0.835);
-  float mx = smoothstep(x0 - 0.003, x0 + 0.003, c.x) * smoothstep(x1 + 0.003, x1 - 0.003, c.x);
-  float my = smoothstep(-0.6, 0.4, mn) * smoothstep(120.6, 119.6, mn);
-  float body = mx * my;
-  vec2 sOff = vec2(-0.008, -0.011);
-  float sx = smoothstep(x0 - 0.003, x0 + 0.010, c.x + sOff.x) * smoothstep(x1 + 0.003, x1 - 0.010, c.x + sOff.x);
-  float sy = smoothstep(y0 - 0.002, y0 + 0.010, c.y + sOff.y) * smoothstep(y1 + 0.002, y1 - 0.010, c.y + sOff.y);
-  col *= 1.0 - 0.16 * sx * sy * (1.0 - body);
-
-  // fringe: warp ends swaying past the top and bottom edges
-  float frTop = -mnRaw / 7.0, frBot = (mnRaw - 120.0) / 7.0;
-  float fr = max(frTop, frBot);
-  if (fr > 0.0 && fr < 1.0 && mx > 0.0){
-    float sway = 0.55 * fr * sin(mnRaw*1.9 + hash1(wi*9.1)*6.28 + t*0.7);
-    float pw2 = max(cos((fract(wx - sway) - 0.5)*PI), 0.0);
-    float len = 0.45 + 0.55*hash1(wi*4.7);
-    float on = step(fr, len) * smoothstep(0.42, 0.72, pw2) * mx;
-    vec3 fc = vec3(0.918, 0.885, 0.815) * (0.52 + 0.5*pw2) * (1.0 - 0.28*fr) * shade;
-    col = mix(col, fc, on);
-  }
-
-  col = mix(col, cloth, body);
-
-  // print finishing: ink starvation at the edges + grain
-  vec2 q = (p - vec2(aspect*0.5, 0.5)) * vec2(2.4, 1.9);
-  float vig = smoothstep(1.55, 0.62, length(q));
-  col = mix(vec3(0.914, 0.890, 0.835), col, mix(0.86, 1.0, vig));
-  float g = hash(gl_FragCoord.xy*0.7);
-  col += (g - 0.5)*0.035;
+  // room grain + gentle vignette
+  col += (hash(gl_FragCoord.xy * 0.71) - 0.5) * 0.02;
+  float vig = smoothstep(1.35, 0.5, length(p - vec2(0.5, 0.5)));
+  col *= mix(0.93, 1.0, vig);
 
   gl_FragColor = vec4(col, 1.0);
 }
 </script>
 <script>
 const seed = ART.seed("2026-07-06-008f");
-const R = ART.rng(seed);
 const M = window.M8;
+let sh = null, done = false, start = null;
 
 const F = FRAME.mount({
-  n: "008", v: "f", title: "bufanda", date: "06·07·2026",
-  data: M.frameData, tech: "glsl · woven", dark: false,
-  onResize() {},
+  n: "008", v: "f", title: "matra", date: "06·07·2026",
+  data: M.frameData, tech: "glsl · hand-knotted",
+  dark: false,
+  onResize() {
+    if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
+    done = false;
+    start = null;
+    requestAnimationFrame(loop);
+  },
 });
-
-const sh = ART.shader(F.canvas, document.getElementById("frag").textContent,
-  ["u_goals", "u_cards", "u_periods", "u_flowF"]);
-const gl = sh.gl;
 const sf = ART.rng(seed)() * 100;
 
-// flow per phase — who holds the minute (possession blended with phase xG)
-const flowF = [0, 1, 2].map((i) =>
-  (M.possession.arg / 100) * 0.68 +
-  (M.xgPhase.arg[i] / (M.xgPhase.arg[i] + M.xgPhase.cpv[i])) * 0.32);
-
-// snag x positions (seeded, kept inside the scarf)
-const goals = [];
-for (const g of M.goals) {
-  goals.push(g.min, 0.13 + R() * 0.49, g.team === "arg" ? 1 : -1, 0);
-}
-gl.uniform4fv(sh.extra.u_goals, goals);
-gl.uniform2f(sh.extra.u_cards, M.cards[0].min, M.cards[1].min);
-gl.uniform3f(sh.extra.u_periods, M.periods[0], M.periods[1], M.periods[2]);
-gl.uniform3f(sh.extra.u_flowF, flowF[0], flowF[1], flowF[2]);
-
-(function loop(t) {
-  sh.draw(t / 1000, sf);
+// woven once (10s), then it hangs still — no loop
+function loop(tms) {
+  if (!sh || done) return;
+  if (start === null) start = tms;
+  const p = Math.min(1, (tms - start) / 10000);
+  sh.gl.uniform1f(sh.extra.u_p, p);
+  sh.draw(tms / 1000, sf);
+  if (p >= 1) { done = true; return; }
   requestAnimationFrame(loop);
-})(0);
+}
 </script>

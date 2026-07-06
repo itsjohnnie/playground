@@ -43,7 +43,9 @@ vec3 form(vec3 col, inout float cov, vec2 q, vec2 c0, vec2 c1, float r, vec3 cor
 
 void main(){
   vec2 p = gl_FragCoord.xy / u_res;
-  vec2 q = vec2(p.x * 0.75, p.y);           // metric coords, 3:4
+  float aspect = u_res.x / u_res.y;
+  // width-anchored design space: x∈[0,0.75], y extends on taller screens
+  vec2 q = vec2(p.x * 0.75, (p.y - 0.5) * 0.75 / max(aspect, 0.001) + 0.5);
 
   // paper: warm cream breathing into blush at the top
   vec3 col = mix(vec3(0.918, 0.898, 0.845), vec3(0.936, 0.885, 0.845), pow(p.y, 1.6));
