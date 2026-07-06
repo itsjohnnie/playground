@@ -362,17 +362,32 @@ html.stage-open .discover-comp {
 .hero-gradient.cc-white { transition: opacity .3s ease; }
 html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s ease; }
 
-/* The rows' frosted backdrop-filter smears whatever it passes over while the
-   bar travels. The frost is therefore driven by an explicit JS-timed class —
-   NOT transition delays, which iOS interprets differently for backdrop-filter
-   and ended up frosting mid-rise. .bar-defrost goes on with the stage (blur
-   cuts the instant the bar starts leaving) and is removed by a timer while
-   the bar is provably still parked below the screen edge, so it always rises
-   already glassed. Instant flips, no transitions to misread. */
-html.bar-defrost .discover-logo,
-html.bar-defrost .discover-text,
-html.bar-defrost .toggle-mode {
-  -webkit-backdrop-filter: none; backdrop-filter: none;
+/* Animatable frost: iOS can't transition backdrop-filter itself, but it
+   fades the OPACITY of an always-blurred layer flawlessly. Each row's frost
+   therefore lives on a ::before (the rows' own backdrop-filter is disabled),
+   and the glass blooms/dissolves via opacity. Departure: it dissolves fast as
+   the bar drops. Return: the bar rises and the glass materializes through the
+   last stretch, settling exactly as it parks — a visible, seamless frost
+   transition instead of a pop. Driven by .bar-defrost (on with the stage,
+   removed at close start; plain opacity delays are reliable everywhere). */
+.discover-logo, .discover-text, .toggle-mode {
+  position: relative;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+}
+.discover-logo::before, .discover-text::before, .toggle-mode::before {
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  opacity: 1;
+  pointer-events: none;
+  /* Return: bloom in across the rise (.45s flight + .55s rise). */
+  transition: opacity .5s ease .5s;
+}
+html.bar-defrost .discover-logo::before,
+html.bar-defrost .discover-text::before,
+html.bar-defrost .toggle-mode::before {
+  opacity: 0;
+  /* Departure: dissolve immediately. */
+  transition: opacity .15s ease;
 }
 
 /* Mobile tap-to-stage: the tapped tile, front-and-center and enlarged, over a

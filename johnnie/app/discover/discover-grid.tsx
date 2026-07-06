@@ -644,13 +644,10 @@ class InfiniteGrid {
     // Vignette + control bar fade back in (.3s) under the .45s return flight,
     // so the tile lands already dimmed by the restored gradient.
     document.documentElement.classList.remove("stage-open");
-    // Re-frost the bar while it is still parked below the screen edge (its
-    // rise starts at .45s) — an instant, invisible flip. A timer instead of a
-    // transition delay because iOS mis-times delayed backdrop-filter
-    // transitions and frosted the bar mid-rise.
-    window.setTimeout(() => {
-      document.documentElement.classList.remove("bar-defrost");
-    }, 400);
+    // The frost layers bloom back in via a delayed OPACITY transition (see
+    // the ::before rules) — plain opacity timing is reliable on iOS, unlike
+    // delayed backdrop-filter transitions.
+    document.documentElement.classList.remove("bar-defrost");
     const img = this.zImg;
     const cell = this.stagedCell;
     this.zImg = null;
