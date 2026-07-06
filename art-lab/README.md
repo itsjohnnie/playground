@@ -77,6 +77,22 @@ inside **the frame** (`johnnie/public/art/frame.js`):
   `ART.fit`/`ART.chrome` — leave those as history.
 - Gallery previews load each piece with `?thumb=1` — handled by frame.js.
 
+### Taste profile (learned from Johnnie's curation — read before making anything)
+
+- **2026-07-06:** Batch 001 (001–007) retired entirely — below the bar the 008
+  studies set. From the 008 studies, **río, constelación, transmisión were
+  retired** (the chart-adjacent / screen-effect ones). Replaced with **bruma,
+  marea, aerosol**: abstract shapes composing a *scene*, gradients passed
+  through dithering, poster-level confidence. Reference Johnnie shared:
+  OFF/GRID internship posters (fixed Helvetica type system over wildly
+  different grainy/spray/gradient backgrounds, one hot accent on black).
+  Lean that way: bold figure-ground, heavy grain, few colors, composition
+  over diagram.
+- **Motion principle:** not everything loops. A piece may animate 0→100 —
+  elements arriving, settling — and then REST as a finished composition
+  (stop the rAF loop). The arrival is the performance; the final frame is
+  the artwork.
+
 ### House rules (adapted from Lieberman's)
 
 - Prefer `sin`/`cos` and seeded noise over raw randomness; motion should feel

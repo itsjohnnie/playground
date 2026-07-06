@@ -56,15 +56,21 @@ Craft notes: double-printed ribbons ~1.5px off register; goal beams behind
 the river; grain pass; Spanish captions (it's a love letter). Direction probed:
 **data art** — new to the practice, not from the idea bank.
 
-## Curation — keep / retire / iterate per study
+## Curation — Johnnie, 2026-07-06 evening
 
-- [ ] 008a río —
-- [ ] 008b 64.478 —
-- [ ] 008c constelación —
-- [ ] 008d terreno —
-- [ ] 008e interferencia —
-- [ ] 008f bufanda —
-- [ ] 008g transmisión —
-- [ ] 008h sismógrafo —
-- [ ] 008i minutos —
-- [ ] 008j órbitas —
+- **Retired:** batch 001 in its entirety (001–007), plus 008a río,
+  008c constelación, 008g transmisión — "not up to standard." Files stay in
+  git history; gone from the gallery.
+- **Direction given:** beautiful abstract shapes → beautiful composition,
+  gradients + dithering, "creating a beautiful scene." Reference: OFF/GRID
+  posters (fixed type system, expressive grainy backgrounds, hot accent on
+  black). And: animation need not loop — 0→100, then the settled composition
+  IS the piece.
+- **Replacements shipped same day:**
+  - [x] 008a **bruma** — five dithered gradient forms (goals; og = hollow ring)
+    settle on warm paper; halftone only where the pigment is
+  - [x] 008c **marea** — dusk shoreline; ridge silhouettes = per-phase xG,
+    gold sun at minute 111; dithered travel-poster palette
+  - [x] 008g **aerosol** — one spray stroke around the match clock, 64/36
+    celeste/rose, goal bursts, the 111' og drips; sprayed once, then finished
+- Remaining studies (b, d, e, f, h, i, j) stay as candidates pending verdicts.

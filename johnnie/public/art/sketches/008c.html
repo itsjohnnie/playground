@@ -5,376 +5,150 @@
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
 <script src="data-008.js"></script>
-<script type="importmap">{ "imports": { "three": "../lib/three.module.min.js" } }</script>
-<script type="module">
-// 008 — c · constelación — the match as a star chart.
-// Time falls down the axis (0' top → 120' bottom). Every shot is a star:
-// argentina west of the meridian, cabo verde east; on-target stars sit
-// close and burn bright, off-target ones drift dim and far. The five
-// goals are the brightest bodies, haloed — the own goal (111') wears a
-// dashed, hollow halo. Faint constellation lines join each side's shots
-// in order; rings cross the axis at 45/90/105. A 26s replay slides down
-// the meridian and makes each goal flare as it passes.
-// data: counts exact from M8; individual shot minutes seeded per phase
-// (only phase totals exist); on-target split of non-goal shots is the
-// real on-target total minus goals; the og is charted as an argentina
-// body (it is argentina's goal) though it isn't in arg's shot count.
-// three.js · star chart.
+<script id="frag" type="x-shader">
+precision highp float;
+uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
 
-import * as THREE from "three";
+// 008 — c · marea — the match as a dusk shoreline. Six ridge lines —
+// argentina and cabo verde through the three phases of the night —
+// rise from the water and settle; their silhouettes carry the real
+// per-phase xG and seeded swells stand in for the shots. A low gold
+// sun hangs at minute 111 of 120. Dithered like an old travel poster.
+// The tide comes in once, then the scene rests.
 
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+             mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+}
+float fbm(vec2 p){
+  float s = 0.0, a = 0.5;
+  for (int i = 0; i < 4; i++){ s += a*vnoise(p); p = p*2.03 + 11.7; a *= 0.5; }
+  return s;
+}
+
+float bayer2(vec2 a){ a = floor(a); return fract(a.x/2.0 + a.y*a.y*0.75); }
+float bayer4(vec2 a){ return bayer2(0.5*a)*0.25 + bayer2(a); }
+float bayer8(vec2 a){ return bayer4(0.5*a)*0.25 + bayer2(a); }
+
+float ease(float t){ t = clamp(t, 0.0, 1.0); return 1.0 - pow(1.0 - t, 3.0); }
+
+float swell(float x, float m, float h){
+  float d = x - m/120.0;
+  return h * exp(-d*d/0.00028);
+}
+
+void main(){
+  vec2 p = gl_FragCoord.xy / u_res;
+  float t10 = u_p * 10.0;
+
+  float horizon = 0.585;
+
+  // dusk sky: indigo falling into ember at the waterline
+  vec3 indigo = vec3(0.082, 0.098, 0.196);
+  vec3 ember  = vec3(0.485, 0.222, 0.196);
+  vec3 glowc  = vec3(0.845, 0.492, 0.252);
+  vec3 col;
+  if (p.y > horizon) {
+    float sy = (p.y - horizon) / (1.0 - horizon);
+    col = mix(ember, indigo, pow(sy, 0.72));
+    col = mix(glowc, col, smoothstep(0.0, 0.30, sy));
+  } else {
+    // water: the sky remembered, darker
+    float wy = (horizon - p.y) / horizon;
+    col = mix(ember*0.85, indigo*0.55, pow(wy, 0.8));
+  }
+
+  // the sun — minute 111 of 120 across the sky, low and gold, risen once
+  {
+    float s = ease((t10 - 0.6)/5.0);
+    vec2 q = vec2(p.x*0.75, p.y);
+    vec2 c = vec2(0.75*0.835, mix(horizon-0.12, horizon+0.105, s));
+    float d = length(q - c);
+    float disc = 1.0 - smoothstep(0.050, 0.056, d);
+    float glow = (1.0 - smoothstep(0.0, 0.34, d)) * 0.26 * s;
+    vec3 gold = vec3(0.94, 0.72, 0.30);
+    col += gold * glow;
+    col = mix(col, gold, disc * s);
+    // its path on the water
+    float refl = (1.0 - smoothstep(0.0, 0.05, abs(p.x - 0.835))) *
+                 smoothstep(horizon, horizon - 0.45, p.y) * 0.14 * s;
+    col += gold * refl;
+  }
+
+  // six ridges, far→near, alternating team; amplitude ∝ that phase's xG
+  for (int i = 0; i < 6; i++){
+    float fi = float(i);
+    float s = ease((t10 - (1.6 + fi*0.85)) / 4.2);
+    if (s <= 0.0) continue;
+
+    float isArg = mod(fi, 2.0) < 1.0 ? 1.0 : 0.0;
+    float xg    = i==0 ? 0.46 : i==1 ? 0.08 : i==2 ? 1.31 : i==3 ? 0.23 : i==4 ? 0.58 : 0.45;
+    float base  = horizon - 0.030 - fi * 0.078;
+    float amp   = 0.030 + xg * 0.072;
+
+    float x = p.x;
+    float ridge = base
+      + amp * (fbm(vec2(x*3.1 + fi*17.0, fi*7.3)) - 0.35)
+      + swell(x, 12.0 + hash(vec2(fi,1.0))*30.0, amp*0.30)
+      + swell(x, 48.0 + hash(vec2(fi,2.0))*38.0, amp*0.24)
+      + swell(x, 92.0 + hash(vec2(fi,3.0))*26.0, amp*0.28);
+
+    ridge = mix(ridge - 0.28, ridge, s);   // rises out of the water
+
+    float m = smoothstep(ridge + 0.0018, ridge - 0.0018, p.y);
+
+    vec3 argC = mix(vec3(0.295, 0.435, 0.585), vec3(0.052, 0.092, 0.158), fi/5.0);
+    vec3 cpvC = mix(vec3(0.492, 0.238, 0.205), vec3(0.108, 0.048, 0.058), fi/5.0);
+    vec3 ink = mix(cpvC, argC, isArg);
+    ink *= mix(1.0, 0.82, clamp((ridge - p.y)*6.0, 0.0, 1.0));
+
+    col = mix(col, ink, m * s);
+  }
+
+  // print pass: bayer-dithered poster quantization
+  float cell = max(2.0, floor(u_res.y / 340.0));
+  float th = bayer8(gl_FragCoord.xy / cell) - 0.5;
+  float levels = 5.0;
+  col = floor(col * levels + 0.5 + th * 0.95) / levels;
+
+  // grain + vignette
+  float g2 = hash(gl_FragCoord.xy * 0.7);
+  col += (g2 - 0.5) * 0.03;
+  float vig = smoothstep(1.35, 0.5, length(p - vec2(0.5, 0.5)));
+  col *= mix(0.90, 1.0, vig);
+
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+<script>
 const seed = ART.seed("2026-07-06-008c");
 const M = window.M8;
-
-const Y_TOP = 0.92, Y_BOT = -0.92;              // minute 0 → 120
-const yOf = (min) => Y_TOP + (min / 120) * (Y_BOT - Y_TOP);
-const DIST = 4.2, FOV = 34;
-
-let renderer, scene, camera, built = false;
-let starMat, goalBodies = [], marker, clockLine, dust, grainTex, grainScene, grainCam;
+let sh = null, done = false, start = null;
 
 const F = FRAME.mount({
-  n: "008", v: "c", title: "constelación", date: "06·07·2026",
-  data: M.frameData, tech: "three.js · star chart",
+  n: "008", v: "c", title: "marea", date: "06·07·2026",
+  data: M.frameData, tech: "glsl · dither scene",
   dark: true,
-  onResize(w, h, dpr) {
-    if (!built) build();
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(w / dpr, h / dpr, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+  onResize() {
+    if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
+    done = false;
+    start = null;
+    requestAnimationFrame(loop);
   },
 });
+const sf = ART.rng(seed)() * 100;
 
-/* ---------- seeded shot catalogue (real counts, seeded minutes) ---------- */
-function catalogue(team) {
-  const Rt = ART.rng(seed + "-shots-" + team);
-  const phases = [[0, 45], [45, 90], [90, 120]];
-  const goals = M.goals.filter((g) => g.team === team);
-  const out = [];
-  M.shotsPhase[team].forEach((count, pi) => {
-    const [a, b] = phases[pi];
-    const gHere = goals.filter((g) => g.min > a && g.min <= b);
-    for (let i = 0; i < count - gHere.length; i++)
-      out.push({ min: a + 1.5 + Rt() * (b - a - 3), goal: null });
-  });
-  // deterministic shuffle, then flag on-target (goals are on target already)
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = (Rt() * (i + 1)) | 0;
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  const nOn = M.onTarget[team] - goals.filter((g) => !g.og).length;
-  out.forEach((s, i) => (s.on = i < nOn));
-  goals.forEach((g) => out.push({ min: g.exact || g.min, on: true, goal: g }));
-  out.sort((a, b) => a.min - b.min);
-  // chart position: seeded distance from the meridian + tiny depth
-  const Rp = ART.rng(seed + "-pos-" + team);
-  const side = team === "arg" ? -1 : 1;
-  out.forEach((s) => {
-    const d = s.goal ? 0.14 + Rp() * 0.10
-      : s.on ? 0.16 + Rp() * 0.18
-      : 0.40 + Rp() * 0.32;
-    s.x = side * d;
-    s.y = yOf(s.min) + (Rp() - 0.5) * 0.012;
-    s.z = (Rp() - 0.5) * 0.34;
-  });
-  return out;
-}
-
-/* ---------- offscreen glow / ring textures ---------- */
-function glowTex() {
-  const c = document.createElement("canvas");
-  c.width = c.height = 128;
-  const g = c.getContext("2d");
-  const rad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  rad.addColorStop(0, "rgba(255,255,255,1)");
-  rad.addColorStop(0.18, "rgba(255,255,255,.85)");
-  rad.addColorStop(0.45, "rgba(255,255,255,.22)");
-  rad.addColorStop(1, "rgba(255,255,255,0)");
-  g.fillStyle = rad;
-  g.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
-}
-function ringTex(dashed) {
-  const c = document.createElement("canvas");
-  c.width = c.height = 256;
-  const g = c.getContext("2d");
-  g.strokeStyle = "rgba(255,255,255,.95)";
-  g.lineWidth = 7;
-  g.shadowColor = "rgba(255,255,255,.9)";
-  g.shadowBlur = 10;
-  if (dashed) g.setLineDash([16, 13]);
-  g.beginPath();
-  g.arc(128, 128, 96, 0, Math.PI * 2);
-  g.stroke();
-  return new THREE.CanvasTexture(c);
-}
-function textSprite(str, hex, px) {
-  const dpr = 3, pad = 8;
-  const c = document.createElement("canvas");
-  const g = c.getContext("2d");
-  g.font = px * dpr + "px 'Fragment Mono', ui-monospace, monospace";
-  c.width = Math.ceil(g.measureText(str).width) + pad * 2;
-  c.height = px * dpr + pad * 2;
-  g.font = px * dpr + "px 'Fragment Mono', ui-monospace, monospace";
-  g.fillStyle = hex;
-  g.textBaseline = "middle";
-  g.fillText(str, pad, c.height / 2);
-  const tex = new THREE.CanvasTexture(c);
-  const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-  const sp = new THREE.Sprite(m);
-  const hWorld = 0.052 * (px / 13);
-  sp.scale.set(hWorld * c.width / c.height, hWorld, 1);
-  return sp;
-}
-
-/* ---------- build ---------- */
-function build() {
-  built = true;
-  renderer = new THREE.WebGLRenderer({ canvas: F.canvas, antialias: true });
-  renderer.autoClear = false;
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(M.ink.night);
-  scene.fog = new THREE.Fog(0x0a0a0c, 3.4, 6.4);
-  camera = new THREE.PerspectiveCamera(FOV, 3 / 4, 0.1, 12);
-
-  const argStars = catalogue("arg");
-  const cpvStars = catalogue("cpv");
-  const all = argStars.concat(cpvStars);
-
-  // --- meridian + minute ticks
-  const axisMat = new THREE.LineBasicMaterial({ color: 0xf4f0e5, transparent: true, opacity: 0.38 });
-  scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(
-    [new THREE.Vector3(0, Y_TOP + 0.03, 0), new THREE.Vector3(0, Y_BOT - 0.03, 0)]), axisMat));
-  const tickPts = [];
-  for (let m = 15; m < 120; m += 15) {
-    if (m === 45 || m === 90 || m === 105) continue;
-    tickPts.push(new THREE.Vector3(-0.02, yOf(m), 0), new THREE.Vector3(0.02, yOf(m), 0));
-  }
-  scene.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(tickPts),
-    new THREE.LineBasicMaterial({ color: 0xf4f0e5, transparent: true, opacity: 0.22 })));
-
-  // --- period rings at 45 / 90 / 105
-  const circ = [];
-  for (let i = 0; i <= 96; i++) {
-    const a = (i / 96) * Math.PI * 2;
-    circ.push(new THREE.Vector3(Math.cos(a), 0, Math.sin(a)));
-  }
-  const circGeo = new THREE.BufferGeometry().setFromPoints(circ);
-  for (const m of M.periods) {
-    const ring = new THREE.Line(circGeo,
-      new THREE.LineBasicMaterial({ color: 0xf4f0e5, transparent: true, opacity: 0.13 }));
-    ring.scale.setScalar(0.56);
-    ring.position.y = yOf(m);
-    scene.add(ring);
-  }
-
-  // --- background dust (seeded, a few thousand)
-  const Rd = ART.rng(seed + "-dust");
-  const ND = 2600;
-  const dp = new Float32Array(ND * 3);
-  for (let i = 0; i < ND; i++) {
-    const r = 1.6 + Rd() * 2.4, th = Rd() * Math.PI * 2, ph = Math.acos(2 * Rd() - 1);
-    dp[i * 3] = r * Math.sin(ph) * Math.cos(th);
-    dp[i * 3 + 1] = (Rd() - 0.5) * 3.4;
-    dp[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
-  }
-  const dg = new THREE.BufferGeometry();
-  dg.setAttribute("position", new THREE.BufferAttribute(dp, 3));
-  dust = new THREE.Points(dg, new THREE.PointsMaterial({
-    color: 0x6f7887, size: 0.006, transparent: true, opacity: 0.5,
-    blending: THREE.AdditiveBlending, depthWrite: false,
-  }));
-  scene.add(dust);
-
-  // --- constellation lines (consecutive shots per team)
-  for (const [stars, hex] of [[argStars, M.ink.arg], [cpvStars, M.ink.cpv]]) {
-    const pts = stars.map((s) => new THREE.Vector3(s.x, s.y, s.z));
-    scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineBasicMaterial({
-        color: hex, transparent: true, opacity: 0.22,
-        blending: THREE.AdditiveBlending, depthWrite: false,
-      })));
-  }
-
-  // --- shot stars (points, additive, twinkling shader)
-  const N = all.length;
-  const pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
-  const info = new Float32Array(N * 3);           // size, phase, minute
-  const cArg = new THREE.Color(M.ink.arg), cCpv = new THREE.Color(M.ink.cpv);
-  const Rs = ART.rng(seed + "-sz");
-  all.forEach((s, i) => {
-    pos[i * 3] = s.x; pos[i * 3 + 1] = s.y; pos[i * 3 + 2] = s.z;
-    const c = s.x < 0 ? cArg : cCpv;
-    const b = s.goal ? 1.0 : s.on ? 0.88 : 0.46;
-    col[i * 3] = c.r * b + (s.goal ? 0.25 : 0);
-    col[i * 3 + 1] = c.g * b + (s.goal ? 0.22 : 0);
-    col[i * 3 + 2] = c.b * b + (s.goal ? 0.15 : 0);
-    info[i * 3] = s.goal ? 46 : s.on ? 26 + Rs() * 8 : 13 + Rs() * 6;
-    info[i * 3 + 1] = Rs();
-    info[i * 3 + 2] = s.min;
-  });
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute("aCol", new THREE.BufferAttribute(col, 3));
-  geo.setAttribute("aInfo", new THREE.BufferAttribute(info, 3));
-  starMat = new THREE.ShaderMaterial({
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-    uniforms: { uTime: { value: 0 }, uClock: { value: 0 }, uDpr: { value: F.DPR } },
-    vertexShader: `
-      attribute vec3 aCol; attribute vec3 aInfo;
-      uniform float uTime, uClock, uDpr;
-      varying vec3 vCol; varying float vA;
-      void main(){
-        vCol = aCol;
-        float tw = 0.80 + 0.20 * sin(uTime*(0.6 + aInfo.y*1.9) + aInfo.y*41.0);
-        float near = exp(-abs(uClock - aInfo.z) * 0.5);
-        vA = tw + near * 0.7;
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        gl_Position = projectionMatrix * mv;
-        gl_PointSize = aInfo.x * (1.0 + near*0.55) * uDpr * (3.9 / -mv.z);
-      }`,
-    fragmentShader: `
-      precision highp float;
-      varying vec3 vCol; varying float vA;
-      void main(){
-        float d = length(gl_PointCoord - 0.5) * 2.0;
-        float core = smoothstep(0.42, 0.0, d);
-        float glow = pow(max(0.0, 1.0 - d), 2.4) * 0.45;
-        float a = (core + glow) * vA;
-        gl_FragColor = vec4(vCol * a, a);
-      }`,
-  });
-  scene.add(new THREE.Points(geo, starMat));
-
-  // --- the five goals: halo rings (dashed + hollow for the og)
-  const gTex = glowTex(), rTex = ringTex(false), rTexDash = ringTex(true);
-  for (const g of M.goals) {
-    const star = all.find((s) => s.goal === g);
-    const hex = g.team === "arg" ? M.ink.arg : M.ink.cpv;
-    const grp = new THREE.Group();
-    grp.position.set(star.x, star.y, star.z);
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: g.og ? rTexDash : rTex, color: g.og ? 0xf4f0e5 : hex,
-      transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending,
-    }));
-    const haloBase = g.og ? 0.13 : 0.115;
-    halo.scale.setScalar(haloBase);
-    grp.add(halo);
-    let core = null;
-    if (!g.og) {
-      core = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: gTex, color: 0xfff6de,
-        transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending,
-      }));
-      core.scale.setScalar(0.11);
-      grp.add(core);
-    }
-    scene.add(grp);
-    goalBodies.push({ g, grp, halo, haloBase, core });
-  }
-
-  // --- replay marker riding the meridian + faint clock rule
-  marker = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: gTex, color: 0xe9b32a, transparent: true, opacity: 0.95,
-    depthWrite: false, blending: THREE.AdditiveBlending,
-  }));
-  marker.scale.setScalar(0.06);
-  scene.add(marker);
-  clockLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(
-    [new THREE.Vector3(-0.72, 0, 0), new THREE.Vector3(0.72, 0, 0)]),
-    new THREE.LineBasicMaterial({ color: 0xe9b32a, transparent: true, opacity: 0.10 }));
-  scene.add(clockLine);
-
-  // --- film grain overlay (post sprite, own ortho pass)
-  const gc = document.createElement("canvas");
-  gc.width = gc.height = 256;
-  const gg = gc.getContext("2d");
-  const img = gg.createImageData(256, 256);
-  const Rg = ART.rng(seed + "-grain");
-  for (let i = 0; i < img.data.length; i += 4) {
-    const v = (Rg() * 7) | 0;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 255;
-  }
-  gg.putImageData(img, 0, 0);
-  grainTex = new THREE.CanvasTexture(gc);
-  grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping;
-  grainTex.repeat.set(4.5, 6);
-  grainScene = new THREE.Scene();
-  grainCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  grainScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2),
-    new THREE.MeshBasicMaterial({ map: grainTex, blending: THREE.AdditiveBlending,
-      depthTest: false, depthWrite: false })));
-
-  // --- labels (drawn after the mono font is ready)
-  document.fonts.ready.then(() => {
-    const argL = textSprite("argentina", "rgba(158,196,224,.9)", 13);
-    argL.center.set(1, 0.5); argL.position.set(-0.10, Y_TOP + 0.015, 0);
-    scene.add(argL);
-    const cpvL = textSprite("cabo verde", "rgba(224,148,138,.9)", 13);
-    cpvL.center.set(0, 0.5); cpvL.position.set(0.10, Y_TOP + 0.015, 0);
-    scene.add(cpvL);
-    for (const m of M.periods) {
-      const s = textSprite(m + "’", "rgba(244,240,229,.5)", 11);
-      s.center.set(0, 0.5); s.position.set(0.585, yOf(m), 0);
-      scene.add(s);
-    }
-    for (const b of goalBodies) {
-      const g = b.g;
-      const hex = g.team === "arg" ? "rgba(178,212,236,.95)" : "rgba(233,168,158,.95)";
-      const s = textSprite(g.min + "’ " + g.player, g.og ? "rgba(244,240,229,.85)" : hex, 12);
-      const left = g.team === "arg";
-      s.center.set(left ? 1 : 0, 0.5);
-      s.position.set(b.grp.position.x + (left ? -0.085 : 0.085), b.grp.position.y + 0.052, b.grp.position.z);
-      scene.add(s);
-    }
-  });
-}
-
-/* ---------- loop ---------- */
-let raf;
+// the tide comes in once (10s), then the scene rests — no loop
 function loop(tms) {
-  const t = tms / 1000;
-  const cycle = t % 34;
-  const clock = Math.min(120, (cycle / 26) * 120);
-
-  starMat.uniforms.uTime.value = t;
-  starMat.uniforms.uClock.value = clock;
-  starMat.uniforms.uDpr.value = F.DPR;
-
-  for (const b of goalBodies) {
-    const p = clock - b.g.min;
-    const k = p >= 0 ? Math.exp(-p * 0.30) : 0;
-    const br = 0.9 + 0.1 * Math.sin(t * 1.3 + b.g.min);
-    b.halo.scale.setScalar(b.haloBase * (1 + k * 0.9) * br);
-    b.halo.material.opacity = 0.55 + k * 0.45;
-    b.halo.material.rotation = b.g.og ? t * 0.22 : 0;
-    if (b.core) {
-      b.core.scale.setScalar(0.105 * (1 + k * 0.7));
-      b.core.material.opacity = 0.75 + k * 0.25;
-    }
-  }
-
-  const cy = yOf(clock);
-  marker.position.set(0, cy, 0.02);
-  marker.material.opacity = cycle > 26 ? 0.35 : 0.95;
-  clockLine.position.y = cy;
-  clockLine.material.opacity = cycle > 26 ? 0.04 : 0.10;
-
-  dust.rotation.y = t * 0.012;
-
-  // slow, small orbit — parallax without losing the chart
-  const az = 0.34 * Math.sin(t * 0.06);
-  camera.position.set(Math.sin(az) * DIST, 0.10 * Math.sin(t * 0.041), Math.cos(az) * DIST);
-  camera.lookAt(0, 0, 0);
-
-  grainTex.offset.set((t * 1.7) % 1, (t * 2.3) % 1);
-
-  renderer.clear();
-  renderer.render(scene, camera);
-  renderer.render(grainScene, grainCam);
-  raf = requestAnimationFrame(loop);
+  if (!sh || done) return;
+  if (start === null) start = tms;
+  const p = Math.min(1, (tms - start) / 10000);
+  sh.gl.uniform1f(sh.extra.u_p, p);
+  sh.draw(tms / 1000, sf);
+  if (p >= 1) { done = true; return; }
+  requestAnimationFrame(loop);
 }
-queueMicrotask(() => { if (!built) build(); raf || requestAnimationFrame(loop); });
 </script>
