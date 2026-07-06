@@ -384,6 +384,46 @@ html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s e
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
 
+/* Pane dividers as gradient hairlines that fade at their ends — the solid
+   1px borders read as hard seams cutting the glass; an etched line that
+   dissolves before reaching the edges keeps the panes separate while still
+   reading as one sheet. Solid borders and their -1px overlap margins go. */
+.discover-text {
+  border-left: none !important; border-right: none !important;
+  margin-left: 0 !important; margin-right: 0 !important;
+}
+/* Vertical divider: text ↔ toggle (all widths). */
+.discover-text::after {
+  content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 1px;
+  background: linear-gradient(180deg, transparent, #0000001f 30%, #0000001f 70%, transparent);
+  pointer-events: none;
+}
+html.is-dark .discover-text::after {
+  background: linear-gradient(180deg, transparent, #ffffff1f 30%, #ffffff1f 70%, transparent);
+}
+/* Vertical divider: logo ↔ text (desktop pill only — rows stack on phones). */
+.discover-text::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 1px;
+  background: linear-gradient(180deg, transparent, #0000001f 30%, #0000001f 70%, transparent);
+  pointer-events: none;
+}
+html.is-dark .discover-text::before {
+  background: linear-gradient(180deg, transparent, #ffffff1f 30%, #ffffff1f 70%, transparent);
+}
+@media (max-width: 479px) {
+  .discover-text::before { display: none; }
+  /* Horizontal divider: logo row ↔ text row. */
+  .discover-logo { border-bottom: none !important; position: relative; top: auto; right: auto; bottom: auto; left: auto; }
+  .discover-logo::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, #0000001f 12%, #0000001f 88%, transparent);
+    pointer-events: none;
+  }
+  html.is-dark .discover-logo::after {
+    background: linear-gradient(90deg, transparent, #ffffff1f 12%, #ffffff1f 88%, transparent);
+  }
+}
+
 /* Mobile tap-to-stage: the tapped tile, front-and-center and enlarged, over a
    dimmed backdrop with its meta beneath. Tapping anywhere dismisses it. */
 .discover-stage {
