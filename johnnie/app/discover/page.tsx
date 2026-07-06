@@ -339,15 +339,31 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 1.25rem; padding: 6vh 7vw;
   touch-action: none;   /* we drive pinch/pan/double-tap ourselves */
+  /* The container itself never fades — fading it faded the flying image with
+     it, which read as a NEW element appearing instead of the tapped tile
+     travelling. Only the scrim (::before below) fades; visibility flips after
+     the close fade so nothing lingers. */
+  pointer-events: none;
+  visibility: hidden;
+  transition: visibility 0s .35s;
+}
+.discover-stage::before {
+  content: ""; position: absolute; inset: 0;
   /* Scrim follows the theme: dark in dark mode (default), light in light mode
      (override below), so opening an image respects light/dark. */
   background-color: rgba(8, 8, 8, .72);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
-  opacity: 0; pointer-events: none;
+  opacity: 0;
   transition: opacity .35s ease, background-color .45s ease;
 }
-html:not(.is-dark) .discover-stage { background-color: rgba(255, 255, 255, .82); }
-.discover-stage.is-open { opacity: 1; pointer-events: auto; }
+html:not(.is-dark) .discover-stage::before { background-color: rgba(255, 255, 255, .82); }
+.discover-stage.is-open { visibility: visible; pointer-events: auto; transition: none; }
+.discover-stage.is-open::before { opacity: 1; }
+/* The staged image never fades IN (it IS the tapped tile, already on screen —
+   the script hides the source tile the same frame); it only fades on close,
+   covering the swap back to the grid. */
+.discover-stage .hero-image { opacity: 0; transition: opacity .25s ease; }
+.discover-stage.is-open .hero-image { opacity: 1; transition: none; }
 /* fit-content so the column is exactly as wide as the image, not the whole
    stage. No transform of its own — the entrance is the image's shared-element
    flight (set inline by the script), so a parent scale would fight it. */
