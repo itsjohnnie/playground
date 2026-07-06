@@ -53,6 +53,17 @@ johnnie/public/art/          ← the live site (johnnies.life/art)
 7. Keep it under ~an hour of effort. Post at the moment it crosses the
    threshold of interesting. K.G. — keep going.
 
+### Presentation (don't break this)
+
+Johnnie views the site primarily on his phone. Presentation is **mobile-first**
+with **the composition always in the middle**: `art.js` renders every piece on
+a centered square stage (~92% of the short viewport side, capped at 720px on
+desktop), caption beneath, ground color behind (`dark: true` for pieces on
+black). Compose for a square — `ART.fit` gives you a square canvas; don't
+assume landscape. The gallery previews load each sketch with `?thumb=1`
+(stage fills the iframe, chrome hidden) — nothing extra to do, just use
+`ART.fit` + `ART.chrome` as usual.
+
 ### House rules (adapted from Lieberman's)
 
 - Prefer `sin`/`cos` and seeded noise over raw randomness; motion should feel
