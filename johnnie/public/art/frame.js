@@ -52,8 +52,13 @@ background-position:-1px -1px}
 .frame .br{grid-area:8/5/9/7;text-align:right;align-self:end}
 .art-back{position:fixed;left:max(16px,env(safe-area-inset-left));top:max(14px,env(safe-area-inset-top));z-index:9;
 font-family:'Fragment Mono',ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.05em;
-color:rgba(${o.dark ? "244,240,229" : "23,21,17"},.5);text-decoration:none;padding:8px;margin:-8px}
-.art-back:hover{color:rgba(${ink},.95)}`;
+color:rgba(${o.dark ? "244,240,229" : "23,21,17"},.5);text-decoration:none;padding:8px;margin:-8px;display:inline-block;
+transition:color 150ms ease,transform 160ms cubic-bezier(0.23,1,0.32,1)}
+@media (hover:hover) and (pointer:fine){.art-back:hover{color:rgba(${ink},.95)}}
+.art-back:active{transform:scale(0.96)}
+.stage{animation:stage-in 400ms cubic-bezier(0.23,1,0.32,1)}
+@keyframes stage-in{from{opacity:0;transform:scale(0.985)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.stage{animation:stage-fade 200ms ease}@keyframes stage-fade{from{opacity:0}to{opacity:1}}.art-back:active{transform:none}}`;
     document.head.appendChild(css);
 
     const stage = document.createElement("div");
@@ -94,10 +99,10 @@ color:rgba(${o.dark ? "244,240,229" : "23,21,17"},.5);text-decoration:none;paddi
 
     const F = { stage, canvas, W: 0, H: 0, DPR: 1 };
     function resize(defer) {
-      const r = stage.getBoundingClientRect();
+      // offsetWidth: layout size, immune to the entrance-scale transform
       F.DPR = Math.min(devicePixelRatio || 1, 2);
-      F.W = Math.round(r.width * F.DPR);
-      F.H = Math.round(r.height * F.DPR);
+      F.W = Math.round(stage.offsetWidth * F.DPR);
+      F.H = Math.round(stage.offsetHeight * F.DPR);
       if (canvas) { canvas.width = F.W; canvas.height = F.H; }
       if (!o.onResize) return;
       const run = () => o.onResize(F.W, F.H, F.DPR);

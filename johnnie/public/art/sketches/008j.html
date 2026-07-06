@@ -1,0 +1,210 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<body>
+<script src="../art.js"></script>
+<script src="../frame.js"></script>
+<script src="data-008.js"></script>
+<script>
+// 008 — j · órbitas — the goal as gravity. A quiet ring at center is the
+// goalmouth; all 38 real shots are bodies that enter at their minute and
+// fall into orbit — off-target wide and slow, on-target tight and fast,
+// argentina clockwise (celeste), cabo verde counter-clockwise (rojo).
+// The five goals spiral all the way in and strike the ring: flash, then
+// a permanent afterglow ring that keeps expanding, minute on the rim;
+// the own goal's ring is dashed. Shot minutes are seeded within real
+// per-phase counts (approximation); goal minutes are real. The og body
+// is drawn celeste (it counts for argentina) — approximation. Kepler-ish:
+// closer = faster. 26 s replay + 8 s hold, loop.
+
+const seed = ART.seed("2026-07-06-008j");
+const N = ART.makeNoise(seed);
+const M = window.M8;
+
+let W, H, DPR, bodies, goalsB, glows, flashes, needClear = true;
+let lastCycle = 1e9, lastT = 0;
+
+const F = FRAME.mount({
+  n: "008", v: "j", title: "órbitas", date: "06·07·2026",
+  data: M.frameData, tech: "canvas · gravity", dark: true,
+  onResize(w, h, dpr) { W = w; H = h; DPR = dpr; build(); needClear = true; },
+});
+const ctx = F.canvas.getContext("2d");
+
+const R0 = () => 0.055 * W;               // the goalmouth ring
+const OMEGA = (rn) => 0.066 / Math.pow(Math.max(rn, 0.05), 1.5); // v ∝ 1/√r
+const easeOut = (k) => 1 - Math.pow(1 - k, 3);
+
+function build() {
+  // seeded shot minutes within real per-phase counts (008a idiom)
+  const Rt = ART.rng(seed + "ticks");
+  const ticks = [];
+  for (const team of ["arg", "cpv"]) {
+    const all = [];
+    M.shotsPhase[team].forEach((count, pi) => {
+      const [a, b] = [[0, 45], [45, 90], [90, 120]][pi];
+      for (let i = 0; i < count; i++) all.push(a + 2 + Rt() * (b - a - 4));
+    });
+    for (let i = all.length - 1; i > 0; i--) {
+      const j = (Rt() * (i + 1)) | 0;
+      [all[i], all[j]] = [all[j], all[i]];
+    }
+    all.forEach((min, i) => ticks.push({ team, min, on: i < M.onTarget[team] }));
+  }
+  // the five goals are shots too: each consumes its team's on-target tick
+  // nearest the real goal minute (the og consumes an arg tick — see header)
+  for (const g of M.goals) {
+    let best = -1, bd = 1e9;
+    ticks.forEach((s, i) => {
+      if (s.team !== g.team || !s.on) return;
+      const d = Math.abs(s.min - g.min);
+      if (d < bd) { bd = d; best = i; }
+    });
+    if (best >= 0) ticks.splice(best, 1);
+  }
+  // 33 orbiting bodies
+  bodies = ticks.map((s) => {
+    const q = Rt(), q2 = Rt();
+    return {
+      team: s.team, min: s.min, on: s.on,
+      dir: s.team === "arg" ? 1 : -1,
+      rT: s.on ? 0.145 + q * 0.095 : 0.255 + q * 0.145,
+      e: s.on ? 0.04 + q2 * 0.05 : 0.08 + q2 * 0.10,
+      th0: Rt() * Math.PI * 2, phi: Rt() * Math.PI * 2,
+      alive: false, th: 0, rn: 0,
+    };
+  });
+  // 5 strikers
+  goalsB = M.goals.map((g) => ({
+    min: g.min, exact: g.exact || g.min, team: g.team, og: !!g.og,
+    player: g.player, dir: g.team === "arg" ? 1 : -1,
+    th0: Rt() * Math.PI * 2,
+    struck: false, th: 0, hitAng: 0,
+  }));
+  glows = []; flashes = [];
+}
+
+function resetCycle() {
+  for (const b of bodies) { b.alive = false; b.th = b.th0; b.rn = 0.56; }
+  for (const g of goalsB) { g.struck = false; g.th = g.th0; }
+  glows = []; flashes = [];
+  needClear = true;
+}
+
+function body(x, y, col, core, glowR, a) {
+  ctx.fillStyle = col;
+  ctx.globalAlpha = 0.10 * a;
+  ctx.beginPath(); ctx.arc(x, y, glowR, 0, 7); ctx.fill();
+  ctx.globalAlpha = a;
+  ctx.beginPath(); ctx.arc(x, y, core, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function draw(tms) {
+  const t = tms / 1000, cycle = t % 34;
+  const dt = Math.min(0.05, Math.max(0.001, t - lastT));
+  lastT = t;
+  if (cycle < lastCycle) resetCycle();
+  lastCycle = cycle;
+  const clockT = Math.min(cycle, 26); // replay seconds (26 = minute 120)
+  const cx = W / 2, cy = H / 2, r0 = R0();
+  const s = W / 900;
+  const fs = Math.max(0.021 * W, 8.5 * DPR);
+
+  // fade pass — trails live in the residue
+  ctx.globalCompositeOperation = "source-over";
+  if (needClear) { ctx.fillStyle = M.ink.night; ctx.fillRect(0, 0, W, H); needClear = false; }
+  ctx.fillStyle = "rgba(10,10,12,0.12)";
+  ctx.fillRect(0, 0, W, H);
+
+  // the goalmouth — small, quiet, breathing
+  ctx.strokeStyle = "rgba(244,240,229," + (0.26 + 0.08 * Math.sin(t * 1.3)).toFixed(3) + ")";
+  ctx.lineWidth = 1.2 * DPR;
+  ctx.beginPath(); ctx.arc(cx, cy, r0, 0, 7); ctx.stroke();
+
+  // afterglow rings — struck bells, expanding forever
+  for (const g of glows) {
+    const age = clockCyc(cycle, g.t0);
+    const r = r0 + age * 0.0115 * W;
+    const a = Math.max(0.22, 0.55 - age * 0.011);
+    ctx.strokeStyle = g.team === "arg" ? M.ink.arg : M.ink.cpv;
+    ctx.globalAlpha = a;
+    ctx.lineWidth = 1.2 * DPR;
+    if (g.dashed) ctx.setLineDash([5 * DPR, 6 * DPR]);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.stroke();
+    ctx.setLineDash([]);
+    // the minute rides the rim, at the impact angle
+    const lx = cx + Math.cos(g.hitAng) * r, ly = cy + Math.sin(g.hitAng) * r;
+    ctx.globalAlpha = Math.min(0.85, a + 0.3);
+    ctx.font = fs + "px 'Fragment Mono', ui-monospace, monospace";
+    ctx.textAlign = Math.cos(g.hitAng) < 0 ? "right" : "left";
+    ctx.strokeStyle = M.ink.night; // knockout so the ring doesn't slice the type
+    ctx.lineWidth = 3.5 * DPR;
+    ctx.strokeText(" " + g.min + "’ ", lx, ly + fs * 0.35);
+    ctx.fillStyle = g.team === "arg" ? M.ink.arg : M.ink.cpv;
+    ctx.fillText(" " + g.min + "’ ", lx, ly + fs * 0.35);
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.globalCompositeOperation = "lighter";
+
+  // orbiting bodies
+  for (const b of bodies) {
+    const tSpawn = (b.min / 120) * 26;
+    if (clockT < tSpawn) { b.alive = false; continue; }
+    if (!b.alive) { b.alive = true; b.rn = 0.56; b.th = b.th0; }
+    const age = clockT - tSpawn;
+    b.rn = age < 1.8 ? 0.56 + (b.rT - 0.56) * easeOut(age / 1.8) : b.rT;
+    b.th += b.dir * OMEGA(b.rn) * dt; // keeps orbiting through the hold
+    const rE = b.rn * (1 + b.e * Math.sin(b.th + b.phi)) * W;
+    const x = cx + Math.cos(b.th) * rE, y = cy + Math.sin(b.th) * rE;
+    const col = b.team === "arg" ? M.ink.arg : M.ink.cpv;
+    body(x, y, col, (b.on ? 2.3 : 1.7) * s * DPR, (b.on ? 9 : 7) * s * DPR, b.on ? 0.95 : 0.65);
+  }
+
+  // the five goals — they don't orbit; they fall
+  for (const g of goalsB) {
+    const tHit = (g.exact / 120) * 26, tSpawn = tHit - 2;
+    if (clockT < tSpawn) continue;
+    const col = g.team === "arg" ? M.ink.arg : M.ink.cpv;
+    if (!g.struck) {
+      const k = Math.min(1, (clockT - tSpawn) / 2);
+      const rn = 0.56 + (r0 / W - 0.56) * Math.pow(k, 1.6); // accelerating fall
+      g.th += g.dir * OMEGA(rn) * dt * 1.35;
+      const x = cx + Math.cos(g.th) * rn * W, y = cy + Math.sin(g.th) * rn * W;
+      body(x, y, col, 3.2 * s * DPR, 14 * s * DPR, 1);
+      if (k >= 1) {
+        g.struck = true; g.hitAng = g.th;
+        glows.push({ t0: cycle, min: g.min, team: g.team, dashed: g.og, hitAng: g.th });
+        flashes.push({ t0: cycle, ang: g.th, col });
+      }
+    }
+  }
+
+  // impact flashes — bright, brief; the fade pass buries them
+  for (let i = flashes.length - 1; i >= 0; i--) {
+    const f = flashes[i], age = clockCyc(cycle, f.t0);
+    if (age > 0.45) { flashes.splice(i, 1); continue; }
+    const k = 1 - age / 0.45;
+    const x = cx + Math.cos(f.ang) * r0, y = cy + Math.sin(f.ang) * r0;
+    ctx.fillStyle = f.col;
+    ctx.globalAlpha = 0.55 * k;
+    ctx.beginPath(); ctx.arc(x, y, r0 * (0.5 + 0.9 * (1 - k)), 0, 7); ctx.fill();
+    ctx.fillStyle = "#f4f0e5";
+    ctx.globalAlpha = 0.8 * k * k;
+    ctx.beginPath(); ctx.arc(x, y, r0 * 0.28, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
+    // the bell itself shivers
+    ctx.strokeStyle = "rgba(244,240,229," + (0.5 * k).toFixed(3) + ")";
+    ctx.lineWidth = 2 * DPR;
+    ctx.beginPath(); ctx.arc(cx, cy, r0 * (1 + 0.06 * k * Math.sin(age * 60)), 0, 7); ctx.stroke();
+  }
+
+  ctx.globalCompositeOperation = "source-over";
+  requestAnimationFrame(draw);
+}
+// age within the current cycle (glow t0 recorded in cycle time)
+function clockCyc(cycle, t0) { return Math.max(0, cycle - t0); }
+
+requestAnimationFrame(draw);
+</script>

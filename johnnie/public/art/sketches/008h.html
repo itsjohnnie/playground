@@ -1,0 +1,225 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<body>
+<script src="../art.js"></script>
+<script src="../frame.js"></script>
+<script src="data-008.js"></script>
+<script>
+// 008 — h · sismógrafo — the match as a seismograph record. 120 plotter
+// lines, one per minute, stacked 1' (top) to 120' (bottom). Energy per
+// minute = per-phase xG density (real, M8.xgPhase) + gaussian spikes at
+// shot minutes (real per-phase counts; exact minutes seeded — approximation)
+// + mountains at the five real goal minutes that invade neighboring lines.
+// argentina shakes the LEFT half of each line, cabo verde the RIGHT.
+// Near-black ink on paper; only the goal peaks carry the team tint.
+// Plotter truth: constant pen width, low-freq hand wobble, ink-pool dots
+// where the pen pauses. Draws itself over the 26 s replay, holds, redraws.
+
+const seed = ART.seed("2026-07-06-008h");
+const N = ART.makeNoise(seed);
+const M = window.M8;
+const INK = "rgba(23,21,17,";
+
+let W, H, DPR, S, T0, B0, X0, X1, fs, lines, grain, off, offCtx;
+let drawn = 0, lastCycle = 1e9;
+
+const F = FRAME.mount({
+  n: "008", v: "h", title: "sismógrafo", date: "06·07·2026",
+  data: M.frameData, tech: "canvas · plotter", dark: false,
+  onResize(w, h, dpr) { W = w; H = h; DPR = dpr; build(); },
+});
+const ctx = F.canvas.getContext("2d");
+
+function build() {
+  T0 = 0.148 * H; B0 = 0.868 * H; X0 = 0.17 * W; X1 = 0.83 * W;
+  S = (B0 - T0) / 119;
+  fs = Math.max(0.0165 * W, 7.5 * DPR);
+
+  // seeded shot minutes within real per-phase counts (008a idiom)
+  const Rt = ART.rng(seed + "ticks");
+  const ticks = { arg: [], cpv: [] };
+  for (const team of ["arg", "cpv"]) {
+    const all = [];
+    M.shotsPhase[team].forEach((count, pi) => {
+      const [a, b] = [[0, 45], [45, 90], [90, 120]][pi];
+      for (let i = 0; i < count; i++) all.push(a + 2 + Rt() * (b - a - 4));
+    });
+    for (let i = all.length - 1; i > 0; i--) {
+      const j = (Rt() * (i + 1)) | 0;
+      [all[i], all[j]] = [all[j], all[i]];
+    }
+    all.forEach((min, i) => ticks[team].push({ min, on: i < M.onTarget[team] }));
+  }
+
+  const plen = [45, 45, 30];
+  const dens = {}; let dmax = 0;
+  for (const tm of ["arg", "cpv"]) {
+    dens[tm] = M.xgPhase[tm].map((x, i) => x / plen[i]);
+    dmax = Math.max(dmax, ...dens[tm]);
+  }
+  const phaseOf = (m) => (m <= 45 ? 0 : m <= 90 ? 1 : 2);
+
+  // energy at minute m for one team: xG simmer + shot spikes + goal mountains
+  function amp(team, m) {
+    let a = (dens[team][phaseOf(m)] / dmax) * 0.8;
+    for (const s of ticks[team]) {
+      const d = m - s.min;
+      a += (s.on ? 2.0 : 1.0) * Math.exp(-d * d / (2 * 0.55 * 0.55));
+    }
+    let g = 0;
+    for (const go of M.goals) if (go.team === team) {
+      const d = m - (go.exact || go.min);
+      g += 7.6 * Math.exp(-d * d / (2 * 1.15 * 1.15));
+    }
+    return { a: Math.min(a + g, 8.6) * S, g: Math.min(g, 8.6) * S };
+  }
+
+  const ss = (a, b, v) => {
+    const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
+
+  lines = [];
+  const nS = 150;
+  for (let i = 0; i < 120; i++) {
+    const m = i + 1, y0 = T0 + i * S;
+    const A = amp("arg", m), C = amp("cpv", m);
+    const heavy = m === 45 || m === 90 || m === 105;
+    const pts = [];
+    for (let j = 0; j < nS; j++) {
+      const u = j / (nS - 1), x = X0 + u * (X1 - X0);
+      const taper = ss(0, 0.05, u) * ss(1, 0.95, u);
+      const winA = Math.exp(-(((u - 0.27) / 0.17) ** 2));
+      const winC = Math.exp(-(((u - 0.73) / 0.17) ** 2));
+      const shape = 0.3 + 0.7 * (0.5 + 0.5 * N.fbm2(u * 11 + i * 0.61, i * 3.17, 3));
+      const hf = N.noise2(u * 70, i * 9.3);
+      const main = (A.a * winA + C.a * winC) * shape * taper * (1 + 0.25 * hf);
+      const gA = A.g * winA * shape * taper, gC = C.g * winC * shape * taper;
+      const tremor = 0.10 * S * N.noise2(u * 90 + i * 4.4, i * 17.7);
+      const wob = 0.16 * S * N.noise2(u * 2.1, i * 0.83);
+      let tint = null;
+      if (gA > 2.3 * S || gC > 2.3 * S)
+        tint = gA > gC ? M.ink.argDeep : M.ink.cpvDeep;
+      pts.push({ x, y: y0 - (main + tremor + wob), tint });
+    }
+    const peaks = [];
+    for (let j = 2; j < nS - 2; j++) {
+      if (y0 - pts[j].y > 2.4 * S &&
+          pts[j].y < pts[j - 1].y && pts[j].y <= pts[j + 1].y &&
+          pts[j].y < pts[j - 2].y && pts[j].y < pts[j + 2].y)
+        peaks.push(pts[j]);
+    }
+    let label = null;
+    const go = M.goals.find((g) => g.min === m);
+    if (go) label = {
+      left: go.team === "arg", l1: go.min + "’", l2: go.player,
+      col: go.team === "arg" ? M.ink.argDeep : M.ink.cpvDeep,
+    };
+    lines.push({ y: y0, pts, peaks, heavy, label });
+  }
+
+  off = document.createElement("canvas");
+  off.width = W; off.height = H;
+  offCtx = off.getContext("2d");
+  for (let k = 0; k < Math.min(drawn, 120); k++) drawLine(offCtx, k, 1);
+
+  grain = document.createElement("canvas");
+  grain.width = W; grain.height = H;
+  const g = grain.getContext("2d");
+  const img = g.createImageData(W, H);
+  const Rg = ART.rng(seed + "grain");
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = 118 + Rg() * 20 | 0;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 24;
+  }
+  g.putImageData(img, 0, 0);
+}
+
+// draw one record line onto g, clipped to fraction `clip` of its width;
+// each line first fills paper under itself (occludes the mountains above)
+function drawLine(g, i, clip) {
+  const L = lines[i], pts = L.pts;
+  const n = Math.max(2, Math.min(pts.length, Math.ceil(clip * (pts.length - 1)) + 1));
+  g.fillStyle = M.ink.paper;
+  g.beginPath();
+  g.moveTo(pts[0].x, L.y + 1.6 * DPR);
+  for (let j = 0; j < n; j++) g.lineTo(pts[j].x, pts[j].y);
+  g.lineTo(pts[n - 1].x, L.y + 1.6 * DPR);
+  g.closePath();
+  g.fill();
+  g.lineWidth = (L.heavy ? 1.6 : 1.05) * DPR;
+  g.lineJoin = "round"; g.lineCap = "round";
+  let j0 = 0;
+  while (j0 < n - 1) {
+    const c = pts[j0].tint;
+    let j1 = j0 + 1;
+    while (j1 < n && pts[j1].tint === c) j1++;
+    g.strokeStyle = c || INK + (L.heavy ? "0.95)" : "0.85)");
+    g.beginPath();
+    g.moveTo(pts[j0].x, pts[j0].y);
+    for (let j = j0 + 1; j <= Math.min(j1, n - 1); j++) g.lineTo(pts[j].x, pts[j].y);
+    g.stroke();
+    j0 = j1;
+  }
+  if (clip >= 1) {
+    const dot = (p, r, col) => {
+      g.fillStyle = col;
+      g.beginPath(); g.arc(p.x, p.y, r, 0, 7); g.fill();
+    };
+    dot(pts[0], 1.15 * DPR, INK + "0.55)");
+    dot(pts[pts.length - 1], 1.15 * DPR, INK + "0.55)");
+    for (const p of L.peaks) dot(p, 1.35 * DPR, p.tint || INK + "0.75)");
+    if (L.label) {
+      g.font = fs + "px 'Fragment Mono', ui-monospace, monospace";
+      g.fillStyle = L.label.col;
+      g.textAlign = L.label.left ? "right" : "left";
+      const lx = L.label.left ? X0 - 0.015 * W : X1 + 0.015 * W;
+      g.fillText(L.label.l1, lx, L.y - fs * 0.25);
+      g.fillText(L.label.l2, lx, L.y + fs * 0.85);
+    }
+  }
+}
+
+function draw(tms) {
+  const t = tms / 1000, cycle = t % 34;
+  if (cycle < lastCycle) { offCtx.clearRect(0, 0, W, H); drawn = 0; }
+  lastCycle = cycle;
+  const pos = Math.min(1, cycle / 26) * 120;
+  while (drawn < Math.floor(pos) && drawn < 120) { drawLine(offCtx, drawn, 1); drawn++; }
+
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = M.ink.paper;
+  ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(off, 0, 0);
+
+  if (pos < 120) {
+    const i = Math.min(119, Math.floor(pos)), frac = pos - i;
+    drawLine(ctx, i, Math.max(0.02, frac));
+    const pts = lines[i].pts;
+    const pj = Math.max(0, Math.min(pts.length - 1, Math.ceil(frac * (pts.length - 1))));
+    ctx.fillStyle = INK + "0.9)";
+    ctx.beginPath(); ctx.arc(pts[pj].x, pts[pj].y, 2.1 * DPR, 0, 7); ctx.fill();
+    // travelling minute readout (skipped next to right-margin goal labels)
+    const nearCpvLabel = (k) => k >= 0 && k < 120 && lines[k].label && !lines[k].label.left;
+    if (!nearCpvLabel(i) && !nearCpvLabel(i - 1) && !nearCpvLabel(i + 1)) {
+      ctx.font = fs + "px 'Fragment Mono', ui-monospace, monospace";
+      ctx.fillStyle = INK + "0.4)";
+      ctx.textAlign = "left";
+      ctx.fillText((i + 1) + "’", X1 + 0.02 * W, lines[i].y + fs * 0.35);
+    }
+  } else {
+    // the pen rests at the end of line 120, ink pooling
+    const p = lines[119].pts[lines[119].pts.length - 1];
+    ctx.fillStyle = INK + (0.55 + 0.3 * Math.sin(t * 2.2)).toFixed(2) + ")";
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2.4 * DPR, 0, 7); ctx.fill();
+  }
+
+  ctx.globalCompositeOperation = "multiply";
+  ctx.drawImage(grain, 0, 0);
+  ctx.globalCompositeOperation = "source-over";
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script>
