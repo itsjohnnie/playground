@@ -634,13 +634,10 @@ class InfiniteGrid {
     if (!this.stage) return;
     this.stage.classList.remove("is-open");
     this.stage.setAttribute("aria-hidden", "true");
-    // Bring the source tile back as the staged copy fades out over it.
-    if (this.stagedCell) {
-      this.stagedCell.el.style.visibility = "";
-      this.stagedCell = null;
-    }
     const img = this.zImg;
+    const cell = this.stagedCell;
     this.zImg = null;
+    this.stagedCell = null;
     // Reset gesture state now (gestures are dead with zImg null)…
     this.zScale = 1;
     this.zTx = 0;
@@ -648,15 +645,41 @@ class InfiniteGrid {
     this.zPointers.clear();
     this.zMoved = false;
     this.zLastTapTime = 0;
-    if (img) {
-      // …but let the image fade out IN PLACE first: dropping the inline
-      // transition hands control to the stylesheet's opacity fade (the inline
-      // one only lists transform, which would make the close a hard pop).
-      img.style.removeProperty("transition");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (img && cell && !reduce) {
+      // Reverse flight: from the current (possibly zoomed) transform back to
+      // the tile's rect while the scrim fades out underneath. The image holds
+      // full opacity for the whole trip; the real tile un-hides exactly when
+      // the copy lands on it, and the stage's delayed visibility flip then
+      // removes the copy — a seamless swap, pixel-identical at handover.
+      const dx = cell.lastX + this.itemWidth / 2 - this.zCx0;
+      const dy = cell.lastY + this.itemHeight / 2 - this.zCy0;
+      img.style.opacity = "1";
+      img.style.setProperty(
+        "transition",
+        "transform .45s cubic-bezier(.22, 1, .36, 1)",
+        "important",
+      );
+      img.style.transform = `translate(${dx}px, ${dy}px) scale(${this.itemWidth / this.zBaseW}, ${this.itemHeight / this.zBaseH})`;
       window.setTimeout(() => {
+        // Unless this same tile got re-staged during the flight.
+        if (this.stagedCell !== cell) cell.el.style.visibility = "";
+        img.style.opacity = "";
         img.style.transform = "";
-        img.style.cursor = "";
-      }, 320);
+        img.style.setProperty("transition", "none", "important");
+      }, 460);
+    } else {
+      // Reduced motion: restore the tile and let the copy fade out in place
+      // (dropping the inline transition hands control to the stylesheet's
+      // opacity fade — the inline one only lists transform).
+      if (cell) cell.el.style.visibility = "";
+      if (img) {
+        img.style.removeProperty("transition");
+        window.setTimeout(() => {
+          img.style.transform = "";
+          img.style.cursor = "";
+        }, 320);
+      }
     }
     this.lastInteraction = Date.now();
     this.hasSnapped = false;

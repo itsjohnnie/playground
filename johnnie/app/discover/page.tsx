@@ -345,7 +345,9 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
      the close fade so nothing lingers. */
   pointer-events: none;
   visibility: hidden;
-  transition: visibility 0s .35s;
+  /* The delay must outlast the close animations: .45s reverse flight +
+     landing swap. */
+  transition: visibility 0s .5s;
 }
 .discover-stage::before {
   content: ""; position: absolute; inset: 0;
