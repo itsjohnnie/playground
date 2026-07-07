@@ -22,7 +22,13 @@
 // Plotter truth kept: baseline drift down the roll, ragged pen-down
 // margins, ink pooling where the pen turns hard, a heavier pen on event
 // lines. Finishing is a whisper of film grain fading out around the block —
-// no rectangle anywhere. Draws itself once (~11 s), then the rAF loop stops.
+// no rectangle anywhere. Draws itself once (~11 s), then stays alive
+// (johnnie: "staticky… more realistic and alive"): a resting seismograph
+// needle's static — every trace carries a sub-pixel low-frequency tremor,
+// phase drifting per line, the grain shimmering faintly with it. Half-rate
+// idle (every other rAF tick); the still layer (stamp, annotations, pools)
+// is baked once so idle frames only re-stroke the 96 traces. At a glance
+// the record is still; reduced motion settles instantly and stops.
 
 const seed = ART.seed("2026-06-22-002");
 const N = ART.makeNoise(seed);
@@ -58,9 +64,11 @@ const TRACK = "0.05em";
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const TOTAL = M.totalMin; // 96
 
-let W, H, DPR, S, T0, B0, X0, X1, fs, lines, grain, off, offCtx;
-let px, py, pw, ph;
-let drawn = 0, settled = false, start;
+let W, H, DPR, S, T0, B0, X0, X1, fs, lines, grain, off, offCtx, decor;
+let px, py, pw, ph, JQ;
+let drawn = 0, settled = false, start, tick = 0;
+const NS = 240;              // samples per trace
+const JY = new Float64Array(NS); // scratch: one line's live tremor
 
 const F = FRAME.mount({
   num: 2, title: "Sismógrafo", subject: "Argentina vs. Austria",
@@ -91,6 +99,7 @@ function build() {
   T0 = py + 0.108 * ph; B0 = py + 0.948 * ph;
   S = (B0 - T0) / (TOTAL - 1);
   fs = Math.min(11.5 * DPR, Math.max(0.022 * pw, 7.5 * DPR));
+  JQ = 0.55 * DPR; // the resting needle's reach — ~0.55 css px, sub-pixel life
 
   // shot ticks: pinned real minutes + seeded remainder within exact counts
   const Rt = ART.rng(seed + "ticks");
@@ -141,7 +150,7 @@ function build() {
   const tri = (x) => 4 * Math.abs((x % 1 + 1) % 1 - 0.5) - 1;
 
   lines = [];
-  const nS = 240;
+  const nS = NS;
   for (let i = 0; i < TOTAL; i++) {
     const m = i + 1;
     // baseline drift: the roll feeds unevenly down the page
@@ -215,14 +224,42 @@ function build() {
                   col: INK + "0.62)" });
     if (heavy) labs.push({ left: false, single: true, l1: mm(m), col: INK + "0.38)" });
 
-    lines.push({ y: y0, pts, pools, heavy, event, labs });
+    // the resting needle's per-line phases — drawn AFTER every compositional
+    // use of Rl, so the settled record stays bit-identical to the still one
+    const phA = Rl() * 6.283, phB = Rl() * 6.283, phC = Rl() * 6.283;
+    lines.push({ y: y0, pts, pools, heavy, event, labs, phA, phB, phC });
   }
 
   off = document.createElement("canvas");
   off.width = W; off.height = H;
   offCtx = off.getContext("2d");
   stamp(offCtx);
-  for (let k = 0; k < Math.min(drawn, TOTAL); k++) drawLine(offCtx, k, 1);
+  for (let k = 0; k < Math.min(drawn, TOTAL); k++) {
+    drawLine(offCtx, k, 1); decorLine(offCtx, k);
+  }
+
+  // the still layer — stamp, margin annotations, ink pools, endpoint dots —
+  // baked once with the record's own occlusion replayed (each line's ground
+  // erases whatever hangs into it from above), so the living idle only has
+  // to re-stroke the traces themselves
+  decor = document.createElement("canvas");
+  decor.width = W; decor.height = H;
+  const dg = decor.getContext("2d");
+  stamp(dg);
+  dg.fillStyle = "#000";
+  for (let i = 0; i < TOTAL; i++) {
+    const L = lines[i], pts = L.pts;
+    dg.globalCompositeOperation = "destination-out";
+    dg.beginPath();
+    dg.moveTo(pts[0].x, L.y + 1.6 * DPR);
+    for (let j = 0; j < pts.length; j++) dg.lineTo(pts[j].x, pts[j].y);
+    dg.lineTo(pts[pts.length - 1].x, L.y + 1.6 * DPR);
+    dg.closePath();
+    dg.fill();
+    dg.globalCompositeOperation = "source-over";
+    decorLine(dg, i);
+    dg.fillStyle = "#000";
+  }
 
   grain = document.createElement("canvas");
   grain.width = W; grain.height = H;
