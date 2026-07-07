@@ -51,21 +51,27 @@ sentence case throughout the product chrome.
 
 ## Layout
 
-**The sheet** (frame.js — the constant): white catalog page, `max 960px`,
-radius up to 36px, generous `--pad` (7cqi), on the espresso room. Full-width
-edge-to-edge on ≤700px phones. Order: header (atelier / practice / date·num)
-→ **artwork slot** → reseed caption → subject headline → prose description →
-spec card (Title / Edition / Stack / Time spent, hairline dividers) →
-← → navigation.
+**The piece page** (frame.js — the constant): on desktop, a **white data
+panel on the left** (clamp 380px–42vw–600px, radius up to 40px) and the
+**artwork on the right**, spotlit on the dark room at its own ratio
+(contain-fit). Panel order: header (atelier·←Art / Daily Practice·date /
+url·#num) → vertically-centered block: subject headline, wall-label prose,
+white spec card (Title / Edition / Stack / Time spent, hairline dividers),
+reseed caption → ← → navigation at the foot.
 
-**The artwork slot**: `ratio` (width/height) is per-piece — 0.75 portrait
-default, landscape allowed (terreno: 1.6); `bleed: true` runs it to the
-sheet's edges. Pieces compose for their declared ratio and must tolerate
-the slot resizing.
+**On ≤820px phones the artwork IS the screen** (full bleed, ratio ignored).
+A small blurred pill (`#007 · Pileta`, bottom center) opens the panel as a
+smooth sheet-modal: `translateY(103%)→0` at 460ms `cubic-bezier(0.32,0.72,0,1)`,
+scrim behind, ✕ or scrim or Escape closes. Pieces must therefore tolerate
+BOTH their declared desktop ratio and tall full-screen aspects.
 
-**Gallery**: dark room; cards are small sheets (radius 14, padding 10) each
-holding the live artwork (`?thumb=1`, per-piece ratio) and one label line —
-`#004 · Terreno` + date. 1-col phone, 2-col ≥720, 3-col ≥1080.
+**The artwork ratio**: per-piece — 0.75 portrait default, landscape allowed
+(terreno: 1.6); `bleed: true` fills the whole art region.
+
+**The index**: one sheet, **no previews**. Header row → intro ("A month with
+Johnnie's head" + one paragraph) → the days as a big text list pinned to the
+sheet's foot: subject line (clamp 30–64px) with the date small at the right,
+newest first, one line per day linking to that day's first piece.
 
 ## Motion
 

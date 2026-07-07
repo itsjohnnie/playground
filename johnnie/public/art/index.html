@@ -3,221 +3,169 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Art — Johnnie’s atelier</title>
-<meta name="description" content="One small piece of generative art every day. After Zach Lieberman.">
+<meta name="description" content="A month with Johnnie’s head — one piece of generative art a day. After Zach Lieberman.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='38' cy='44' r='30' fill='%236cabd6' opacity='.88'/><circle cx='62' cy='56' r='30' fill='%23d5493c' opacity='.72'/></svg>">
 <style>
   :root {
-    --ground: #0d0a07;          /* the dark room */
-    --bone: #f2ece1;
-    --bone-soft: rgba(242, 236, 225, 0.78);
-    --bone-faint: rgba(242, 236, 225, 0.6);
-    --sheet: #f2f1ee;           /* the prints */
+    --room: #0d0a07;
+    --sheet: #f2f1ee;
     --ink: #16130f;
-    --ink-dim: rgba(22, 19, 15, 0.6);
+    --ink-dim: rgba(22, 19, 15, 0.62);
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   }
   @font-face { font-family: 'Geist'; src: url('lib/fonts/Geist-Variable.woff2') format('woff2');
     font-weight: 100 900; font-style: normal; font-display: swap; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--ground); color: var(--bone); }
+  html, body { margin: 0; background: var(--room); }
   body {
-    font: 15px/1.7 'Geist', ui-sans-serif, system-ui, sans-serif;
+    min-height: 100dvh;
+    padding: clamp(0px, 2.4vw, 34px);
+    font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
     font-weight: 430;
-    padding: max(28px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
-             max(36px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    color: var(--ink);
+    display: flex;
+  }
+  /* the index is one sheet: header, a short introduction, then the days —
+     a text list, no previews. The list is the artwork here. */
+  .sheet {
+    background: var(--sheet);
+    border-radius: clamp(0px, 3vw, 40px);
+    width: 100%;
+    min-height: calc(100dvh - clamp(0px, 2.4vw, 34px) * 2);
+    padding: clamp(24px, 4vw, 52px) clamp(22px, 4.5vw, 60px) clamp(28px, 4.5vw, 56px);
     display: flex;
     flex-direction: column;
-    align-items: center;
+    animation: sheet-in 420ms var(--ease-out);
   }
-  header {
-    max-width: 620px;
-    text-align: center;
-    margin: clamp(10px, 4vh, 56px) 0 clamp(36px, 6vh, 72px);
-  }
-  .atelier {
-    font-size: 12px;
-    font-weight: 560;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--bone-soft);
-    margin: 0 0 18px;
-  }
-  h1 {
-    font-size: clamp(38px, 9vw, 64px);
-    font-weight: 460;
-    letter-spacing: -0.022em;
-    line-height: 1.05;
-    margin: 0 0 16px;
-    text-wrap: balance;
-  }
-  header p {
-    color: var(--bone-soft);
-    margin: 0 0 8px;
-  }
-  header a { color: var(--bone); }
-  .batch {
-    margin: 12px 0 0;
-    font-size: 13px;
-    color: var(--bone-faint);
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 28px;
-    width: 100%;
-    max-width: 440px;   /* phone: one comfortable centered column */
-  }
-  @media (min-width: 720px) {
-    .grid { grid-template-columns: repeat(2, 1fr); max-width: 780px; gap: 30px; }
-  }
-  @media (min-width: 1080px) {
-    .grid { grid-template-columns: repeat(3, 1fr); max-width: 1140px; gap: 34px; }
-  }
-  /* each card is a small white print from the atelier */
-  .card {
-    display: block;
-    text-decoration: none;
-    color: var(--ink);
-    background: var(--sheet);
-    border-radius: 14px;
-    padding: 10px 10px 12px;
-    opacity: 0;
-    transform: translateY(8px);
-    animation: card-in 340ms var(--ease-out) forwards;
-    animation-delay: var(--d, 0ms);
-    transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
-    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.42);
-  }
-  @keyframes card-in {
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @media (hover: hover) and (pointer: fine) {
-    .card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
-    }
-  }
-  .card:active { transform: scale(0.98); }
+  @keyframes sheet-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   @media (prefers-reduced-motion: reduce) {
-    .card { animation: card-fade 200ms ease forwards; transform: none; }
-    @keyframes card-fade { to { opacity: 1; } }
-    .card:hover, .card:active { transform: none; }
+    .sheet { animation: sheet-fade 200ms ease; }
+    @keyframes sheet-fade { from { opacity: 0; } to { opacity: 1; } }
   }
-  .thumb {
-    position: relative;
-    aspect-ratio: var(--ratio, 3 / 4);
-    overflow: hidden;
-    border-radius: 7px;
-    background: #e9e3d5;   /* stage paper — no dark flash while loading */
+  header.top {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr auto;
+    gap: 12px;
+    font-size: clamp(11.5px, 1.4vw, 13.5px);
+    line-height: 1.8;
   }
-  .thumb iframe {
-    position: absolute;
-    top: 0; left: 0;
-    width: 200%; height: 200%;
-    transform: scale(0.5);
-    transform-origin: 0 0;
-    border: 0;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 300ms ease;
+  .top .lab { font-weight: 560; letter-spacing: 0.045em; text-transform: uppercase; }
+  .top a { color: inherit; text-decoration: none; }
+  @media (hover: hover) and (pointer: fine) { .top a:hover { text-decoration: underline; } }
+  @media (max-width: 560px) {
+    header.top { grid-template-columns: 1fr auto; }
+    .top .mid-col { display: none; }
   }
-  .thumb iframe.ready { opacity: 1; }
-  .meta {
-    padding: 11px 4px 2px;
+  .intro { margin: clamp(36px, 7vh, 84px) 0 0; max-width: 500px; }
+  .intro h1 {
+    font-size: clamp(22px, 2.4vw, 30px);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    margin: 0 0 12px;
+  }
+  .intro p {
+    font-size: clamp(14px, 1.6vw, 16px);
+    line-height: 1.75;
+    color: var(--ink-dim);
+    margin: 0;
+  }
+  .intro a { color: inherit; }
+  .days {
+    margin-top: auto;
+    padding-top: clamp(48px, 9vh, 110px);
+    display: flex;
+    flex-direction: column;
+  }
+  .day {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    gap: 12px;
-    font-size: 13.5px;
+    gap: clamp(16px, 3vw, 40px);
+    text-decoration: none;
+    color: inherit;
+    padding: clamp(6px, 1vw, 12px) 0;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: day-in 380ms var(--ease-out) forwards;
+    animation-delay: var(--d, 0ms);
   }
-  .meta b { font-weight: 540; }
-  .meta .date { font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
-  footer {
-    margin-top: clamp(52px, 8vh, 100px);
-    font-size: 13px;
-    color: var(--bone-faint);
-    max-width: 560px;
-    text-align: center;
+  @keyframes day-in { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .day { animation: day-fade 200ms ease forwards; transform: none; }
+    @keyframes day-fade { to { opacity: 1; } }
   }
-  footer p { max-width: 60ch; margin-left: auto; margin-right: auto; }
-  footer a { color: var(--bone-soft); }
-  .grid .note {
-    grid-column: 1 / -1;
-    text-align: center;
-    color: var(--bone-faint);
-    font-size: 13px;
-    padding: 48px 0;
+  .day .t {
+    font-size: clamp(30px, 5vw, 64px);
+    font-weight: 460;
+    letter-spacing: -0.022em;
+    line-height: 1.14;
+    transition: opacity 180ms var(--ease-out);
+  }
+  .day .d {
+    font-size: clamp(11px, 1.3vw, 12.5px);
+    color: var(--ink-dim);
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .day:hover .t { opacity: 0.5; }
+  }
+  .day:active .t { opacity: 0.5; }
+  .note {
+    margin-top: auto;
+    padding-top: 60px;
+    color: var(--ink-dim);
+    font-size: 14px;
   }
 </style>
 
-<header>
-  <p class="atelier">Johnnie’s atelier</p>
-  <h1>Art</h1>
-  <p>One small piece a day — algorithms trying to not look like algorithms.
-     Gradients, dither, ink, optics, feedback. After
-     <a href="https://zach.li" rel="noopener">Zach Lieberman</a>’s daily sketch practice.</p>
-  <p class="batch" id="batch"></p>
-</header>
+<div class="sheet">
+  <header class="top">
+    <div><span class="lab">Johnnie’s atelier</span></div>
+    <div class="mid-col"><span>Daily Practice</span></div>
+    <div><a href="/">johnnies.life/art</a></div>
+  </header>
 
-<main class="grid" id="grid" aria-label="pieces"></main>
+  <section class="intro">
+    <h1>A month with Johnnie’s head</h1>
+    <p>A 31-day project from Johnnie — one subject a day, studied in code and
+       curated hard. After <a href="https://zach.li" rel="noopener">Zach
+       Lieberman</a>’s daily sketch practice.</p>
+  </section>
 
-<footer>
-  <p>Every piece is seeded by its date — reload and it’s the same.
-     Open one, tap the artwork, and it’s reborn. Swipe or use the arrows to walk the room.</p>
-  <p>Made with WebGL and canvas, one file per day. <a href="/">johnnies.life</a></p>
-</footer>
+  <nav class="days" id="days" aria-label="days"></nav>
+</div>
 
 <script>
-  const grid = document.getElementById("grid");
-
-  // live thumbs come and go with the viewport: each one is a real GL/canvas
-  // context, and browsers cap those around 8–16 — offscreen cards give
-  // theirs back so the archive can outgrow the cap
-  const io = new IntersectionObserver((entries) => {
-    entries.forEach((en) => {
-      const f = en.target;
-      if (en.isIntersecting && !f.src) {
-        f.src = f.dataset.src;
-      } else if (!en.isIntersecting && f.src) {
-        f.classList.remove("ready");
-        f.removeAttribute("src");
-      }
-    });
-  }, { rootMargin: "160% 0px" });
-
+  const days = document.getElementById("days");
   fetch("sketches.json")
     .then((r) => r.json())
     .then((data) => {
-      document.getElementById("batch").textContent = data.batch_note || "";
-      // display order: newest date first, reading order within a date.
-      // manifest array order is irrelevant — this sort is the convention.
-      const items = data.sketches.slice()
+      // one line per day: the subject, newest first; a line opens the first
+      // piece of that day and the walk continues with arrows/swipe
+      const sorted = data.sketches.slice()
         .sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n));
-      if (!items.length) {
-        grid.innerHTML = '<p class="note">the atelier is empty — the first piece is on its way.</p>';
+      if (!sorted.length) {
+        days.innerHTML = '<p class="note">the atelier is empty — the first piece is on its way.</p>';
         return;
       }
-      items.forEach((s, i) => {
+      const seen = new Set();
+      let i = 0;
+      sorted.forEach((s) => {
+        if (seen.has(s.date)) return;
+        seen.add(s.date);
         const a = document.createElement("a");
-        a.className = "card";
+        a.className = "day";
         a.href = s.file;
-        a.style.setProperty("--d", Math.min(i * 45, 500) + "ms");
-        if (s.ratio) a.style.setProperty("--ratio", s.ratio);
-        const num = "#" + String(s.num || 0).padStart(3, "0");
-        const date = s.date.split("-").reverse().join("·"); // 2026-07-06 → 06·07·2026
-        a.innerHTML =
-          '<div class="thumb"><iframe loading="lazy" data-src="' + s.file +
-          '?thumb=1" title="' + num + " · " + s.title + '" tabindex="-1"></iframe></div>' +
-          '<div class="meta"><b>' + num + ' · <span lang="es">' + s.title +
-          "</span></b><span class='date'>" + date + "</span></div>";
-        const f = a.querySelector("iframe");
-        f.addEventListener("load", () => { if (f.src) f.classList.add("ready"); });
-        io.observe(f);
-        grid.appendChild(a);
+        a.style.setProperty("--d", Math.min(i++ * 60, 480) + "ms");
+        const date = s.date.split("-").reverse().join(" · "); // 2026-07-06 → 06 · 07 · 2026
+        a.innerHTML = '<span class="t">' + (s.subject || s.title) + '</span>' +
+          '<span class="d">' + date + "</span>";
+        days.appendChild(a);
       });
     })
     .catch(() => {
-      grid.innerHTML = '<p class="note">the atelier didn\'t load — reload to try again.</p>';
+      days.innerHTML = '<p class="note">the atelier didn’t load — reload to try again.</p>';
     });
 </script>
 </html>

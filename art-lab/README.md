@@ -73,12 +73,13 @@ Johnnie views the site primarily on his phone. Since the sixth curation
 (07·07, from Johnnie's own mock) every piece is presented as **the atelier
 sheet** (`johnnie/public/art/frame.js`):
 
-- A **white catalog page on a near-black room**, set in **Geist Sans**,
-  sentence case. Order: header (JOHNNIE'S ATELIER / ← Art · Daily Practice /
-  johnnies.life/art · date / #num) → **the artwork slot** → reseed caption →
-  the day's subject as a headline → a short wall-label description → a white
-  spec card (Title / Edition / Stack / Time spent) → big ← → navigation.
-  The sheet never changes; the artwork is the only variable.
+- **Desktop**: a white **data panel on the left** (header · subject headline
+  · wall-label description · white spec card · ← → navigation) and the
+  **artwork on the right**, spotlit on the near-black room at its own ratio.
+  **Phones**: the artwork IS the screen (full bleed); a small pill
+  (`#007 · Pileta`) opens the panel as a smooth sheet-modal. Set in Geist
+  Sans, sentence case. The panel never changes; the artwork is the only
+  variable. The index is a text list of days (subject + date, no previews).
 - Usage: `FRAME.mount({num, edition, subject, title, date, stack, time,
   desc, ratio, bleed, dark, noCanvas, onResize})` → `{stage, canvas, W, H,
   DPR}`. `stage` IS the artwork slot. `ratio` is slot width/height —
@@ -99,9 +100,10 @@ sheet** (`johnnie/public/art/frame.js`):
   settle pieces animate 0→100 once and stop their rAF loop.
 - Batch 001 (001–007) predates the sheet and uses the legacy square
   `ART.fit`/`ART.chrome` — leave those as history.
-- Gallery previews load each piece with `?thumb=1` — frame.js then renders
-  the artwork alone, filling the iframe; the gallery card supplies the
-  label. Cards honor a per-piece `ratio` field in `sketches.json`.
+- `?thumb=1` still renders the artwork alone full-screen (kept for previews
+  / og images), but the index no longer embeds live thumbs — it's a text
+  list. Manifest entries carry `subject` (the day's headline) and optional
+  `ratio`.
 - Geist Mono / Geist Pixel remain available for use **inside** artworks
   (annotations, counters) — never on the sheet.
 
