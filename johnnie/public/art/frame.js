@@ -49,7 +49,7 @@ font-size:clamp(6.5px,1.95cqw,12px);line-height:1.5;letter-spacing:.075em;
 color:rgba(var(--fink),.9);text-transform:uppercase}
 .frame b{font-weight:640;color:rgba(var(--fink),.97)}
 .frame .lc{text-transform:lowercase}
-.frame .crumb{pointer-events:auto;color:rgba(var(--fink),.55);text-decoration:none;
+.frame .crumb{pointer-events:auto;color:rgba(var(--fink),.62);text-decoration:none;
 font-weight:640;transition:color 150ms ease}
 @media (hover:hover) and (pointer:fine){.frame .crumb:hover{color:rgba(var(--fink),.97)}}
 .frame .nav{position:absolute;top:50%;transform:translateY(-50%);z-index:6;pointer-events:auto;
@@ -64,7 +64,7 @@ background:
  repeating-linear-gradient(to bottom, rgba(var(--fink),.07) 0 1px, transparent 1px calc(100%/8));
 background-position:-1px -1px}
 .frame .cell{padding:.65em .8em;position:relative}
-.frame .dim{color:rgba(var(--fink),.48)}
+.frame .dim{color:rgba(var(--fink),.58)}
 .frame .tl{grid-area:1/1/2/4}
 .frame .tr{grid-area:1/5/2/7;text-align:right}
 .frame .ml{grid-area:2/1/3/3}
