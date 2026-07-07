@@ -92,10 +92,10 @@ sheet** (`johnnie/public/art/frame.js`):
   habit (anchor composition to width, extend scenery on the other axis);
   three.js pieces dolly to fit.
 - **Navigation lives in the sheet**: ← Art breadcrumb top-left, big ← →
-  arrows at the foot, swipe on the artwork, arrow keys. Ordered by the
+  arrows at the foot and arrow keys — no swipe; each composition owns its touch. Ordered by the
   manifest sort (date desc, n asc). URL matching strips `.html`
   (production serves extensionless).
-- Tap on the artwork = reseed (disclosed in the caption). `r` key too.
+- Reseed is the `r` key only — clicks and taps never restart a piece.
 - Temporal replay pieces use `cycle = t % 34; clock = min(120, cycle/26*120)`;
   settle pieces animate 0→100 once and stop their rAF loop.
 - Batch 001 (001–007) predates the sheet and uses the legacy square

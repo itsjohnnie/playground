@@ -211,7 +211,7 @@ ${thumb ? `body{display:block;padding:0}
       // clicks never restart the piece; reseed is the r key only
       addEventListener("keydown", (e) => { if (e.key === "r") ART.reseed(); });
 
-      // ← → navigation: arrows at the panel's foot, swipe on the artwork,
+      // ← → navigation: arrows at the panel's foot,
       // arrow keys anywhere. Production serves extensionless URLs, so match
       // basenames with the extension stripped.
       const base = (p) => p.split("/").pop().replace(/\.html$/, "");
@@ -248,21 +248,8 @@ ${thumb ? `body{display:block;padding:0}
           nav.appendChild(xBtn);   // ✕ sits centered between the arrows
           mk("next", next, "→");
 
-          // pieces that own hand gestures (gesture: true) keep the drag for
-          // themselves — navigation stays on the arrows and arrow keys
-          if (!o.gesture) {
-            let sx = 0, sy = 0;
-            stage.addEventListener("touchstart", (e) => {
-              sx = e.touches[0].clientX; sy = e.touches[0].clientY;
-            }, { passive: true });
-            stage.addEventListener("touchend", (e) => {
-              const t = e.changedTouches[0];
-              const dx = t.clientX - sx, dy = t.clientY - sy;
-              if (Math.abs(dx) > 60 && Math.abs(dx) > 1.8 * Math.abs(dy)) {
-                dx < 0 ? go(next) : go(prev);
-              }
-            }, { passive: true });
-          }
+          // no swipe navigation — every composition owns its own touch;
+          // moving between matches is the arrows and arrow keys
           addEventListener("keydown", (e) => {
             if (e.key === "ArrowRight") go(next);
             if (e.key === "ArrowLeft") go(prev);
