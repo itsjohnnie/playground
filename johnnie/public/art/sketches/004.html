@@ -40,6 +40,36 @@ vec2 sdGrad(vec2 q, vec2 b, float r){
   return g * sign(q + vec2(1e-4));
 }
 
+/* ---- bronze: a microfacet metal (GGX + Schlick, F0 = the alloy) ---- */
+float dGGX(float ndh, float a){
+  float a2 = a*a;
+  float dd = ndh*ndh*(a2 - 1.0) + 1.0;
+  return a2/(3.14159265*dd*dd);
+}
+float dAniso(vec3 h, vec3 n, vec3 t, vec3 bt, float at, float ab){
+  float td = dot(t, h)/at, bd = dot(bt, h)/ab, nd = dot(n, h);
+  float dd = td*td + bd*bd + nd*nd;
+  return 1.0/(3.14159265*at*ab*dd*dd);
+}
+float visSmith(float ndl, float ndv, float a){       // Hammon's height-correlated fit
+  return 0.5/max(mix(2.0*ndl*ndv, ndl + ndv, a), 1e-4);
+}
+vec3 fresnel(vec3 F0, float c){ return F0 + (1.0 - F0)*pow(1.0 - c, 5.0); }
+vec3 toWorld(vec3 s){ return vec3(dot(u_cx, s), dot(u_cy, s), -dot(u_rd, s)); }
+// the room as the metal sees it: dark floor, warm lamp lobe, faint cool
+// fill from above, the felt wall filling the back hemisphere
+vec3 envRoom(vec3 Rw, float rough, float fall){
+  vec3 key = vec3(1.06, 0.97, 0.86);
+  vec3 e = mix(vec3(0.048, 0.038, 0.028),
+               vec3(0.150, 0.168, 0.200),
+               smoothstep(-0.35, 0.85, -Rw.y));
+  e = mix(e, vec3(0.062, 0.050, 0.038), smoothstep(0.15, -0.55, Rw.z));
+  float lm = max(dot(Rw, u_lw), 0.0);
+  e += key*fall*(pow(lm, mix(46.0, 3.0, rough))*mix(3.0, 0.85, rough)
+               + pow(lm, 2.2)*0.20);
+  return e;
+}
+
 void main(){
   vec2 fc = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
   vec2 p = fc - 0.5*u_res;                    // world px, origin at slab centre
@@ -98,8 +128,9 @@ void main(){
       float occ  = smoothstep(0.03, -0.20, cav);          // recesses -> patina
       float wear = smoothstep(0.06, 0.26, cav);           // proud edges -> polish
       float fb = smoothstep(-bw, -0.12*bw, sd0);          // bevelled arris
+      vec2 gb = sdGrad(q0, b, r);
       if (fb > 0.0){
-        vec3 Nb = normalize(vec3(sdGrad(q0, b, r)*0.80, 0.62));
+        vec3 Nb = normalize(vec3(gb*0.80, 0.62));
         N = normalize(mix(N, Nb, fb));
         wear = max(wear, fb*0.85);
         occ *= 1.0 - fb;
@@ -116,16 +147,45 @@ void main(){
       }
       shad *= 0.75;
       float mot = 0.6*vnoise(q0/(S*0.055) + 7.3) + 0.4*vnoise(q0/(S*0.012));
+      // oxidized recesses are matte paint; everywhere else the color IS the alloy
       vec3 alb = mix(vec3(0.40, 0.27, 0.15)*(0.80 + 0.45*mot),
                      vec3(0.085, 0.082, 0.062), occ*0.88);
-      alb = mix(alb, vec3(0.90, 0.66, 0.33), wear*0.60);
-      float dif = max(dot(N, Ls), 0.0)*(1.0 - shad);
-      float ndh = max(dot(N, Hv), 0.0);
-      float spec = pow(ndh, 64.0)*(0.55 + 1.8*wear) + pow(ndh, 12.0)*0.24;
-      spec *= (1.0 - shad)*(1.0 - occ*0.7);
-      float fil = max(dot(N, Lfs), 0.0)*0.16;
+      alb = mix(alb, vec3(0.55, 0.38, 0.19), wear*0.40);
+      // roughness by surface: sand-cast field / worn plateau / polished arris
+      float rough = mix(mix(0.68, 0.52, mot), 0.30, wear);
+      rough = mix(rough, 0.16, fb);
+      rough = mix(rough, 0.82, occ);
+      float metal = mix(0.88, 0.10, occ);
+      vec3 F0 = mix(vec3(0.44, 0.30, 0.15), vec3(0.92, 0.67, 0.33), wear);
+      F0 = mix(F0, vec3(0.96, 0.75, 0.42), fb);
+      F0 = mix(vec3(0.045), F0, metal);
+      // sand grain breaks the highlight into sparkle at grazing light
+      float mic = (1.0 - wear*0.55)*(1.0 - fb)*(1.0 - occ*0.7);
+      vec2 cell = floor(q0/(S*0.0017));
+      N = normalize(vec3(N.xy + (vec2(hash(cell), hash(cell + 19.7)) - 0.5)*0.22*mic, N.z));
+      float ndl = max(dot(N, Ls), 0.0);
+      float ndv = max(dot(N, -d), 1e-3);
+      float a = max(rough*rough, 2e-3);
+      float Dg;
+      if (fb > 0.02){                     // the arris is machined: brushed along its run
+        vec3 Tt = normalize(vec3(-gb.y, gb.x, 0.0) - N*dot(N, vec3(-gb.y, gb.x, 0.0)));
+        Dg = dAniso(Hv, N, Tt, cross(N, Tt), min(a*(1.0 + 2.4*fb), 0.30), a);
+      } else {
+        Dg = dGGX(max(dot(N, Hv), 0.0), a);
+      }
+      float lit = 1.0 - shad;
+      vec3 spec = key*(Dg*visSmith(ndl, ndv, a)*ndl*lit*fall*(1.0 - occ*0.5))
+                * fresnel(F0, max(dot(Ls, Hv), 0.0));
       float ao = 1.0 - occ*0.55;
-      sc = alb*(key*dif*fall*1.65 + cool*fil*ao + 0.055*ao) + key*spec*fall;
+      // the room, mirrored in the metal — flat faces come alive as they tilt
+      vec3 Fe = F0 + (max(vec3(1.0 - rough), F0) - F0)*pow(1.0 - ndv, 5.0);
+      vec3 env = envRoom(toWorld(reflect(d, N)), rough, fall)*Fe*ao
+               * (1.0 - occ*0.6)*mix(1.0, lit, 0.4);
+      float dif = ndl*lit;
+      float fil = max(dot(N, Lfs), 0.0)*0.16;
+      sc = alb*(1.0 - metal*0.72)*(key*dif*fall*2.3 + cool*fil*ao*2.0 + 0.10*ao)
+         + spec + env
+         + F0*a*key*dif*fall*0.35;        // multiple-scatter return off the rough cast
     } else {
       // ---- side wall: rough sand-cast edge ----
       float ta = tT, tb = tB;
@@ -148,10 +208,21 @@ void main(){
       float bnc = max(dot(N, u_bn), 0.0)*0.32;
       float aoz = mix(0.48, 1.0, (zh + T)/T);              // dark toward the wall
       vec3 alb = vec3(0.33, 0.225, 0.13)*(0.62 + 0.55*sb)*(0.82 + 0.36*sg);
-      float ndh = max(dot(N, Hv), 0.0);
-      float spec = pow(ndh, 10.0)*0.25 + pow(ndh, 48.0)*0.30*fa;
-      sc = alb*aoz*(key*dif*fall*1.55 + cool*fil + vec3(0.55, 0.42, 0.30)*bnc + 0.09)
-         + key*spec*fall*aoz;
+      // raw cast wall: rough alloy; the filed arris is the polished moment
+      float rough = mix(mix(0.86, 0.62, sb), 0.22, fa*0.8);
+      vec3 F0 = mix(vec3(0.34, 0.23, 0.12), vec3(0.90, 0.66, 0.33), fa*0.65);
+      float ndl = dif;
+      float ndv = max(dot(N, -d), 1e-3);
+      float a = max(rough*rough, 2e-3);
+      vec3 Tt = normalize(vec3(-g.y, g.x, 0.0) - N*dot(N, vec3(-g.y, g.x, 0.0)));
+      float Dg = dAniso(Hv, N, Tt, cross(N, Tt), min(a*(1.0 + 2.0*fa), 0.50), a);
+      vec3 spec = key*(Dg*visSmith(ndl, ndv, a)*ndl*fall)
+                * fresnel(F0, max(dot(Ls, Hv), 0.0));
+      vec3 Fe = F0 + (max(vec3(1.0 - rough), F0) - F0)*pow(1.0 - ndv, 5.0);
+      vec3 env = envRoom(toWorld(reflect(d, N)), rough, fall)*Fe;
+      sc = alb*0.55*aoz*(key*dif*fall*2.0 + cool*fil*1.6 + vec3(0.55, 0.42, 0.30)*bnc*1.8 + 0.13)
+         + (spec + env)*aoz
+         + F0*a*key*dif*fall*0.30*aoz;
     }
     col = mix(col, sc, cov);
   }
