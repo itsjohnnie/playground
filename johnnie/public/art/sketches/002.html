@@ -111,7 +111,7 @@ function build() {
   T0 = py + 0.108 * ph; B0 = py + 0.948 * ph;
   S = (B0 - T0) / (TOTAL - 1);
   fs = Math.min(11.5 * DPR, Math.max(0.022 * pw, 7.5 * DPR));
-  JQ = 0.55 * DPR; // the resting needle's reach — ~0.55 css px, sub-pixel life
+  JQ = 0.38 * DPR; // the resting needle's reach — sub-pixel, life not wobble
 
   // shot ticks: pinned real minutes + seeded remainder within exact counts
   const Rt = ART.rng(seed + "ticks");
