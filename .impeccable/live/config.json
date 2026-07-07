@@ -1,0 +1,7 @@
+{
+  "files": ["johnnie/public/art/index.html"],
+  "exclude": [],
+  "insertBefore": "</html>",
+  "commentSyntax": "html",
+  "cspChecked": true
+}

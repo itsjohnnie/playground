@@ -35,7 +35,18 @@ johnnie/public/art/          ← the live site (johnnies.life/art)
 
 ## How to make a daily sketch (for future sessions)
 
-1. **Read first:** this file, `research/zach-lieberman.md`, the latest `log/batch-*.md`
+0. **Impeccable governs design work.** The repo has the `impeccable` skill
+   installed (`.claude/skills/impeccable/`). `PRODUCT.md` and `DESIGN.md` at
+   the repo root are the strategic + visual canon for the art project — read
+   both before designing anything. New pieces follow the `/impeccable craft`
+   discipline (shape the idea against PRODUCT.md's principles, build to
+   DESIGN.md's tokens, verify like an art director); product-UI changes
+   (gallery, frame) go through the matching `/impeccable` command
+   (`polish`, `audit`, `critique`, …). The design hook auto-reviews UI
+   edits — fix real findings, and only waive with recorded reasons
+   (`.impeccable/config.json`). Geist is a user-confirmed waiver.
+1. **Read first:** this file, `PRODUCT.md`, `DESIGN.md`,
+   `research/zach-lieberman.md`, the latest `log/batch-*.md`
    (for what's been liked/disliked), and 2–3 recent `sketches/NNN.html` files.
 2. **Pick a direction** from the idea bank below or iterate on a liked piece —
    Lieberman's rule: *"make something new out of something old."* Remixing

@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "reason": "User explicitly requested the Geist family for all art-project type",
+        "createdAt": "2026-07-07T04:22:26.347Z"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist mono",
+        "reason": "User explicitly requested the Geist family",
+        "createdAt": "2026-07-07T04:22:26.411Z"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist pixel",
+        "reason": "User explicitly requested the Geist family",
+        "createdAt": "2026-07-07T04:22:26.471Z"
+      }
+    ]
+  }
+}
