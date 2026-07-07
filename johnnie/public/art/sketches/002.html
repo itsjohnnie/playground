@@ -25,10 +25,18 @@
 // no rectangle anywhere. Draws itself once (~11 s), then stays alive
 // (johnnie: "staticky… more realistic and alive"): a resting seismograph
 // needle's static — every trace carries a sub-pixel low-frequency tremor,
-// phase drifting per line, the grain shimmering faintly with it. Half-rate
+// phase drifting per line, the grain breathing faintly with it. Half-rate
 // idle (every other rAF tick); the still layer (stamp, annotations, pools)
 // is baked once so idle frames only re-stroke the 96 traces. At a glance
 // the record is still; reduced motion settles instantly and stops.
+// And the instrument senses footsteps (johnnie: "as the mouse or your
+// finger is flowing… the lines can move"): a pointer travelling over the
+// record stirs the nearby traces — a vertical shiver swelling around it
+// with smooth falloff (a few rows, a hand's width along the line), fed into
+// the same tremor, decaying exponentially (~1 s) once it passes. A tap is
+// a sharp little jolt that rings the lines under it. Heavier pens shiver
+// less; spikes and colors tremble without deforming their story. The
+// interaction rides the same loop — full-rate ticks only while stirred.
 
 const seed = ART.seed("2026-06-22-002");
 const N = ART.makeNoise(seed);
@@ -69,11 +77,15 @@ let px, py, pw, ph, JQ;
 let drawn = 0, settled = false, start, tick = 0;
 const NS = 240;              // samples per trace
 const JY = new Float64Array(NS); // scratch: one line's live tremor
+// the instrument's footstep sense: per-line excitation from the pointer
+const EX = new Float64Array(TOTAL); // disturbance amplitude per line
+const EU = new Float64Array(TOTAL); // where along the line it sits (u)
+let pT = -1e9, pMax = 0, lastLive;  // last pointer time · peak excitation
 
 const F = FRAME.mount({
   num: 2, title: "Sismógrafo", subject: "Argentina vs. Austria",
   edition: "02/31", date: "22·06·2026",
-  stack: "Canvas 2D", time: "48 minutes",
+  stack: "Canvas 2D", time: "48 minutes", gesture: true,
   desc: "A plotter’s seismogram of the match, one tremor per minute from kickoff to the sixth minute of stoppage: amplitude is intensity, ink weight is possession, and the two bookings cut below the line at 76’ and 90+2’. The record ends on its deepest spike — Messi at 90+5’, his eighteenth World Cup goal, more than anyone has ever scored.",
   open: true, dark: true,
   onResize(w, h, dpr) { W = w; H = h; DPR = dpr; build(); },
@@ -332,13 +344,57 @@ function inkGrad(g, heavy) {
 
 // the live tremor: a resting needle's static. Two low-frequency waves along
 // the line plus a whole-line breath — sub-pixel, phases drifting per line.
-// Fills the JY scratch for one line at time t (seconds).
-function tremor(L, t) {
+// A stirred line adds a fast vertical shiver around the pointer's spot,
+// gaussian in u, scaled by its excitation; heavier pens shiver less.
+// Fills the JY scratch for line i at time t (seconds).
+function tremor(L, i, t) {
+  const ex = EX[i];
+  const stir = ex > 0.004
+    ? ex * S * 0.34 * (L.heavy || L.event ? 0.72 : 1) : 0;
+  const eu = EU[i];
   for (let j = 0; j < NS; j++) {
     const u = j / (NS - 1);
-    JY[j] = JQ * (0.55 * Math.sin(u * 2.6 + t * 1.05 + L.phA)
+    let y = JQ * (0.55 * Math.sin(u * 2.6 + t * 1.05 + L.phA)
                 + 0.30 * Math.sin(u * 8.3 - t * 0.65 + L.phB)
                 + 0.15 * Math.sin(t * 0.33 + L.phC));
+    if (stir) {
+      const du = (u - eu) / 0.16;
+      y += stir * Math.exp(-du * du) * Math.sin(u * 34 + t * 43 + L.phB * 3);
+    }
+    JY[j] = y;
+  }
+}
+
+// a footstep on the record: the pointer stirs the lines it passes over.
+// Excitation swells with a smooth row falloff and remembers where (u);
+// a tap (jolt) hits harder and tighter, then everything decays in draw().
+function disturb(ev, jolt) {
+  if (!lines) return;
+  const r = F.canvas.getBoundingClientRect();
+  const sy = (ev.clientY - r.top) * (H / r.height);
+  const u = Math.min(1, Math.max(0,
+    ((ev.clientX - r.left) * (W / r.width) - X0) / (X1 - X0)));
+  const row = (sy - T0) / S;
+  const k = jolt ? 1.3 : 0.75, sig = jolt ? 2.4 : 3.4;
+  for (let i = 0; i < TOTAL; i++) {
+    const d = (i - row) / sig;
+    const g = k * Math.exp(-d * d);
+    if (g > EX[i]) { EX[i] = g; EU[i] = u; }
+    else if (g > 0.01) EU[i] += (u - EU[i]) * Math.min(1, g);
+  }
+  if (k > pMax) pMax = Math.min(k, 1.3);
+  pT = performance.now();
+}
+
+// excitation decay — exponential, ~1 s ring-down after the pointer passes
+function relax(tms) {
+  const dt = lastLive === undefined ? 0.033 : Math.min(0.1, (tms - lastLive) / 1000);
+  lastLive = tms;
+  const f = Math.exp(-dt / 0.35);
+  pMax = 0;
+  for (let i = 0; i < TOTAL; i++) {
+    EX[i] = EX[i] > 0.002 ? EX[i] * f : 0;
+    if (EX[i] > pMax) pMax = EX[i];
   }
 }
 
@@ -350,7 +406,7 @@ function drawLine(g, i, clip, t) {
   const L = lines[i], pts = L.pts;
   const n = Math.max(2, Math.min(pts.length, Math.ceil(clip * (pts.length - 1)) + 1));
   const live = t !== undefined;
-  if (live) tremor(L, t);
+  if (live) tremor(L, i, t);
   g.fillStyle = ROOM;
   g.beginPath();
   g.moveTo(pts[0].x, L.y + 1.6 * DPR);
@@ -486,8 +542,9 @@ function renderLive(t) {
 
 // the record draws itself once — ~11 s, top to bottom — then stays alive:
 // the loop keeps running at half rate (every other rAF tick) laying the
-// traces down with the resting needle's static. Reduced motion settles
-// instantly and the loop stops — the still record is the artwork.
+// traces down with the resting needle's static; while a pointer stirs the
+// record (or its wake still rings) it ticks at full rate. Reduced motion
+// settles instantly and the loop stops — the still record is the artwork.
 function draw(tms) {
   if (start === undefined) start = tms;
   const t = (tms - start) / 1000;
@@ -498,11 +555,20 @@ function draw(tms) {
   if (pos >= TOTAL) {
     settled = true;
     if (RM) { render(TOTAL); return; } // reduced motion: the record rests
-    if ((tick++ & 1) === 0) renderLive(t);
+    const stirred = tms - pT < 160 || pMax > 0.02;
+    if (stirred || (tick & 1) === 0) { relax(tms); renderLive(t); }
+    tick++;
   } else render(pos);
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
+// the instrument senses footsteps — pointer over the record stirs it;
+// reduced motion keeps the record fully still (no listeners at all)
+if (!RM) {
+  F.canvas.style.touchAction = "none"; // the drag is ours (never navigates)
+  F.canvas.addEventListener("pointermove", (e) => disturb(e, false), { passive: true });
+  F.canvas.addEventListener("pointerdown", (e) => disturb(e, true), { passive: true });
+}
 // the stamp is baked into the record at build time — if Geist lands after
 // the first bake, rebuild once so the registry type is true
 document.fonts.load(FONT(16)).then(() => {

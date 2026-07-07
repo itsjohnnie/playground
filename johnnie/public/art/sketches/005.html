@@ -511,11 +511,20 @@ function frame(now) {
   draw(tau, Math.min(1, lifeT / 2.2));           // the light comes up once
 }
 
-// reduced motion: settle straight into the breakthrough and hold it
+// reduced motion: settle straight into the breakthrough and hold it —
+// chunked across frames (a quick fade-in, never a blocked main thread)
 function still() {
-  for (let i = 0; i < 130; i++) tick(1 / 36, tm(86));
-  for (let i = 0; i < 55; i++) tick(1 / 36, tBreak + (i / 55) * 1.5);
-  draw(tBreak + 0.95, 1);
+  const plan = [];
+  for (let i = 0; i < 130; i++) plan.push([1 / 36, tm(86)]);
+  for (let i = 0; i < 55; i++) plan.push([1 / 36, tBreak + (i / 55) * 1.5]);
+  let k = 0;
+  const step = () => {
+    const n = Math.min(12, plan.length - k);
+    for (let i = 0; i < n; i++, k++) tick(plan[k][0], plan[k][1]);
+    draw(tBreak + 0.95, Math.min(1, (k / plan.length) * 1.25));
+    if (k < plan.length) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
 }
 </script>
 </body>
