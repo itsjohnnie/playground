@@ -5,29 +5,118 @@
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
 <script src="data-005.js"></script>
-<script id="frag" type="x-shader">
-precision highp float;
-uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
-uniform sampler2D u_map;
+<script>
+// 005 · embate — Argentina 3–2 Egypt as two ink fronts colliding in still
+// water, forever. A genuine fluid simulation (stable fluids: semi-Lagrangian
+// advection + Jacobi pressure projection, ping-pong half-float FBOs at low
+// resolution) carries two dyes — pharaonic ochre pressing down from above,
+// celeste rising from below — and the match's own clock drives the forcing:
+// Egypt's goals at 15' and 67' shove the shear line down; the 21' penalty is
+// a celeste thrust that dies against it; the 58' VAR goal an ochre surge
+// pulled back; then the late pressure builds through 79' and 83' until, at
+// 90+2', a narrow celeste jet breaks through the ochre line — one breath of
+// gold — the whistle releases the strain, the waters regather, and the clash
+// begins again. One match per 40-second cycle; the simulation never cuts, so
+// there is no seam — each remontada rises out of the residue of the last.
+// All event minutes and the score-state line come from data-005.js (M5).
 
-// 005 — sello — the remontada set as a compositor's forme and proofed on
-// cotton rag. A sheet of handmade paper on dark felt; the locked-up type
-// presses the whole page blind into the fibres (a true height field under
-// one raking light), then the ink arrives in match order — so the page
-// goes wrong before it goes right. The ninety minutes are ninety sorts in
-// six lines of fifteen, extra leading at half-time, then the stoppage
-// line: twelve smaller sorts, the line the whistle cut short. Goals stand
-// type-high and take their team's ink — Egypt's red ochre lands first;
-// the 21' sort stands type-high but never takes ink (the penalty Shobeir
-// saved); the 58' sort gets only a starved, broken film (the goal VAR
-// withdrew); the four late bookings are gilt rules through their sorts in
-// the last line. A small sol de mayo survives as the printer's head-piece,
-// and the score line may only be inked after 90+2. Pressed once, inked
-// once, then it rests. Match constants (#defines) come from data-005.js.
+const seed = ART.seed("2026-07-07-005");
+const M = window.M5;
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const float TAU = 6.28318530718;
+/* ---------------- choreography: the match as forcing ---------------- */
 
-float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+const T = 40;                                   // seconds per cycle
+const PLAY = 34;                                // 0'..90+12' live; then release
+const tm = (m) => (m / M.totalMin) * PLAY;
+
+// smoothstep keyframe envelope
+function env(t, ks) {
+  if (t <= ks[0][0]) return ks[0][1];
+  for (let i = 1; i < ks.length; i++) {
+    if (t <= ks[i][0]) {
+      const a = ks[i - 1], b = ks[i];
+      const u = (t - a[0]) / Math.max(b[0] - a[0], 1e-6);
+      return a[1] + (b[1] - a[1]) * u * u * (3 - 2 * u);
+    }
+  }
+  return ks[ks.length - 1][1];
+}
+const K = {
+  // drive: how hard each front presses (celeste up, ochre down)
+  da: [[0, 1.0], [tm(14), 0.95], [tm(18), 0.85], [tm(60), 0.80], [tm(70), 0.72],
+       [tm(76), 0.92], [tm(84), 1.30], [tm(90), 1.40], [34.2, 1.20], [37, 1.0]],
+  de: [[0, 1.0], [tm(14), 1.10], [tm(18), 1.38], [tm(60), 1.48], [tm(70), 1.62],
+       [tm(78), 1.35], [tm(84), 1.05], [tm(90), 1.00], [34.2, 0.95], [37, 1.0]],
+  // where the front holds — the score state as a waterline
+  eta: [[0, 0.50], [tm(13), 0.49], [tm(19), 0.40], [tm(56), 0.37], [tm(66), 0.35],
+        [tm(71), 0.285], [tm(78), 0.32], [tm(81), 0.41], [tm(85), 0.50],
+        [tm(91), 0.53], [34.2, 0.54], [37.5, 0.50]],
+  // opposing drift along the interface — the shear that makes the billows
+  sh: [[0, 0.55], [tm(15), 0.90], [tm(45), 1.05], [tm(70), 1.30],
+       [tm(90), 1.50], [34.5, 0.80], [37, 0.55]],
+};
+const gauss = (t, c, w) => Math.exp(-((t - c) / w) * ((t - c) / w));
+const relOf = (t) => {                          // the whistle's release window
+  const s = (a, b, x) => Math.min(1, Math.max(0, (x - a) / (b - a)));
+  const u1 = s(33.8, 35.2, t), u2 = 1 - s(37.4, 39.2, t);
+  return (u1 * u1 * (3 - 2 * u1)) * (u2 * u2 * (3 - 2 * u2));
+};
+
+// event impulses, seeded across the pitch, built from the record
+const Rx = ART.rng(seed + "-x");
+const exs = [];
+for (let i = 0; i < 8; i++) exs.push(0.22 + 0.56 * Rx());
+const PU = [];
+{
+  const g = M.goals;
+  // goals: a shove from within the mass toward the other goal
+  PU.push({ t: tm(g[0].min), dur: 1.3, x: exs[0], yo: +0.10, dir: -1, amp: 340, w: 0.085, ink: -0.9 });
+  PU.push({ t: tm(g[1].min), dur: 1.4, x: exs[1], yo: +0.10, dir: -1, amp: 380, w: 0.090, ink: -1.0 });
+  PU.push({ t: tm(g[2].min), dur: 1.2, x: exs[2], yo: -0.10, dir: +1, amp: 360, w: 0.080, ink: +0.9 });
+  PU.push({ t: tm(g[3].min), dur: 1.2, x: exs[3], yo: -0.10, dir: +1, amp: 400, w: 0.080, ink: +1.0 });
+  // 90+2 — the breakthrough: narrow, sustained, rising through the line
+  PU.push({ t: tm(g[4].min), dur: 1.7, x: exs[4], yo: -0.06, dir: +1, amp: 920, w: 0.055, ink: +1.6, rise: 0.42 });
+  // 21' — the penalty: a thrust that dies against the line
+  const p = M.penaltyMissed;
+  PU.push({ t: tm(p.min), dur: 0.8, x: exs[5], yo: -0.10, dir: +1, amp: 300, w: 0.060, ink: +0.5 });
+  PU.push({ t: tm(p.min) + 0.55, dur: 0.9, x: exs[5], yo: +0.04, dir: -1, amp: 340, w: 0.075, ink: -0.7 });
+  // 58' — the VAR goal: a surge pulled back
+  const v = M.disallowed[0];
+  PU.push({ t: tm(v.min), dur: 0.9, x: exs[6], yo: +0.10, dir: -1, amp: 320, w: 0.070, ink: -0.8 });
+  PU.push({ t: tm(v.min) + 0.7, dur: 1.0, x: exs[6], yo: -0.02, dir: +1, amp: 260, w: 0.090, ink: 0 });
+}
+const tBreak = tm(M.goals[4].min);              // 90+2 → the gold instant
+const gxBreak = exs[4];
+
+function chor(tau) {
+  const rel = relOf(tau);
+  const da = env(tau, K.da), de = env(tau, K.de);
+  const eta = env(tau, K.eta), sh = env(tau, K.sh);
+  const kline = 70 * (1 - 0.55 * gauss(tau, tBreak + 0.85, 1.1)) * (1 - 0.3 * rel);
+  const pulses = [];
+  for (const e of PU) {
+    const u = (tau - e.t) / e.dur;
+    if (u <= 0 || u >= 1 || pulses.length >= 2) continue;
+    const w = Math.sin(Math.PI * u) ** 2;
+    const y = eta + e.yo + (e.rise ? e.rise * u : 0);
+    pulses.push({ x: e.x, y, fy: e.dir * e.amp * w, ink: e.ink * w, w: e.w });
+  }
+  while (pulses.length < 2) pulses.push({ x: 0, y: -9, fy: 0, ink: 0, w: 0.06 });
+  return {
+    da, de, eta, sh, kline, rel, pulses,
+    noise: 5 + 6 * Math.max(0, sh - 0.55),
+    gold: gauss(tau, tBreak + 0.95, 0.85),
+    srcO: 0.85 * de * (1 + 0.25 * rel),
+    srcC: 0.85 * da * (1 + 0.25 * rel),
+  };
+}
+
+/* ---------------- shaders ---------------- */
+
+const VS = "attribute vec2 a;varying vec2 vUv;void main(){vUv=a*0.5+0.5;gl_Position=vec4(a,0.,1.);}";
+const NOISE = `
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453); }
 float vnoise(vec2 p){
   vec2 i = floor(p), f = fract(p);
   f = f*f*(3.0-2.0*f);
@@ -38,359 +127,390 @@ float fbm(vec2 p){
   float s = 0.0, a = 0.5;
   for (int i = 0; i < 3; i++){ s += a*vnoise(p); p = p*2.03 + 11.7; a *= 0.5; }
   return s;
-}
-float ease(float t){ t = clamp(t, 0.0, 1.0); return 1.0 - pow(1.0 - t, 3.0); }
-float band(float d, float w, float aa){ return smoothstep(w + aa, w - aa, abs(d)); }
-float rsdf(vec2 p, vec2 b, float r){
-  vec2 d = abs(p) - b + r;
-  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;
-}
+}`;
 
-// each printed element inks in at its minute of the match
-float cue(float m){ return ease((u_p - (0.50 + m/MINS*0.30)) / 0.07); }
-float goalMin(int i){ return i==0 ? G0 : i==1 ? G1 : i==2 ? G2 : i==3 ? G3 : G4; }
-vec2 mapUV(vec2 u){ return vec2((u.x + 0.35)/0.70, (0.45 - u.y)/0.90); }
-
-// the forme: returns (blind deboss depth, celeste ink, ochre ink, gold ink)
-vec4 plate(vec2 u, float aa){
-  float press = ease((u_p - 0.14) / 0.28);
-  vec4 o = vec4(0.0);
-
-  // the pressed lettering (baked type — R carries the whole strike)
-  o.x = max(o.x, texture2D(u_map, mapUV(u)).r * 0.92);
-
-  // the sol de mayo, reduced to the printer's head-piece ornament
-  {
-    vec2 v = u - vec2(0.0, ORNY);
-    float r = length(v);
-    if (r < 0.030){
-      float phi = atan(v.x, v.y);
-      float face = smoothstep(aa, -aa, r - 0.0095);
-      float t16 = phi/TAU*16.0;
-      float i16 = floor(t16 + 0.5);
-      float fr = abs(t16 - i16);
-      float L = mix(0.0245, 0.0195, mod(i16, 2.0));
-      float wu = 0.20 * clamp((L - r) / (L - 0.0115), 0.0, 1.0);
-      float ray = smoothstep(aa, -aa, (fr - wu) * (TAU/16.0) * max(r, 1e-3))
-                * smoothstep(0.0115 - aa, 0.0115 + aa, r)
-                * smoothstep(L, L - 0.0015, r);
-      float sun = max(face, ray);
-      o.x = max(o.x, sun);
-      o.w = max(o.w, sun * ease((u_p - 0.875) / 0.11));
-    }
-  }
-
-  // the forme — ninety minute-sorts in six lines of fifteen, extra leading
-  // at half-time, then the stoppage line: twelve smaller sorts, the line
-  // the whistle cut short. Quads press low (furniture); events stand
-  // type-high.
-  {
-    float col = floor((u.x - FX0) / GX);
-    float yy = FTOP - u.y;
-    float gap = step(3.0*GY, yy) * (1.0 - step(3.0*GY + HTG, yy));
-    if (yy >= 3.0*GY + HTG) yy -= HTG;
-    float row = floor(yy / GY);
-    float maxCol = row > 5.5 ? 11.0 : 14.0;
-    if (gap < 0.5 && yy >= 0.0 && row >= 0.0 && row <= 6.0 && col >= 0.0 && col <= maxCol){
-      float m = row < 5.5 ? row*15.0 + col + 1.0 : 91.0 + col;
-      float h = row < 5.5 ? BH : BHC;
-      // hand-set: every sort sits a hair off its socket, at its own height
-      float jx = (hash(vec2(col*1.7 + 3.1, row*2.3 + 1.4)) - 0.5) * 0.0022;
-      float jy = (hash(vec2(row*5.1 + 0.7, col*3.9 + 2.2)) - 0.5) * 0.0022;
-      vec2 bp = vec2(u.x - (FX0 + (col + 0.5)*GX) - jx, yy - row*GY - h*0.5 - jy);
-      float sdb = rsdf(bp, vec2(BW*0.5, h*0.5), 0.0022);
-      float mq = smoothstep(aa, -aa, sdb);           // the sort's body
-      float mf = smoothstep(aa, -aa, sdb + 0.0024);  // its face, for the ink
-      float depth = 0.26 + 0.18 * hash(vec2(m*1.3 + 0.4, 5.9));
-
-      for (int i = 0; i < 5; i++){
-        if (abs(m - goalMin(i)) < 0.5){
-          depth = 1.0;                               // a goal stands type-high
-          float c = mf * cue(goalMin(i));
-          if (ISARG(i)) o.y = max(o.y, c); else o.z = max(o.z, c);
-        }
-      }
-      if (abs(m - PEN) < 0.5) depth = 1.0;     // set type-high, never inked
-      if (abs(m - GHOST) < 0.5) depth = 1.0;   // its starved ink lands in main
-      for (int i = 0; i < 4; i++){
-        float cm = i == 0 ? C0 : i == 1 ? C1 : i == 2 ? C2 : C3;
-        if (abs(m - cm) < 0.5){                // a booking — gilt rule through the sort
-          float hl = band(bp.x, 0.0011, aa)
-                   * smoothstep(h*0.5 + 0.0085, h*0.5 + 0.006, abs(bp.y));
-          o.x = max(o.x, hl * 0.85);
-          o.w = max(o.w, hl * cue(cm));
-        }
-      }
-      o.x = max(o.x, mq * depth);
-    }
-  }
-
-  // the score row — five bullets in goal order: ochre, ochre, then celeste
-  for (int i = 0; i < 5; i++){
-    vec2 sp = vec2((float(i) - 2.0) * 0.036, -0.245);
-    float sr = length(u - sp);
-    float m = smoothstep(aa, -aa, sr - 0.0075);
-    o.x = max(o.x, m);
-    float c = m * cue(goalMin(i));
-    if (ISARG(i)) o.y = max(o.y, c); else o.z = max(o.z, c);
-  }
-
-  o.x *= press;
-  return o;
-}
-
-// the sheet, with deckled edges
-float sheetSD(vec2 u){
-  float sd = rsdf(u, vec2(0.315, 0.425), 0.010);
-  sd += (fbm(u*34.0 + 5.7) - 0.5) * 0.009;
-  return sd;
-}
-
-// the surface: felt board, paper thickness, cockle, the deboss, tooth
-float heightAt(vec2 u, float aa){
-  float sd = sheetSD(u);
-  float sm = smoothstep(0.002, -0.002, sd);
-  float d = plate(u, aa).x;
-  float h = sm * 0.0050;
-  h += sm * (fbm(u*7.0 + 2.3) - 0.5) * 0.0042;
-  h += sm * (fbm(u*26.0 + 9.1) - 0.5) * 0.0013;
-  h -= sm * d * 0.0036;
-  h += (vnoise(u*480.0) - 0.5) * 0.00034 * mix(0.55, 1.0, sm) * (1.0 - d*0.7);
-  h += (vnoise(u*150.0 + 3.3) - 0.5) * 0.00016 * sm * (1.0 - d*0.7);
-  return h;
-}
-
-vec3 inkLayer(vec3 base, float m, vec3 deep, float mot){
-  float solid = smoothstep(0.50, 0.78, m);
-  float rim = smoothstep(0.10, 0.45, m) * (1.0 - smoothstep(0.60, 0.95, m));
-  float a = clamp(solid * (0.72 + 0.28*mot) + rim * 0.85, 0.0, 1.0);
-  return base * mix(vec3(1.0), deep * mix(1.0, 0.70, rim), a);
-}
-
+// still water, formed fronts — the state the loop keeps returning to
+const FS_INIT = `precision highp float;varying vec2 vUv;uniform float u_seed;
+${NOISE}
 void main(){
-  vec2 p = gl_FragCoord.xy / u_res;
-  float aspect = u_res.x / u_res.y;
-  // on tall phones the sheet composes smaller — an object on the felt
-  float sc = 0.75 * (1.0 + 0.22 * smoothstep(0.75, 0.45, aspect));
-  sc = max(sc, 0.88 * aspect);
-  vec2 q = vec2(p.x * sc, (p.y - 0.5) * sc / max(aspect, 0.001) + 0.5);
-  float px = sc / u_res.x;
-  float aa = px * 0.9;
+  float wob = (vnoise(vec2(vUv.x*2.6 + u_seed*0.13, 3.7)) - 0.5) * 0.10;
+  float s = vUv.y - (0.5 + wob);
+  float od = smoothstep(-0.02, 0.06, s) * (0.55 + 0.40*vnoise(vUv*5.0 + 1.0));
+  float cd = smoothstep(0.02, -0.06, s) * (0.55 + 0.40*vnoise(vUv*5.0 + 7.0));
+  gl_FragColor = vec4(od, cd, 0.0, 1.0);
+}`;
 
-  // the sheet sits a hair off true — placed by hand
-  float rot = (hash(vec2(3.1, 7.7)) - 0.5) * 0.035;
-  vec2 uc = q - vec2(sc * 0.5, 0.5);
-  float cs = cos(rot), sn = sin(rot);
-  vec2 u = vec2(uc.x*cs + uc.y*sn, -uc.x*sn + uc.y*cs);
+const FS_ADVECT = `precision highp float;varying vec2 vUv;
+uniform sampler2D u_vel, u_src;uniform vec2 u_px;uniform float u_dt, u_diss;
+void main(){
+  vec2 v = texture2D(u_vel, vUv).xy;
+  gl_FragColor = texture2D(u_src, vUv - v * u_dt * u_px) * u_diss;
+}`;
 
-  // dark felt board
-  vec3 col = vec3(0.094, 0.079, 0.067) * (0.80 + 0.42*fbm(q*70.0));
-  col *= 0.92 + 0.20 * (1.0 - length(p - vec2(0.34, 0.76)));
-
-  // the shadow the sheet throws
-  float ssd = rsdf(u - vec2(0.011, -0.013), vec2(0.315, 0.425), 0.010);
-  col *= 1.0 - ((1.0 - smoothstep(0.0, 0.05, ssd)) * 0.45 + (1.0 - smoothstep(0.0, 0.012, ssd)) * 0.25);
-
-  // surface normal from the true height field
-  float eps = px * 1.4;
-  float h0 = heightAt(u, aa);
-  float hx = heightAt(u + vec2(eps, 0.0), aa);
-  float hy = heightAt(u + vec2(0.0, eps), aa);
-  vec3 n = normalize(vec3(-(hx - h0)/eps * 1.15, -(hy - h0)/eps * 1.15, 1.0));
-
-  float sd = sheetSD(u);
-  float sm = smoothstep(0.002, -0.002, sd);
-  vec4 pl = plate(u, aa);
-
-  // cotton rag
-  vec3 paper = vec3(0.936, 0.906, 0.842);
-  paper *= 0.972 + 0.048 * fbm(u*20.0 + 1.2);
-  paper *= 0.988 + 0.024 * vnoise(u*300.0);
-  vec3 base = mix(col, paper, sm);
-  base *= 1.0 - 0.10 * pl.x * sm;             // fibres crushed in the valley
-
-  // one raking light, upper left
-  vec3 Ldir = normalize(vec3(-0.48, 0.60, 0.64));
-  float diff = max(dot(n, Ldir), 0.0);
-  float specBase = max(2.0 * n.z * dot(n, Ldir) - Ldir.z, 0.0);
-  vec3 lit = base * (0.36 + 0.82 * diff) * vec3(1.015, 1.0, 0.97);
-  lit += pow(specBase, 20.0) * 0.10 * (0.25 + 0.75 * pl.x) * sm;   // pressed fibres shine
-
-  // the ink rides the forme — only a hair of slur, never off its socket
-  vec2 mis = (vec2(hash(vec2(1.3, 9.2)), hash(vec2(8.4, 2.6))) - 0.5) * 0.0012;
-  vec4 ink = plate(u + mis, max(aa, 0.0020));
-  float mot = clamp(0.78 + 0.30 * fbm(u*95.0 + 4.4), 0.0, 1.0);
-  lit = inkLayer(lit, ink.y * sm, vec3(0.196, 0.455, 0.641), mot);        // celeste
-  lit = inkLayer(lit, ink.z * sm, vec3(0.575, 0.235, 0.115), mot);        // red ochre
-
-  // the pressed lettering takes its iron-black by cue: the fixed lines
-  // right after the strike, the score line only once it has come true
-  vec3 tk = texture2D(u_map, mapUV(u + mis)).rgb;
-  float tA = max(tk.g * ease((u_p - 0.44) / 0.08),
-                 tk.b * ease((u_p - 0.845) / 0.08));
-  lit = inkLayer(lit, tA * sm, vec3(0.262, 0.240, 0.203), mot);
-
-  // the VAR ghost — a starved, broken film of ochre on the 58' sort
-  {
-    vec2 gp = (u + mis * 1.8) - vec2(GHX, GHY);
-    float gsd = rsdf(gp, vec2(BW*0.5 - 0.0012, BH*0.5 - 0.0012), 0.002);
-    float hm = smoothstep(0.0022, -0.0022, gsd);
-    float film = smoothstep(0.30, 0.80, fbm(u*150.0 + 8.2));
-    lit = mix(lit, lit * vec3(0.62, 0.34, 0.23), hm * sm * cue(GHOST) * (0.14 + 0.40*film));
-  }
-
-  float aG = smoothstep(0.45, 0.75, ink.w * sm);
-  vec3 gold = vec3(0.833, 0.647, 0.204) * (0.35 + 0.90 * diff)
-            + vec3(1.0, 0.92, 0.70) * pow(specBase, 34.0) * 0.9;
-  lit = mix(lit, gold * (0.94 + 0.10 * mot), aG * 0.94);
-
-  // the light comes up, the photograph settles
-  lit *= mix(0.30, 1.0, ease(u_p / 0.16));
-  lit += (hash(gl_FragCoord.xy * 0.83) - 0.5) * 0.020;
-  float vig = smoothstep(1.30, 0.45, length(p - vec2(0.5, 0.5)));
-  lit *= mix(0.90, 1.0, vig);
-
-  gl_FragColor = vec4(lit, 1.0);
+const FS_FORCE = `precision highp float;varying vec2 vUv;
+uniform sampler2D u_vel, u_dye;
+uniform float u_dt, u_seed, u_time, u_asp;
+uniform vec4 u_drv;   // da, de, eta, shear
+uniform vec3 u_msc;   // kline, noiseAmp, velKeep
+uniform vec4 u_pa, u_pb;   // x, y, fy, ink (ink unused here)
+uniform vec2 u_pw;
+${NOISE}
+float blob(vec2 c, float w){
+  vec2 q = (vUv - c) * vec2(u_asp, 1.0);
+  return exp(-dot(q, q) / (w*w));
 }
-</script>
-<script>
-// 005 · sello — Argentina 3–2 Egypt, the remontada, proofed as a
-// compositor's forme in letterpress. The forme's match constants and grid
-// geometry are generated from data-005.js and injected as #defines, so the
-// data file drives the type. The lettering is baked once with Canvas 2D
-// (Geist Sans) into a small texture: R = the blind strike, G = the fixed
-// lines (inked just after the press), B = the score line (inked only after
-// 90+2, when it has come true). Settles once over ~9s — press, then ink in
-// match order — and the rAF loop stops.
+void main(){
+  vec2 v = texture2D(u_vel, vUv).xy;
+  vec4 d = texture2D(u_dye, vUv);
+  float od = d.r, cd = d.g;
+  // the duel: each front presses toward the line, not past it — the strain
+  // lives at the interface; whatever crosses is pulled back and regathers
+  float sideC = smoothstep(u_drv.z + 0.22, u_drv.z - 0.06, vUv.y);
+  float sideO = smoothstep(u_drv.z - 0.22, u_drv.z + 0.06, vUv.y);
+  float fy = 20.0 * (u_drv.x*cd*sideC - u_drv.y*od*sideO);
+  // both masses are held against the score line — compression, strain
+  fy += u_msc.x * (u_drv.z - vUv.y) * (od + cd);
+  // opposing drift ONLY where the fronts touch — shear billows at the line,
+  // no net migration inside either mass
+  float mz = smoothstep(0.02, 0.25, od*cd*6.0);
+  float fx = u_drv.w * (od - cd) * 26.0 * mz;
+  // a seeded stir keeps the water alive
+  fx += (vnoise(vUv*vec2(3.0,2.2) + vec2(u_time*0.05, u_seed)) - 0.5) * u_msc.y;
+  fy += (vnoise(vUv*vec2(2.6,3.4) + vec2(7.7 + u_seed, u_time*0.045)) - 0.5) * u_msc.y;
+  // the match's shoves
+  fy += u_pa.z * blob(u_pa.xy, u_pw.x);
+  fy += u_pb.z * blob(u_pb.xy, u_pw.y);
+  v += vec2(fx, fy) * u_dt;
+  // still water at the walls
+  float wm = smoothstep(0.0, 0.05, vUv.x) * smoothstep(1.0, 0.95, vUv.x)
+           * smoothstep(0.0, 0.04, vUv.y) * smoothstep(1.0, 0.96, vUv.y);
+  v *= mix(0.94, 1.0, wm) * u_msc.z;
+  float sp = length(v);
+  if (sp > 85.0) v *= 85.0/sp;
+  gl_FragColor = vec4(v, 0.0, 1.0);
+}`;
 
-const seed = ART.seed("2026-07-07-005");
-const M = window.M5;
+const FS_DIV = `precision highp float;varying vec2 vUv;
+uniform sampler2D u_vel;uniform vec2 u_px;
+void main(){
+  float l = texture2D(u_vel, vUv - vec2(u_px.x,0.)).x;
+  float r = texture2D(u_vel, vUv + vec2(u_px.x,0.)).x;
+  float b = texture2D(u_vel, vUv - vec2(0.,u_px.y)).y;
+  float t = texture2D(u_vel, vUv + vec2(0.,u_px.y)).y;
+  gl_FragColor = vec4((r - l + t - b) * 0.5, 0., 0., 1.);
+}`;
 
-// the forme's geometry: six lines of fifteen sorts + the stoppage line
-const FX0 = -0.25, GX = 0.5 / 15, FTOP = 0.27, GY = 0.068, HTG = 0.022;
-const BW = 0.024, BH = 0.050, BHC = 0.034, ORNY = 0.386;
-const sortX = (m) => FX0 + (((m - 1) % 15) + 0.5) * GX;
-const sortY = (m) => {
-  const row = Math.floor((m - 1) / 15);
-  return FTOP - (row * GY + (row >= 3 ? HTG : 0)) - BH / 2;
-};
+const FS_JAC = `precision highp float;varying vec2 vUv;
+uniform sampler2D u_prs, u_div;uniform vec2 u_px;
+void main(){
+  float l = texture2D(u_prs, vUv - vec2(u_px.x,0.)).x;
+  float r = texture2D(u_prs, vUv + vec2(u_px.x,0.)).x;
+  float b = texture2D(u_prs, vUv - vec2(0.,u_px.y)).x;
+  float t = texture2D(u_prs, vUv + vec2(0.,u_px.y)).x;
+  float dv = texture2D(u_div, vUv).x;
+  gl_FragColor = vec4((l + r + b + t - dv) * 0.25, 0., 0., 1.);
+}`;
 
-// data → the forme
-const MINS = M.totalMin;
-const gm = M.disallowed[0].min;
-const defs =
-  "#define MINS " + MINS.toFixed(1) + "\n" +
-  M.goals.map((g, i) => "#define G" + i + " " + g.min.toFixed(1)).join("\n") + "\n" +
-  "#define ISARG(i) (" +
-    M.goals.map((g, i) => (g.team === "arg" ? "i==" + i : null)).filter(Boolean).join("||") + ")\n" +
-  "#define PEN " + M.penaltyMissed.min.toFixed(1) + "\n" +
-  "#define GHOST " + gm.toFixed(1) + "\n" +
-  M.cards.map((c, i) => "#define C" + i + " " + c.min.toFixed(1)).join("\n") + "\n" +
-  "#define FX0 (" + FX0.toFixed(5) + ")\n" +
-  "#define GX " + GX.toFixed(5) + "\n" +
-  "#define FTOP " + FTOP.toFixed(5) + "\n" +
-  "#define GY " + GY.toFixed(5) + "\n" +
-  "#define HTG " + HTG.toFixed(5) + "\n" +
-  "#define BW " + BW.toFixed(5) + "\n" +
-  "#define BH " + BH.toFixed(5) + "\n" +
-  "#define BHC " + BHC.toFixed(5) + "\n" +
-  "#define ORNY " + ORNY.toFixed(5) + "\n" +
-  "#define GHX " + sortX(gm).toFixed(5) + "\n" +
-  "#define GHY " + sortY(gm).toFixed(5) + "\n";
+const FS_GRAD = `precision highp float;varying vec2 vUv;
+uniform sampler2D u_prs, u_vel;uniform vec2 u_px;
+void main(){
+  float l = texture2D(u_prs, vUv - vec2(u_px.x,0.)).x;
+  float r = texture2D(u_prs, vUv + vec2(u_px.x,0.)).x;
+  float b = texture2D(u_prs, vUv - vec2(0.,u_px.y)).x;
+  float t = texture2D(u_prs, vUv + vec2(0.,u_px.y)).x;
+  vec2 v = texture2D(u_vel, vUv).xy - vec2(r - l, t - b) * 0.5;
+  gl_FragColor = vec4(v, 0., 1.);
+}`;
 
-let sh = null, gl = null, tex = null, done = false, start = null, fontsOK = false;
+const FS_DYE = `precision highp float;varying vec2 vUv;
+uniform sampler2D u_vel, u_dye;
+uniform vec2 u_px;uniform float u_dt, u_keep, u_seed, u_time, u_asp;
+uniform vec2 u_srcv;       // ochre bank, celeste bank
+uniform vec4 u_pa, u_pb;   // x, y, fy, ink
+uniform vec2 u_pw;
+${NOISE}
+float blob(vec2 c, float w){
+  vec2 q = (vUv - c) * vec2(u_asp, 1.0);
+  return exp(-dot(q, q) / (w*w));
+}
+void main(){
+  vec2 v = texture2D(u_vel, vUv).xy;
+  vec2 d = texture2D(u_dye, vUv - v * u_dt * u_px).rg * u_keep;
+  // the banks: each front is fed from its own dark — a column, not a wall
+  float sxw = smoothstep(0.02, 0.24, vUv.x) * smoothstep(0.98, 0.76, vUv.x);
+  float xo = (0.55 + 0.65*vnoise(vec2(vUv.x*3.1 + u_seed, u_time*0.06))) * sxw;
+  float xc = (0.55 + 0.65*vnoise(vec2(vUv.x*2.7 + u_seed + 40.0, u_time*0.055))) * sxw;
+  d.r += exp(-pow((vUv.y - 0.965)/0.030, 2.0)) * u_srcv.x * xo * u_dt;
+  d.g += exp(-pow((vUv.y - 0.035)/0.030, 2.0)) * u_srcv.y * xc * u_dt;
+  // event ink rides the shove
+  float ga = blob(u_pa.xy, u_pw.x), gb = blob(u_pb.xy, u_pw.y);
+  if (u_pa.w > 0.0) d.g += u_pa.w*ga*u_dt*2.0; else d.r += -u_pa.w*ga*u_dt*2.0;
+  if (u_pb.w > 0.0) d.g += u_pb.w*gb*u_dt*2.0; else d.r += -u_pb.w*gb*u_dt*2.0;
+  gl_FragColor = vec4(min(d, vec2(1.6)), 0., 1.);
+}`;
+
+const FS_SHOW = `precision highp float;varying vec2 vUv;
+uniform sampler2D u_dye;
+uniform vec2 u_dpx, u_res;
+uniform float u_seed, u_time, u_gold, u_gx, u_expo;
+${NOISE}
+float dens(vec2 p){ vec2 d = texture2D(u_dye, p).rg; return d.r + d.g; }
+void main(){
+  float asp = u_res.x / u_res.y;
+  vec2 uv = vUv;
+  // a fine warp fakes the filaments the coarse grid can't carry
+  vec2 wq = vec2(vnoise(uv*vec2(asp,1.0)*22.0 + u_seed) - 0.5,
+                 vnoise(uv*vec2(asp,1.0)*22.0 + 31.7 + u_seed) - 0.5);
+  vec2 uvd = uv + wq * 0.005;
+  vec4 d0 = texture2D(u_dye, uvd);
+  // heavy mottle at two scales — pigment suspended in water, not gradients
+  float mo = 0.62 + 0.52*fbm(uv*vec2(asp,1.0)*9.0 + vec2(u_seed, u_time*0.006))
+           + 0.26*(vnoise(uv*vec2(asp,1.0)*44.0 + u_seed) - 0.5);
+  float mc = 0.62 + 0.52*fbm(uv*vec2(asp,1.0)*8.0 + 4.7 + u_seed)
+           + 0.26*(vnoise(uv*vec2(asp,1.0)*40.0 + u_seed + 9.0) - 0.5);
+  float od = d0.r * mo;
+  float cd = d0.g * mc;
+  float oD = 1.0 - exp(-od*1.25);
+  float cD = 1.0 - exp(-cd*1.25);
+
+  // one soft raking light on the density field — fronts, not plastic
+  vec2 e = u_dpx;
+  float gxd = dens(uv + vec2(e.x,0.)) - dens(uv - vec2(e.x,0.));
+  float gyd = dens(uv + vec2(0.,e.y)) - dens(uv - vec2(0.,e.y));
+  vec3 n = normalize(vec3(-gxd*3.2, -gyd*3.2, 1.0));
+  vec3 L = normalize(vec3(-0.42, 0.58, 0.70));
+  float diff = max(dot(n, L), 0.0);
+  float spec = pow(max(2.0*n.z*dot(n,L) - L.z, 0.0), 34.0);
+
+  // the room
+  vec2 rc = (uv - vec2(0.5, 0.62)) * vec2(asp, 1.0);
+  vec3 room = vec3(0.051, 0.040, 0.028) * (0.72 + 0.50*fbm(uv*vec2(asp,1.0)*46.0));
+  room *= 0.82 + 0.34*smoothstep(1.15, 0.2, length(rc));
+
+  // the inks — desaturated pharaonic ochre, gray-blue celeste; churn muddies
+  vec3 oc = mix(vec3(0.165,0.080,0.048), vec3(0.548,0.270,0.152), pow(oD, 1.5));
+  vec3 cc = mix(vec3(0.058,0.118,0.176), vec3(0.442,0.630,0.768), pow(cD, 1.5));
+  float aI = 1.0 - (1.0-oD)*(1.0-cD);
+  vec3 pig = (oc*oD + cc*cD) / max(oD + cD, 1e-4);
+  pig = mix(pig, vec3(0.148,0.098,0.080), smoothstep(0.06, 0.42, oD*cD)*0.55);
+  vec3 lit = pig * (0.74 + 0.38*diff) + vec3(1.0,0.96,0.88)*spec*0.05*aI;
+  lit *= 0.88 + 0.24*vnoise(uv*vec2(asp,1.0)*90.0 + u_seed*3.0);
+
+  // the breath of gold where the celeste breaks through
+  float g = u_gold * cD * smoothstep(0.60, 0.84, uv.y)
+          * exp(-pow((uv.x - u_gx)*asp/0.22, 2.0));
+  lit += vec3(0.86,0.63,0.21) * min(g, 0.4) * (0.5 + 0.8*diff);
+
+  // the currents float in the room — darkness owns the edges, no box
+  float em = smoothstep(0.0, 0.17, uv.x) * smoothstep(1.0, 0.83, uv.x)
+           * smoothstep(0.0, 0.10, uv.y) * smoothstep(1.0, 0.90, uv.y);
+  em = pow(em, 1.2);
+  vec3 col = mix(room, lit, min(aI * 1.1, 1.0) * 0.95 * em);
+
+  col *= u_expo;
+  col += (hash(gl_FragCoord.xy*0.77 + u_seed) - 0.5) * 0.022;
+  col *= mix(0.88, 1.0, smoothstep(1.42, 0.45, length((uv - 0.5)*vec2(asp,1.0)*1.1)));
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
+/* ---------------- mount ---------------- */
+
+let gl = null, ready = false, freeze = false;
+let tau = 0, last = 0, lifeT = 0, raf = 0;
+let simW = 0, simH = 0;
 
 const F = FRAME.mount({
-  num: 5, title: "Sello", subject: "Argentina vs. Egypt",
+  num: 5, title: "Embate", subject: "Argentina vs. Egypt",
   edition: "05/31", date: "07·07·2026",
-  stack: "WebGL — GLSL + baked type", time: "128 minutes",
-  desc: "Letterpress on cotton rag — the match set as a compositor's forme: ninety minute-sorts in six lines of fifteen, leading at half-time, then the stoppage line the whistle cut at twelve. Inked in match order, the page goes wrong before it goes right — Egypt's ochre lands first, the 21' sort stands type-high but never inked (the penalty), the 58' sort is starved (the goal VAR withdrew), and three celeste crowd the final line and a half. The score is set only after 90+2.",
-  dark: true, onResize() {
-    if (!sh) {
-      sh = ART.shader(F.canvas, defs + document.getElementById("frag").textContent, ["u_p", "u_map"]);
-      gl = sh.gl;
-      tex = gl.createTexture();
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
-                    new Uint8Array([0, 0, 0, 255]));
-      gl.uniform1i(sh.extra.u_map, 0);
-    }
-    bake();
-    done = false;
-    start = null;
-    requestAnimationFrame(loop);
+  stack: "WebGL — fluid sim, ping-pong FBOs", time: "148 minutes",
+  desc: "Two ink fronts in still water — pharaonic ochre pressing from above, celeste rising to meet it — stirred on the match's own clock. Egypt's weight holds the line low for an hour; a thrust at 21' dies against it, a surge at 58' is pulled back. Then the late pressure builds until, at 90+2', the celeste finds a seam and breaks through — a breath of gold — the whistle releases, and the waters regather to clash again.",
+  dark: true, open: true, onResize(w, h) {
+    if (!gl) boot();
+    if (!gl) return;
+    alloc(w, h);
   },
 });
-const sf = ART.rng(seed)() * 100;
-const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const DUR = RM ? 500 : 9000;
+const sfN = ART.rng(seed)() * 37;               // seed float for the shaders
 
-/* ---- the type, baked in sheet space: u ∈ [-0.35, 0.35] × [-0.45, 0.45].
-   R = every letter's blind deboss; G = the fixed lines; B = the score
-   line, which the page may only ink after the comeback is complete. ---- */
-const tcv = document.createElement("canvas");
-function bake() {
-  if (!gl) return;
-  const TW = Math.min(1152, Math.max(512, Math.round(F.W * 0.9)));
-  const TH = Math.round(TW * (0.90 / 0.70));
-  tcv.width = TW; tcv.height = TH;
-  const x = tcv.getContext("2d");
-  x.fillStyle = "#000"; x.fillRect(0, 0, TW, TH);
-  x.globalCompositeOperation = "lighter";
-  const Y = (sy) => ((0.45 - sy) / 0.90) * TH;
-  function line(text, sy, size, col) {
-    let fpx = (size / 0.70) * TW;
-    const set = (v) => {
-      if ("letterSpacing" in x) x.letterSpacing = (v * 0.15).toFixed(1) + "px";
-      x.font = "600 " + v.toFixed(1) + "px 'Geist', ui-sans-serif, system-ui, sans-serif";
-      x.textAlign = "center"; x.textBaseline = "middle";
-    };
-    set(fpx);
-    const maxW = (0.485 / 0.70) * TW;
-    const w = x.measureText(text).width;
-    if (w > maxW) { fpx *= maxW / w; set(fpx); }
-    x.fillStyle = col;
-    // a soft shoulder under a crisp strike — the press, not a print-out
-    x.save();
-    x.filter = "blur(" + (TW * 0.0016).toFixed(1) + "px)";
-    x.globalAlpha = 0.85;
-    x.fillText(text, TW / 2, Y(sy));
-    x.restore();
-    x.filter = "none";
-    x.fillText(text, TW / 2, Y(sy));
+/* ---------------- gl plumbing ---------------- */
+
+let progs = {}, quad = null, halfType = 0, innerFmt = 0;
+let vel, prs, div, dye;
+
+function boot() {
+  gl = F.canvas.getContext("webgl2", { antialias: false, alpha: false, depth: false, preserveDrawingBuffer: false });
+  if (gl) {
+    if (!gl.getExtension("EXT_color_buffer_float")) { gl = null; }
+    else { halfType = gl.HALF_FLOAT; innerFmt = gl.RGBA16F; }
   }
-  line("MUNDIAL 2026 · OCTAVOS DE FINAL", 0.335, 0.0170, "rgb(255,255,0)");
-  line("ARGENTINA 3 – EGIPTO 2", -0.295, 0.0205, "rgb(255,0,255)");
-  line("ATLANTA · 07·07·2026", -0.333, 0.0160, "rgb(255,255,0)");
-  gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tcv);
+  if (!gl) {
+    gl = F.canvas.getContext("webgl", { antialias: false, alpha: false, depth: false });
+    if (!gl) { console.warn("embate: webgl unavailable"); return; }
+    const e1 = gl.getExtension("OES_texture_half_float");
+    gl.getExtension("OES_texture_half_float_linear");
+    if (!e1) { console.warn("embate: half-float unavailable"); gl = null; return; }
+    halfType = e1.HALF_FLOAT_OES; innerFmt = gl.RGBA;
+  }
+  quad = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const mk = (fs) => {
+    const c = (ty, src) => {
+      const s = gl.createShader(ty);
+      gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    const p = gl.createProgram();
+    gl.attachShader(p, c(gl.VERTEX_SHADER, VS));
+    gl.attachShader(p, c(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    const loc = gl.getAttribLocation(p, "a");
+    const U = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (let i = 0; i < n; i++) {
+      const inf = gl.getActiveUniform(p, i);
+      U[inf.name] = gl.getUniformLocation(p, inf.name);
+    }
+    return { p, loc, U };
+  };
+  progs = { init: mk(FS_INIT), adv: mk(FS_ADVECT), frc: mk(FS_FORCE), div: mk(FS_DIV),
+            jac: mk(FS_JAC), grd: mk(FS_GRAD), dye: mk(FS_DYE), show: mk(FS_SHOW) };
 }
 
-// re-strike the type once the real face arrives (usually mid-press)
-Promise.race([
-  document.fonts.load('600 32px "Geist"'),
-  new Promise((r) => setTimeout(r, 1600)),
-]).then(() => {
-  fontsOK = true;
-  if (!sh) return;
-  bake();
-  if (done) { gl.uniform1f(sh.extra.u_p, 1); sh.draw(0, sf); }
-});
+function target(w, h) {
+  const t = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texImage2D(gl.TEXTURE_2D, 0, innerFmt, w, h, 0, gl.RGBA, halfType, null);
+  const f = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+  return { t, f, w, h };
+}
+const pair = (w, h) => ({ r: target(w, h), w: target(w, h),
+  swap() { const x = this.r; this.r = this.w; this.w = x; } });
 
-// pressed once, inked once (~9s), then it rests — no loop
-function loop(tms) {
-  if (!sh || done) return;
-  if (start === null) start = tms;
-  const p = Math.min(1, (tms - start) / DUR);
-  sh.gl.uniform1f(sh.extra.u_p, p);
-  sh.draw(tms / 1000, sf);
-  if (p >= 1) { done = true; return; }
-  requestAnimationFrame(loop);
+function run(pr, dst, set) {
+  gl.useProgram(pr.p);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, dst ? dst.f : null);
+  gl.viewport(0, 0, dst ? dst.w : F.canvas.width, dst ? dst.h : F.canvas.height);
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.enableVertexAttribArray(pr.loc);
+  gl.vertexAttribPointer(pr.loc, 2, gl.FLOAT, false, 0, 0);
+  set(pr.U);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+function bindT(unit, tex) {
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  gl.bindTexture(gl.TEXTURE_2D, tex.t);
+  return unit;
+}
+
+function alloc(w, h) {
+  simH = 384;
+  simW = Math.max(128, Math.min(480, Math.round(simH * (w / h))));
+  vel = pair(simW, simH); prs = pair(simW, simH);
+  div = target(simW, simH); dye = pair(simW, simH);
+  for (const tg of [vel.r, vel.w, prs.r, prs.w, div]) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, tg.f);
+    gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  }
+  run(progs.init, dye.r, (U) => gl.uniform1f(U.u_seed, sfN));
+  tau = 0; lifeT = 0; last = 0;
+  ready = true;
+  if (RM) { still(); return; }
+  if (!raf) raf = requestAnimationFrame(frame);
+}
+
+/* ---------------- the tick: one step of the collision ---------------- */
+
+function tick(dt, t) {
+  const C = chor(t);
+  const px = [1 / simW, 1 / simH];
+  const asp = simW / simH;
+  const velKeep = Math.exp(-(0.50 + 1.6 * C.rel) * dt);
+  const dyeKeep = Math.exp(-(0.085 + 0.50 * C.rel) * dt);
+  const pa = C.pulses[0], pb = C.pulses[1];
+
+  run(progs.adv, vel.w, (U) => {
+    gl.uniform1i(U.u_vel, bindT(0, vel.r)); gl.uniform1i(U.u_src, bindT(1, vel.r));
+    gl.uniform2f(U.u_px, px[0], px[1]); gl.uniform1f(U.u_dt, dt); gl.uniform1f(U.u_diss, 1.0);
+  }); vel.swap();
+
+  run(progs.frc, vel.w, (U) => {
+    gl.uniform1i(U.u_vel, bindT(0, vel.r)); gl.uniform1i(U.u_dye, bindT(1, dye.r));
+    gl.uniform1f(U.u_dt, dt); gl.uniform1f(U.u_seed, sfN);
+    gl.uniform1f(U.u_time, lifeT); gl.uniform1f(U.u_asp, asp);
+    gl.uniform4f(U.u_drv, C.da, C.de, C.eta, C.sh);
+    gl.uniform3f(U.u_msc, C.kline, C.noise, velKeep);
+    gl.uniform4f(U.u_pa, pa.x, pa.y, pa.fy, pa.ink);
+    gl.uniform4f(U.u_pb, pb.x, pb.y, pb.fy, pb.ink);
+    gl.uniform2f(U.u_pw, pa.w, pb.w);
+  }); vel.swap();
+
+  run(progs.div, div, (U) => {
+    gl.uniform1i(U.u_vel, bindT(0, vel.r));
+    gl.uniform2f(U.u_px, px[0], px[1]);
+  });
+  for (let i = 0; i < 20; i++) {
+    run(progs.jac, prs.w, (U) => {
+      gl.uniform1i(U.u_prs, bindT(0, prs.r)); gl.uniform1i(U.u_div, bindT(1, div));
+      gl.uniform2f(U.u_px, px[0], px[1]);
+    }); prs.swap();
+  }
+  run(progs.grd, vel.w, (U) => {
+    gl.uniform1i(U.u_prs, bindT(0, prs.r)); gl.uniform1i(U.u_vel, bindT(1, vel.r));
+    gl.uniform2f(U.u_px, px[0], px[1]);
+  }); vel.swap();
+
+  run(progs.dye, dye.w, (U) => {
+    gl.uniform1i(U.u_vel, bindT(0, vel.r)); gl.uniform1i(U.u_dye, bindT(1, dye.r));
+    gl.uniform2f(U.u_px, px[0], px[1]);
+    gl.uniform1f(U.u_dt, dt); gl.uniform1f(U.u_keep, dyeKeep);
+    gl.uniform1f(U.u_seed, sfN); gl.uniform1f(U.u_time, lifeT); gl.uniform1f(U.u_asp, asp);
+    gl.uniform2f(U.u_srcv, C.srcO, C.srcC);
+    gl.uniform4f(U.u_pa, pa.x, pa.y, pa.fy, pa.ink);
+    gl.uniform4f(U.u_pb, pb.x, pb.y, pb.fy, pb.ink);
+    gl.uniform2f(U.u_pw, pa.w, pb.w);
+  }); dye.swap();
+
+  lifeT += dt;
+}
+
+function draw(t, expo) {
+  const C = chor(t);
+  run(progs.show, null, (U) => {
+    gl.uniform1i(U.u_dye, bindT(0, dye.r));
+    gl.uniform2f(U.u_dpx, 1 / simW, 1 / simH);
+    gl.uniform2f(U.u_res, F.canvas.width, F.canvas.height);
+    gl.uniform1f(U.u_seed, sfN); gl.uniform1f(U.u_time, lifeT);
+    gl.uniform1f(U.u_gold, C.gold); gl.uniform1f(U.u_gx, gxBreak);
+    gl.uniform1f(U.u_expo, expo);
+  });
+}
+
+/* ---------------- the loop: no seam, ever ---------------- */
+
+function frame(now) {
+  raf = requestAnimationFrame(frame);
+  if (!ready || freeze || document.hidden) { last = now; return; }
+  if (!last) last = now;
+  const dt = Math.min(0.045, Math.max(0.006, (now - last) / 1000));
+  last = now;
+  tau = (tau + dt) % T;
+  tick(dt, tau);
+  draw(tau, Math.min(1, lifeT / 2.2));           // the light comes up once
+}
+
+// reduced motion: settle straight into the breakthrough and hold it
+function still() {
+  for (let i = 0; i < 130; i++) tick(1 / 36, tm(86));
+  for (let i = 0; i < 55; i++) tick(1 / 36, tBreak + (i / 55) * 1.5);
+  draw(tBreak + 0.95, 1);
 }
 </script>
 </body>

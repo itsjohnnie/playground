@@ -17,13 +17,17 @@
    Sources, retrieved 2026-07-07: FIFA match centre 400021528, ESPN/Opta
    match page + commentary (gameId 760509), Sofascore/SI, NBC, Fox, beIN,
    VAVEL and Yahoo live blogs. Counts are exact per ESPN/FIFA.
-   APPROXIMATIONS + OMISSIONS (deliberate, documented): xG 2.80–0.98 is
+   APPROXIMATIONS + USAGE (deliberate, documented): xG 2.80–0.98 is
    single-source (Sofascore via SI) and held approximate; the Egypt bench
-   staffer's 21'/90+4' cards are single-source and omitted; the 31' post
-   is not marked (the die records goals and their negations only);
-   first-half stoppage (+7) is not drawn — the forme sets the 90 clock
-   minutes as six lines of fifteen sorts, plus the twelve played of
-   second-half stoppage as the short last line, cut at the whistle. */
+   staffer's 21'/90+4' cards are single-source and omitted. The piece
+   (005 · embate) is a two-front fluid collision driven by this file:
+   goal minutes shove the interface (Egypt's ochre presses down early and
+   long, Argentina's celeste answers late), the 21' saved penalty is a
+   thrust that dies against the line, the 58' VAR goal a surge pulled
+   back, the 90+2' winner the breakthrough, and the 90+12 whistle the
+   release before the fronts regather — one match per ~40 s cycle,
+   continuous, no seam. Cards, attendance and the remaining counts are
+   archived here for the record and are not all drawn. */
 window.M5 = {
   home: { id: "arg", name: "argentina", score: 3 },
   away: { id: "egy", name: "egipto", score: 2 },
@@ -39,9 +43,9 @@ window.M5 = {
     { min: 83, team: "arg", player: "messi",        assist: "montiel",     how: "left-foot first-time, in off the crossbar" },
     { min: 92, team: "arg", player: "e. fernández", assist: "l. martínez", how: "header", label: "90+2", note: "3,000th world cup goal" },
   ],
-  // struck blind, never inked — the deboss is there, empty
+  // the thrust that dies against the line
   penaltyMissed: { min: 21, team: "arg", player: "messi", gk: "shobeir", how: "saved bottom-right" },
-  // ghosted — an open ring starved of ink
+  // the surge pulled back
   disallowed: [{ min: 58, team: "egy", player: "m. zico", reason: "var — foul by m. attia on li. martínez", confirmed: 59 }],
   woodwork: [{ min: 31, team: "arg", player: "messi", how: "free kick, left post", marked: false }],
 
@@ -54,7 +58,7 @@ window.M5 = {
   breaks: [23, 71],            // drinks
   periods: [45, 90],
   stoppage: { announced: 7, played: 12, firstHalf: 7 },
-  totalMin: 102,               // the forme: 90' + 12 of stoppage
+  totalMin: 102,               // 90' + 12 of stoppage
 
   possession: { arg: 63.6, egy: 36.4 },
   shots: { arg: 19, egy: 5 },
