@@ -58,7 +58,7 @@ function buildPaper() {
   // deckle edge: low-freq warp + fiber-scale roughness, seeded
   deckle = new Path2D();
   const rough = (s, e) =>
-    (1.1 * N.noise2(s * 2.3, e * 7.31) + 2.4 * N.noise2(s * 11.7, e * 7.31 + 3.1) * 0.55) * 2.1 * DPR;
+    (0.75 * N.noise2(s * 2.3, e * 7.31) + 2.4 * N.noise2(s * 11.7, e * 7.31 + 3.1) * 0.55) * 2.1 * DPR;
   const nE = 46;
   for (let e = 0; e < 4; e++) {
     for (let k = 0; k <= nE; k++) {
@@ -215,9 +215,12 @@ function build() {
     });
     if (m === M.penalty.min)
       labs.push({ left: true, single: true, l1: mm(m) + " penal", col: INK + "0.55)" });
+    // the right-margin twin of the 76' altercation carries the surname
+    // only — the minute lives with its left twin on the same line
     for (const c of cardsHere)
       labs.push({ left: c.team === "arg", single: true,
-                  l1: mm(c.min) + " " + c.player, col: INK + "0.62)" });
+                  l1: c.team === "arg" ? mm(c.min) + " " + c.player : c.player,
+                  col: INK + "0.62)" });
     if (heavy) labs.push({ left: false, single: true, l1: mm(m), col: INK + "0.38)" });
 
     lines.push({ y: y0, pts, pools, heavy, event, labs });
