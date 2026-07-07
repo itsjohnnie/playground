@@ -169,17 +169,12 @@ export default function App() {
           playerById={store.playerById}
           onHome={() => { store.finishMatch(); setRoute('home') }}
           onRevancha={() => {
-            const a = activeMatch.teamA
-            const b = activeMatch.teamB
-            // Swap which team starts as A so loser "sale primero"
-            const wasWinnerA = activeMatch.winner === 'A'
-            // Skip finishMatch — startMatch supersedes the active match
-            // directly. Going through null first triggers a realtime echo
-            // that briefly flips the route to home.
-            store.startMatch(
-              wasWinnerA ? b : a,
-              wasWinnerA ? a : b,
-            )
+            // Keep the same left/right layout across a rematch so the
+            // scorer's mental model ("Nosotros left, Ellos right")
+            // doesn't flip mid-night. Who "sale primero" is a truco
+            // convention, but the scoreboard side ordering is a UI
+            // stability concern that wins here.
+            store.startMatch(activeMatch.teamA, activeMatch.teamB)
             setRoute('game')
           }}
         />
