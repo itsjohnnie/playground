@@ -85,6 +85,7 @@ gap:16px;padding:clamp(11px,2.8cqi,15px) 0;border-bottom:1px solid rgba(22,19,15
 .specs .k{font-weight:520;font-size:clamp(10.5px,2.5cqi,12px);letter-spacing:.06em;
 text-transform:uppercase;color:rgba(22,19,15,.62)}
 .specs .v{text-align:right}
+.specs .m-date{display:none}
 .cap{margin:clamp(12px,3cqi,18px) 0 0;font-size:clamp(10.5px,2.5cqi,12px);
 color:rgba(22,19,15,.5)}
 .go{margin-top:clamp(22px,6cqi,40px);display:flex;justify-content:space-between;align-items:center}
@@ -104,6 +105,11 @@ line-height:1;padding:6px 2px;transition:transform 180ms cubic-bezier(0.23,1,0.3
 
 @media (max-width:820px){
 body{display:block;padding:0}
+/* phones: the header holds two columns — the practice/date column shifted
+   the grid; the date lives in the spec card instead */
+.top{grid-template-columns:1.2fr auto}
+.top .m-col{display:none}
+.specs .m-date{display:flex}
 .room{position:fixed;inset:0}
 .art{position:absolute;inset:0}
 .pill{display:flex;align-items:center;gap:8px;position:fixed;z-index:12;
@@ -146,7 +152,7 @@ ${thumb ? `body{display:block;padding:0}
     panel.innerHTML =
       '<header class="top">' +
         '<div><span class="lab">Johnnie’s atelier</span><br><a href="../">← Art</a></div>' +
-        '<div><span class="m">Daily Practice</span><br>' + date + "</div>" +
+        '<div class="m-col"><span class="m">Daily Practice</span><br>' + date + "</div>" +
         '<div><a href="https://johnnies.life/art" tabindex="-1">johnnies.life/art</a><br>' + num + "</div>" +
       "</header>" +
       '<div class="mid">' +
@@ -155,6 +161,7 @@ ${thumb ? `body{display:block;padding:0}
         '<div class="specs">' +
           '<div class="row"><span class="k">Title</span><span class="v" lang="es">' + esc(o.title) + "</span></div>" +
           '<div class="row"><span class="k">Edition</span><span class="v">' + esc(o.edition) + "</span></div>" +
+          '<div class="row m-date"><span class="k">Date</span><span class="v">' + date + "</span></div>" +
           '<div class="row"><span class="k">Stack</span><span class="v">' + esc(o.stack) + "</span></div>" +
           '<div class="row"><span class="k">Time spent</span><span class="v">' + esc(o.time) + "</span></div>" +
         "</div>" +
