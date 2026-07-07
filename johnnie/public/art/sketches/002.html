@@ -25,6 +25,9 @@ const seed = ART.seed("2026-06-22-002");
 const N = ART.makeNoise(seed);
 const M = window.M2;
 const INK = "rgba(23,21,17,";
+// the record clerk's hand: Geist Sans, all caps, gently tracked
+const FONT = (px) => "500 " + px + "px 'Geist', ui-sans-serif, system-ui, sans-serif";
+const TRACK = "0.05em";
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const TOTAL = M.totalMin; // 96
 
@@ -250,16 +253,18 @@ function build() {
 // the printed header of the record form — set before the pen moves
 function stamp(g) {
   const f = fs * 0.92;
-  g.font = f + "px 'Geist Mono', ui-monospace, monospace";
+  g.font = FONT(f);
+  g.letterSpacing = TRACK;
   const xL = px + 0.048 * pw, xR = px + 0.952 * pw;
   const y1 = py + 0.038 * ph + f, y2 = y1 + f * 1.6;
   g.fillStyle = INK + "0.5)";
   g.textAlign = "left";
-  g.fillText("reg. nº 002 · mundial 2026 · grupo j", xL, y1);
-  g.fillText("estadio de dallas, arlington · 22·06·2026", xL, y2);
+  g.fillText("REG. Nº 002 · MUNDIAL 2026 · GRUPO J", xL, y1);
+  g.fillText("ESTADIO DE DALLAS, ARLINGTON · 22·06·2026", xL, y2);
   g.textAlign = "right";
-  g.fillText("arg 2–0 aut", xR, y1);
+  g.fillText("ARG 2–0 AUT", xR, y1);
   g.fillText("70 649", xR, y2);
+  g.letterSpacing = "0px";
 }
 
 // possession as ink weight: argentina's half of the line runs darker
@@ -309,20 +314,23 @@ function drawLine(g, i, clip) {
     dot(pts[pts.length - 1].x, pts[pts.length - 1].y, 1.15 * DPR, INK + "0.55)");
     for (const p of L.pools) dot(p.x, p.y, p.r, p.tint || INK + "0.78)");
     for (const lab of L.labs) {
-      const mono = (s) => s + "px 'Geist Mono', ui-monospace, monospace";
       const lx = lab.left ? X0 - 0.018 * pw : X1 + 0.018 * pw;
-      // fit-guard: an annotation never leaves the sheet
+      const l1 = lab.l1.toUpperCase(), l2 = lab.l2 && lab.l2.toUpperCase();
+      // fit-guard: an annotation never leaves the sheet (Sans metrics)
       const maxw = lab.left ? lx - px - 0.028 * pw : px + pw - 0.028 * pw - lx;
       let f = fs;
-      g.font = mono(f);
-      const tw = Math.max(g.measureText(lab.l1).width,
-        lab.l2 ? g.measureText(lab.l2).width : 0);
-      if (tw > maxw) { f = Math.max(6 * DPR, f * maxw / tw); g.font = mono(f); }
+      g.font = FONT(f);
+      g.letterSpacing = TRACK;
+      const tw = Math.max(g.measureText(l1).width, l2 ? g.measureText(l2).width : 0);
+      if (tw > maxw) { f = Math.max(6 * DPR, f * maxw / tw); g.font = FONT(f); }
       g.fillStyle = lab.col;
       g.textAlign = lab.left ? "right" : "left";
-      if (lab.single) { g.fillText(lab.l1, lx, L.y + f * 0.35); continue; }
-      g.fillText(lab.l1, lx, L.y - f * 0.25);
-      g.fillText(lab.l2, lx, L.y + f * 0.85);
+      if (lab.single) g.fillText(l1, lx, L.y + f * 0.35);
+      else {
+        g.fillText(l1, lx, L.y - f * 0.25);
+        g.fillText(l2, lx, L.y + f * 0.85);
+      }
+      g.letterSpacing = "0px";
     }
   }
 }
@@ -342,10 +350,12 @@ function render(pos) {
     // travelling minute readout (skipped next to right-margin labels)
     const nearR = (k) => k >= 0 && k < TOTAL && lines[k].labs.some((l) => !l.left);
     if (!nearR(i) && !nearR(i - 1) && !nearR(i + 1)) {
-      ctx.font = fs + "px 'Geist Mono', ui-monospace, monospace";
+      ctx.font = FONT(fs);
+      ctx.letterSpacing = TRACK;
       ctx.fillStyle = INK + "0.4)";
       ctx.textAlign = "left";
       ctx.fillText(mm(i + 1), X1 + 0.018 * pw, lines[i].y + fs * 0.35);
+      ctx.letterSpacing = "0px";
     }
   } else {
     // the pen rests where the record ends, one last pool of ink
@@ -379,4 +389,9 @@ function draw(tms) {
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
+// the stamp is baked into the record at build time — if Geist lands after
+// the first bake, rebuild once so the registry type is true
+document.fonts.load(FONT(16)).then(() => {
+  if (lines) { build(); if (settled) render(TOTAL); }
+});
 </script>
