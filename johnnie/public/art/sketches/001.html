@@ -15,17 +15,22 @@
 // summits from the three goals — all argentina, all messi (17' 60' 76',
 // his first world cup hat-trick). Argelia's side stays low ground: seven
 // shots, none on target, one goal ruled offside at 8'. The choreography:
-// the piece opens FLAT — a straight top-down plan, the plotter cursor
-// sweeping left to right over ~7s while the bone-white contour lines
-// emerge, so the first read is a 2D topographic map being drawn. The
-// survey done, the camera makes one continuous eased move — tilting and
-// turning down into the resting elevated-3/4 isometric — and the goal pins
+// the piece opens VERTICAL — the survey sheet pinned upright, its face
+// parallel to the screen, the plotter cursor sweeping left to right over
+// ~7s while the bone-white contour lines emerge, so the first read is a
+// 2D topographic drawing on the wall. The survey done, the sheet tips
+// back in one continuous eased move (the camera never moves — the plate
+// itself falls) into the resting elevated-3/4 terrain, and the goal pins
 // and labels arrive with the third dimension. Then the loop stops and the
 // plate rests. Rested, it can be turned by hand: a drag yaws the plate and
 // tilts the surveyor's view within clamps, 1:1 under the finger, then
 // coasts on damped momentum to rest — rendering only while the hand or the
 // momentum moves it (no idle loop). Reduced motion jumps straight to the
-// resting isometric.
+// resting isometric. Line quality is cartographic: every contour is drawn
+// at an exact pixel width with a 1px analytic AA ramp (fwidth), index
+// contours every 5th heavier and brighter, minor contours fading to their
+// average tone where slopes bunch them below legibility; the renderer runs
+// at up to 3x DPR (it draws once, then on demand).
 // data: counts, goal minutes and
 // totals exact from M1 (see data-001.js for sources); per-half splits,
 // individual shot minutes and across-pitch placement seeded (no location
@@ -45,7 +50,7 @@ const NIGHT = new THREE.Color("#0a0a0c");
 const BONE = new THREE.Color("#f2ece1");
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-let renderer, scene, camera, world, built = false, done = false;
+let renderer, scene, camera, world, tip, built = false, done = false;
 let terraMat, pins = [], plateSprites = [];
 
 const F = FRAME.mount({
@@ -56,7 +61,9 @@ const F = FRAME.mount({
   ratio: 1.6, open: true, gesture: true,   // the drag is ours: it turns the plate
   dark: true, onResize(w, h, dpr) {
     if (!built) build();
-    renderer.setPixelRatio(dpr);
+    // crispness: this piece renders once + on demand, so it can afford a
+    // higher pixel ratio than the frame's cap of 2
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 3));
     renderer.setSize(w / dpr, h / dpr, false);
     frameCamera(w / h);
     if (done) render();
@@ -122,7 +129,7 @@ function field(min, w) {
 
 /* ---------- text sprites (after the mono font loads) ---------- */
 function textSprite(str, hex, px, hWorld) {
-  const dpr = 3, pad = 8;
+  const dpr = 6, pad = 8;         // oversampled: never upscaled on a 3x screen
   const c = document.createElement("canvas");
   const g = c.getContext("2d");
   g.font = px * dpr + "px 'Geist Mono', ui-monospace, monospace";
@@ -133,6 +140,7 @@ function textSprite(str, hex, px, hWorld) {
   g.textBaseline = "middle";
   g.fillText(str, pad, c.height / 2);
   const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 1;
   const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false });
   const sp = new THREE.Sprite(m);
   const h = hWorld || 0.062 * (px / 12);
@@ -143,10 +151,10 @@ function textSprite(str, hex, px, hWorld) {
 /* ---------- camera: surveyor's view, fit for landscape, turnable ---------- */
 const TGT = new THREE.Vector3(0, 0.10, 0);
 const YAW0 = -0.16, EL0 = 0.38;            // the resting pose: slight diagonal, 3/4 view
-const EL_TOP = 1.535;                      // the opening pose: straight down — the plan
+const TIP0 = Math.PI / 2 - EL0;            // pinned upright: the sheet faces the lens exactly
 const YAW_LIM = 1.05;                      // how far the hand may turn it, either way
 const EL_MIN = 0.14, EL_MAX = 0.92;        // never under the plate, never top-down
-let yaw = 0, el = EL_TOP, dist = 6.6;      // born in plan view; finish() sets the rest pose
+let yaw = 0, el = EL0, dist = 6.6;         // camera fixed at rest; the PLATE tips, not the lens
 function frameCamera(aspect) {
   camera.aspect = aspect;
   camera.updateProjectionMatrix();
@@ -171,9 +179,15 @@ function build() {
   scene.background = null;                // open: no box, no ground of its own
   camera = new THREE.PerspectiveCamera(20, 1.6, 0.1, 80);
 
+  // tip carries the arrival: rotation.x = TIP0 stands the sheet upright,
+  // face to the viewer; the intro eases it to 0 (flat terrain). world
+  // inside it carries the hand's yaw.
+  tip = new THREE.Group();
+  tip.rotation.x = REDUCED ? 0 : TIP0;
   world = new THREE.Group();
-  world.rotation.y = yaw;                    // plan-aligned at birth; diagonal at rest
-  scene.add(world);
+  world.rotation.y = yaw;                    // square at birth; slight diagonal at rest
+  tip.add(world);
+  scene.add(tip);
 
   // --- terrain geometry: final heights baked, raised by the clock in-shader
   const geo = new THREE.PlaneGeometry(TL, WL, SEG_T, SEG_W);
@@ -241,17 +255,23 @@ function build() {
         return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x),
                    mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y);
       }
-      float contour(float lv, float th){
-        float f = fract(lv);
-        float d = min(f, 1.0 - f);
-        float w = fwidth(lv);
-        return 1.0 - smoothstep(w * th * 0.6, w * th * 1.6, d);
+      // analytic cartographic line: a solid core hw pixels wide, then a
+      // clean 1px AA ramp — exact at any camera angle (widths live in
+      // screen space via fwidth). Where a slope bunches the contours
+      // below legibility, the lines dissolve into their average ink tone
+      // instead of aliasing into moiré.
+      float carto(float lv, float hw){
+        float w = max(fwidth(lv), 1e-6);
+        float d = min(fract(lv), 1.0 - fract(lv)) / w;   // px to the level
+        float a = clamp(hw + 0.5 - d, 0.0, 1.0);
+        float fade = smoothstep(2.5, 5.5, 1.0 / w);      // px between levels
+        float avg = clamp(2.0 * hw * w, 0.0, 1.0);       // mean coverage
+        return mix(avg, a, fade);
       }
-      float halo(float lv, float th){
-        float f = fract(lv);
-        float d = min(f, 1.0 - f);
-        float w = fwidth(lv);
-        return 1.0 - smoothstep(0.0, w * th * 6.0, d);
+      float halo(float lv, float px){
+        float w = max(fwidth(lv), 1e-6);
+        float d = min(fract(lv), 1.0 - fract(lv)) / w;
+        return (1.0 - smoothstep(0.0, px, d)) * smoothstep(2.5, 5.5, 1.0 / w);
       }
       void main(){
         float hAbs = vH * vRise;
@@ -260,11 +280,12 @@ function build() {
         float wob = (n2(vUv * vec2(34.0, 15.0)) - 0.5) + (n2(vUv * vec2(88.0, 38.0)) - 0.5) * 0.35;
         float lv = hAbs * uLevels + wob * 0.11;
         float lvM = lv / 5.0 + wob * 0.02;
-        // minor lines + heavier index lines every 5th, with a soft ink halo
-        float minor = contour(lv, 1.0) * 0.5;
-        float major = contour(lvM, 1.2) * 0.9;
+        // the survey hierarchy: hairline intermediates, heavier and
+        // brighter index contours every 5th, a soft ink halo under both
+        float minor = carto(lv, 0.55) * 0.45;
+        float major = carto(lvM, 1.15) * 0.95;
         float crisp = max(minor, major);
-        float glow = max(halo(lv, 1.0) * 0.05, halo(lvM, 1.2) * 0.10);
+        float glow = max(halo(lv, 6.0) * 0.04, halo(lvM, 8.0) * 0.09);
         float gate = smoothstep(0.006, 0.02, hAbs);
         float a = (crisp + glow) * gate;
         float bright = 0.62 + 0.38 * smoothstep(0.0, 0.85, hAbs);  // ink catches light on the summits
@@ -272,14 +293,15 @@ function build() {
         float bd = min(min(vUv.x, 1.0 - vUv.x) / fwidth(vUv.x),
                        min(vUv.y, 1.0 - vUv.y) / fwidth(vUv.y));
         float borderA = (1.0 - smoothstep(0.7, 1.8, bd)) * 0.40 * uPlate;
-        // period rules at 45 / 90 (the sliver past 90 is stoppage)
-        float wm = fwidth(vMin) * 1.1;
+        // period rules at 45 / 90 (the sliver past 90 is stoppage) —
+        // pixel-exact rules like the contours
+        float wm = max(fwidth(vMin), 1e-6);
         float pr = 0.0;
-        pr = max(pr, 1.0 - smoothstep(wm * 0.6, wm * 1.7, abs(vMin - 45.0)));
-        pr = max(pr, 1.0 - smoothstep(wm * 0.6, wm * 1.7, abs(vMin - 90.0)));
+        pr = max(pr, 1.0 - smoothstep(0.6, 1.7, abs(vMin - 45.0) / wm));
+        pr = max(pr, 1.0 - smoothstep(0.6, 1.7, abs(vMin - 90.0) / wm));
         float prA = pr * 0.14 * uPlate;
         // plotter cursor: a fine rule at the current minute, gone after the whistle
-        float cur = (1.0 - smoothstep(wm * 0.7, wm * 2.4, abs(vMin - uCursor))) * uSweep * 0.45;
+        float cur = (1.0 - smoothstep(0.8, 2.4, abs(vMin - uCursor) / wm)) * uSweep * 0.45;
         // the plate face, barely lifted from the room by the raking light
         vec3 base = uNight + uBone * (vLit * vRise * 0.032 + hAbs * 0.02);
         vec3 col = base;
@@ -374,19 +396,23 @@ function render() {
   renderer.render(scene, camera);
 }
 
-/* ---------- the one performance: plan, draw, tilt, rest ---------- */
-// act i — the plan: straight top-down, the 94' plotted left to right in
-// ~7.4s (a 2D contour map, drawn). act ii — the tilt: one continuous eased
-// camera move down into the resting 3/4 isometric; the pins and goal labels
-// fade in as the relief gains its third dimension. act iii — rest.
+/* ---------- the one performance: pinned, drawn, tipped, rest ---------- */
+// act i — the wall: the sheet stands upright facing the viewer while the
+// 94' are plotted left to right in ~7.4s (a 2D contour drawing, pinned).
+// act ii — the tip: one continuous eased move; the camera holds still and
+// the sheet itself falls back into the resting 3/4 terrain, the pins and
+// goal labels arriving with the third dimension. act iii — rest.
 const DRAW = 7.4, LEAD = 0.5;                 // the survey sweep, after a beat
-const T_TILT = 9.0, TILT = 2.2;               // tilt start (s) and duration
+const T_TILT = 9.0, TILT = 2.2;               // tip start (s) and duration
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 let t0 = null;
 
 function finish() {
-  if (!done) { yaw = YAW0; el = EL0; applyView(); }  // first rest only — never
-  done = true;                                       // snap a hand-turned plate
+  if (!done) {                                       // first rest only — never
+    yaw = YAW0; el = EL0; tip.rotation.x = 0;        // snap a hand-turned plate
+    applyView();
+  }
+  done = true;
   const U = terraMat.uniforms;
   U.uClock.value = TOTAL + 80;
   U.uCursor.value = TOTAL + 80;
@@ -411,11 +437,12 @@ function loop(tms) {
   const plateK = clamp01(t / 0.9);
   U.uPlate.value = plateK * plateK * (3 - 2 * plateK);
   for (const ps of plateSprites)
-    if (!ps.tilt) ps.s.material.opacity = ps.o * plateK;   // map furniture, in plan
-  // the tilt: plan → surveyor's 3/4, one confident move (strong ease-in-out)
+    if (!ps.tilt) ps.s.material.opacity = ps.o * plateK;   // sheet furniture, on the wall
+  // the tip: the sheet falls off the wall into the surveyor's 3/4 —
+  // one confident move (strong ease-in-out), camera pinned at the rest pose
   const k = clamp01((t - T_TILT) / TILT);
   const e5 = k * k * k * (k * (k * 6 - 15) + 10);
-  el = EL_TOP + (EL0 - EL_TOP) * e5;
+  tip.rotation.x = TIP0 * (1 - e5);
   yaw = YAW0 * e5;
   applyView();
   // pins and labels arrive with the third dimension
