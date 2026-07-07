@@ -118,16 +118,18 @@ opacity:0;pointer-events:none;transition:opacity 320ms ease}
 .panel{position:fixed;z-index:15;left:10px;right:10px;
 top:max(10px,env(safe-area-inset-top));
 bottom:max(10px,env(safe-area-inset-bottom));
-margin:0;border-radius:26px;animation:none;padding-top:64px;
+margin:0;border-radius:26px;animation:none;
 box-shadow:0 30px 80px rgba(0,0,0,.6);
 transform:translateY(103%);opacity:0;pointer-events:none;
 transition:transform 460ms cubic-bezier(0.32,0.72,0,1),opacity 320ms ease}
 body.open .panel{transform:none;opacity:1;pointer-events:auto}
 body.open .scrim{opacity:1;pointer-events:auto}
 body.open .pill{opacity:0;pointer-events:none}
-.x{display:flex;align-items:center;justify-content:center;position:absolute;
-top:14px;right:14px;width:36px;height:36px;border-radius:999px;cursor:pointer;
-background:rgba(22,19,15,.06);border:0;color:#16130f;font:inherit;font-size:16px}
+.x{display:flex;align-items:center;justify-content:center;margin:0 auto;
+width:44px;height:44px;border-radius:999px;cursor:pointer;
+background:rgba(22,19,15,.06);border:0;color:#16130f;font:inherit;font-size:16px;
+transition:transform 160ms cubic-bezier(0.23,1,0.32,1)}
+.x:active{transform:scale(0.94)}
 @media (prefers-reduced-motion:reduce){.panel{transition:opacity 200ms ease}}
 }
 ${thumb ? `body{display:block;padding:0}
@@ -157,8 +159,13 @@ ${thumb ? `body{display:block;padding:0}
         "</div>" +
         '<p class="cap">seeded by its date</p>' +
       "</div>" +
-      '<nav class="go" aria-label="pieces"></nav>' +
-      '<button class="x" aria-label="close">✕</button>';
+      '<nav class="go" aria-label="pieces"></nav>';
+    // the close button lives at the foot, centered between the arrows
+    const xBtn = document.createElement("button");
+    xBtn.className = "x";
+    xBtn.setAttribute("aria-label", "close");
+    xBtn.textContent = "✕";
+    panel.querySelector(".go").appendChild(xBtn);
 
     const room = document.createElement("div");
     room.className = "room";
@@ -237,6 +244,7 @@ ${thumb ? `body{display:block;padding:0}
             nav.appendChild(a);
           };
           mk("prev", prev, "←");
+          nav.appendChild(xBtn);   // ✕ sits centered between the arrows
           mk("next", next, "→");
 
           // pieces that own hand gestures (gesture: true) keep the drag for
