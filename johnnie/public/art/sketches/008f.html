@@ -9,14 +9,17 @@
 precision highp float;
 uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
 
-// 008 — f · tapiz — the match hand-knotted as a pampa tapestry.
-// Every knot is placed: guarda-pampa diamond bands sit at the five goal
+// 008 — f · tapiz — the match woven as a pampa wall tapestry.
+// Weft-faced wool on a cotton warp: 160 warps, 288 beaten rows. The
+// cartoon is the timeline — guarda-pampa diamond bands at the five goal
 // minutes (celeste chains for argentina, rojo for cabo verde, the own
-// goal an outlined hollow chain), single gold weft rows at the two
-// yellow cards, a stepped ball medallion resting mid-field, and the
-// field speckle splits 64/36 like the possession. Heathered yarn,
-// abrash rows, selvedge, fringe. It weaves itself bottom-up on a bare
+// goal a hollow chain), single gold picks at the two yellow cards, a
+// sol de mayo at the restart, and the field speckle split 64/36 like
+// the possession. Matte fibre, abrash, kilim slit shadows, wandering
+// rows, a knotted warp fringe. It weaves itself bottom-up on a bare
 // warp, then hangs still.
+
+const float PI = 3.14159265;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
 float vnoise(vec2 p){
@@ -27,84 +30,80 @@ float vnoise(vec2 p){
 }
 float ease(float t){ t = clamp(t, 0.0, 1.0); return 1.0 - pow(1.0 - t, 3.0); }
 
-// wool palette
+// wool palette — softened, matte
 vec3 pal(float i){
-  if (i < 0.5) return vec3(0.898, 0.862, 0.768);   // 0 cream
-  if (i < 1.5) return vec3(0.478, 0.671, 0.800);   // 1 celeste
-  if (i < 2.5) return vec3(0.173, 0.278, 0.396);   // 2 indigo
-  if (i < 3.5) return vec3(0.741, 0.333, 0.243);   // 3 rojo
-  if (i < 4.5) return vec3(0.416, 0.169, 0.133);   // 4 wine
-  if (i < 5.5) return vec3(0.833, 0.647, 0.204);   // 5 gold
-  return vec3(0.180, 0.145, 0.114);                // 6 charcoal
+  if (i < 0.5) return vec3(0.906, 0.874, 0.796);   // 0 cream
+  if (i < 1.5) return vec3(0.494, 0.655, 0.769);   // 1 celeste
+  if (i < 2.5) return vec3(0.204, 0.290, 0.384);   // 2 indigo
+  if (i < 3.5) return vec3(0.702, 0.352, 0.278);   // 3 rojo
+  if (i < 4.5) return vec3(0.412, 0.200, 0.165);   // 4 wine
+  if (i < 5.5) return vec3(0.804, 0.633, 0.263);   // 5 gold
+  return vec3(0.216, 0.184, 0.153);                // 6 charcoal
 }
 
-const float KC = 64.0;    // knots across the rug
-const float KR = 86.0;    // knot rows
+const float PC   = 80.0;    // pattern columns — the cartoon's grid
+const float PR   = 96.0;    // pattern rows
+const float WARP = 160.0;   // warp threads, two per pattern column
+const float ROWS = 288.0;   // weft rows, three per pattern row
 
-// pile height per wool — gold weft lies flat, colour wools stand tall
-float heightOf(float i){
-  if (i < 0.5) return 0.52;      // cream
-  if (i < 4.5) return 0.60;      // colour wools
-  if (i < 5.5) return 0.34;      // gold weft
-  return 0.44;                   // charcoal
-}
-
-// ---- the pattern: knot (cx, rowFromTop) → palette index ----
+// ---- the cartoon: pattern cell (cx, rowFromTop) → wool index ----
 float diamondBand(float cx, float rLoc, float inner, float bg, float outline, float hollow){
-  // guarda pampa: a chain of stepped diamonds, band is 7 rows tall
-  float dx = abs(mod(cx, 8.0) - 4.0);
-  float dr = abs(rLoc - 3.0);
+  // guarda pampa: a chain of stepped diamonds, the band 7 pattern rows tall
+  float dx = abs(mod(cx, 10.0) - 5.0);
+  float dr = abs(rLoc - 3.5) * 1.45;
   float d = dx + dr;
-  if (d <= 2.0) return hollow > 0.5 ? bg : inner;
-  if (d <= 3.0) return outline;
+  if (d <= 2.6) return hollow > 0.5 ? bg : inner;
+  if (d <= 3.9) return outline;
   return bg;
 }
 
 float pattern(float cx, float rt){
-  // 0..1 edge binding · 2..6 zigzag guard · 7..8 cream — mirrored at bottom
-  float rb = (KR - 1.0) - rt;                    // rows from bottom
+  // 0..1 dark binding · 2..7 zigzag guard · 8..9 cream — mirrored below
+  float rb = (PR - 1.0) - rt;
   float edge = min(rt, rb);
   if (edge < 2.0) return 6.0;
-  if (edge < 7.0){                               // zigzag guard, diagonal weave
+  if (edge < 8.0){
     float r = edge - 2.0;
-    return mod(cx + r, 6.0) < 3.0 ? 1.0 : 2.0;
+    return mod(cx + r, 7.0) < 3.5 ? 1.0 : 2.0;
   }
-  if (edge < 9.0) return 0.0;
+  if (edge < 10.0) return 0.0;
 
   // field rows map the 120 minutes, top to bottom
-  float f0 = 9.0, f1 = KR - 10.0;
+  float f0 = 10.0, f1 = PR - 11.0;
   float minute = (rt - f0) / (f1 - f0) * 120.0;
 
-  // gold card rows — 69' and 115'
-  if (abs(minute - 69.0) < 0.9 || abs(minute - 115.0) < 0.9) return 5.0;
+  // gold picks — the cards at 69' and 115'
+  if (abs(minute - 69.0) < 0.8 || abs(minute - 115.0) < 0.8) return 5.0;
 
-  // five goal bands (7 rows tall) — guarda pampa chains
+  // five goal bands — guarda pampa chains, each dyed for its scorer
   for (int i = 0; i < 5; i++){
     float gm  = i==0 ? 29.0 : i==1 ? 59.0 : i==2 ? 92.0 : i==3 ? 103.0 : 111.0;
     float arg = (i==0 || i==2 || i==4) ? 1.0 : 0.0;
     float og  = i==4 ? 1.0 : 0.0;
-    float gr = f0 + gm / 120.0 * (f1 - f0);      // band centre row
-    float rLoc = rt - gr + 3.0;
+    float gr = f0 + gm / 120.0 * (f1 - f0);
+    float rLoc = rt - gr + 3.5;
     if (rLoc >= 0.0 && rLoc < 7.0){
-      if (arg > 0.5) return diamondBand(cx, rLoc, 1.0, 2.0, 0.0, og);
-      return diamondBand(cx, rLoc, 3.0, 4.0, 0.0, og);
+      float ph = floor(hash(vec2(gm, 61.0)) * 10.0);   // each band starts where the weaver started
+      if (arg > 0.5) return diamondBand(cx + ph, rLoc, 1.0, 2.0, 0.0, og);
+      return diamondBand(cx + ph, rLoc, 3.0, 4.0, 0.0, og);
     }
   }
 
-  // the sol de mayo — the flag's sun, woven in gold between the
-  // 29' and 59' bands
+  // the sol de mayo, woven in gold between the 29' and 59' bands
   {
-    float bx = KC * 0.5 - 0.5;
+    float bx = PC * 0.5 - 0.5;
     float br = f0 + 46.5 / 120.0 * (f1 - f0);
-    vec2 d2 = vec2(cx - bx, (rt - br) * 1.15);   // knots are a touch tall
+    vec2 d2 = vec2(cx - bx, rt - br);
     float d = length(d2);
-    if (d < 8.2){
-      if (d < 3.4) return 5.0;                   // gold face
+    if (d < 10.4){
+      if (d < 4.2) return 5.0;                    // gold face
       float ang = atan(d2.y, d2.x);
       float spoke = abs(mod(ang + 0.2618, 0.5236) - 0.2618);
-      if (d < 4.2) return spoke < 0.13 ? 5.0 : 6.0;  // charcoal collar
-      if (spoke < 0.11 && d < 7.6) return 5.0;   // twelve rays
-      return 0.0;                                // clean cream ground
+      if (d < 5.2) return spoke < 0.14 ? 5.0 : 6.0;   // charcoal collar
+      float ray = floor((ang + PI) / 0.5236);
+      float rayLen = 8.4 + 1.8 * hash(vec2(ray, 77.0));   // no two rays alike
+      if (spoke < 0.11 && d < rayLen) return 5.0;
+      return 0.0;                                 // clean cream ground
     }
   }
 
@@ -121,122 +120,184 @@ void main(){
   // width-anchored design space: x∈[0,0.75], y extends on taller screens
   vec2 q = vec2(p.x * 0.75, (p.y - 0.5) * 0.75 / max(aspect, 0.001) + 0.5);
 
-  // the wall
-  vec3 col = mix(vec3(0.902, 0.878, 0.824), vec3(0.869, 0.838, 0.774), pow(1.0 - p.y, 1.4));
+  // a hung textile is never perfectly square to the room
+  float tl = 0.006;
+  q = vec2(0.375, 0.5) + mat2(cos(tl), -sin(tl), sin(tl), cos(tl)) * (q - vec2(0.375, 0.5));
 
-  // the cloth is hung, not printed — it waves gently
-  float wave = sin(q.y * 13.0 + 2.1) + 0.6 * sin(q.y * 29.0 + 0.7);
-  q.x += 0.004 * wave;
+  // plaster wall, lit from above
+  vec3 col = mix(vec3(0.906, 0.884, 0.838), vec3(0.856, 0.828, 0.774), pow(clamp(1.0 - q.y, 0.0, 1.5), 1.35));
+  col *= 0.975 + 0.05 * vnoise(q * 13.0);
 
-  // rug box in design space
-  float X0 = 0.055, X1 = 0.695, Y0 = 0.075, Y1 = 0.925;
-  float k = (X1 - X0) / KC;                       // knot size
-  float weave = ease(u_p * 10.0 / 9.3);           // woven rows, bottom → up
+  // geometry
+  float X0 = 0.055, X1 = 0.695;
+  float rodY = 0.947, rodR = 0.0105;
+  float Y1 = 0.905, Y0 = 0.150;
+  float wp = (X1 - X0) / WARP;                    // warp pitch
+  float wh = (Y1 - Y0) / ROWS;                    // weft row height
+
+  float weave = ease(min(u_p * 1.08, 1.0));
   float fell = mix(Y0, Y1, weave);                // the loom's working edge
 
-  // soft shadow the rug throws on the wall
-  {
-    vec2 sq = q - vec2(0.012, -0.016);
-    float inx = smoothstep(X0-0.02, X0+0.02, sq.x) * smoothstep(X1+0.02, X1-0.02, sq.x);
-    float iny = smoothstep(Y0-0.02, Y0+0.02, sq.y) * smoothstep(min(fell, Y1)+0.02, min(fell, Y1)-0.02, sq.y);
-    col *= 1.0 - 0.16 * inx * iny;
-  }
-
-  // hanging edges wobble a little — cloth, not paper — and the top
-  // edge sags gently between the loops that hold it to the rod
-  float edgeWob = (vnoise(vec2(q.y * 9.0, 3.7)) - 0.5) * k * 0.8;
-  float sag = 0.0035 * (0.5 - 0.5 * cos((q.x - X0) / (k * 8.0) * 6.2832));
+  // weft tension pulls the sides in a little at mid-height,
+  // and the top edge sags a hair between warp groups
+  float bow = 0.0045 * sin(clamp((q.y - Y0) / (Y1 - Y0), 0.0, 1.0) * PI);
+  float sag = 0.0018 * (0.5 - 0.5 * cos((q.x - X0) / (wp * 16.0) * 2.0 * PI));
   float Y1e = Y1 - sag;
-  float inRugX = step(X0 + edgeWob, q.x) * step(q.x, X1 + edgeWob * 0.7);
-  float inRugY = step(Y0, q.y) * step(q.y, Y1e);
+
+  // soft shadow the cloth throws on the wall
+  {
+    vec2 sq = q - vec2(0.011, -0.013);
+    float inx = smoothstep(X0 - 0.022, X0 + 0.014, sq.x) * smoothstep(X1 + 0.022, X1 - 0.014, sq.x);
+    float iny = smoothstep(Y0 - 0.030, Y0 + 0.010, sq.y) * smoothstep(min(fell, Y1) + 0.022, min(fell, Y1) - 0.014, sq.y);
+    col *= 1.0 - 0.15 * inx * iny;
+  }
 
   // the rod it hangs from
   {
-    float ry = Y1 + 0.022;
-    float inRod = smoothstep(X0 - 0.034, X0 - 0.028, q.x) * smoothstep(X1 + 0.034, X1 + 0.028, q.x)
-                * smoothstep(0.013, 0.010, abs(q.y - ry));
-    float sheen = 1.0 - abs(q.y - ry) / 0.013;
-    vec3 wood = vec3(0.302, 0.231, 0.157) * (0.75 + 0.5 * sheen * sheen);
+    float over = 0.038;
+    float dx0 = X0 - over, dx1 = X1 + over;
+    float dy = (q.y - rodY) / rodR;
+    float inRod = smoothstep(1.0, 0.84, abs(dy))
+                * smoothstep(dx0 - 0.002, dx0 + 0.002, q.x)
+                * smoothstep(dx1 + 0.002, dx1 - 0.002, q.x);
+    float cyl = sqrt(max(0.0, 1.0 - dy * dy));
+    float grain = vnoise(vec2(q.x * 260.0, q.y * 36.0));
+    vec3 wood = vec3(0.318, 0.243, 0.168) * (0.52 + 0.62 * pow(cyl, 1.4)) * (0.90 + 0.18 * grain);
+    wood *= 1.0 - 0.30 * (smoothstep(dx0 + 0.012, dx0 + 0.004, q.x) + smoothstep(dx1 - 0.012, dx1 - 0.004, q.x));
     col = mix(col, wood, inRod);
+    // its slim shadow on the wall
+    float sx = (q.y - (rodY - 0.021)) / 0.009;
+    col *= 1.0 - 0.08 * exp(-sx * sx)
+               * smoothstep(dx0, dx0 + 0.01, q.x) * smoothstep(dx1, dx1 - 0.01, q.x);
   }
 
-  // fringe: warp strands escaping top and bottom
-  float fringe = 0.0;
-  {
-    float fl = 4.0 * k;
-    float strand = mod(q.x - X0, k * 0.667);
-    float sHash = hash(vec2(floor((q.x - X0) / (k * 0.667)), 5.5));
-    float wobble = sin(q.y * 90.0 + sHash * 6.28) * k * 0.22;
-    float on = step(abs(strand - k * 0.333 + wobble), k * 0.14);
-    float below = step(Y0 - fl * (0.6 + sHash * 0.5), q.y) * step(q.y, Y0);
-    float above = step(Y1e, q.y) * step(q.y, Y1 + fl * (0.4 + sHash * 0.45)) * weave;
-    fringe = on * max(below, above) * step(X0, q.x) * step(q.x, X1);
-  }
-  if (fringe > 0.5 && inRugY < 0.5){
-    col = mix(col, pal(0.0) * (0.82 + 0.3 * hash(q * 40.0)), 0.9);
+  // bare warp: from the working edge up and over the rod
+  if (q.x > X0 && q.x < X1 && q.y > fell - 0.001 && q.y < rodY + rodR * 0.55){
+    float xw0 = (q.x - X0) / wp;
+    float wi = floor(xw0);
+    float wavy = sin(q.y * 46.0 + hash(vec2(wi, 1.1)) * 6.283) * 0.10;
+    float fx = fract(xw0) - 0.5 + wavy;
+    float thr = smoothstep(0.30, 0.10, abs(fx));
+    vec3 tc = pal(0.0) * (0.60 + 0.52 * smoothstep(0.30, 0.0, abs(fx))) * (0.86 + 0.20 * hash(vec2(wi, 9.2)));
+    col = mix(col, tc, thr * 0.9);
   }
 
-  if (inRugX > 0.5 && inRugY > 0.5){
-    // knot coordinates; alternate rows sit half a knot over, like bricks
-    float rowY = (Y1e - q.y) / k;
-    float rt = floor(rowY);
-    float brick = mod(rt, 2.0) * 0.5;
-    // weft wobble: each row wanders a hair
-    float wj = (hash(vec2(rt, 8.1)) - 0.5) * 0.3;
-    float colX = (q.x - X0) / k + brick + wj;
-    float cx = floor(colX);
-
-    if (q.y <= fell){
-      // ---- woven ----
-      float idx = pattern(cx, rt);
-      // selvedge: the outermost knot column is bound in dark wool
-      if (cx <= 0.0 || cx >= KC - 1.0) idx = mod(rt, 4.0) < 2.0 ? 6.0 : 4.0;
-      vec3 wool = pal(idx);
-
-      // heather: every knot is its own dye lot
-      wool *= 0.92 + 0.16 * hash(vec2(cx * 7.1, rt * 3.3));
-      // abrash: whole rows drift, like hand-dyed batches
-      wool *= 0.96 + 0.08 * vnoise(vec2(rt * 0.23, 2.2));
-
-      // carved relief: motifs stand proud of the field and catch the
-      // light on their upper-left, shadow on their lower-right
-      float h0 = heightOf(idx);
-      float hL = heightOf(pattern(cx - 1.0, rt));
-      float hU = heightOf(pattern(cx, rt + 1.0));
-      float relief = 1.0 + (h0 - hL) * 1.7 + (h0 - hU) * 2.3;
-      wool *= clamp(relief, 0.70, 1.30);
-
-      // the knot itself: a little dome of pile with seams between,
-      // split into two twisted lobes like real yarn
-      vec2 cell = vec2(fract(colX), fract(rowY));
-      float dome = (1.0 - pow(abs(cell.x - 0.5) * 2.0, 2.2))
-                 * (1.0 - pow(abs(cell.y - 0.5) * 2.0, 1.6));
-      float lobe = 1.0 - abs(fract(cell.x * 2.0) - 0.5) * 2.0;
-      wool *= (0.74 + 0.34 * dome) * (0.93 + 0.10 * lobe * dome);
-      // ply: two close dye lots twisted together
-      wool *= 0.97 + 0.06 * sin((cell.x + rt * 0.37) * 9.42);
-      // fibre flecks
-      wool += (hash(gl_FragCoord.xy * 0.9) - 0.5) * 0.055;
-      // pile sheen: light falls from above, folds catch and lose it
-      wool *= 0.965 + 0.07 * (1.0 - p.y);
-      wool *= 1.0 + 0.055 * wave;
-
-      // the working row glows faintly while the loom is alive
-      if (weave < 1.0 && abs(q.y - fell) < k * 1.2) wool *= 1.10;
-
-      col = wool;
+  // below the cloth: the warp ends bound off in a knot row, then fringe
+  if (q.y < Y0 + 0.002 && q.x > X0 - 0.008 && q.x < X1 + 0.008){
+    float kb = Y0 - 0.010;
+    if (q.y > kb){
+      // overhand knots, four warps to a group
+      float g = (q.x - X0) / (wp * 4.0);
+      float gf = fract(g) - 0.5;
+      float bv = (q.y - kb) / 0.010 - 0.5;
+      float rr = gf * gf * 3.2 + bv * bv * 3.6;
+      float on = smoothstep(0.9, 0.5, rr) * step(0.0, g) * step(g, 40.0);
+      vec3 kc = pal(0.0) * (0.54 + 0.50 * (1.0 - rr)) * (0.90 + 0.16 * hash(vec2(floor(g), 3.3)));
+      col = mix(col, kc, on);
     } else {
-      // ---- not yet woven: the bare warp ----
-      float warp = step(abs(fract(colX) - 0.5), 0.16);
-      vec3 thread = pal(0.0) * (0.86 + 0.2 * hash(vec2(cx, 1.1)));
-      col = mix(col, thread, warp * 0.55);
+      // each group falls as one twisted strand — no two hang alike
+      float sp = wp * 4.0;
+      float sxw = (q.x - X0) / sp;
+      float best = 0.0; vec3 bc = col;
+      for (int k = -1; k <= 1; k++){
+        float s = floor(sxw) + float(k);
+        if (s < 0.0 || s > 39.5) continue;
+        float len = 0.050 + 0.032 * hash(vec2(s, 2.2));
+        float d = (kb - q.y) / len;
+        if (d < 0.0 || d > 1.0) continue;
+        float c1 = (hash(vec2(s, 3.3)) - 0.5) * 1.5;
+        float c2 = (hash(vec2(s, 4.4)) - 0.5) * 2.6;
+        float ctr = s + 0.5 + c1 * d + c2 * d * d;
+        float dx = sxw - ctr;
+        float halfw = 0.30 * (1.0 - 0.62 * d * d);
+        float prof = smoothstep(halfw, halfw * 0.15, abs(dx));
+        if (prof > best){
+          best = prof;
+          float ndx = clamp(abs(dx) / max(halfw, 1e-4), 0.0, 1.0);
+          float cyl2 = sqrt(1.0 - ndx * ndx);
+          float twist = 0.92 + 0.14 * sin(d * 34.0 + s * 2.0 + dx * 9.0);
+          bc = pal(0.0) * (0.50 + 0.52 * cyl2) * twist * (0.86 + 0.20 * hash(vec2(s, 8.8)));
+        }
+      }
+      col = mix(col, bc, best);
     }
   }
 
-  // room grain + gentle vignette
+  // ---- the woven cloth ----
+  // silhouette: fibre fuzz on every edge, a slow wobble down the sides
+  float fuzz = (hash(gl_FragCoord.xy * 0.53) - 0.5) * wp * 0.9;
+  float wob = (vnoise(vec2(q.y * 7.0, 3.7)) - 0.5) * wp * 1.6;
+  float Xl = X0 + bow + wob + fuzz;
+  float Xr = X1 - bow + wob * 0.7 + fuzz;
+
+  if (q.x > Xl && q.x < Xr && q.y > Y0 + fuzz * 0.8 && q.y < min(fell, Y1e) + fuzz){
+    // rows wander — a hand-beaten weft never lies ruler-straight
+    float yr0 = (Y1e - q.y) / wh;
+    float yr = yr0 + (vnoise(vec2(q.x * 20.0, yr0 * 0.10)) - 0.5) * 1.6;
+    float ri = floor(yr);
+    float fy = fract(yr);
+
+    // gentle cloth undulation displaces the warp; each row seats a hair off
+    float wave = sin(q.y * 9.0 + 1.8) + 0.55 * sin(q.y * 20.0 + 4.1);
+    float xw = (q.x - X0 + 0.0016 * wave) / wp
+             + (hash(vec2(ri, 8.1)) - 0.5) * 0.34;
+
+    float prt = clamp(floor(yr / 3.0), 0.0, PR - 1.0);
+    float pj = (hash(vec2(prt, 5.7)) - 0.5) * 0.5;     // motif edges waver
+    float pcx = floor((xw + pj) / 2.0);
+
+    float idx = pattern(pcx, prt);
+    // selvedge: the outer pair of warps bound in dark wool
+    if (xw < 2.0 || xw > WARP - 2.0) idx = mod(prt, 2.0) < 1.0 ? 6.0 : 4.0;
+    vec3 wool = pal(idx);
+
+    // brick: alternate rows seat their bumps between the row below's
+    float bxc = xw + mod(ri, 2.0) * 0.5;
+    float bi = floor(bxc);
+    float bfx = fract(bxc);
+
+    // heather: every finger of yarn its own dye lot
+    wool *= 0.90 + 0.18 * hash(vec2(bi * 1.7, ri * 3.1));
+    wool = mix(wool, wool * vec3(1.06, 1.0, 0.90), (hash(vec2(bi, ri + 41.0)) - 0.5) * 0.6);
+    // abrash: whole dye batches drift row to row
+    wool *= 0.94 + 0.11 * vnoise(vec2(yr * 0.045, 2.2));
+    wool = mix(wool, wool * vec3(1.05, 1.005, 0.93), (vnoise(vec2(yr * 0.023, 9.1)) - 0.5) * 0.9);
+
+    // kilim slits: where a colour field ends mid-row, a hairline shadow
+    float xc = fract((xw + pj) / 2.0);
+    float slit = 0.0;
+    if (abs(pattern(pcx + 1.0, prt) - idx) > 0.5) slit = max(slit, smoothstep(0.55, 1.0, xc));
+    if (abs(pattern(pcx - 1.0, prt) - idx) > 0.5) slit = max(slit, smoothstep(0.45, 0.0, xc));
+    wool *= 1.0 - 0.16 * slit;
+
+    // the weft bump: matte wool, deep occlusion in the grooves,
+    // soft light raking from the upper left — no gloss anywhere
+    float px = sin(bfx * PI);
+    float py = sin(fy * PI);
+    float bump = pow(px, 0.75) * (0.45 + 0.55 * py);
+    wool *= 0.60 + 0.40 * smoothstep(0.02, 0.72, bump);
+    wool *= 1.0 + 0.09 * cos(bfx * PI) + 0.07 * cos(fy * PI);
+
+    // two plies twisted round each other
+    wool *= 1.0 + 0.035 * sin((bfx * 2.0 - fy) * 2.0 * PI);
+    // fibre: flecks, the lay of the staple, stray hairs catching light
+    wool *= 0.94 + 0.12 * hash(gl_FragCoord.xy * 0.61);
+    wool *= 0.95 + 0.10 * vnoise(vec2(q.x * 520.0, q.y * 80.0));
+    wool += smoothstep(0.80, 0.97, vnoise(vec2(q.x * 240.0 + ri * 3.0, q.y * 330.0))) * 0.05;
+
+    // fold light from the undulation
+    wool *= 1.0 + 0.030 * cos(q.y * 9.0 + 1.8);
+    // the working row sits a touch proud while the loom is dressed
+    if (weave < 1.0 && abs(q.y - fell) < wh * 1.5) wool *= 1.05;
+
+    col = wool;
+  }
+
+  // room finishing: a soft rake of gallery light, grain, vignette
+  col *= 1.0 + 0.05 * (p.y - 0.5) - 0.03 * (p.x - 0.5);
   col += (hash(gl_FragCoord.xy * 0.71) - 0.5) * 0.02;
-  float vig = smoothstep(1.35, 0.5, length(p - vec2(0.5, 0.5)));
-  col *= mix(0.93, 1.0, vig);
+  float vig = smoothstep(1.35, 0.55, length(p - vec2(0.5, 0.5)));
+  col *= mix(0.94, 1.0, vig);
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -244,30 +305,35 @@ void main(){
 <script>
 const seed = ART.seed("2026-07-06-008f");
 const M = window.M8;
-let sh = null, done = false, start = null;
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let sh = null, start = null, prog = 0, raf = 0;
 
 const F = FRAME.mount({
   num: 6, title: "Tapiz", subject: "Argentina vs. Cabo Verde",
   edition: "02/31", date: "06·07·2026",
-  stack: "WebGL — GLSL", time: "95 minutes",
-  desc: "A woven tapestry of the timeline — guarda pampa bands at the goal minutes, a sol de mayo at the restart, warp and weft knotted one row per minute played.",
+  stack: "WebGL — GLSL", time: "3 hours",
+  desc: "The match woven as a wall tapestry — 160 warps, 288 rows of beaten wool. Guarda pampa bands at the five goal minutes, a sol de mayo at the restart, gold picks at the cards, the field speckled 64/36 like the possession.",
   dark: false, onResize() {
     if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
-    done = false;
+    if (RM) prog = 1;
+    cancelAnimationFrame(raf);
+    if (prog >= 1) { render(0); return; }   // resized after the weave: redraw, don't rewind
     start = null;
-    requestAnimationFrame(loop);
+    raf = requestAnimationFrame(loop);
   },
 });
 const sf = ART.rng(seed)() * 100;
 
+function render(tms) {
+  sh.gl.uniform1f(sh.extra.u_p, prog);
+  sh.draw(tms / 1000, sf);
+}
 // woven once (10s), then it hangs still — no loop
 function loop(tms) {
-  if (!sh || done) return;
-  if (start === null) start = tms;
-  const p = Math.min(1, (tms - start) / 10000);
-  sh.gl.uniform1f(sh.extra.u_p, p);
-  sh.draw(tms / 1000, sf);
-  if (p >= 1) { done = true; return; }
-  requestAnimationFrame(loop);
+  if (!sh) return;
+  if (start === null) start = tms - prog * 10000;
+  prog = Math.min(1, (tms - start) / 10000);
+  render(tms);
+  if (prog < 1) raf = requestAnimationFrame(loop);
 }
 </script>

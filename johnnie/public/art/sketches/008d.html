@@ -7,17 +7,18 @@
 <script src="data-008.js"></script>
 <script type="importmap">{ "imports": { "three": "../lib/three.module.min.js" } }</script>
 <script type="module">
-// 008 — d · terreno — the match as a topographic paper relief.
-// A carved plate: x = the 120 minutes, height = attacking pressure,
-// depth = the width of the pitch (argentina works one half, cabo verde
-// the other). Broad swells come from per-phase xG rates, hills from all
-// 38 shots (taller when on target), mountains from the five goals. Ink
-// contour lines are drawn onto the paper by a plotter cursor over a 26s
-// replay; summits are tinted celeste / red and flagged with pins.
-// data: counts and phase xG exact from M8; individual shot minutes and
-// across-pitch placement seeded (no location data exists); the og (111')
-// rises on argentina's half — it is argentina's goal.
-// three.js · relief.
+// 008 — d · terreno — the match as a survey plate, second state.
+// A black plate photographed in a dark room: x = the 120 minutes along the
+// long axis, height = attacking pressure, depth = the width of the pitch
+// (argentina works one half, cabo verde the other). Broad swells come from
+// per-phase xG rates, hills from all 38 shots (taller when on target),
+// summits from the five goals. The relief rises once, left to right behind
+// a plotter cursor over ~9s, its bone-white contour lines emerging as the
+// terrain climbs through the level planes — then the loop stops and the
+// plate rests. data: counts and phase xG exact from M8; individual shot
+// minutes and across-pitch placement seeded (no location data exists);
+// the og (111') rises on argentina's half — it is argentina's goal.
+// three.js · white ink on black.
 
 import * as THREE from "three";
 
@@ -27,27 +28,26 @@ const M = window.M8;
 const TL = 3.0, WL = 1.32;                 // world length (time) / depth (pitch width)
 const SEG_T = 120, SEG_W = 48;
 const C_ARG = -0.42, C_CPV = 0.42;         // team centres across the pitch (w in -1..1)
-const INK = new THREE.Color("#171511");
-const PAPER = new THREE.Color(M.ink.paper);
+const H_MAX = 0.46;                        // tallest summit, world units
+const NIGHT = new THREE.Color("#0a0a0c");
+const BONE = new THREE.Color("#f2ece1");
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-let renderer, scene, camera, built = false, dollyK = 1;
-let terraMat, pins = [], grainTex, grainScene, grainCam;
+let renderer, scene, camera, built = false, done = false;
+let terraMat, pins = [], plateSprites = [], overlayScene, overlayCam;
 
 const F = FRAME.mount({
   num: 4, title: "Terreno", subject: "Argentina vs. Cabo Verde",
   edition: "02/31", date: "06·07·2026",
-  stack: "Three.js + WebGL", time: "74 minutes",
-  desc: "The match as terrain: its intensity raised into a contour relief, minute by minute along the long axis. The peaks are the five goals; the high ridge past 90' is the prórroga.",
+  stack: "Three.js + WebGL", time: "96 minutes",
+  desc: "A survey plate of the match: attacking intensity raised into bone-white contour lines on a black ground, minute by minute along the long axis. The five summits are the goals; the high ridge past 90' is the prórroga. The relief is drawn once, then rests.",
   ratio: 1.6,
-  dark: false, onResize(w, h, dpr) {
+  dark: true, onResize(w, h, dpr) {
     if (!built) build();
     renderer.setPixelRatio(dpr);
     renderer.setSize(w / dpr, h / dpr, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    // full-bleed stages are narrower than 3:4 — dolly back so the whole
-    // plate (and its captions) stays inside the frame
-    dollyK = Math.max(1, (0.75 / camera.aspect) * 1.03);
+    frameCamera(w / h);
+    if (done) render();
   },
 });
 
@@ -95,18 +95,18 @@ function events(team) {
 }
 const EV = { arg: events("arg"), cpv: events("cpv") };
 
-// height + signed team dominance at (minute, w)
+// height at (minute, w)
 function field(min, w) {
-  let hA = 0, hC = 0;
-  hA += phaseRate("arg", min) * 0.055 * (0.25 + 0.75 * gauss(w - C_ARG, 0.5));
-  hC += phaseRate("cpv", min) * 0.055 * (0.25 + 0.75 * gauss(w - C_CPV, 0.5));
-  for (const e of EV.arg) hA += e.amp * gauss(min - e.min, e.sMin) * gauss(w - e.w, e.sW);
-  for (const e of EV.cpv) hC += e.amp * gauss(min - e.min, e.sMin) * gauss(w - e.w, e.sW);
-  return { h: hA + hC, tint: (hC - hA) / (hA + hC + 1e-5) };
+  let h = 0;
+  h += phaseRate("arg", min) * 0.055 * (0.25 + 0.75 * gauss(w - C_ARG, 0.5));
+  h += phaseRate("cpv", min) * 0.055 * (0.25 + 0.75 * gauss(w - C_CPV, 0.5));
+  for (const e of EV.arg) h += e.amp * gauss(min - e.min, e.sMin) * gauss(w - e.w, e.sW);
+  for (const e of EV.cpv) h += e.amp * gauss(min - e.min, e.sMin) * gauss(w - e.w, e.sW);
+  return h;
 }
 
 /* ---------- text sprites (after the mono font loads) ---------- */
-function textSprite(str, hex, px) {
+function textSprite(str, hex, px, hWorld) {
   const dpr = 3, pad = 8;
   const c = document.createElement("canvas");
   const g = c.getContext("2d");
@@ -120,9 +120,23 @@ function textSprite(str, hex, px) {
   const tex = new THREE.CanvasTexture(c);
   const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false });
   const sp = new THREE.Sprite(m);
-  const hWorld = 0.062 * (px / 12);
-  sp.scale.set(hWorld * c.width / c.height, hWorld, 1);
+  const h = hWorld || 0.062 * (px / 12);
+  sp.scale.set(h * c.width / c.height, h, 1);
   return sp;
+}
+
+/* ---------- camera: static surveyor's view, fit for landscape ---------- */
+const TGT = new THREE.Vector3(0, 0.10, 0);
+function frameCamera(aspect) {
+  camera.aspect = aspect;
+  camera.updateProjectionMatrix();
+  const hf = Math.atan(Math.tan(camera.fov * Math.PI / 360) * aspect);
+  const dist = Math.max(1.86 / Math.tan(hf),                     // fit the plate's length
+                        1.02 / Math.tan(camera.fov * Math.PI / 360)); // fit its height
+  const el = 0.38;                                               // elevated 3/4, no orbit
+  camera.position.set(TGT.x, TGT.y + Math.sin(el) * dist, TGT.z + Math.cos(el) * dist);
+  camera.lookAt(TGT);
+  terraMat.uniforms.uDist.value = dist;        // depth fade tracks the dolly
 }
 
 /* ---------- build ---------- */
@@ -130,199 +144,273 @@ function build() {
   built = true;
   renderer = new THREE.WebGLRenderer({ canvas: F.canvas, antialias: true });
   renderer.autoClear = false;
+  renderer.setClearColor(0x050505, 1);
   scene = new THREE.Scene();
-  scene.background = PAPER.clone();
-  camera = new THREE.PerspectiveCamera(20, 3 / 4, 0.1, 30);
+  scene.background = new THREE.Color("#050505");
+  camera = new THREE.PerspectiveCamera(20, 1.6, 0.1, 80);
 
   const world = new THREE.Group();
-  world.rotation.y = -0.72;                  // the plate sits diagonally in the portrait
-  world.scale.setScalar(0.655);
-  world.position.x = -0.05;
+  world.rotation.y = -0.16;                  // the plate sits at a slight diagonal
   scene.add(world);
 
-  // --- terrain geometry with baked heights
+  // --- terrain geometry: final heights baked, raised by the clock in-shader
   const geo = new THREE.PlaneGeometry(TL, WL, SEG_T, SEG_W);
   geo.rotateX(-Math.PI / 2);
   const p = geo.attributes.position;
   const n = p.count;
-  const aH = new Float32Array(n), aTint = new Float32Array(n), aMin = new Float32Array(n);
+  const aH = new Float32Array(n), aMin = new Float32Array(n);
   let maxH = 0;
   const raw = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const min = (p.getX(i) / TL + 0.5) * 120;
     const w = p.getZ(i) / (WL / 2);
-    const f = field(min, w);
-    raw[i] = f.h;
-    aTint[i] = f.tint;
+    raw[i] = field(min, w);
     aMin[i] = min;
-    if (f.h > maxH) maxH = f.h;
+    if (raw[i] > maxH) maxH = raw[i];
   }
-  const H_SCALE = 0.46 / maxH;               // tallest summit = 0.46 world
   for (let i = 0; i < n; i++) {
-    p.setY(i, raw[i] * H_SCALE);
+    p.setY(i, raw[i] / maxH * H_MAX);
     aH[i] = raw[i] / maxH;
   }
   p.needsUpdate = true;
+  geo.computeVertexNormals();                // final-state normals for the raking light
   geo.setAttribute("aH", new THREE.BufferAttribute(aH, 1));
-  geo.setAttribute("aTint", new THREE.BufferAttribute(aTint, 1));
   geo.setAttribute("aMin", new THREE.BufferAttribute(aMin, 1));
 
   terraMat = new THREE.ShaderMaterial({
     uniforms: {
-      uPaper: { value: PAPER },
-      uInk: { value: INK },
-      uArg: { value: new THREE.Color(M.ink.argDeep) },
-      uCpv: { value: new THREE.Color(M.ink.cpvDeep) },
+      uNight: { value: NIGHT },
+      uBone: { value: BONE },
       uLevels: { value: 24.0 },
-      uClock: { value: 0 },
+      uClock: { value: 0 },   // uncapped — keeps rising terrain past 120'
+      uCursor: { value: 0 },  // capped at 120 — the plotter's rule
       uSweep: { value: 1 },
+      uPlate: { value: 0 },
+      uDist: { value: 6.6 },
     },
     vertexShader: `
-      attribute float aH, aTint, aMin;
-      varying float vH, vTint, vMin, vZ;
+      attribute float aH, aMin;
+      uniform float uClock;
+      varying float vH, vMin, vRise, vLit, vZ;
       varying vec2 vUv;
       void main(){
-        vH = aH; vTint = aTint; vMin = aMin; vUv = uv;
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vH = aH; vMin = aMin; vUv = uv;
+        float r = clamp((uClock - aMin) / 7.0, 0.0, 1.0);
+        r = r * r * (3.0 - 2.0 * r);
+        vRise = r;
+        vec3 pos = position;
+        pos.y *= r;
+        // raking light from the upper left of the plate
+        vLit = max(dot(normalize(normal), normalize(vec3(-0.55, 0.75, 0.4))), 0.0);
+        vec4 mv = modelViewMatrix * vec4(pos, 1.0);
         vZ = -mv.z;
         gl_Position = projectionMatrix * mv;
       }`,
     fragmentShader: `
       precision highp float;
-      uniform vec3 uPaper, uInk, uArg, uCpv;
-      uniform float uLevels, uClock, uSweep;
-      varying float vH, vTint, vMin, vZ;
+      uniform vec3 uNight, uBone;
+      uniform float uLevels, uCursor, uSweep, uPlate, uDist;
+      varying float vH, vMin, vRise, vLit, vZ;
       varying vec2 vUv;
+      float h21(vec2 p){ p = fract(p * vec2(123.34, 345.45)); p += dot(p, p + 34.345); return fract(p.x * p.y); }
+      float n2(vec2 p){
+        vec2 i = floor(p), f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x),
+                   mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
       float contour(float lv, float th){
         float f = fract(lv);
         float d = min(f, 1.0 - f);
         float w = fwidth(lv);
         return 1.0 - smoothstep(w * th * 0.6, w * th * 1.6, d);
       }
+      float halo(float lv, float th){
+        float f = fract(lv);
+        float d = min(f, 1.0 - f);
+        float w = fwidth(lv);
+        return 1.0 - smoothstep(0.0, w * th * 6.0, d);
+      }
       void main(){
-        // contour ink: minor lines + heavier index lines every 5th
-        float minor = contour(vH * uLevels, 1.0) * 0.42;
-        float major = contour(vH * uLevels / 5.0, 1.15) * 0.55;
-        float a = max(minor, major) * smoothstep(0.006, 0.02, vH);
+        float hAbs = vH * vRise;
+        // hand wobble: the pen wanders a hair off the true level (kept slow,
+        // or the lines fragment into static)
+        float wob = (n2(vUv * vec2(34.0, 15.0)) - 0.5) + (n2(vUv * vec2(88.0, 38.0)) - 0.5) * 0.35;
+        float lv = hAbs * uLevels + wob * 0.11;
+        float lvM = lv / 5.0 + wob * 0.02;
+        // minor lines + heavier index lines every 5th, with a soft ink halo
+        float minor = contour(lv, 1.0) * 0.5;
+        float major = contour(lvM, 1.2) * 0.9;
+        float crisp = max(minor, major);
+        float glow = max(halo(lv, 1.0) * 0.05, halo(lvM, 1.2) * 0.10);
+        float gate = smoothstep(0.006, 0.02, hAbs);
+        float a = (crisp + glow) * gate;
+        float bright = 0.62 + 0.38 * smoothstep(0.0, 0.85, hAbs);  // ink catches light on the summits
         // plate border
         float bd = min(min(vUv.x, 1.0 - vUv.x) / fwidth(vUv.x),
                        min(vUv.y, 1.0 - vUv.y) / fwidth(vUv.y));
-        a = max(a, (1.0 - smoothstep(0.7, 1.8, bd)) * 0.55);
+        float borderA = (1.0 - smoothstep(0.7, 1.8, bd)) * 0.40 * uPlate;
         // period rules at 45 / 90 / 105
         float wm = fwidth(vMin) * 1.1;
         float pr = 0.0;
         pr = max(pr, 1.0 - smoothstep(wm * 0.6, wm * 1.7, abs(vMin - 45.0)));
         pr = max(pr, 1.0 - smoothstep(wm * 0.6, wm * 1.7, abs(vMin - 90.0)));
         pr = max(pr, 1.0 - smoothstep(wm * 0.6, wm * 1.7, abs(vMin - 105.0)));
-        a = max(a, pr * 0.20);
-        // the plotter draws left → right with the replay clock
-        float drawn = 1.0 - smoothstep(uClock - 1.2, uClock + 1.2, vMin);
-        a *= mix(0.13, 1.0, max(drawn, 1.0 - uSweep));
-        // plotter cursor: a fine rule at the current minute
-        float cur = (1.0 - smoothstep(wm * 0.7, wm * 2.2, abs(vMin - uClock))) * uSweep;
-        a = max(a, cur * 0.5);
-        // summit tint — celeste toward argentina's peaks, red toward cabo verde's
-        float e = smoothstep(0.34, 0.8, vH);
-        vec3 team = vTint < 0.0 ? uArg : uCpv;
-        vec3 lineCol = mix(uInk, team, e * min(1.0, abs(vTint) * 1.6) * 0.9);
-        vec3 base = mix(uPaper, team, e * abs(vTint) * 0.10);
-        base *= 0.985 + 0.03 * vH;
-        vec3 col = mix(base, lineCol, min(a, 1.0));
-        // distance fade into the paper (atmosphere, not fog-gray)
-        col = mix(col, uPaper, smoothstep(5.6, 8.8, vZ) * 0.45);
+        float prA = pr * 0.14 * uPlate;
+        // plotter cursor: a fine rule at the current minute, gone after 120'
+        float cur = (1.0 - smoothstep(wm * 0.7, wm * 2.4, abs(vMin - uCursor))) * uSweep * 0.45;
+        // the plate face, barely lifted from the room by the raking light
+        vec3 base = uNight + uBone * (vLit * vRise * 0.032 + hAbs * 0.02);
+        vec3 col = base;
+        col = mix(col, uBone * 0.52, clamp(borderA + prA, 0.0, 1.0));
+        col = mix(col, uBone * bright, clamp(a, 0.0, 1.0));
+        col = mix(col, uBone * 0.8, cur);
+        // depth falls into the dark of the room (relative to the dolly)
+        col = mix(col, uNight, smoothstep(uDist - 0.4, uDist + 2.4, vZ) * 0.35);
         gl_FragColor = vec4(col, 1.0);
         #include <colorspace_fragment>
       }`,
   });
   world.add(new THREE.Mesh(geo, terraMat));
 
-  // --- goal pins + labels
+  // --- goal pins + labels + plate captions (annotations in bone)
   const labels = [];
   for (const g of M.goals) {
     const e = EV[g.team].find((x) => x.goal === g);
     const x = (e.min / 120 - 0.5) * TL;
     const z = e.w * (WL / 2);
-    const y = field(e.min, e.w).h * H_SCALE;
+    const y = field(e.min, e.w) / maxH * H_MAX;
     const pinGeo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(x, y + 0.012, z), new THREE.Vector3(x, y + 0.20, z)]);
-    const pinMat = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0 });
+      new THREE.Vector3(x, y + 0.012, z), new THREE.Vector3(x, y + 0.17, z)]);
+    const pinMat = new THREE.LineBasicMaterial({ color: BONE, transparent: true, opacity: 0 });
     world.add(new THREE.Line(pinGeo, pinMat));
     pins.push({ g, mat: pinMat, sprite: null });
     labels.push({ g, x, y, z });
   }
   document.fonts.ready.then(() => {
     for (const l of labels) {
-      const deep = l.g.team === "arg" ? "rgba(43,106,153,.95)" : "rgba(168,44,34,.95)";
-      const s = textSprite(l.g.min + "’ " + l.g.player, l.g.og ? "rgba(23,21,17,.8)" : deep, 12);
+      const c = l.g.og ? "rgba(242,236,225,.66)" : "rgba(242,236,225,.95)";
+      const txt = l.g.og ? l.g.min + "’ og" : l.g.min + "’ " + l.g.player;  // abbreviated, or it collides with 92'
+      const s = textSprite(txt, c, 12, 0.081);
       s.center.set(l.g.min > 70 ? 1 : 0, 0);   // late-game peaks label leftward, into the frame
-      s.position.set(l.x, l.y + 0.215, l.z);
+      s.position.set(l.x, l.y + 0.185 + (l.g.og ? 0.05 : 0), l.z);  // lift the og clear of 103'
       s.material.opacity = 0;
       world.add(s);
       pins.find((pp) => pp.g === l.g).sprite = s;
     }
-    // engraved captions off the near corner of the plate
-    const a = textSprite("argentina · xg 2.16 · 22 tiros", "rgba(43,106,153,.85)", 11);
-    a.center.set(0, 0.5);
-    a.position.set(-TL / 2 + 0.72, -0.115, WL / 2 + 0.30);
-    world.add(a);
-    const c = textSprite("cabo verde · xg 0.45 · 16 tiros", "rgba(168,44,34,.85)", 11);
-    c.center.set(0, 0.5);
-    c.position.set(-TL / 2 + 0.72, -0.205, WL / 2 + 0.30);
-    world.add(c);
+    // engraved captions off the near-left corner of the plate
+    const capA = textSprite(M.home.name + " · xg " + M.xg.arg.toFixed(2) + " · " + M.shots.arg + " tiros",
+      "rgba(242,236,225,.62)", 11, 0.068);
+    capA.center.set(0, 0.5);
+    capA.position.set(-TL / 2 + 0.07, -0.115, WL / 2 + 0.30);
+    world.add(capA);
+    plateSprites.push({ s: capA, o: 1 });
+    const capC = textSprite(M.away.name + " · xg " + M.xg.cpv.toFixed(2) + " · " + M.shots.cpv + " tiros",
+      "rgba(242,236,225,.62)", 11, 0.068);
+    capC.center.set(0, 0.5);
+    capC.position.set(-TL / 2 + 0.07, -0.195, WL / 2 + 0.30);
+    world.add(capC);
+    plateSprites.push({ s: capC, o: 1 });
+    // the surveyor's minute scale along the near edge
+    for (const m of [0, 45, 90, 105, 120]) {
+      const t = textSprite(m + "’", "rgba(242,236,225,.55)", 10, 0.058);
+      t.center.set(0.5, 1);
+      t.position.set((m / 120 - 0.5) * TL, -0.02, WL / 2 + 0.10);
+      t.material.opacity = 0;
+      world.add(t);
+      plateSprites.push({ s: t, o: 1 });
+    }
+    if (done) finish();                       // fonts landed after the plate rested
   });
 
-  // --- paper grain overlay (multiply pass)
+  // --- overlay: paper-fibre grain in the black + a photographed vignette
+  overlayScene = new THREE.Scene();
+  overlayCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   const gc = document.createElement("canvas");
   gc.width = gc.height = 256;
   const gg = gc.getContext("2d");
   const img = gg.createImageData(256, 256);
   const Rg = ART.rng(seed + "-grain");
   for (let i = 0; i < img.data.length; i += 4) {
-    const v = 243 + (Rg() * 13) | 0;
+    let v = (Rg() * 8) | 0;
+    if (Rg() < 0.012) v += 8;                 // the odd brighter fleck of fibre
     img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
     img.data[i + 3] = 255;
   }
   gg.putImageData(img, 0, 0);
-  grainTex = new THREE.CanvasTexture(gc);
+  const grainTex = new THREE.CanvasTexture(gc);
   grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping;
-  grainTex.repeat.set(3, 4);
-  grainScene = new THREE.Scene();
-  grainCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  grainScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2),
-    new THREE.MeshBasicMaterial({ map: grainTex, blending: THREE.MultiplyBlending,
-      premultipliedAlpha: true, depthTest: false, depthWrite: false })));
+  grainTex.repeat.set(4, 6);                  // stretched texels: a horizontal fibre bias
+  const grain = new THREE.Mesh(new THREE.PlaneGeometry(2, 2),
+    new THREE.MeshBasicMaterial({ map: grainTex, blending: THREE.AdditiveBlending,
+      transparent: true, depthTest: false, depthWrite: false }));
+  grain.renderOrder = 0;
+  overlayScene.add(grain);
+  const vig = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    transparent: true, depthTest: false, depthWrite: false,
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    fragmentShader: `
+      varying vec2 vUv;
+      void main(){
+        vec2 q = vUv - vec2(0.47, 0.56);      // the lamp sits high and a touch left
+        q.x *= 1.35;
+        gl_FragColor = vec4(vec3(0.0), smoothstep(0.42, 1.05, length(q)) * 0.42);
+      }`,
+  }));
+  vig.renderOrder = 1;
+  overlayScene.add(vig);
 }
 
-/* ---------- loop ---------- */
-let raf;
-function loop(tms) {
-  const t = tms / 1000;
-  const cycle = t % 34;
-  const clock = Math.min(120, (cycle / 26) * 120);
-
-  terraMat.uniforms.uClock.value = clock;
-  terraMat.uniforms.uSweep.value = cycle > 26 ? 0 : 1;
-
-  // pins & labels appear as the replay reaches each goal
-  for (const pin of pins) {
-    const k = Math.min(1, Math.max(0, (clock - pin.g.min) / 3));
-    const o = cycle > 26 ? 1 : k;
-    pin.mat.opacity = o * 0.6;
-    if (pin.sprite) pin.sprite.material.opacity = o * 0.95;
-  }
-
-  // slow elevated 3/4 drift — museum vitrine walk-around
-  const az = 0.09 * Math.sin(t * 0.045) + 0.02;
-  const d = (6.3 + 0.16 * Math.sin(t * 0.031)) * dollyK;
-  camera.position.set(Math.sin(az) * d * 0.6 + 0.22, 2.75 + 0.12 * Math.sin(t * 0.026), Math.cos(az) * d);
-  camera.lookAt(0, 0.09, 0);
-
-  grainTex.offset.set((t * 1.3) % 1, (t * 1.9) % 1);
-
+function render() {
   renderer.clear();
   renderer.render(scene, camera);
-  renderer.render(grainScene, grainCam);
-  raf = requestAnimationFrame(loop);
+  renderer.render(overlayScene, overlayCam);
 }
-queueMicrotask(() => { if (!built) build(); raf || requestAnimationFrame(loop); });
+
+/* ---------- the one performance: rise, draw, rest ---------- */
+const DRAW = 8.2, LEAD = 0.5;                 // 120' in 8.2s, after a beat
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+let t0 = null;
+
+function finish() {
+  done = true;
+  const U = terraMat.uniforms;
+  U.uClock.value = 200;
+  U.uCursor.value = 200;
+  U.uSweep.value = 0;
+  U.uPlate.value = 1;
+  for (const ps of plateSprites) ps.s.material.opacity = ps.o;
+  for (const pin of pins) {
+    pin.mat.opacity = 0.55;
+    if (pin.sprite) pin.sprite.material.opacity = 0.95;
+  }
+  render();                                    // the final frame IS the artwork
+}
+
+function loop(tms) {
+  if (t0 === null) t0 = tms;
+  const t = (tms - t0) / 1000;
+  const clock = Math.max(0, t - LEAD) * (120 / DRAW);
+  const U = terraMat.uniforms;
+  U.uClock.value = clock;
+  U.uCursor.value = Math.min(120, clock);
+  U.uSweep.value = clock < 120 ? 1 : clamp01(1 - (clock - 120) / 5);
+  const plateK = clamp01(t / 0.9);
+  U.uPlate.value = plateK * plateK * (3 - 2 * plateK);
+  for (const ps of plateSprites) ps.s.material.opacity = ps.o * plateK;
+  for (const pin of pins) {
+    const k = clamp01((clock - pin.g.min) / 4);
+    pin.mat.opacity = k * 0.55;
+    if (pin.sprite) pin.sprite.material.opacity = k * 0.95;
+  }
+  render();
+  if (clock > 132) { finish(); return; }       // risen, drawn, labelled — rest
+  requestAnimationFrame(loop);
+}
+
+queueMicrotask(() => {
+  if (!built) build();
+  if (REDUCED) finish();
+  else requestAnimationFrame(loop);
+});
 </script>

@@ -5,241 +5,492 @@
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
 <script src="data-008.js"></script>
+<script id="frag" type="x-shader">
+precision highp float;
+uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
+uniform sampler2D u_map;
+
+// u_map: RG = surface normal xy, B = height, A = cavity (concave/convex).
+// One warm key light rakes across the relief as u_p goes 0 -> 1, then rests
+// at the upper left. Patina sits in the recesses, wear on the proud edges.
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+             mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+}
+
+void main(){
+  vec2 fc = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
+  vec2 uv = fc / u_res;
+  float dw = min(u_res.x, u_res.y*0.75);
+
+  vec4 m = texture2D(u_map, uv);
+  vec2 nxy = m.xy*2.0 - 1.0;
+  vec3 N = vec3(nxy, sqrt(max(0.04, 1.0 - dot(nxy, nxy))));
+  float h = m.z;
+  float cav = (m.w - 0.5)*2.0;
+
+  // the lamp: grazing from the lower right, arcs overhead, settles upper left
+  float pe = u_p*u_p*(3.0 - 2.0*u_p);
+  float az = mix(0.46, -2.25, pe);
+  float el = mix(0.13, 0.56, pe);
+  vec3 L = normalize(vec3(cos(az)*cos(el), sin(az)*cos(el), sin(el)));
+  vec2 Lh = normalize(L.xy);
+  vec3 Hv = normalize(L + vec3(0.0, 0.0, 1.0));
+
+  float plaque = smoothstep(0.20, 0.32, h);
+  float occ  = smoothstep(0.03, -0.20, cav);            // recesses -> patina
+  float wear = smoothstep(0.06, 0.26, cav) * plaque;    // proud edges -> polish
+
+  // cast shadow: march a few taps toward the lamp
+  float D = 0.055*dw;
+  float tanel = L.z / max(length(L.xy), 1e-3);
+  float shad = 0.0;
+  for (int k = 1; k <= 4; k++){
+    float s = float(k)*0.0055*dw;
+    float hs = texture2D(u_map, uv + Lh*s/u_res).z;
+    float blk = ((hs - h)*D - s*tanel) / D;
+    shad = max(shad, smoothstep(0.0, 0.10, blk));
+  }
+  shad *= 0.75;
+
+  // material
+  float mot = 0.6*vnoise(fc/(dw*0.055)) + 0.4*vnoise(fc/(dw*0.012));
+  vec3 bronze = vec3(0.40, 0.27, 0.15) * (0.80 + 0.45*mot);
+  vec3 patina = vec3(0.085, 0.082, 0.062);
+  vec3 gold   = vec3(0.90, 0.66, 0.33);
+  vec3 alb = mix(bronze, patina, occ*0.88);
+  alb = mix(alb, gold, wear*0.60);
+  float felt = vnoise(fc/(dw*0.0035));
+  vec3 galb = vec3(0.055, 0.050, 0.043) * (0.75 + 0.55*felt);
+  alb = mix(galb, alb, plaque);
+
+  // light
+  float dif = max(dot(N, L), 0.0) * (1.0 - shad);
+  vec2 lpos = clamp(vec2(0.5) + Lh*0.38, 0.0, 1.0);
+  vec2 ld = (uv - lpos) * u_res / dw;
+  float fall = clamp(1.16 - 0.28*length(ld), 0.35, 1.2);
+  vec3 key = vec3(1.06, 0.97, 0.86);
+  float ndh = max(dot(N, Hv), 0.0);
+  float spec = pow(ndh, 64.0)*(0.55 + 1.8*wear) + pow(ndh, 12.0)*0.18;
+  spec *= (1.0 - shad) * mix(0.06, 1.0, plaque) * (1.0 - occ*0.7);
+  vec3 Lf = normalize(vec3(0.55, 0.35, 0.45));
+  float fil = max(dot(N, Lf), 0.0)*0.16;
+  float ao = 1.0 - occ*0.55;
+  vec3 col = alb*(key*dif*fall*1.65 + vec3(0.80, 0.88, 1.02)*fil*ao + 0.055*ao)
+           + key*spec*fall;
+
+  // exposure rises with the lamp, then the print
+  col *= mix(0.55, 1.0, smoothstep(0.0, 0.30, u_p));
+  col = col/(1.0 + 0.42*col);
+  col = pow(col, vec3(0.90));
+  vec2 vq = (uv - 0.5) * vec2(u_res.x/dw, u_res.y/dw);
+  col *= mix(0.70, 1.0, smoothstep(1.25, 0.45, length(vq)));
+  col += (hash(fc*0.83) - 0.5)*0.028;
+
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
 <script>
-// 008 — j · órbitas — the goal as gravity, seen from above the plane.
-// A tilted three-dimensional system: 33 shots ride inclined Kepler
-// ellipses around a glowing torus (argentina clockwise in celeste,
-// cabo verde counter in ember; on-target orbits tighter and faster).
-// The five goals don't orbit — they spiral in at their minute, strike
-// the ring, and leave a standing bell that keeps its note. The replay
-// takes 26 seconds; after that the system simply keeps turning.
+// 008 — j · bronce — a commemorative plaque, sand-cast in bronze.
+// The relief is authored as a real heightfield (Canvas 2D: foundry
+// lettering, a 120-minute chapter ring, the sol de mayo, guarda pampa
+// bands), then normals + cavity are baked on the CPU and the metal is
+// lit in GLSL — patina pooled in the recesses, wear on the proud edges,
+// cast shadows marched toward the lamp. Every mark is the match:
+// Argentina's three goals raised from the metal, Cabo Verde's two sunk
+// into it (the 111' own goal ringed), period marks at 45/90/105,
+// hydration notches at 26' and 73', scorers and venue in raised type.
+// One raking light crosses the plaque over ~9s and settles; the loop
+// stops — the final frame is the photograph. Casting flaws (pits, edge
+// slump, face undulation) are seeded; tap to recast.
 
 const seed = ART.seed("2026-07-06-008j");
-const R = ART.rng(seed);
 const M = window.M8;
+const TAU = Math.PI * 2;
 
-const TILT = 1.02;                 // camera inclination
-const CT = Math.cos(TILT), ST = Math.sin(TILT);
+let W = 0, H = 0, DPR = 1;
+let sh = null, gl = null, tex = null;
+let built = false, animOn = false, curP = 0, t0 = 0, buildTimer = 0;
+let fontsOK = false;
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DUR = 9200;
 
-let W, H, DPR, U, CX, CY, bodies = [], strikers = [], dust = [];
 const F = FRAME.mount({
-  num: 10, title: "Órbitas", subject: "Argentina vs. Cabo Verde",
+  num: 10, title: "Bronce", subject: "Argentina vs. Cabo Verde",
   edition: "02/31", date: "06·07·2026",
-  stack: "Canvas 2D", time: "79 minutes",
-  desc: "The match as a small planetary system — every scorer an orbit, every goal a bell struck on the way past.",
+  stack: "Canvas 2D → GLSL relief", time: "88 minutes",
+  desc: "A commemorative plaque, sand-cast in bronze: the full 120 minutes ring a sol de mayo — Argentina's three goals raised from the metal, Cabo Verde's two struck into it. One raking lamp crosses the relief and settles; the patina keeps the score.",
   dark: true, onResize(w, h, dpr) {
     W = w; H = h; DPR = dpr;
-    U = Math.min(W, H * 0.75);
-    CX = W / 2; CY = H / 2;
-    build();
+    if (!sh) {
+      sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p", "u_map"]);
+      gl = sh.gl;
+      tex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.uniform1i(sh.extra.u_map, 0);
+    }
+    schedule();
   },
 });
-const ctx = F.canvas.getContext("2d");
+const sf = ART.rng(seed)() * 100;
 
-function build() {
-  bodies = []; strikers = []; dust = [];
-  const Rt = ART.rng(seed + "orbits");
+// wait for the mono face so the cast lettering is the real letterform
+Promise.race([
+  document.fonts.load('600 32px "Geist Mono"'),
+  new Promise((r) => setTimeout(r, 1600)),
+]).then(() => { fontsOK = true; if (sh) schedule(); });
 
-  // seeded shot minutes per team/phase, on-target flags — house idiom
-  for (const team of ["arg", "cpv"]) {
-    const mins = [];
-    M.shotsPhase[team].forEach((count, pi) => {
-      const [a, b] = [[0, 45], [45, 90], [90, 120]][pi];
-      for (let i = 0; i < count; i++) mins.push(a + 2 + Rt() * (b - a - 4));
-    });
-    for (let i = mins.length - 1; i > 0; i--) {
-      const j = (Rt() * (i + 1)) | 0; [mins[i], mins[j]] = [mins[j], mins[i]];
-    }
-    mins.forEach((min, i) => {
-      const on = i < M.onTarget[team];
-      bodies.push({
-        team, min, on,
-        a: on ? 0.15 + Rt() * 0.10 : 0.28 + Rt() * 0.17,   // semi-major, U units
-        e: 0.08 + Rt() * 0.25,
-        incl: (Rt() - 0.5) * 0.55,
-        node: Rt() * Math.PI * 2,
-        phase: Rt() * Math.PI * 2,
-        dir: team === "arg" ? 1 : -1,
-        trail: [],
-      });
-    });
-  }
-  // one on-target body per goal leaves the shells — those are the strikers
-  for (const g of M.goals) {
-    const k = bodies.findIndex((b) => b.team === g.team && b.on);
-    if (k >= 0) bodies.splice(k, 1);
-    strikers.push({
-      min: g.min, team: g.team, og: !!g.og,
-      fromA: 0.34 + R() * 0.06, node: R() * Math.PI * 2,
-      incl: (R() - 0.5) * 0.3, trail: [],
-    });
-  }
-  // depth dust — a faint field behind everything
-  for (let i = 0; i < 130; i++)
-    dust.push({ x: R() * 1.6 - 0.8, y: R() * 2.2 - 1.1, a: 0.03 + R() * 0.09, r: 0.5 + R() });
+function schedule() {
+  if (!fontsOK || !sh || !W) return;
+  clearTimeout(buildTimer);
+  buildTimer = setTimeout(rebuild, built ? 140 : 0);
 }
 
-// world → screen through the tilted, slowly drifting camera
-function project(x, y, z, az) {
-  const ca = Math.cos(az), sa = Math.sin(az);
-  const wx = x * ca - y * sa, wy = x * sa + y * ca;
-  return {
-    x: CX + wx * U,
-    y: CY + (wy * CT - z * ST) * U,
-    z: wy * ST + z * CT,           // toward viewer
-  };
+/* ---------- the height master: white raises the metal, black sinks it ---------- */
+
+const hc = document.createElement("canvas");
+const tc = document.createElement("canvas");
+
+function rebuild() {
+  const S = Math.min(W, H * 0.75), DH = S / 0.75;
+  const cx = W / 2, top = (H - DH) / 2;
+  hc.width = W; hc.height = H;
+  const x = hc.getContext("2d", { willReadFrequently: true });
+  x.fillStyle = "#000"; x.fillRect(0, 0, W, H);
+
+  const mg = 0.05 * S;
+  const PX0 = cx - S / 2 + mg, PY0 = top + mg, PW = S - 2 * mg, PH = DH - 2 * mg;
+  const RC = { x: cx, y: top + 0.565 * DH };
+  const RR = 0.27 * S;
+
+  function layer(fn, blur, alpha, mode) {
+    tc.width = W; tc.height = H;
+    const c = tc.getContext("2d");
+    fn(c);
+    x.save();
+    if (blur) x.filter = "blur(" + blur.toFixed(2) + "px)";
+    x.globalAlpha = alpha;
+    x.globalCompositeOperation = mode || "source-over";
+    x.drawImage(tc, 0, 0);
+    x.restore();
+    x.filter = "none";
+  }
+  function plaquePath(c, inset, r) {
+    const a = PX0 + inset, b = PY0 + inset, w = PW - 2 * inset, h = PH - 2 * inset;
+    c.beginPath();
+    if (c.roundRect) c.roundRect(a, b, w, h, r); else c.rect(a, b, w, h);
+  }
+  function setFont(c, px, wgt) {
+    if ("letterSpacing" in c) c.letterSpacing = (px * 0.12).toFixed(1) + "px";
+    c.font = (wgt || 600) + " " + px.toFixed(1) + "px 'Geist Mono', ui-monospace, monospace";
+    c.textAlign = "center"; c.textBaseline = "middle";
+  }
+  function dome(c, px, py, r, ink) {
+    const g = c.createRadialGradient(px, py, 0, px, py, r);
+    g.addColorStop(0, ink + "1)");
+    g.addColorStop(0.72, ink + "0.55)");
+    g.addColorStop(1, ink + "0)");
+    c.fillStyle = g;
+    c.beginPath(); c.arc(px, py, r, 0, TAU); c.fill();
+  }
+  const white = "rgba(255,255,255,", black = "rgba(0,0,0,";
+  const mAngle = (min) => -Math.PI / 2 + (min / 120) * TAU;
+
+  function guarda(c, gy, halfW) {
+    c.fillStyle = "#fff";
+    const bh = 0.030 * S, dwd = 0.052 * S;
+    c.fillRect(cx - halfW - 0.02 * S, gy - bh / 2 - 0.013 * S, 2 * (halfW + 0.02 * S), 0.0035 * S);
+    c.fillRect(cx - halfW - 0.02 * S, gy + bh / 2 + 0.0095 * S, 2 * (halfW + 0.02 * S), 0.0035 * S);
+    const n = Math.round((2 * halfW) / (dwd * 1.45));
+    const sp = (2 * halfW) / n;
+    for (let i = 0; i < n; i++) {
+      const dx = cx + (i - (n - 1) / 2) * sp;
+      for (let j = -3; j <= 3; j++) {
+        const bw = dwd * (1 - Math.abs(j) * 0.26);
+        c.fillRect(dx - bw / 2, gy + j * (bh / 7) - bh / 14, bw, bh / 7);
+      }
+    }
+  }
+
+  const scorers = (team) => M.goals.filter((g) => g.team === team)
+    .map((g) => (g.og ? g.player.replace(/^og\s*·\s*/, "").toUpperCase() + " (E.C.)"
+                      : g.player.toUpperCase()) + " " + g.min + "’")
+    .join("  ·  ");
+
+  /* 1 — the plaque body (its edge bevel comes from the blur) */
+  layer((c) => { c.fillStyle = "#fff"; plaquePath(c, 0, 0.02 * S); c.fill(); }, 0.0035 * S, 0.58);
+
+  /* 2 — casting slump along the edges */
+  layer((c) => {
+    const Re = ART.rng(seed + "edge");
+    for (let i = 0; i < 26; i++) {
+      const side = (Re() * 4) | 0, t = Re();
+      let px, py;
+      if (side === 0) { px = PX0 + t * PW; py = PY0; }
+      else if (side === 1) { px = PX0 + t * PW; py = PY0 + PH; }
+      else if (side === 2) { px = PX0; py = PY0 + t * PH; }
+      else { px = PX0 + PW; py = PY0 + t * PH; }
+      c.fillStyle = Re() < 0.5 ? "#fff" : "#000";
+      c.beginPath();
+      c.ellipse(px, py, (0.006 + 0.014 * Re()) * S, (0.004 + 0.008 * Re()) * S, Re() * Math.PI, 0, TAU);
+      c.fill();
+    }
+  }, 0.006 * S, 0.10);
+
+  /* 3 — raised rim + chapter-ring plateau */
+  layer((c) => {
+    c.strokeStyle = "#fff"; c.lineWidth = 0.009 * S;
+    plaquePath(c, 0.042 * S, 0.012 * S); c.stroke();
+  }, 0.0022 * S, 0.20, "lighter");
+  layer((c) => {
+    c.strokeStyle = "#fff"; c.lineWidth = 0.075 * S;
+    c.beginPath(); c.arc(RC.x, RC.y, RR, 0, TAU); c.stroke();
+  }, 0.010 * S, 0.06, "lighter");
+
+  /* 4 — raised type, ticks, bands, rays */
+  layer((c) => {
+    c.fillStyle = "#fff"; c.strokeStyle = "#fff";
+    guarda(c, top + 0.125 * DH, 0.30 * S);
+    guarda(c, top + 0.916 * DH, 0.30 * S);
+
+    setFont(c, 0.046 * S);
+    c.fillText(M.home.name.toUpperCase() + "  " + M.home.score, cx, top + 0.197 * DH);
+    c.fillText(M.away.name.toUpperCase() + "  " + M.away.score, cx, top + 0.274 * DH);
+    setFont(c, 0.020 * S, 500);
+    c.fillText(scorers("arg"), cx, top + 0.232 * DH);
+    c.fillText(scorers("cpv"), cx, top + 0.309 * DH);
+    c.fillText(M.competition.toUpperCase() + (M.aet ? "  ·  PRÓRROGA" : ""), cx, top + 0.852 * DH);
+    c.fillText(M.venue.toUpperCase().replace(", ", "  ·  ") + "  ·  " + M.date, cx, top + 0.880 * DH);
+
+    // 120 minute ticks; kickoff + period marks longer
+    for (let m = 0; m < 120; m++) {
+      const a = mAngle(m);
+      const per = m === 0 || M.periods.indexOf(m) >= 0;
+      const li = (per ? 0.034 : 0.016) * S;
+      c.lineWidth = (per ? 0.005 : 0.0028) * S;
+      c.beginPath();
+      c.moveTo(RC.x + Math.cos(a) * (RR - li / 2), RC.y + Math.sin(a) * (RR - li / 2));
+      c.lineTo(RC.x + Math.cos(a) * (RR + li / 2), RC.y + Math.sin(a) * (RR + li / 2));
+      c.stroke();
+    }
+    // goal minute numerals
+    setFont(c, 0.026 * S);
+    for (const g of M.goals) {
+      const a = mAngle(g.min), rn = RR + 0.052 * S;
+      c.fillText(g.min + "’", RC.x + Math.cos(a) * rn, RC.y + Math.sin(a) * rn);
+    }
+    // cabo verde bowl lips
+    c.lineWidth = 0.0045 * S;
+    for (const g of M.goals) if (g.team === "cpv") {
+      const a = mAngle(g.min);
+      c.beginPath();
+      c.arc(RC.x + Math.cos(a) * RR, RC.y + Math.sin(a) * RR, 0.026 * S, 0, TAU);
+      c.stroke();
+    }
+    // sol de mayo — 32 rays, straight and wavy alternating
+    for (let k = 0; k < 32; k++) {
+      const a = -Math.PI / 2 + (k / 32) * TAU;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      if (k % 2 === 0) {
+        const r0 = 0.062 * S, r1 = 0.185 * S, bw = 0.0055 * S;
+        c.beginPath();
+        c.moveTo(RC.x + ca * r0 - sa * bw, RC.y + sa * r0 + ca * bw);
+        c.lineTo(RC.x + ca * r0 + sa * bw, RC.y + sa * r0 - ca * bw);
+        c.lineTo(RC.x + ca * r1, RC.y + sa * r1);
+        c.closePath(); c.fill();
+      } else {
+        c.lineWidth = 0.0055 * S;
+        c.beginPath();
+        for (let s = 0; s <= 12; s++) {
+          const t = s / 12, r = 0.062 * S + t * 0.113 * S;
+          const off = Math.sin(t * TAU * 1.25) * 0.0075 * S * (1 - t * 0.4);
+          const px = RC.x + ca * r - sa * off, py = RC.y + sa * r + ca * off;
+          s ? c.lineTo(px, py) : c.moveTo(px, py);
+        }
+        c.stroke();
+      }
+    }
+    // metal splash specks
+    const Rs = ART.rng(seed + "speck");
+    for (let i = 0; i < 8; i++) {
+      c.beginPath();
+      c.arc(PX0 + 0.08 * S + Rs() * (PW - 0.16 * S), PY0 + 0.08 * S + Rs() * (PH - 0.16 * S),
+            (0.001 + 0.0015 * Rs()) * S, 0, TAU);
+      c.fill();
+    }
+  }, 0.0016 * S, 0.26, "lighter");
+
+  /* 5 — tall relief: goal domes, sol disc, mounting screws */
+  layer((c) => {
+    for (const g of M.goals) if (g.team === "arg") {
+      const a = mAngle(g.min);
+      const bx = RC.x + Math.cos(a) * RR, by = RC.y + Math.sin(a) * RR;
+      dome(c, bx, by, 0.026 * S, white);
+      dome(c, bx, by, 0.010 * S, white);
+    }
+    dome(c, RC.x, RC.y, 0.052 * S, white);
+    dome(c, RC.x, RC.y, 0.022 * S, white);
+    const sc = 0.095 * S;
+    for (const [px, py] of [[PX0 + sc, PY0 + sc], [PX0 + PW - sc, PY0 + sc],
+                            [PX0 + sc, PY0 + PH - sc], [PX0 + PW - sc, PY0 + PH - sc]]) {
+      dome(c, px, py, 0.015 * S, white);
+    }
+  }, 0.0016 * S, 0.34, "lighter");
+
+  /* 6 — struck into the metal: bowls, engravings, pits, screw slots */
+  layer((c) => {
+    c.fillStyle = "#000"; c.strokeStyle = "#000";
+    for (const g of M.goals) {
+      const a = mAngle(g.min);
+      const bx = RC.x + Math.cos(a) * RR, by = RC.y + Math.sin(a) * RR;
+      if (g.team === "cpv") dome(c, bx, by, 0.022 * S, black);
+      if (g.og) {                       // the own goal, ringed
+        c.lineWidth = 0.0035 * S;
+        c.beginPath(); c.arc(bx, by, 0.038 * S, 0, TAU); c.stroke();
+      }
+    }
+    for (const bm of M.breaks) {        // hydration notches
+      const a = mAngle(bm);
+      c.beginPath();
+      c.arc(RC.x + Math.cos(a) * (RR - 0.045 * S), RC.y + Math.sin(a) * (RR - 0.045 * S),
+            0.0045 * S, 0, TAU);
+      c.fill();
+    }
+    setFont(c, 0.0155 * S, 500);
+    c.textAlign = "right";
+    c.fillText("FUND. J.A. · Nº 008", PX0 + PW - 0.055 * S, PY0 + PH - 0.052 * S);
+    const Rq = ART.rng(seed + "screw");
+    const sc = 0.095 * S;
+    c.lineWidth = 0.004 * S;
+    for (const [px, py] of [[PX0 + sc, PY0 + sc], [PX0 + PW - sc, PY0 + sc],
+                            [PX0 + sc, PY0 + PH - sc], [PX0 + PW - sc, PY0 + PH - sc]]) {
+      const a = Rq() * Math.PI, r = 0.010 * S;
+      c.beginPath();
+      c.moveTo(px - Math.cos(a) * r, py - Math.sin(a) * r);
+      c.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r);
+      c.stroke();
+    }
+    const Rp = ART.rng(seed + "pits");
+    for (let i = 0; i < 12; i++) {
+      c.beginPath();
+      c.arc(PX0 + 0.06 * S + Rp() * (PW - 0.12 * S), PY0 + 0.06 * S + Rp() * (PH - 0.12 * S),
+            (0.0015 + 0.003 * Rp()) * S, 0, TAU);
+      c.fill();
+    }
+  }, 0.0016 * S, 0.30);
+
+  bake(x, S);
+  built = true;
+  if (!animOn) { animOn = true; start(); } else render();
 }
 
-// Kepler ellipse with the focus at the origin, inclined, node-rotated
-function orbitPos(b, th) {
-  const r = (b.a * (1 - b.e * b.e)) / (1 + b.e * Math.cos(th));
-  let x = r * Math.cos(th), y = r * Math.sin(th);
-  const ci = Math.cos(b.incl), si = Math.sin(b.incl);
-  const zz = y * si; y = y * ci;
-  const cn = Math.cos(b.node), sn = Math.sin(b.node);
-  return [x * cn - y * sn, x * sn + y * cn, zz];
+/* ---------- bake: heights -> normals + cavity, upload ---------- */
+
+function boxBlur(a, w, h, r, passes) {
+  const t = new Float32Array(a.length);
+  const iw = 1 / (2 * r + 1);
+  for (let p = 0; p < passes; p++) {
+    for (let y = 0; y < h; y++) {          // horizontal
+      const o = y * w;
+      let acc = a[o] * (r + 1);
+      for (let i = 1; i <= r; i++) acc += a[o + Math.min(i, w - 1)];
+      for (let xx = 0; xx < w; xx++) {
+        t[o + xx] = acc * iw;
+        acc += a[o + Math.min(xx + r + 1, w - 1)] - a[o + Math.max(xx - r, 0)];
+      }
+    }
+    for (let xx = 0; xx < w; xx++) {       // vertical
+      let acc = t[xx] * (r + 1);
+      for (let i = 1; i <= r; i++) acc += t[xx + Math.min(i, h - 1) * w];
+      for (let y = 0; y < h; y++) {
+        a[y * w + xx] = acc * iw;
+        acc += t[xx + Math.min(y + r + 1, h - 1) * w] - t[xx + Math.max(y - r, 0) * w];
+      }
+    }
+  }
 }
 
-const RING = 0.068;                 // torus radius, U units
-const easeOut = (t) => 1 - Math.pow(1 - Math.max(0, Math.min(1, t)), 3);
-const COL = {
-  arg: [143, 198, 234], argDim: [74, 123, 166],
-  cpv: [240, 140, 100], cpvDim: [166, 74, 56],
-};
+function bake(x, S) {
+  const img = x.getImageData(0, 0, W, H);
+  const N = W * H;
+  const hgt = new Float32Array(N);
+  for (let i = 0; i < N; i++) hgt[i] = img.data[i * 4] / 255;
+  boxBlur(hgt, W, H, 1, 1);                // soften 8-bit steps
 
-function draw(tms) {
-  const t = tms / 1000;
-  const clock = Math.min(120, (t / 26) * 120);
-  const az = 0.10 * Math.sin(t * 0.055) + t * 0.012;   // slow drift, never still
+  // seeded casting texture: low-frequency face undulation + sand grain
+  const nz = ART.makeNoise(seed + "cast");
+  const gs = Math.max(8, Math.round(S * 0.03));
+  const gw = Math.ceil(W / gs) + 2, gh = Math.ceil(H / gs) + 2;
+  const und = new Float32Array(gw * gh);
+  for (let gy = 0; gy < gh; gy++)
+    for (let gx = 0; gx < gw; gx++)
+      und[gy * gw + gx] = nz.fbm2((gx * gs) / S * 2.6, (gy * gs) / S * 2.6, 3);
+  const grain = new Float32Array(256 * 256);
+  const Rg = ART.rng(seed + "grain");
+  for (let i = 0; i < grain.length; i++) grain[i] = Rg() - 0.5;
 
-  ctx.fillStyle = "#07070b";
-  ctx.fillRect(0, 0, W, H);
-
-  // dust
-  for (const d of dust) {
-    const p = project(d.x, d.y, -0.05, az * 0.3);
-    ctx.fillStyle = `rgba(200,210,225,${d.a})`;
-    ctx.fillRect(p.x, p.y, d.r * DPR, d.r * DPR);
-  }
-
-  ctx.globalCompositeOperation = "lighter";
-
-  // the torus — the goalmouth, breathing
-  {
-    const breathe = 1 + 0.03 * Math.sin(t * 1.7);
-    for (let k = 3; k >= 0; k--) {
-      ctx.strokeStyle = `rgba(244,240,229,${k ? 0.05 * k : 0.75})`;
-      ctx.lineWidth = (k ? k * 4.5 : 1.8) * DPR;
-      ctx.beginPath();
-      ctx.ellipse(CX, CY, RING * U * breathe, RING * U * CT * breathe, 0, 0, Math.PI * 2);
-      ctx.stroke();
+  for (let y = 0; y < H; y++) {
+    const fy = y / gs, y0 = fy | 0, ty = fy - y0;
+    for (let xx = 0; xx < W; xx++) {
+      const i = y * W + xx;
+      const fx = xx / gs, x0 = fx | 0, tx = fx - x0;
+      const u00 = und[y0 * gw + x0], u10 = und[y0 * gw + x0 + 1];
+      const u01 = und[(y0 + 1) * gw + x0], u11 = und[(y0 + 1) * gw + x0 + 1];
+      const u = (u00 * (1 - tx) + u10 * tx) * (1 - ty) + (u01 * (1 - tx) + u11 * tx) * ty;
+      const g = grain[(xx & 255) + ((y & 255) << 8)];
+      const on = Math.min(1, Math.max(0, (hgt[i] - 0.30) / 0.15)); // plaque only
+      hgt[i] += u * 0.07 * on + g * (0.0025 + 0.0035 * on);
     }
   }
 
-  // bells — standing rings left by the goals
-  ctx.font = Math.max(9 * DPR, 0.016 * U) + "px 'Geist Mono', ui-monospace, monospace";
-  for (const s of strikers) {
-    if (clock < s.min) continue;
-    const age = t - (s.min / 120) * 26;
-    if (age < 0) continue;
-    const r = (RING + Math.min(0.24, age * 0.022)) * U;
-    const fade = Math.max(0.14, 1 - age * 0.06);
-    const [cr, cg, cb] = s.team === "arg" ? COL.arg : COL.cpv;
-    ctx.strokeStyle = `rgba(${cr},${cg},${cb},${0.5 * fade})`;
-    ctx.lineWidth = 1.4 * DPR;
-    ctx.setLineDash(s.og ? [5 * DPR, 5 * DPR] : []);
-    ctx.beginPath();
-    ctx.ellipse(CX, CY, r, r * CT, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    // the minute rides its ring at the goal's clock angle
-    const ga = (s.min / 120) * Math.PI * 2 - Math.PI / 2;
-    ctx.fillStyle = `rgba(${cr},${cg},${cb},${Math.max(0.35, fade)})`;
-    ctx.textAlign = "center";
-    ctx.fillText(s.min + "’", CX + Math.cos(ga) * r, CY + Math.sin(ga) * r * CT - 5 * DPR);
-  }
+  const hb = hgt.slice();
+  boxBlur(hb, W, H, Math.max(4, Math.round(S * 0.011)), 3);
 
-  // strikers mid-flight: spiral from the field into the torus over 2s
-  for (const s of strikers) {
-    const t0 = (s.min / 120) * 26 - 2;
-    const k = (t - t0) / 2;
-    if (k <= 0 || k >= 1) continue;
-    const kk = easeOut(k);
-    const th = s.node + kk * 5.2;
-    const [x, y, z] = orbitPos({ a: s.fromA * (1 - kk) + RING * kk, e: 0, incl: s.incl * (1 - kk), node: 0 }, th);
-    const p = project(x, y, z, az);
-    s.trail.push([p.x, p.y]);
-    if (s.trail.length > 26) s.trail.shift();
-    const [cr, cg, cb] = s.team === "arg" ? COL.arg : COL.cpv;
-    for (let i = 1; i < s.trail.length; i++) {
-      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${(i / s.trail.length) * 0.5})`;
-      ctx.lineWidth = 1.6 * DPR;
-      ctx.beginPath();
-      ctx.moveTo(s.trail[i - 1][0], s.trail[i - 1][1]);
-      ctx.lineTo(s.trail[i][0], s.trail[i][1]);
-      ctx.stroke();
-    }
-    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 9 * DPR);
-    g.addColorStop(0, "rgba(255,255,255,0.9)");
-    g.addColorStop(0.4, `rgba(${cr},${cg},${cb},0.6)`);
-    g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(p.x, p.y, 9 * DPR, 0, Math.PI * 2); ctx.fill();
-    if (k > 0.93) {   // impact flash
-      ctx.fillStyle = `rgba(255,252,240,${(k - 0.93) * 6})`;
-      ctx.beginPath();
-      ctx.ellipse(CX, CY, RING * U * 1.3, RING * U * CT * 1.3, 0, 0, Math.PI * 2);
-      ctx.fill();
+  const out = new Uint8ClampedArray(N * 4);
+  const D = 0.05 * S;
+  for (let y = 0; y < H; y++) {
+    for (let xx = 0; xx < W; xx++) {
+      const i = y * W + xx;
+      const xm = i - (xx > 0 ? 1 : 0), xp = i + (xx < W - 1 ? 1 : 0);
+      const ym = i - (y > 0 ? W : 0), yp = i + (y < H - 1 ? W : 0);
+      const nx = -(hgt[xp] - hgt[xm]) * 0.5 * D;
+      const ny = -(hgt[yp] - hgt[ym]) * 0.5 * D;
+      const il = 1 / Math.sqrt(nx * nx + ny * ny + 1);
+      const o = i * 4;
+      out[o] = (nx * il * 0.5 + 0.5) * 255;
+      out[o + 1] = (ny * il * 0.5 + 0.5) * 255;
+      out[o + 2] = hgt[i] * 255;
+      out[o + 3] = ((hgt[i] - hb[i]) * 2.2 + 0.5) * 255;
     }
   }
-
-  // the shells — bodies sorted far → near
-  const drawn = bodies
-    .filter((b) => clock >= b.min)
-    .map((b) => {
-      const born = Math.min(1, (clock - b.min) / 3);
-      const w = b.dir * (0.20 * 0.55) / Math.pow(b.a, 1.5);
-      const th = b.phase + t * w;
-      const [x, y, z] = orbitPos(b, th);
-      return { b, p: project(x, y, z, az), born };
-    })
-    .sort((A, B) => A.p.z - B.p.z);
-
-  for (const { b, p, born } of drawn) {
-    b.trail.push([p.x, p.y]);
-    if (b.trail.length > 34) b.trail.shift();
-    const depth = 0.72 + 0.5 * Math.max(-0.6, Math.min(0.6, p.z));
-    const [cr, cg, cb] = b.on
-      ? (b.team === "arg" ? COL.arg : COL.cpv)
-      : (b.team === "arg" ? COL.argDim : COL.cpvDim);
-    for (let i = 1; i < b.trail.length; i++) {
-      const a = (i / b.trail.length) * 0.34 * born * depth;
-      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${a})`;
-      ctx.lineWidth = 1.3 * DPR * depth;
-      ctx.beginPath();
-      ctx.moveTo(b.trail[i - 1][0], b.trail[i - 1][1]);
-      ctx.lineTo(b.trail[i][0], b.trail[i][1]);
-      ctx.stroke();
-    }
-    const rr = (b.on ? 2.6 : 2.0) * DPR * depth;
-    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rr * 2.6);
-    g.addColorStop(0, `rgba(255,255,255,${0.75 * born * depth})`);
-    g.addColorStop(0.45, `rgba(${cr},${cg},${cb},${0.5 * born * depth})`);
-    g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(p.x, p.y, rr * 2.6, 0, Math.PI * 2); ctx.fill();
-  }
-
-  ctx.globalCompositeOperation = "source-over";
-
-  // gentle vignette
-  const vg = ctx.createRadialGradient(CX, CY, U * 0.35, CX, CY, U * 0.95);
-  vg.addColorStop(0, "rgba(7,7,11,0)");
-  vg.addColorStop(1, "rgba(7,7,11,0.55)");
-  ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, W, H);
-
-  requestAnimationFrame(draw);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, new ImageData(out, W, H));
 }
-requestAnimationFrame(draw);
+
+/* ---------- the exposure: one pass of the lamp, then rest ---------- */
+
+function render() {
+  if (!sh || !built) return;
+  gl.uniform1f(sh.extra.u_p, curP);
+  sh.draw(0, sf);
+}
+function start() {
+  if (RM) { curP = 1; render(); return; }
+  t0 = performance.now();
+  (function tick(t) {
+    curP = Math.min(1, (t - t0) / DUR);
+    render();
+    if (curP < 1) requestAnimationFrame(tick);
+    // else: the loop stops — the final frame is the photograph
+  })(t0);
+}
 </script>

@@ -14,108 +14,287 @@
 // 92', 103', 111' — each feeding its scorer's colony (the 111' own goal
 // feeds argentina). The colonies grow from seeded blobs, thread the food
 // into pulsing veins, and wall each other off at a dark seam. It grows
-// for ~14 seconds, then the network is fixed — the plate is photographed.
+// for ~8 seconds, then the network is fixed — the plate is photographed.
+//
+// Second edition: the whole simulation moved to the GPU (WebGL2).
+// Agents live in a ping-ponged RGBA32F texture (x, y, heading, species);
+// each substep is three passes — steer/move (fragment), deposit
+// (additive point sprites), diffuse+decay+feed (ping-pong RG16F trail,
+// R = argentina, G = cabo verde). Growth is paced by wall time, so the
+// plate matures identically on any device; the original CPU loop stuttered
+// at ~20fps and never finished growing on a phone.
 
 const seed = ART.seed("2026-07-06-008c");
-const rng = ART.rng(seed);
+const seedU = ART.hashString(seed);
 
 let W, H, DPR;
-let gw, gh, NC;            // grid dims + cell count
-let TA, TB, SA, SB;        // trail maps A/B + scratch
-let ax, ay, ah, asp;      // agent x, y, heading, species (0=A arg, 1=B cpv)
-let NAGT;
-let foods = [];            // {gx, gy, sx, sy, map, min}
-let off, offCtx, imgData;
-let grain, vignette;
-let done = false, start = null;
-let lutA, lutB;
+let gw, gh;                // trail grid dims
+let foods = [];            // {gx, gy, map, min}
+let done = false, start = null, stepsDone = 0;
+let overlay, overlayCtx;
 
-const DURATION = 8200;     // grow into the braided mesh, then rest
 const TAU = Math.PI * 2;
 
 // ---- tunables (Jones physarum, tuned for dendritic veins) ----
+// The kinetics (sense/turn/decay/deposit) live in the shaders below and
+// mirror the first edition exactly.
 const CELL_TARGET = 190000; // grid cells (fine enough for filaments)
-const SENSE_DIST = 4.2;    // cells ahead the sensors reach
-const SENSE_ANG  = 0.39;   // ±22.5° sensor spread
-const TURN_ANG   = 0.66;   // ~38° steer — RA > SA gives reticular networks
-const MOVE       = 1.0;    // cells per step
-const DEPOSIT    = 1.0;    // own-trail drop
-const OTHER_REP  = 0.72;   // how strongly the other species repels
-const DECAY      = 0.90;   // multiplicative decay after diffuse
-const DIFF_CTR   = 1;      // centre weight in the 3×3 diffusion (1 = pure mean)
-const FOOD_PEAK  = 0.60;   // gaussian food deposit peak
-const K_NORM     = 0.30;   // trail -> intensity soft mapping
+const NAGT = 32000;        // agents, 64/36 split
+const AW = 256, AH = NAGT / AW;   // agent-state texture dims
+const DURATION = 8200;     // grow into the braided mesh, then rest
+const STEPS_TOTAL = 420;   // total substeps — the maturity of the plate
+const STEP_RATE = STEPS_TOTAL / DURATION;  // substeps per ms (wall-clock paced)
+const STEP_CAP = 12;       // per-frame ceiling: never spiral on a slow frame
 
 const F = FRAME.mount({
   num: 3, title: "Organismo", subject: "Argentina vs. Cabo Verde",
   edition: "02/31", date: "06·07·2026",
-  stack: "Canvas 2D — physarum", time: "87 minutes",
+  stack: "WebGL2 — physarum", time: "139 minutes",
   desc: "Two colonies of slime-mould agents — one celeste, one rojo — forage the same ground under the real Jones model, sensing and turning. Territory follows possession; the veins are where they fought for it.",
   dark: true, onResize(w, h, dpr) {
     W = w; H = h; DPR = dpr;
     build();
-    done = false; start = null;
+    done = false; start = null; stepsDone = 0;
     requestAnimationFrame(loop);
   },
 });
-const ctx = F.canvas.getContext("2d");
 
-// ---- colour ramps: 3 stops each, driven by trail intensity ----
-const CELESTE = [[0.086, 0.227, 0.361], [0.424, 0.671, 0.839], [0.918, 0.957, 0.984]]; // #163a5c → #6cabd6 → near-white
-const EMBER   = [[0.227, 0.070, 0.047], [0.765, 0.290, 0.220], [0.941, 0.690, 0.537]]; // #3a120c → #c34a38 → #f0b089
+const gl = F.canvas.getContext("webgl2", {
+  antialias: false, alpha: false, depth: false, stencil: false,
+  preserveDrawingBuffer: true, powerPreference: "high-performance",
+});
+if (!gl || !gl.getExtension("EXT_color_buffer_float"))
+  throw new Error("webgl2 float buffers unavailable");
 
-function ramp3(st, t) {
-  t = t < 0 ? 0 : t > 1 ? 1 : t;
-  const s = t < 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
-  const a = t < 0.5 ? st[0] : st[1], b = t < 0.5 ? st[1] : st[2];
-  return [a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, a[2] + (b[2] - a[2]) * s];
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ---------------------------------------------------------------- shaders
+
+const QUAD_VS = `#version 300 es
+void main(){
+  vec2 p = vec2(float((gl_VertexID<<1)&2), float(gl_VertexID&2));
+  gl_Position = vec4(p*2.0-1.0, 0.0, 1.0);
+}`;
+
+// steer + move — one fragment per agent. Sense own trail minus the other
+// species' (repulsion 0.72), turn toward the strongest reading, bounce in
+// the dish. Randomness is a per-agent per-step PCG hash: deterministic.
+const UPDATE_FS = `#version 300 es
+precision highp float; precision highp int;
+uniform sampler2D uAgents;   // RGBA32F: x, y, heading, species
+uniform sampler2D uTrail;    // RG16F: R = colony A, G = colony B
+uniform ivec2 uGrid;
+uniform uint uStep, uSeed;
+out vec4 outA;
+const float SD = 4.2;        // sensor distance (cells)
+const float SA = 0.39;       // sensor spread (rad)
+const float RA = 0.66;       // turn angle — RA > SA gives reticular networks
+const float MOVE = 1.0;
+const float REP = 0.72;      // other-species repulsion
+const float PI = 3.14159265;
+float senseAt(vec2 p, float sp){
+  ivec2 c = ivec2(clamp(int(p.x), 0, uGrid.x-1), clamp(int(p.y), 0, uGrid.y-1));
+  vec2 t = texelFetch(uTrail, c, 0).rg;
+  return mix(t.r, t.g, sp) - REP * mix(t.g, t.r, sp);
 }
+uint pcg(uint v){
+  v = v*747796405u + 2891336453u;
+  uint w = ((v >> ((v>>28u)+4u)) ^ v) * 277803737u;
+  return (w>>22u) ^ w;
+}
+void main(){
+  ivec2 pc = ivec2(gl_FragCoord.xy);
+  vec4 a = texelFetch(uAgents, pc, 0);
+  vec2 pos = a.xy; float h = a.z, sp = a.w;
+  float r = float(pcg(uint(pc.y*${AW}+pc.x) ^ (uStep*9781u) ^ uSeed)) * (1.0/4294967295.0);
+  float F0 = senseAt(pos + vec2(cos(h),    sin(h))   *SD, sp);
+  float L0 = senseAt(pos + vec2(cos(h-SA), sin(h-SA))*SD, sp);
+  float R0 = senseAt(pos + vec2(cos(h+SA), sin(h+SA))*SD, sp);
+  if (F0 > L0 && F0 > R0) { /* straight */ }
+  else if (F0 < L0 && F0 < R0) h += (r < 0.5 ? -1.0 : 1.0) * RA;
+  else if (L0 < R0) h += RA;
+  else if (R0 < L0) h -= RA;
+  else h += (r < 0.5 ? -1.0 : 1.0) * RA;
+  vec2 np = pos + vec2(cos(h), sin(h)) * MOVE;
+  vec2 hi = vec2(uGrid) - 2.0;
+  if (np.x < 1.0)      { np.x = 1.0;  h = PI - h; }
+  else if (np.x > hi.x){ np.x = hi.x; h = PI - h; }
+  if (np.y < 1.0)      { np.y = 1.0;  h = -h; }
+  else if (np.y > hi.y){ np.y = hi.y; h = -h; }
+  outA = vec4(np, h, sp);
+}`;
 
-// precompute 256-entry LUTs: contribution colour already scaled by intensity
-function buildLUT(st) {
-  const L = new Float32Array(256 * 3);
-  for (let i = 0; i < 256; i++) {
-    const s = i / 255;
-    const c = ramp3(st, s);
-    // fade brightness in with intensity so low trail ≈ black (screen-safe)
-    const g = Math.pow(s, 0.82);
-    L[i * 3] = c[0] * g; L[i * 3 + 1] = c[1] * g; L[i * 3 + 2] = c[2] * g;
+// deposit — one additive point per agent into its colony's channel
+const DEPOSIT_VS = `#version 300 es
+uniform sampler2D uAgents;
+uniform ivec2 uGrid;
+flat out float vSp;
+void main(){
+  vec4 a = texelFetch(uAgents, ivec2(gl_VertexID & ${AW - 1}, gl_VertexID >> 8), 0);
+  vSp = a.w;
+  gl_Position = vec4((floor(a.xy)+0.5) / vec2(uGrid) * 2.0 - 1.0, 0.0, 1.0);
+  gl_PointSize = 1.0;
+}`;
+const DEPOSIT_FS = `#version 300 es
+precision mediump float;
+flat in float vSp;
+out vec4 o;
+void main(){ o = vec4(1.0-vSp, vSp, 0.0, 0.0); }`;   // DEPOSIT = 1.0
+
+// diffuse (3×3 mean) + decay ×0.90 + gaussian food deposits on the goal
+// clock. Food feeds the scorer's channel only.
+const DIFFUSE_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uTrail;
+uniform ivec2 uGrid;
+uniform vec3 uFood[5];       // x, y (cells), z = 1 if argentina's food
+out vec4 o;
+const float DECAY = 0.90;
+const float FOOD_PEAK = 0.60;
+void main(){
+  ivec2 c = ivec2(gl_FragCoord.xy);
+  int x0 = max(c.x-1, 0), x1 = min(c.x+1, uGrid.x-1);
+  int y0 = max(c.y-1, 0), y1 = min(c.y+1, uGrid.y-1);
+  vec2 s =
+    texelFetch(uTrail, ivec2(x0,y0),0).rg + texelFetch(uTrail, ivec2(c.x,y0),0).rg + texelFetch(uTrail, ivec2(x1,y0),0).rg +
+    texelFetch(uTrail, ivec2(x0,c.y),0).rg + texelFetch(uTrail, c,          0).rg + texelFetch(uTrail, ivec2(x1,c.y),0).rg +
+    texelFetch(uTrail, ivec2(x0,y1),0).rg + texelFetch(uTrail, ivec2(c.x,y1),0).rg + texelFetch(uTrail, ivec2(x1,y1),0).rg;
+  vec2 t = s * (DECAY / 9.0);
+  vec2 cell = floor(gl_FragCoord.xy);
+  for (int i = 0; i < 5; i++){
+    vec2 d = cell - uFood[i].xy;
+    if (max(abs(d.x), abs(d.y)) <= 3.0)
+      t += FOOD_PEAK * exp(-dot(d,d) / 5.0) * vec2(uFood[i].z, 1.0-uFood[i].z);
   }
-  return L;
+  o = vec4(t, 0.0, 1.0);
+}`;
+
+// present — tone-map both trails through their ink ramps, screen-blend
+// over the night ground, then the photographic pass: vignette + static
+// grain (the same multiply grain as the first edition, now per-pixel hash).
+const SHOW_FS = `#version 300 es
+precision highp float; precision highp int;
+uniform sampler2D uTrail;
+uniform vec2 uRes;
+uniform uint uSeed;
+out vec4 o;
+const float K = 0.30;        // trail -> intensity soft mapping
+const vec3 CEL0 = vec3(0.086,0.227,0.361), CEL1 = vec3(0.424,0.671,0.839), CEL2 = vec3(0.918,0.957,0.984);
+const vec3 EMB0 = vec3(0.227,0.070,0.047), EMB1 = vec3(0.765,0.290,0.220), EMB2 = vec3(0.941,0.690,0.537);
+vec3 ramp3(vec3 a, vec3 b, vec3 c, float t){
+  return t < 0.5 ? mix(a, b, t*2.0) : mix(b, c, t*2.0-1.0);
 }
+uint pcg(uint v){
+  v = v*747796405u + 2891336453u;
+  uint w = ((v >> ((v>>28u)+4u)) ^ v) * 277803737u;
+  return (w>>22u) ^ w;
+}
+void main(){
+  vec2 px = gl_FragCoord.xy;
+  vec2 uv = vec2(px.x, uRes.y - px.y) / uRes;   // grid row 0 = top
+  vec2 t = texture(uTrail, uv).rg;
+  float ia = clamp(1.0 - exp(-K * t.r), 0.0, 1.0);
+  float ib = clamp(1.0 - exp(-K * t.g), 0.0, 1.0);
+  vec3 ca = ramp3(CEL0, CEL1, CEL2, ia) * pow(ia, 0.82);
+  vec3 cb = ramp3(EMB0, EMB1, EMB2, ib) * pow(ib, 0.82);
+  vec3 col = vec3(10.0, 10.0, 12.0) / 255.0;    // #0a0a0c
+  col = 1.0 - (1.0-col) * (1.0-ca);             // screen blend A
+  col = 1.0 - (1.0-col) * (1.0-cb);             // screen blend B
+  float dist = length(px - uRes*0.5);
+  float r0 = 0.30 * min(uRes.x, uRes.y), r1 = 0.72 * max(uRes.x, uRes.y);
+  col *= 1.0 - 0.55 * clamp((dist - r0) / (r1 - r0), 0.0, 1.0);
+  float gr = float(pcg(uint(px.x) + uint(px.y)*8192u + uSeed)) * (1.0/4294967295.0);
+  col *= 1.0 - (30.0/255.0) * (1.0 - (205.0 + floor(gr*50.0)) / 255.0);
+  o = vec4(col, 1.0);
+}`;
+
+// ---------------------------------------------------------------- gl kit
+
+function makeProgram(vsSrc, fsSrc) {
+  function sh(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+      throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  const p = gl.createProgram();
+  gl.attachShader(p, sh(gl.VERTEX_SHADER, vsSrc));
+  gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fsSrc));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+    throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+
+function makeTexFBO(w, h, internal, format, type, data, filter) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, format, type, data);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  const fbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return { tex, fbo };
+}
+
+const progUpdate = makeProgram(QUAD_VS, UPDATE_FS);
+const progDeposit = makeProgram(DEPOSIT_VS, DEPOSIT_FS);
+const progDiffuse = makeProgram(QUAD_VS, DIFFUSE_FS);
+const progShow = makeProgram(QUAD_VS, SHOW_FS);
+const U = {
+  upd: { agents: gl.getUniformLocation(progUpdate, "uAgents"),
+         trail: gl.getUniformLocation(progUpdate, "uTrail"),
+         grid: gl.getUniformLocation(progUpdate, "uGrid"),
+         step: gl.getUniformLocation(progUpdate, "uStep"),
+         seed: gl.getUniformLocation(progUpdate, "uSeed") },
+  dep: { agents: gl.getUniformLocation(progDeposit, "uAgents"),
+         grid: gl.getUniformLocation(progDeposit, "uGrid") },
+  dif: { trail: gl.getUniformLocation(progDiffuse, "uTrail"),
+         grid: gl.getUniformLocation(progDiffuse, "uGrid"),
+         food: gl.getUniformLocation(progDiffuse, "uFood") },
+  shw: { trail: gl.getUniformLocation(progShow, "uTrail"),
+         res: gl.getUniformLocation(progShow, "uRes"),
+         seed: gl.getUniformLocation(progShow, "uSeed") },
+};
+
+let agents = null, trails = null;   // ping-pong pairs [src, dst]
+
+function freeGL() {
+  for (const pair of [agents, trails]) {
+    if (!pair) continue;
+    for (const t of pair) { gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fbo); }
+  }
+  agents = trails = null;
+}
+
+// ---------------------------------------------------------------- build
 
 function build() {
+  const rng = ART.rng(seed);        // fresh stream: resize keeps the layout
+  freeGL();
+
   // grid matched to stage aspect
-  const target = CELL_TARGET;
-  gh = Math.max(40, Math.round(Math.sqrt(target * H / W)));
-  gw = Math.max(40, Math.round(target / gh));
-  NC = gw * gh;
-
-  TA = new Float32Array(NC); TB = new Float32Array(NC);
-  SA = new Float32Array(NC); SB = new Float32Array(NC);
-
-  lutA = buildLUT(CELESTE); lutB = buildLUT(EMBER);
+  gh = Math.max(40, Math.round(Math.sqrt(CELL_TARGET * H / W)));
+  gw = Math.max(40, Math.round(CELL_TARGET / gh));
 
   // food on the invisible clock: minute 0 at top, clockwise
   const cx = gw / 2, cy = gh / 2;
   const foodR = 0.32 * Math.min(gw, gh);
-  const G = window.M8.goals;
-  // map each goal minute -> scorer's trail map (og at 111' feeds arg = A)
-  foods = G.map((gl) => {
-    const th = (gl.min / window.M8.totalMin) * TAU;   // clockwise from top
-    const fx = cx + foodR * Math.sin(th);
-    const fy = cy - foodR * Math.cos(th);
-    const isA = gl.og ? true : gl.team === "arg";
-    return { gx: fx, gy: fy, map: isA ? "A" : "B", min: gl.min };
+  // map each goal minute -> scorer's colony (og at 111' feeds arg = A)
+  foods = window.M8.goals.map((gl_) => {
+    const th = (gl_.min / window.M8.totalMin) * TAU;
+    const isA = gl_.og ? true : gl_.team === "arg";
+    return { gx: cx + foodR * Math.sin(th), gy: cy - foodR * Math.cos(th),
+             map: isA ? "A" : "B", min: gl_.min };
   });
 
   // ---- agents, 64/36 split, seeded blobs inside the dish ----
-  NAGT = 32000;
   const nA = Math.round(NAGT * 0.64);
-  ax = new Float32Array(NAGT); ay = new Float32Array(NAGT);
-  ah = new Float32Array(NAGT); asp = new Uint8Array(NAGT);
-
-  // seeded blob centres per species, scattered within the food ring
   function blobs(n) {
     const arr = [];
     for (let i = 0; i < n; i++) {
@@ -126,235 +305,155 @@ function build() {
   }
   const blobA = blobs(5), blobB = blobs(4);
   const sd = Math.max(gw, gh) * 0.035;
-  function gauss() { // box-muller-ish via two uniforms
-    let u = 0, v = 0;
+  function gauss() {
+    let u = 0;
     while (u === 0) u = rng();
-    v = rng();
-    return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v);
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * rng());
   }
+  const A0 = new Float32Array(AW * AH * 4);
   for (let i = 0; i < NAGT; i++) {
     const isA = i < nA;
     const bl = isA ? blobA : blobB;
     const b = bl[(rng() * bl.length) | 0];
-    let x = b[0] + gauss() * sd, y = b[1] + gauss() * sd;
-    x = Math.max(1, Math.min(gw - 2, x));
-    y = Math.max(1, Math.min(gh - 2, y));
-    ax[i] = x; ay[i] = y; ah[i] = rng() * TAU; asp[i] = isA ? 0 : 1;
+    A0[i * 4]     = Math.max(1, Math.min(gw - 2, b[0] + gauss() * sd));
+    A0[i * 4 + 1] = Math.max(1, Math.min(gh - 2, b[1] + gauss() * sd));
+    A0[i * 4 + 2] = rng() * TAU;
+    A0[i * 4 + 3] = isA ? 0 : 1;
   }
 
-  // stage-space food nodes for labels
-  foods.forEach((f) => { f.sx = f.gx / gw * W; f.sy = f.gy / gh * H; });
+  agents = [
+    makeTexFBO(AW, AH, gl.RGBA32F, gl.RGBA, gl.FLOAT, A0, gl.NEAREST),
+    makeTexFBO(AW, AH, gl.RGBA32F, gl.RGBA, gl.FLOAT, null, gl.NEAREST),
+  ];
+  trails = [
+    makeTexFBO(gw, gh, gl.RG16F, gl.RG, gl.FLOAT, null, gl.LINEAR),
+    makeTexFBO(gw, gh, gl.RG16F, gl.RG, gl.FLOAT, null, gl.LINEAR),
+  ];
 
-  // offscreen grid canvas + reusable ImageData
-  off = document.createElement("canvas");
-  off.width = gw; off.height = gh;
-  offCtx = off.getContext("2d");
-  imgData = offCtx.createImageData(gw, gh);
+  // static uniforms
+  const foodFlat = new Float32Array(15);
+  foods.forEach((f, i) => {
+    foodFlat[i * 3] = f.gx | 0; foodFlat[i * 3 + 1] = f.gy | 0;
+    foodFlat[i * 3 + 2] = f.map === "A" ? 1 : 0;
+  });
+  gl.useProgram(progUpdate);
+  gl.uniform1i(U.upd.agents, 0); gl.uniform1i(U.upd.trail, 1);
+  gl.uniform2i(U.upd.grid, gw, gh); gl.uniform1ui(U.upd.seed, seedU);
+  gl.useProgram(progDeposit);
+  gl.uniform1i(U.dep.agents, 0); gl.uniform2i(U.dep.grid, gw, gh);
+  gl.useProgram(progDiffuse);
+  gl.uniform1i(U.dif.trail, 0); gl.uniform2i(U.dif.grid, gw, gh);
+  gl.uniform3fv(U.dif.food, foodFlat);
+  gl.useProgram(progShow);
+  gl.uniform1i(U.shw.trail, 0); gl.uniform2f(U.shw.res, W, H);
+  gl.uniform1ui(U.shw.seed, seedU);
 
-  buildGrain();
-  buildVignette();
+  gl.disable(gl.DEPTH_TEST);
+  gl.disable(gl.BLEND);
+
+  buildOverlay();
 }
 
-// ---- one simulation step ----
-function sense(own, other, x, y, ca, sa) {
-  const sx = x + ca * SENSE_DIST, sy = y + sa * SENSE_DIST;
-  let cxi = sx | 0, cyi = sy | 0;
-  if (cxi < 0) cxi = 0; else if (cxi >= gw) cxi = gw - 1;
-  if (cyi < 0) cyi = 0; else if (cyi >= gh) cyi = gh - 1;
-  const idx = cyi * gw + cxi;
-  return own[idx] - OTHER_REP * other[idx];
-}
-
-function step() {
-  for (let i = 0; i < NAGT; i++) {
-    const A = asp[i] === 0;
-    const own = A ? TA : TB, other = A ? TB : TA;
-    let h = ah[i];
-    const x = ax[i], y = ay[i];
-
-    const cf = Math.cos(h), sf = Math.sin(h);
-    const hl = h - SENSE_ANG, hr = h + SENSE_ANG;
-    const F0 = sense(own, other, x, y, cf, sf);
-    const L0 = sense(own, other, x, y, Math.cos(hl), Math.sin(hl));
-    const R0 = sense(own, other, x, y, Math.cos(hr), Math.sin(hr));
-
-    if (F0 > L0 && F0 > R0) {
-      // straight
-    } else if (F0 < L0 && F0 < R0) {
-      h += (rng() < 0.5 ? -1 : 1) * TURN_ANG;
-    } else if (L0 < R0) {
-      h += TURN_ANG;
-    } else if (R0 < L0) {
-      h -= TURN_ANG;
-    } else {
-      h += (rng() < 0.5 ? -1 : 1) * TURN_ANG;
-    }
-
-    let nx = x + Math.cos(h) * MOVE, ny = y + Math.sin(h) * MOVE;
-    // bounce in the dish
-    if (nx < 1) { nx = 1; h = Math.PI - h; }
-    else if (nx > gw - 2) { nx = gw - 2; h = Math.PI - h; }
-    if (ny < 1) { ny = 1; h = -h; }
-    else if (ny > gh - 2) { ny = gh - 2; h = -h; }
-
-    ax[i] = nx; ay[i] = ny; ah[i] = h;
-    const idx = (ny | 0) * gw + (nx | 0);
-    own[idx] += DEPOSIT;
+// ---- food nodes: tiny bone-white dots + minute in Geist Mono, drawn once
+// on a static 2D overlay above the GL plate ----
+function buildOverlay() {
+  if (!overlay) {
+    overlay = document.createElement("canvas");
+    overlay.style.cssText = "position:absolute;inset:0;width:100%;height:100%;pointer-events:none";
+    F.stage.appendChild(overlay);
+    overlayCtx = overlay.getContext("2d");
+    // Geist Mono may land after the first draw — re-ink the labels then
+    if (document.fonts && document.fonts.load)
+      document.fonts.load("10px 'Geist Mono'").then(drawOverlay).catch(() => {});
   }
+  overlay.width = W; overlay.height = H;
+  drawOverlay();
 }
 
-// ---- diffuse (centre-weighted 3×3) + decay, map -> scratch, swap ----
-// A gentle blur (centre weight DIFF_CTR) keeps filaments crisp where a pure
-// mean would smear them into fat ribbons.
-const DIFF_NORM = 1 / (DIFF_CTR + 8);
-function diffuse(src, dst) {
-  for (let y = 0; y < gh; y++) {
-    const y0 = y > 0 ? y - 1 : 0, y1 = y < gh - 1 ? y + 1 : gh - 1;
-    const r0 = y0 * gw, r1 = y * gw, r2 = y1 * gw;
-    for (let x = 0; x < gw; x++) {
-      const x0 = x > 0 ? x - 1 : 0, x1 = x < gw - 1 ? x + 1 : gw - 1;
-      const c = src[r1 + x];
-      const s =
-        src[r0 + x0] + src[r0 + x] + src[r0 + x1] +
-        src[r1 + x0] + c + src[r1 + x1] +
-        src[r2 + x0] + src[r2 + x] + src[r2 + x1] +
-        c * (DIFF_CTR - 1);
-      dst[r1 + x] = (s * DIFF_NORM) * DECAY;
-    }
-  }
-}
-
-// ---- food: gaussian deposit into the right map ----
-const FR = 3;
-function feed() {
-  for (const f of foods) {
-    const map = f.map === "A" ? TA : TB;
-    const cx = f.gx | 0, cy = f.gy | 0;
-    for (let dy = -FR; dy <= FR; dy++) {
-      const yy = cy + dy; if (yy < 0 || yy >= gh) continue;
-      for (let dx = -FR; dx <= FR; dx++) {
-        const xx = cx + dx; if (xx < 0 || xx >= gw) continue;
-        const d2 = dx * dx + dy * dy;
-        map[yy * gw + xx] += FOOD_PEAK * Math.exp(-d2 / 5.0);
-      }
-    }
-  }
-}
-
-// ---- render trail maps into the ImageData ----
-function render() {
-  const d = imgData.data;
-  const baseR = 10, baseG = 10, baseB = 12;   // #0a0a0c
-  for (let i = 0, p = 0; i < NC; i++, p += 4) {
-    const ta = TA[i], tb = TB[i];
-    let ia = 1 - Math.exp(-K_NORM * ta);
-    let ib = 1 - Math.exp(-K_NORM * tb);
-    let ai = (ia * 255) | 0; if (ai > 255) ai = 255;
-    let bi = (ib * 255) | 0; if (bi > 255) bi = 255;
-    const ja = ai * 3, jb = bi * 3;
-    // screen-blend base + A + B (in 0..255)
-    let r = baseR, g = baseG, b = baseB;
-    // A contribution
-    const ar = lutA[ja] * 255, ag = lutA[ja + 1] * 255, ab = lutA[ja + 2] * 255;
-    r = 255 - (255 - r) * (255 - ar) / 255;
-    g = 255 - (255 - g) * (255 - ag) / 255;
-    b = 255 - (255 - b) * (255 - ab) / 255;
-    // B contribution
-    const br = lutB[jb] * 255, bg = lutB[jb + 1] * 255, bb = lutB[jb + 2] * 255;
-    r = 255 - (255 - r) * (255 - br) / 255;
-    g = 255 - (255 - g) * (255 - bg) / 255;
-    b = 255 - (255 - b) * (255 - bb) / 255;
-    d[p] = r; d[p + 1] = g; d[p + 2] = b; d[p + 3] = 255;
-  }
-  offCtx.putImageData(imgData, 0, 0);
-}
-
-// ---- static grain (pre-rendered, multiplied) ----
-function buildGrain() {
-  grain = document.createElement("canvas");
-  grain.width = W; grain.height = H;
-  const g = grain.getContext("2d");
-  const img = g.createImageData(W, H);
-  const rg = ART.rng(seed + "grain");
-  for (let i = 0; i < img.data.length; i += 4) {
-    const v = 205 + (rg() * 50 | 0);
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 30;
-  }
-  g.putImageData(img, 0, 0);
-}
-
-function buildVignette() {
-  vignette = document.createElement("canvas");
-  vignette.width = W; vignette.height = H;
-  const v = vignette.getContext("2d");
-  const grd = v.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.30,
-    W / 2, H / 2, Math.max(W, H) * 0.72);
-  grd.addColorStop(0, "rgba(0,0,0,0)");
-  grd.addColorStop(1, "rgba(0,0,0,0.55)");
-  v.fillStyle = grd;
-  v.fillRect(0, 0, W, H);
-}
-
-// ---- composite everything to the visible canvas ----
-function paint() {
-  ctx.fillStyle = "#0a0a0c";
-  ctx.fillRect(0, 0, W, H);
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(off, 0, 0, gw, gh, 0, 0, W, H);
-
-  // vignette
-  ctx.drawImage(vignette, 0, 0);
-
-  // grain
-  ctx.globalCompositeOperation = "multiply";
-  ctx.drawImage(grain, 0, 0);
-  ctx.globalCompositeOperation = "source-over";
-
-  // food nodes: tiny bone-white dots + minute in Geist Mono
+function drawOverlay() {
+  if (!overlayCtx) return;
+  const ctx = overlayCtx;
+  ctx.clearRect(0, 0, W, H);
   const dot = Math.max(1.4, 1.7 * DPR);
   ctx.font = (8.5 * DPR) + "px 'Geist Mono', ui-monospace, monospace";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   for (const f of foods) {
+    const sx = f.gx / gw * W, sy = f.gy / gh * H;
     ctx.beginPath();
-    ctx.arc(f.sx, f.sy, dot, 0, TAU);
+    ctx.arc(sx, sy, dot, 0, TAU);
     ctx.fillStyle = "rgba(244,240,229,0.82)";
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(f.sx, f.sy, dot * 2.6, 0, TAU);
+    ctx.arc(sx, sy, dot * 2.6, 0, TAU);
     ctx.strokeStyle = "rgba(244,240,229,0.14)";
     ctx.lineWidth = Math.max(1, DPR * 0.6);
     ctx.stroke();
-    // label offset outward from centre
-    const dx = f.sx - W / 2, dy = f.sy - H / 2;
+    const dx = sx - W / 2, dy = sy - H / 2;
     const dl = Math.hypot(dx, dy) || 1;
-    const lx = f.sx + (dx / dl) * 15 * DPR;
-    const ly = f.sy + (dy / dl) * 15 * DPR;
     ctx.fillStyle = "rgba(244,240,229,0.34)";
-    ctx.fillText(f.min + "’", lx, ly);
+    ctx.fillText(f.min + "’", sx + (dx / dl) * 15 * DPR, sy + (dy / dl) * 15 * DPR);
   }
+}
+
+// ---------------------------------------------------------------- sim
+
+function substep() {
+  // 1 · steer + move agents (reads current trail)
+  gl.useProgram(progUpdate);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, agents[1].fbo);
+  gl.viewport(0, 0, AW, AH);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, agents[0].tex);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, trails[0].tex);
+  gl.uniform1ui(U.upd.step, stepsDone);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  agents.reverse();
+
+  // 2 · deposit into the current trail (additive points)
+  gl.useProgram(progDeposit);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, trails[0].fbo);
+  gl.viewport(0, 0, gw, gh);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, agents[0].tex);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE);
+  gl.drawArrays(gl.POINTS, 0, NAGT);
+  gl.disable(gl.BLEND);
+
+  // 3 · diffuse + decay + feed -> other trail, swap
+  gl.useProgram(progDiffuse);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, trails[1].fbo);
+  gl.viewport(0, 0, gw, gh);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, trails[0].tex);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  trails.reverse();
+
+  stepsDone++;
+}
+
+function show() {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.viewport(0, 0, W, H);
+  gl.useProgram(progShow);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, trails[0].tex);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
 function loop(tms) {
   if (done) return;
   if (start === null) start = tms;
-  const elapsed = tms - start;
 
-  // 2 sim substeps per frame for faster network formation
-  for (let s = 0; s < 2; s++) {
-    step();
-    diffuse(TA, SA); diffuse(TB, SB);
-    let t = TA; TA = SA; SA = t;
-    t = TB; TB = SB; SB = t;
-    feed();
-  }
+  // wall-clock paced growth: the plate matures in DURATION on any device.
+  // Reduced motion: settle in a fast-forward blink instead (~0.2s).
+  const due = reducedMotion ? STEPS_TOTAL
+    : Math.min(STEPS_TOTAL, Math.round((tms - start) * STEP_RATE));
+  let n = due - stepsDone;
+  if (n > STEP_CAP && !reducedMotion) n = STEP_CAP;   // never spiral
+  if (reducedMotion && n > 48) n = 48;
+  for (let s = 0; s < n; s++) substep();
 
-  render();
-  paint();
+  show();
 
-  if (elapsed >= DURATION) { done = true; return; }
+  if (stepsDone >= STEPS_TOTAL) { done = true; return; }   // photographed
   requestAnimationFrame(loop);
 }
 </script>

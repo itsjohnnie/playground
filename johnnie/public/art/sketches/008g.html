@@ -7,21 +7,27 @@
 <script src="data-008.js"></script>
 <script id="frag" type="x-shader">
 precision highp float;
-uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
+uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_rt;
 
 // 008 — g · pileta — a miami hotel pool at night, shot from above. Two
 // layers of caustic filaments over the depth gradient; the pool floor's
-// tile grid wobbles under the same refraction. Five standing ripple
-// rings sit at the goal minutes on an invisible 120' clock — argentina's
-// bleach the light toward white, cabo verde's tint it rose; the 111'
-// own goal rings twice. NOTE: this piece deliberately never freezes —
-// after the 10s settle the loop idles at ~12% time so the water still
-// breathes (frozen water reads as wrong).
+// tile grid wobbles under the same refraction. Each goal is a raindrop
+// on an invisible 120' clock: an expanding Cauchy–Poisson wave packet
+// (phase ∝ τ²/r, so wavelength grows with radius and crests run through
+// the group at twice its speed — genuine deep-water dispersion), with
+// ~1/r geometric spreading and viscous decay. The drops act on the
+// height field itself: their slope refracts the caustic sampling and
+// the tile grid, their curvature focuses the light — the rings live IN
+// the water, not on it. The 111' own goal lands as two drops, close
+// together. By the idle state the early goals have faded to faint
+// memory rings; the last is still young and strong.
+// NOTE: this piece deliberately never freezes — after the 10s settle
+// the caustics idle at ~12% time and the rings at ~6% (frozen water
+// reads as wrong).
 
 const float TAU = 6.28318530718;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
-float ease(float t){ t = clamp(t, 0.0, 1.0); return 1.0 - pow(1.0 - t, 3.0); }
 
 // classic iterated caustic field — filament webs, tileable
 float caus(vec2 uv, float t){
@@ -45,19 +51,41 @@ vec2 clockPos(float minute){
   return vec2(0.375, 0.5) + 0.240*vec2(sin(a), cos(a));
 }
 
-void ring(vec2 q, float minute, float order, float dbl, float team,
-          inout vec2 disp, inout float gA, inout float gC){
-  float e = ease((u_p*10.0 - 0.8 - order*1.30)/3.0);
-  if (e <= 0.001) return;
-  vec2 c = clockPos(minute);
-  float d = length(q - c);
-  float R = 0.050*e;
-  float w = 0.011;
-  float env = exp(-pow((d - R)/w, 2.0));
-  if (dbl > 0.5) env = max(env, 0.8*exp(-pow((d - R + 0.017)/w, 2.0)));
-  disp += (q - c)/max(d, 1e-4) * env * sin(d*170.0) * 0.010 * e;
-  gA += env*e*team;
-  gC += env*e*(1.0 - team);
+// —— the drop physics ————————————————————————————————————————————————
+// Cauchy–Poisson point disturbance on deep water: surface phase g·τ²/4r.
+// Local wavenumber k = ∂φ/∂r ∝ τ²/r², so λ grows with radius; the packet
+// of least-damped wavelengths travels at group speed GV while its crests
+// move at 2·GV (born at the rear, dying at the front). Amplitude falls
+// ~1/r with viscous decay; viscosity also kills the shortest waves, so
+// only a group of 2–4 crests survives.
+const float GV   = 0.032;   // group speed — packet radius = GV·τ
+const float PHK  = 0.165;   // dispersion constant — phase = PHK·τ²/r
+const float VISC = 0.18;    // bulk viscous decay per second
+const float AMP  = 2.2e-4;  // drop height scale (surface slope ≈ AMP·k)
+
+void drop(vec2 q, vec2 c, float t0, float team,
+          inout vec2 grad, inout float foc, inout float gA, inout float gC){
+  float tau = u_rt - t0;               // age of this drop
+  if (tau < 0.02) return;
+  vec2 dq = q - c;
+  float d = max(length(dq), 2e-3);
+  float rc = GV*tau;                   // where the packet is now
+  float w  = 0.016 + 0.011*tau;        // and how far dispersion has spread it
+  float x  = (d - rc)/w;
+  float env = exp(-x*x);
+  if (env < 0.004) return;
+  float k = PHK*tau*tau/(d*d);         // local wavenumber — λ ∝ r²
+  float A = AMP * env * exp(-VISC*tau)
+          / (1.0 + 26.0*d)             // ~1/r geometric spreading
+          * smoothstep(0.0, 0.22, tau) // the drop lands, it doesn't pop
+          * (1.0 - smoothstep(240.0, 520.0, k)); // viscosity eats the shortest waves
+  float ph = PHK*tau*tau/d;
+  float ce = cos(ph), se = sin(ph);
+  grad += dq/d * (A*se*k - 2.0*x/w*A*ce);  // ∂h/∂r, radial
+  foc  += A*ce*k*k;                        // −∇²h — crests focus the light
+  float pres = A*6000.0*(0.55 + 0.45*ce);  // crest presence, for the tint
+  gA += pres*team;
+  gC += pres*(1.0 - team);
 }
 
 void main(){
@@ -66,15 +94,19 @@ void main(){
   vec2 q = vec2(p.x*0.75, (p.y-0.5)*0.75/max(aspect,0.001) + 0.5);
   float t = u_time;
 
-  // five standing rings — 29' 92' 111' argentina, 59' 103' cabo verde
-  vec2 disp = vec2(0.0); float gA = 0.0, gC = 0.0;
-  ring(q,  29.0, 0.0, 0.0, 1.0, disp, gA, gC);
-  ring(q,  59.0, 1.0, 0.0, 0.0, disp, gA, gC);
-  ring(q,  92.0, 2.0, 0.0, 1.0, disp, gA, gC);
-  ring(q, 103.0, 3.0, 0.0, 0.0, disp, gA, gC);
-  ring(q, 111.0, 4.0, 1.0, 1.0, disp, gA, gC);
+  // the five goals fall as drops at their clock minutes —
+  // 29' 92' 111'(og, twice) argentina · 59' 103' cabo verde
+  vec2 grad = vec2(0.0); float foc = 0.0, gA = 0.0, gC = 0.0;
+  drop(q, clockPos( 29.0), 2.30, 1.0, grad, foc, gA, gC);
+  drop(q, clockPos( 59.0), 3.94, 0.0, grad, foc, gA, gC);
+  drop(q, clockPos( 92.0), 5.76, 1.0, grad, foc, gA, gC);
+  drop(q, clockPos(103.0), 6.36, 0.0, grad, foc, gA, gC);
+  vec2 og = clockPos(111.0);
+  drop(q, og,                      6.80, 1.0, grad, foc, gA, gC);
+  drop(q, og + vec2(0.016, 0.020), 7.16, 1.0, grad, foc, gA, gC);
 
-  vec2 qd = q + disp;
+  // the wave slope refracts what the water shows us
+  vec2 qd = q + grad*5.0;
   vec2 so = vec2(u_seed*0.013, u_seed*0.007);
 
   // two caustic layers, different scale and drift
@@ -82,6 +114,7 @@ void main(){
   float c2 = caus(qd*3.3 + so.yx*3.0 + 1.7, 2.0 - t*0.43);
   float ca = c1*0.80 + c2*0.42;
   ca = ca/(1.0 + 0.45*ca);                    // soft shoulder — night, not noon
+  ca *= clamp(1.0 + 0.85*foc, 0.25, 2.4);     // ring curvature focuses the light
 
   // depth: shallow celeste top-left → deep bottom-right
   float diag = smoothstep(0.0, 1.0, clamp((p.x + (1.0 - p.y))*0.60, 0.0, 1.0));
@@ -89,18 +122,21 @@ void main(){
   col *= 0.82;                                 // the pool sits in the dark
 
   // pool-floor tiles, refracted by the same water
-  vec2 tuv = q + disp*1.6
+  vec2 tuv = q + grad*3.5
            + vec2(sin(q.y*36.0 + t*0.7), sin(q.x*31.0 - t*0.6))*0.0045;
   vec2 tf = abs(fract(tuv/0.085) - 0.5);
   float tl = smoothstep(0.42, 0.485, max(tf.x, tf.y));
   col *= 1.0 - tl * 0.14 * mix(1.0, 0.30, diag) * (0.50 + 0.50*clamp(ca, 0.0, 1.0));
 
-  // the light
-  col += vec3(0.72, 0.90, 1.0) * ca * 0.62 * mix(1.05, 0.45, diag) * (1.0 + gA*1.6);
-  col += vec3(1.00, 0.99, 0.95) * gA * (0.08 + ca*0.50);            // argentina → white
-  col  = mix(col, vec3(0.82, 0.44, 0.42), clamp(gC, 0.0, 1.0)*0.26); // cabo verde → rose
-  col += vec3(0.95, 0.62, 0.52) * gC * ca * 0.40;
-  col += (gA + gC) * 0.035;                                          // the ridge itself
+  // the light — the goals only exist as light the water bends
+  col += vec3(0.72, 0.90, 1.0) * ca * 0.62 * mix(1.05, 0.45, diag);
+  col += vec3(1.00, 0.99, 0.95) * gA * ca * 0.45;   // argentina bleaches the light
+  col += vec3(0.95, 0.60, 0.50) * gC * ca * 0.40;   // cabo verde warms it rose
+
+  // crest faces tilted toward the sky catch a faint sheen — the side of
+  // each ring that leans into the light, the way real rings read at night
+  float sl = clamp(dot(grad, normalize(vec2(0.42, 0.91)))*140.0, 0.0, 1.0);
+  col += vec3(0.68, 0.85, 1.0) * sl * 0.13 * mix(1.1, 0.5, diag);
 
   // one gold sun-glint across the upper water, barely there —
   // it lives only in the caustic filaments, like low sun on ripples
@@ -124,30 +160,35 @@ void main(){
 <script>
 const seed = ART.seed("2026-07-06-008g");
 const M = window.M8;
-let sh = null, start = null, last = null, wt = 0;
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let sh = null, start = null, last = null;
+let wt = RM ? 9.0 : 0, rt = RM ? 9.0 : 0;   // reduced motion: arrive settled
 
 const F = FRAME.mount({
   num: 7, title: "Pileta", subject: "Argentina vs. Cabo Verde",
   edition: "02/31", date: "06·07·2026",
-  stack: "WebGL — GLSL", time: "71 minutes",
-  desc: "Afternoon light through pool water, refracted onto tile. Five standing rings hold the water where the goals fell; the double ring is the golazo at 118'.",
+  stack: "WebGL — GLSL", time: "96 minutes",
+  desc: "Night water over a pool floor's tile grid, lit by two layers of caustics. Each goal fell as a drop at its minute on an invisible clock — expanding rings that bend the light and the tile lines as they pass; the own goal at 111' landed twice. The early goals have already smoothed back to faint memory rings.",
   dark: true, onResize() {
-    if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
+    if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_rt"]);
   },
 });
 const sf = ART.rng(seed)() * 100;
 const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t*t*(3 - 2*t); };
 
-// settles for 10s, then idles at ~12% time — the water must keep breathing,
-// so unlike the other settle pieces the rAF loop never stops (intentional)
+// settles for 10s (the five drops fall in match order), then idles — the
+// water must keep breathing, so unlike the other settle pieces the rAF
+// loop never stops (intentional). Two clocks: caustics idle at ~12%,
+// the rings at ~6%, so the story stays legible longer.
 function loop(tms) {
   requestAnimationFrame(loop);
   if (!sh) return;
   if (start === null) { start = tms; last = tms; }
-  const p = Math.min(1, (tms - start) / 10000);
+  const p = RM ? 1 : Math.min(1, (tms - start) / 10000);
   const dt = Math.min(0.05, (tms - last) / 1000); last = tms;
   wt += dt * (1.0 - 0.88 * ss(0.85, 1.0, p));
-  sh.gl.uniform1f(sh.extra.u_p, p);
+  rt += dt * (1.0 - 0.94 * ss(0.85, 1.0, p));
+  sh.gl.uniform1f(sh.extra.u_rt, rt);
   sh.draw(wt, sf);
 }
 requestAnimationFrame(loop);

@@ -9,11 +9,18 @@
 precision highp float;
 uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
 
-// 008 — a · bruma — the match as weather. Five pigments — one per goal,
-// the own goal a hollow loop — arrive as soft forms and then MELT: a
-// two-level domain warp pulls them into fluid tongues and filaments,
-// like ink released into slow water. The dither lives in the pigment;
-// the paper stays calm. It flows once, then the weather rests.
+// 008 — a · sello — the match struck as a letterpress seal on cotton rag.
+// A sheet of handmade paper on dark felt; a die presses the design blind
+// into the fibres (a true height field, lit by one raking light), then the
+// ink arrives in match order. The medallion: a sol de mayo in gold, a ring
+// of 120 minute-ticks (long ticks at 0/45/90/105), the five goals printed
+// at their minutes — celeste for argentina, rojo for cabo verde, the own
+// goal an open ring — the two bookings as gilt hairlines outside the ring,
+// and the score row beneath: five pressed dots in goal order. Deckled
+// edges, cockled paper, ink squash, slight misregistration. It is pressed
+// once, inked once, then rests.
+
+const float TAU = 6.28318530718;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
 float vnoise(vec2 p){
@@ -24,112 +31,195 @@ float vnoise(vec2 p){
 }
 float fbm(vec2 p){
   float s = 0.0, a = 0.5;
-  for (int i = 0; i < 4; i++){ s += a*vnoise(p); p = p*2.03 + 11.7; a *= 0.5; }
+  for (int i = 0; i < 3; i++){ s += a*vnoise(p); p = p*2.03 + 11.7; a *= 0.5; }
   return s;
 }
 float ease(float t){ t = clamp(t, 0.0, 1.0); return 1.0 - pow(1.0 - t, 3.0); }
-float sub(float i){ return ease((u_p*10.0 - i*1.0) / 5.0); }
-
-float bayer2(vec2 a){ a = floor(a); return fract(a.x/2.0 + a.y*a.y*0.75); }
-float bayer4(vec2 a){ return bayer2(0.5*a)*0.25 + bayer2(a); }
-float bayer8(vec2 a){ return bayer4(0.5*a)*0.25 + bayer2(a); }
-
-// the water: a nested domain warp, strength s
-vec2 warp(vec2 p, float s){
-  vec2 w1 = vec2(fbm(p*2.6 + 7.1), fbm(p*2.6 + 3.9)) - 0.5;
-  vec2 p2 = p + w1 * 0.55 * s;
-  vec2 w2 = vec2(fbm(p2*5.3 + 11.0), fbm(p2*5.3 + 17.0)) - 0.5;
-  return p + (w1*0.45 + w2*0.22) * s;
+float band(float d, float w, float aa){ return smoothstep(w + aa, w - aa, abs(d)); }
+float rsdf(vec2 p, vec2 b, float r){
+  vec2 d = abs(p) - b + r;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - r;
 }
 
-vec2 rot(vec2 v, float a){ return vec2(v.x*cos(a)-v.y*sin(a), v.x*sin(a)+v.y*cos(a)); }
+// each printed element inks in at its minute of the match
+float cue(float m){ return ease((u_p - (0.50 + m/120.0*0.30)) / 0.07); }
+float goalMin(int i){ return i==0 ? 29.0 : i==1 ? 59.0 : i==2 ? 92.0 : i==3 ? 103.0 : 111.0; }
 
-// a pigment: anisotropic, streaked, living in the warped space
-vec3 form(vec3 col, inout float cov, vec2 qq, vec2 c0, vec2 c1, float r,
-          float ang, float str, vec3 core, vec3 edge, float s, float hollow, float fi){
-  if (s <= 0.0) return col;
-  vec2 c = mix(c0, c1, s);
-  float rr = r * mix(1.35, 1.0, s);
-  vec2 d2 = rot(qq - c, ang);
-  d2.x /= (1.0 + str);                          // a tongue, not a circle
-  float d = length(d2);
-  float g = 1.0 - smoothstep(0.0, rr, d);
-  if (hollow > 0.5) g *= smoothstep(rr*0.36, rr*0.60, d);
-  // pigment travels in streaks along the flow
-  float streak = 0.72 + 0.55 * fbm(qq * 6.5 + fi * 13.0);
-  vec3 ink = mix(core, edge, pow(smoothstep(0.0, rr, d), 0.8));
-  float a = g * s * streak;
-  cov += a;
-  return col * mix(vec3(1.0), ink * mix(vec3(1.0), vec3(1.08), g*g), clamp(a, 0.0, 1.0));
+// the die: returns (blind deboss depth, celeste ink, rojo ink, gold ink)
+vec4 plate(vec2 u, float aa){
+  float press = ease((u_p - 0.14) / 0.28);
+  vec4 o = vec4(0.0);
+
+  // the plate mark — the whole die face presses the sheet faintly
+  float pm = smoothstep(0.0055, -0.0055, rsdf(u - vec2(0.0, 0.04), vec2(0.26, 0.325), 0.02));
+  o.x = max(o.x, pm * 0.22);
+
+  vec2 v = u - vec2(0.0, 0.085);      // medallion centre
+  float r = length(v);
+  float phi = atan(v.x, v.y);         // 0 at the top, clockwise
+
+  if (r < 0.30){
+    // hairline rings framing the tick band
+    float ring = band(r - 0.234, 0.0013, aa) + band(r - 0.140, 0.0012, aa);
+    o.x = max(o.x, min(ring, 1.0) * 0.55);
+
+    // 120 minute-ticks, one per minute played
+    float mn = mod(phi/TAU*120.0 + 120.0, 120.0);
+    float dm = (mn - floor(mn + 0.5)) * (TAU/120.0) * r;
+    float mi = mod(floor(mn + 0.5), 120.0);
+    float isP = step(abs(mi - 45.0), 0.25) + step(abs(mi - 90.0), 0.25)
+              + step(abs(mi - 105.0), 0.25) + step(mi, 0.25);
+    isP = min(isP, 1.0);
+    float w  = mix(0.00115, 0.0021, isP);
+    float r0 = mix(0.163, 0.152, isP), r1 = mix(0.184, 0.188, isP);
+    float tick = band(dm, w, aa) * smoothstep(r0 - aa, r0 + aa, r) * smoothstep(r1 + aa, r1 - aa, r);
+    o.x = max(o.x, tick * 0.75);
+
+    // sol de mayo — gold face and sixteen alternating rays
+    float face = smoothstep(aa, -aa, r - 0.042);
+    float t16 = phi/TAU*16.0;
+    float i16 = floor(t16 + 0.5);
+    float fr = abs(t16 - i16);
+    float L = mix(0.118, 0.096, mod(i16, 2.0));
+    float wu = 0.20 * clamp((L - r) / (L - 0.052), 0.0, 1.0);
+    float ray = smoothstep(aa, -aa, (fr - wu) * (TAU/16.0) * max(r, 1e-3))
+              * smoothstep(0.052 - aa, 0.052 + aa, r)
+              * smoothstep(L, L - 0.006, r);
+    float sun = max(face, ray);
+    o.x = max(o.x, sun);
+    o.w = max(o.w, sun * ease((u_p - 0.86) / 0.11));
+
+    // the five goals, seated at their minutes outside the ring
+    for (int i = 0; i < 5; i++){
+      float gm = goalMin(i);
+      float ga = gm/120.0*TAU;
+      vec2 gp = vec2(sin(ga), cos(ga)) * 0.208;
+      float gr = length(v - gp);
+      float m = smoothstep(aa, -aa, gr - 0.0125);
+      if (i == 4) m *= smoothstep(-aa, aa, gr - 0.0068);   // the own goal, open
+      o.x = max(o.x, m);
+      float c = m * cue(gm);
+      if (i == 1 || i == 3) o.z = max(o.z, c); else o.y = max(o.y, c);
+    }
+
+    // the two bookings — gilt hairlines at 69' and 115'
+    for (int i = 0; i < 2; i++){
+      float cm = i == 0 ? 69.0 : 115.0;
+      float ad = (mod(mn - cm + 60.0, 120.0) - 60.0) * (TAU/120.0) * r;
+      float ct = band(ad, 0.0011, aa)
+               * smoothstep(0.196 - aa, 0.196 + aa, r) * smoothstep(0.224 + aa, 0.224 - aa, r);
+      o.x = max(o.x, ct * 0.8);
+      o.w = max(o.w, ct * cue(cm));
+    }
+  }
+
+  // the score row — five dots in goal order, 3–2
+  for (int i = 0; i < 5; i++){
+    vec2 sp = vec2((float(i) - 2.0) * 0.048, -0.235);
+    float sr = length(u - sp);
+    float m = smoothstep(aa, -aa, sr - 0.0095);
+    if (i == 4) m *= smoothstep(-aa, aa, sr - 0.0050);
+    o.x = max(o.x, m);
+    float c = m * cue(goalMin(i));
+    if (i == 1 || i == 3) o.z = max(o.z, c); else o.y = max(o.y, c);
+  }
+
+  o.x *= press;
+  return o;
+}
+
+// the sheet, with deckled edges
+float sheetSD(vec2 u){
+  float sd = rsdf(u, vec2(0.315, 0.425), 0.010);
+  sd += (fbm(u*34.0 + 5.7) - 0.5) * 0.009;
+  return sd;
+}
+
+// the surface: felt board, paper thickness, cockle, the deboss, tooth
+float heightAt(vec2 u, float aa){
+  float sd = sheetSD(u);
+  float sm = smoothstep(0.002, -0.002, sd);
+  float d = plate(u, aa).x;
+  float h = sm * 0.0050;
+  h += sm * (fbm(u*7.0 + 2.3) - 0.5) * 0.0042;
+  h += sm * (fbm(u*26.0 + 9.1) - 0.5) * 0.0013;
+  h -= sm * d * 0.0036;
+  h += (vnoise(u*480.0) - 0.5) * 0.00034 * mix(0.55, 1.0, sm) * (1.0 - d*0.7);
+  h += (vnoise(u*150.0 + 3.3) - 0.5) * 0.00016 * sm * (1.0 - d*0.7);
+  return h;
+}
+
+vec3 inkLayer(vec3 base, float m, vec3 deep, float mot){
+  float solid = smoothstep(0.50, 0.78, m);
+  float rim = smoothstep(0.10, 0.45, m) * (1.0 - smoothstep(0.60, 0.95, m));
+  float a = clamp(solid * (0.72 + 0.28*mot) + rim * 0.85, 0.0, 1.0);
+  return base * mix(vec3(1.0), deep * mix(1.0, 0.70, rim), a);
 }
 
 void main(){
   vec2 p = gl_FragCoord.xy / u_res;
   float aspect = u_res.x / u_res.y;
   vec2 q = vec2(p.x * 0.75, (p.y - 0.5) * 0.75 / max(aspect, 0.001) + 0.5);
+  float px = 0.75 / u_res.x;
+  float aa = px * 0.9;
 
-  vec3 col = mix(vec3(0.918, 0.898, 0.845), vec3(0.936, 0.885, 0.845), pow(p.y, 1.6));
+  // the sheet sits a hair off true — placed by hand
+  float rot = (hash(vec2(3.1, 7.7)) - 0.5) * 0.035;
+  vec2 uc = q - vec2(0.375, 0.5);
+  float cs = cos(rot), sn = sin(rot);
+  vec2 u = vec2(uc.x*cs + uc.y*sn, -uc.x*sn + uc.y*cs);
 
-  float cov0 = 0.0;
-  // a pale gold field behind everything — the stadium's light, also fluid
-  {
-    float s = ease(u_p*10.0/6.0);
-    vec2 qg = warp(q, 0.5 * s);
-    float d = length(qg - vec2(0.42, 0.62));
-    float g = (1.0 - smoothstep(0.05, 0.40, d)) * 0.10 * s;
-    col = col * (1.0 - g) + vec3(0.955, 0.83, 0.55) * g;
-    cov0 = g * 3.0;
-  }
+  // dark felt board
+  vec3 col = vec3(0.094, 0.079, 0.067) * (0.80 + 0.42*fbm(q*70.0));
+  col *= 0.92 + 0.20 * (1.0 - length(p - vec2(0.34, 0.76)));
 
-  // the melt: forms arrive nearly whole, then the water takes them
-  float fluid = 0.42 + 0.58 * ease((u_p*10.0 - 2.0)/6.0);
-  vec2 qq = warp(q, fluid);
+  // the shadow the sheet throws
+  float ssd = rsdf(u - vec2(0.011, -0.013), vec2(0.315, 0.425), 0.010);
+  col *= 1.0 - ((1.0 - smoothstep(0.0, 0.05, ssd)) * 0.45 + (1.0 - smoothstep(0.0, 0.012, ssd)) * 0.25);
 
-  vec3 celCore = vec3(0.72, 0.87, 0.95), celEdge = vec3(0.20, 0.45, 0.67);
-  vec3 rojCore = vec3(0.97, 0.72, 0.56), rojEdge = vec3(0.63, 0.19, 0.13);
+  // surface normal from the true height field
+  float eps = px * 1.4;
+  float h0 = heightAt(u, aa);
+  float hx = heightAt(u + vec2(eps, 0.0), aa);
+  float hy = heightAt(u + vec2(0.0, eps), aa);
+  vec3 n = normalize(vec3(-(hx - h0)/eps * 1.15, -(hy - h0)/eps * 1.15, 1.0));
 
-  float cov = cov0;
-  col = form(col, cov, qq, vec2(0.05, 0.95), vec2(0.245, 0.665), 0.205, 0.55, 0.85, celCore, celEdge, sub(0.0), 0.0, 1.0); // 29'
-  col = form(col, cov, qq, vec2(0.80, 0.80), vec2(0.525, 0.560), 0.150, -0.9, 0.55, rojCore, rojEdge, sub(1.0), 0.0, 2.0); // 59'
-  col = form(col, cov, qq, vec2(0.30, 0.02), vec2(0.370, 0.405), 0.185, 1.85, 1.05, celCore, celEdge, sub(2.0), 0.0, 3.0); // 92'
-  col = form(col, cov, qq, vec2(-0.06, 0.20), vec2(0.165, 0.285), 0.125, -0.35, 0.65, rojCore, rojEdge, sub(3.0), 0.0, 4.0); // 103'
-  col = form(col, cov, qq, vec2(0.85, 0.10), vec2(0.560, 0.262), 0.150, 0.2, 0.35, celCore, celEdge, sub(4.0), 1.0, 5.0); // 111' og
+  float sd = sheetSD(u);
+  float sm = smoothstep(0.002, -0.002, sd);
+  vec4 pl = plate(u, aa);
 
-  // one small gold seed beside the loop — the moment itself
-  {
-    float s = sub(4.6);
-    float d = length(qq - vec2(0.618, 0.335));
-    float g = (1.0 - smoothstep(0.0, 0.020, d)) * s;
-    col = mix(col, vec3(0.84, 0.65, 0.18), g*0.9);
-  }
+  // cotton rag
+  vec3 paper = vec3(0.936, 0.906, 0.842);
+  paper *= 0.972 + 0.048 * fbm(u*20.0 + 1.2);
+  paper *= 0.988 + 0.024 * vnoise(u*300.0);
+  vec3 base = mix(col, paper, sm);
+  base *= 1.0 - 0.10 * pl.x * sm;             // fibres crushed in the valley
 
-  // 38 dust specks — the shots, settled on the surface, crisp
-  {
-    float s = ease((u_p*10.0 - 6.0)/3.0);
-    for (int i = 0; i < 38; i++){
-      float fi = float(i);
-      vec2 sp = vec2(0.06 + hash(vec2(fi, 1.7))*0.63,
-                     0.14 + hash(vec2(fi, 9.2))*0.72);
-      float d = length(q - sp);
-      float a = (1.0 - smoothstep(0.0, 0.0035, d)) * s * (0.25 + 0.5*hash(vec2(fi, 4.4)));
-      vec3 ink = hash(vec2(fi, 2.2)) < 0.58 ? vec3(0.28, 0.45, 0.60) : vec3(0.58, 0.24, 0.18);
-      col = mix(col, ink, a);
-    }
-  }
+  // one raking light, upper left
+  vec3 Ldir = normalize(vec3(-0.48, 0.60, 0.64));
+  float diff = max(dot(n, Ldir), 0.0);
+  float specBase = max(2.0 * n.z * dot(n, Ldir) - Ldir.z, 0.0);
+  vec3 lit = base * (0.36 + 0.82 * diff) * vec3(1.015, 1.0, 0.97);
+  lit += pow(specBase, 20.0) * 0.10 * (0.25 + 0.75 * pl.x) * sm;   // pressed fibres shine
 
-  // print pass: the dither lives where the ink lives
-  float cell = max(2.0, floor(u_res.y / 340.0));
-  float th = bayer8(gl_FragCoord.xy / cell) - 0.5;
-  float levels = 6.0;
-  vec3 dithered = floor(col * levels + 0.5 + th * 0.95) / levels;
-  col = mix(col, dithered, clamp(cov * 1.5 + 0.05, 0.0, 1.0));
+  // the ink, pulled a hair out of register
+  vec2 mis = (vec2(hash(vec2(1.3, 9.2)), hash(vec2(8.4, 2.6))) - 0.5) * 0.0042;
+  vec4 ink = plate(u + mis, max(aa, 0.0020));
+  float mot = clamp(0.78 + 0.30 * fbm(u*95.0 + 4.4), 0.0, 1.0);
+  lit = inkLayer(lit, ink.y * sm, vec3(0.169, 0.416, 0.600), mot);        // celeste
+  lit = inkLayer(lit, ink.z * sm, vec3(0.659, 0.173, 0.133), mot);        // rojo
+  float aG = smoothstep(0.45, 0.75, ink.w * sm);
+  vec3 gold = vec3(0.833, 0.647, 0.204) * (0.35 + 0.90 * diff)
+            + vec3(1.0, 0.92, 0.70) * pow(specBase, 34.0) * 0.9;
+  lit = mix(lit, gold * (0.94 + 0.10 * mot), aG * 0.94);
 
-  float g2 = hash(gl_FragCoord.xy * 0.7);
-  col += (g2 - 0.5) * 0.022;
-  float vig = smoothstep(1.25, 0.45, length(p - vec2(0.5, 0.52)));
-  col *= mix(0.965, 1.0, vig);
+  // the light comes up, the photograph settles
+  lit *= mix(0.30, 1.0, ease(u_p / 0.16));
+  lit += (hash(gl_FragCoord.xy * 0.83) - 0.5) * 0.020;
+  float vig = smoothstep(1.30, 0.45, length(p - vec2(0.5, 0.5)));
+  lit *= mix(0.90, 1.0, vig);
 
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(lit, 1.0);
 }
 </script>
 <script>
@@ -138,11 +228,11 @@ const M = window.M8;
 let sh = null, done = false, start = null;
 
 const F = FRAME.mount({
-  num: 1, title: "Bruma", subject: "Argentina vs. Cabo Verde",
+  num: 1, title: "Sello", subject: "Argentina vs. Cabo Verde",
   edition: "02/31", date: "06·07·2026",
-  stack: "WebGL — GLSL", time: "48 minutes",
-  desc: "Two inks — celeste and rojo — pushed through a domain-warped flow field and settled as dithered pigment. The volumes follow possession, 64% to 36%; the fleck of gold is the winning goal at 118'.",
-  dark: false, onResize() {
+  stack: "WebGL — GLSL", time: "86 minutes",
+  desc: "Letterpress on cotton rag — a die struck blind into the sheet, then inked by hand. A sol de mayo in gold, a ring of 120 minute-ticks, the five goals printed at their minutes — celeste, rojo, the own goal an open ring — the two bookings as gilt hairlines, the score row pressed beneath. The paper keeps the pressure long after the whistle.",
+  dark: true, onResize() {
     if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
     done = false;
     start = null;
@@ -150,12 +240,13 @@ const F = FRAME.mount({
   },
 });
 const sf = ART.rng(seed)() * 100;
+const DUR = matchMedia("(prefers-reduced-motion: reduce)").matches ? 500 : 9000;
 
-// flows once (10s), then the weather rests — no loop
+// pressed once, inked once (9s), then it rests — no loop
 function loop(tms) {
   if (!sh || done) return;
   if (start === null) start = tms;
-  const p = Math.min(1, (tms - start) / 10000);
+  const p = Math.min(1, (tms - start) / DUR);
   sh.gl.uniform1f(sh.extra.u_p, p);
   sh.draw(tms / 1000, sf);
   if (p >= 1) { done = true; return; }

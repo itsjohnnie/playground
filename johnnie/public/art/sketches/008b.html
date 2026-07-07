@@ -7,152 +7,419 @@
 <script src="data-008.js"></script>
 <script type="importmap">{ "imports": { "three": "../lib/three.module.min.js" } }</script>
 <script type="module">
-// 008 — b · 64.478 — every person who was in the stadium, one point each.
-// 64,478 points in 120 rows (one per minute); each soul leans toward the
-// team holding that minute. Goals send shockwaves through the crowd.
+// 008 — b · 64.478 — every soul in Hard Rock Stadium, one GPU point each.
+// A night bowl as a long exposure: three tiers, vomitories, a floodlit
+// pitch; the crowd files in, the match replays once, five goals cross the
+// stands as pressure waves and leave their warmth behind. Then it rests.
+// Exact: 64,478 points (announced attendance), goal minutes, extra time,
+// which end each phase was attacked. Seeded approximations (documented):
+// the bowl is a synthetic three-tier superellipse (the true seating chart
+// isn't public), the away block is ~3k behind one goal, waves ~250 m/s.
 // three.js · gpu points · custom shaders.
 
 import * as THREE from "three";
 
 const seed = ART.seed("2026-07-06-008b");
-const R = ART.rng(seed);
 const M = window.M8;
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const ROWS = 120;
-const COLS = Math.ceil(M.attendance / ROWS);   // 538 → 64,560 ≈ every soul
-const COUNT = ROWS * COLS;
+/* ---------------- timeline (seconds) ---------------- */
+const FILL0 = 0.35, FILL1 = 4.6;   // the crowd files in
+const T0 = 3.0, T1 = 8.8;          // the 120 minutes replay once
+const DUR = 10.6;                  // then the exposure closes
 
-let renderer, scene, camera, mat, camZ = 3.9;
+/* ---------------- the bowl ---------------- */
+const N_EXP = 2.4;                 // superellipse exponent (rounded-rect plan)
+const A0 = 64, B0 = 45, Y0 = 2.2;  // lower-tier front half-axes + height
+const AISLES = 26, AISLE_W = 0.8;  // vomitory stair-aisles, aligned per stack
+const TIERS = [
+  { rows: 26, dr: 0.82, dy: 0.43, gapR: 0,   gapY: 0,   walkAfter: 9 },
+  { rows: 8,  dr: 0.82, dy: 0.56, gapR: 3.0, gapY: 3.4 },
+  { rows: 22, dr: 0.80, dy: 0.72, gapR: 2.6, gapY: 4.2 },
+];
+const TOTAL_ROWS = TIERS.reduce((s, t) => s + t.rows, 0);
+
+// superellipse ring sampled to an arc-length table
+function rowRing(a, b) {
+  const S = 720;
+  const xs = new Float32Array(S + 1), zs = new Float32Array(S + 1), cl = new Float32Array(S + 1);
+  let L = 0;
+  for (let i = 0; i <= S; i++) {
+    const th = (i / S) * Math.PI * 2;
+    const c = Math.cos(th), s = Math.sin(th);
+    const x = a * Math.sign(c) * Math.pow(Math.abs(c), 2 / N_EXP);
+    const z = b * Math.sign(s) * Math.pow(Math.abs(s), 2 / N_EXP);
+    if (i) L += Math.hypot(x - xs[i - 1], z - zs[i - 1]);
+    xs[i] = x; zs[i] = z; cl[i] = L;
+  }
+  return { xs, zs, cl, L };
+}
+
+function buildSeats(seatW, rb) {
+  const seats = [];
+  const tierFronts = [];
+  let a = A0, b = B0, y = Y0, rowIndex = 0;
+  for (const t of TIERS) {
+    a += t.gapR; b += t.gapR; y += t.gapY;
+    tierFronts.push([a, b, y]);
+    for (let r = 0; r < t.rows; r++, rowIndex++) {
+      const ring = rowRing(a, b);
+      const n = Math.floor(ring.L / seatW);
+      const phase = rb() * seatW;
+      let j = 0;
+      for (let i = 0; i < n; i++) {
+        const s = phase + i * seatW;
+        const u = s / ring.L;
+        const k = Math.round(u * AISLES);
+        if (Math.abs(u - k / AISLES) * ring.L < AISLE_W) continue;  // vomitory
+        while (j < ring.cl.length - 2 && ring.cl[j + 1] < s) j++;
+        const f = (s - ring.cl[j]) / Math.max(1e-6, ring.cl[j + 1] - ring.cl[j]);
+        seats.push({
+          x: ring.xs[j] + (ring.xs[j + 1] - ring.xs[j]) * f + (rb() - 0.5) * 0.22,
+          y: y + 0.9 + (rb() - 0.5) * 0.12,
+          z: ring.zs[j] + (ring.zs[j + 1] - ring.zs[j]) * f + (rb() - 0.5) * 0.22,
+          u,
+          tier: tierFronts.length - 1,
+          fill: (rowIndex / TOTAL_ROWS) * 0.72 + rb() * 0.28,
+        });
+      }
+      a += t.dr; b += t.dr; y += t.dy;
+      if (t.walkAfter === r) { a += 1.7; b += 1.7; y += 0.9; }  // mid-tier walkway
+    }
+  }
+  return { seats, top: { a, b, y }, tierFronts };
+}
+
+/* ---------------- scene ---------------- */
+let renderer, scene, camera, mat, grainU, frozen = false, lastT = 0;
+let camStart, camEnd, camLook, focusD, hFov = 62 * Math.PI / 180;
+
 const F = FRAME.mount({
   num: 2, title: "64.478", subject: "Argentina vs. Cabo Verde",
   edition: "02/31", date: "06·07·2026",
-  stack: "Three.js + WebGL", time: "62 minutes",
-  desc: "Every one of the 64,478 spectators is a single GPU point, gathered into the crowd's shape and released. Their density breathes with the match's five goals.",
-  dark: true, onResize(w, h, dpr) {
+  stack: "Three.js + WebGL", time: "120 minutes",
+  desc: "Every one of the 64,478 spectators is a single point of light, seated in a night bowl tier by tier. The crowd files in, the match replays once — five goals cross the stands as pressure waves — and the long exposure keeps the warmth they left behind.",
+  ratio: 1.5, dark: true,
+  onResize(w, h, dpr) {
     if (!renderer) build();
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(w / dpr, h / dpr, false);
+    renderer.setPixelRatio(1);           // F gives device pixels already
+    renderer.setSize(w, h, false);
     camera.aspect = w / h;
+    camera.fov = 2 * Math.atan(Math.tan(hFov / 2) / camera.aspect) * 180 / Math.PI;
     camera.updateProjectionMatrix();
-    // narrower stages (full-bleed phones) pull the camera back so the
-    // whole crowd stays in frame
-    camZ = Math.max(3.9, 2.55 / camera.aspect);
+    mat.uniforms.uPxF.value = (w / 2) / Math.tan(hFov / 2);
+    mat.uniforms.uDpr.value = dpr;
+    if (frozen) draw(lastT);
   },
 });
 
-// minute → argentina share (possession blended with per-phase xG)
-function flow(min) {
-  const pts = [[22.5, 0], [67.5, 1], [105, 2]].map(([m, i]) => ({
-    m, f: 0.64 * 0.68 + (M.xgPhase.arg[i] / (M.xgPhase.arg[i] + M.xgPhase.cpv[i])) * 0.32,
-  }));
-  if (min <= pts[0].m) return pts[0].f;
-  if (min >= pts[2].m) return pts[2].f;
-  const i = min < pts[1].m ? 0 : 1;
-  const t = (min - pts[i].m) / (pts[i + 1].m - pts[i].m);
-  return pts[i].f + (pts[i + 1].f - pts[i].f) * (t * t * (3 - 2 * t));
+function pitchTexture() {
+  const c = document.createElement("canvas");
+  c.width = 1024; c.height = 768;                       // maps 150 × 112.5 m
+  const g = c.getContext("2d");
+  const S = 1024 / 150;                                  // px per metre
+  g.fillStyle = "#100e0b"; g.fillRect(0, 0, 1024, 768);  // concrete apron
+  const pw = 105 * S, ph = 68 * S, px = (1024 - pw) / 2, py = (768 - ph) / 2;
+  // LED ad boards, dim as a long exposure remembers them
+  g.strokeStyle = "rgba(255,224,178,0.13)"; g.lineWidth = 7;
+  g.strokeRect(px - 16, py - 16, pw + 32, ph + 32);
+  // grass + mow stripes
+  g.fillStyle = "#0d1b12"; g.fillRect(px, py, pw, ph);
+  g.fillStyle = "rgba(255,255,255,0.045)";
+  for (let i = 0; i < 14; i += 2) g.fillRect(px + (i * pw) / 14, py, pw / 14, ph);
+  // floodlight sheen from the four corners
+  for (const [cx, cy] of [[0, 0], [1024, 0], [0, 768], [1024, 768]]) {
+    const rg = g.createRadialGradient(cx, cy, 60, cx, cy, 720);
+    rg.addColorStop(0, "rgba(255,240,214,0.08)"); rg.addColorStop(1, "rgba(255,240,214,0)");
+    g.fillStyle = rg; g.fillRect(0, 0, 1024, 768);
+  }
+  // markings, faint
+  g.strokeStyle = "rgba(216,226,216,0.16)"; g.lineWidth = 2;
+  g.strokeRect(px, py, pw, ph);
+  g.beginPath(); g.moveTo(512, py); g.lineTo(512, py + ph); g.stroke();
+  g.beginPath(); g.arc(512, 384, 9.15 * S, 0, 7); g.stroke();
+  for (const side of [0, 1]) {
+    const bx = side ? px + pw - 16.5 * S : px;
+    g.strokeRect(bx, 384 - 20.16 * S, 16.5 * S, 40.32 * S);
+    g.strokeRect(side ? px + pw - 5.5 * S : px, 384 - 9.16 * S, 5.5 * S, 18.32 * S);
+  }
+  // grain
+  const rg2 = ART.rng(seed + ":pitch");
+  g.fillStyle = "rgba(0,0,0,0.05)";
+  for (let i = 0; i < 3600; i++) g.fillRect(rg2() * 1024, rg2() * 768, 1.4, 1.4);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
 }
 
-function build() {
-  renderer = new THREE.WebGLRenderer({ canvas: F.canvas, antialias: false });
-  scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x0a0a0c, 2.2, 5.2);
-  camera = new THREE.PerspectiveCamera(38, 3 / 4, 0.1, 10);
-
-  const pos = new Float32Array(COUNT * 3);
-  const attr = new Float32Array(COUNT * 3); // x: side (0 arg / 1 cpv), y: jitter, z: minute
-  const SPREAD_X = 1.55, SPREAD_Y = 2.3;
-  let k = 0;
-  for (let r = 0; r < ROWS; r++) {
-    const min = r + 0.5;
-    const share = flow(min);
-    for (let c = 0; c < COLS; c++, k++) {
-      const u = (c + 0.5) / COLS;                    // 0..1 across the row
-      const side = u < share ? 0 : 1;
-      pos[k * 3]     = (u - 0.5) * SPREAD_X + (R() - 0.5) * 0.010;
-      pos[k * 3 + 1] = (0.5 - r / ROWS) * SPREAD_Y + (R() - 0.5) * 0.012;
-      pos[k * 3 + 2] = (R() - 0.5) * 0.05;
-      attr[k * 3]     = side;
-      attr[k * 3 + 1] = R();
-      attr[k * 3 + 2] = min;
-    }
+function ringStrip(a1, b1, y1, a2, b2, y2, color) {
+  const S = 220, pos = new Float32Array((S + 1) * 6), idx = [];
+  const r1 = rowRing(a1, b1), r2 = rowRing(a2, b2);
+  const step = 720 / S;
+  for (let i = 0; i <= S; i++) {
+    const j = Math.min(720, Math.round(i * step));
+    pos[i * 6] = r1.xs[j];     pos[i * 6 + 1] = y1; pos[i * 6 + 2] = r1.zs[j];
+    pos[i * 6 + 3] = r2.xs[j]; pos[i * 6 + 4] = y2; pos[i * 6 + 5] = r2.zs[j];
+    if (i < S) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute("aInfo", new THREE.BufferAttribute(attr, 3));
+  geo.setIndex(idx);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }));
+  m.frustumCulled = false;
+  return m;
+}
+
+function build() {
+  renderer = new THREE.WebGLRenderer({
+    canvas: F.canvas, antialias: false, alpha: false, powerPreference: "high-performance",
+  });
+  renderer.setClearColor(0x04050a, 1);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(40, 1.5, 0.5, 600);
+
+  // ---- seats: exactly 64,478 souls ----
+  let seatW = 0.5, built;
+  for (let i = 0; i < 8; i++) {
+    built = buildSeats(seatW, ART.rng(seed + ":bowl"));
+    if (built.seats.length >= M.attendance) break;
+    seatW *= (built.seats.length / M.attendance) * 0.985;
+  }
+  const all = built.seats;
+  const drop = Math.max(0, all.length - M.attendance);   // scattered no-shows
+  const rd = ART.rng(seed + ":empty");
+  const empty = new Set();
+  while (empty.size < drop) empty.add((rd() * all.length) | 0);
+
+  // ---- floodlight rim under the canopy ----
+  const { a: aT, b: bT, y: yT } = built.top;
+  const rim = rowRing(aT + 3.5, bT + 3.5);
+  const rk = ART.rng(seed + ":kind");
+  const nz = ART.makeNoise(seed + ":sections");
+  const floods = [];
+  const nF = Math.floor(rim.L / 5.2);
+  for (let i = 0; i < nF; i++) {
+    const s = (i + 0.5) * (rim.L / nF);
+    let j = 0; while (j < rim.cl.length - 2 && rim.cl[j + 1] < s) j++;
+    floods.push({ x: rim.xs[j], y: yT + 7.5, z: rim.zs[j], u: s / rim.L });
+  }
+
+  const COUNT = M.attendance + floods.length;
+  const pos = new Float32Array(COUNT * 3);
+  const inf = new Float32Array(COUNT * 4);               // u, rnd, fill, kind
+  let k = 0;
+  const put = (s, kind, fill) => {
+    pos[k * 3] = s.x; pos[k * 3 + 1] = s.y; pos[k * 3 + 2] = s.z;
+    inf[k * 4] = s.u; inf[k * 4 + 1] = rk(); inf[k * 4 + 2] = fill; inf[k * 4 + 3] = kind;
+    k++;
+  };
+  for (let i = 0; i < all.length && k < M.attendance; i++) {
+    if (empty.has(i)) continue;
+    const s = all[i];
+    let kind;
+    if (s.tier >= 1 && Math.abs(s.u - 0.5) < 0.05) kind = 2;           // away block
+    else if (rk() < 0.05) kind = 3;                                    // phone lights
+    else kind = rk() < 0.30 + 0.34 * nz.noise2(s.u * 36, s.tier * 2.7) ? 1 : 0;
+    put(s, kind, s.fill);
+  }
+  for (const f of floods) put(f, 4, 0);
+
+  // ---- goals: minute → replay-second, origin = end that was attacked ----
+  const rg = ART.rng(seed + ":goals");
+  const argFirstEnd = rg() < 0.5 ? 0 : 0.5;               // coin toss, seeded
+  const flip = (e) => (e === 0 ? 0.5 : 0);
+  const phaseOf = (m) => (m <= 45 ? 0 : m <= 90 ? 1 : m <= 105 ? 2 : 3);
+  const goals = M.goals.map((g) => {
+    const m = g.exact || g.min;
+    const argEnd = phaseOf(m) % 2 === 0 ? argFirstEnd : flip(argFirstEnd);
+    const origin = (g.team === "arg" ? argEnd : flip(argEnd)) + (rg() - 0.5) * 0.03;
+    return new THREE.Vector4(T0 + (m / 120) * (T1 - T0), origin, g.team === "arg" ? 1 : -1, 250);
+  });
+  const perim = rowRing(A0 + 30, B0 + 30).L;
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute("aInfo", new THREE.BufferAttribute(inf, 4));
 
   mat = new THREE.ShaderMaterial({
-    transparent: true,
-    depthWrite: false,
+    transparent: true, depthWrite: false, depthTest: true,
     blending: THREE.AdditiveBlending,
     uniforms: {
-      uTime: { value: 0 },
-      uClock: { value: 0 },     // replay minute 0..120
-      uDpr: { value: F.DPR },
-      // goal minutes + direction (+1 arg scored, -1 cpv scored)
-      uGoals: { value: M.goals.map((g) => new THREE.Vector2(g.min, g.team === "arg" ? 1 : -1)) },
+      uT: { value: 0 }, uRun: { value: 0 }, uDpr: { value: F.DPR },
+      uPxF: { value: 800 }, uFocus: { value: 160 }, uCocK: { value: 2.4 },
+      uPerim: { value: perim }, uGoals: { value: goals },
     },
     vertexShader: `
-      attribute vec3 aInfo;
-      uniform float uTime, uClock, uDpr;
-      uniform vec2 uGoals[5];
-      varying float vSide, vGlow, vBorn;
+      attribute vec4 aInfo;
+      uniform float uT, uRun, uDpr, uPxF, uFocus, uCocK, uPerim;
+      uniform vec4 uGoals[${goals.length}];
+      varying vec3 vCol; varying float vA, vFlood;
+      float ringD(float a, float b){ float d = abs(a - b); return min(d, 1.0 - d); }
       void main(){
-        vSide = aInfo.x;
-        float jit = aInfo.y, minute = aInfo.z;
-        vBorn = step(minute, uClock);              // crowd fills in as replayed
+        float u = aInfo.x, rnd = aInfo.y, fill = aInfo.z, kind = aInfo.w;
+        float isF = step(3.5, kind);
+        vFlood = isF;
         vec3 p = position;
-        // breathing — the crowd is alive
-        p.x += 0.012 * sin(uTime*0.6 + jit*6.2832 + p.y*2.0);
-        p.z += 0.030 * sin(uTime*0.4 + jit*12.5 + p.x*3.0);
-        // goal shockwaves ripple outward through minutes
-        float glow = 0.0;
-        for (int i = 0; i < 5; i++) {
-          float gm = uGoals[i].x;
-          float since = uClock - gm;
-          if (since > 0.0) {
-            float d = abs(minute - gm);
-            float ring = since * 3.2;              // minutes per replay-beat
-            float band = exp(-pow((d - ring) * 0.55, 2.0));
-            float decay = exp(-since * 0.10);
-            p.z += band * decay * 0.22;
-            glow += band * decay;
+
+        // arrival: the crowd files in, dropping into seats
+        float vis;
+        if (isF > 0.5) {
+          vis = smoothstep(0.10, 0.85, uT);
+        } else {
+          float tf = clamp((uT - ${FILL0.toFixed(2)}) / ${(FILL1 - FILL0).toFixed(2)}, 0.0, 1.0);
+          vis = smoothstep(fill, fill + 0.10, tf);
+          p.y += (1.0 - vis) * (1.4 + rnd);
+        }
+
+        // goals: pressure waves around the ring, residue stays
+        float argA = kind < 0.5 ? 0.85 : (kind < 1.5 ? 1.0 : (kind < 2.5 ? 0.08 : 0.9));
+        float cpvA = kind < 2.5 && kind > 1.5 ? 1.0 : 0.15;
+        float glow = 0.0, jump = 0.0, kept = 0.0;
+        for (int i = 0; i < ${goals.length}; i++) {
+          vec4 g = uGoals[i];
+          float aff = g.z > 0.0 ? argA : cpvA;
+          float tw = uT - (g.x + ringD(u, g.y) * uPerim / g.w);
+          if (tw > 0.0) {
+            float fl = exp(-2.6 * tw) * (1.0 - exp(-16.0 * tw));
+            glow += fl * aff * (0.4 + 1.2 * rnd);
+            jump += fl * aff;
+            kept += aff * (0.5 + rnd) * min(tw * 2.0, 1.0);
           }
         }
-        vGlow = min(glow, 1.2);
+        glow = min(glow, 1.6);
+        float after = kept * 0.22;
+        p.y += jump * 0.55 * (1.0 - isF);
+        // the sway of a live crowd, only while the match runs
+        p.x += uRun * 0.05 * sin(uT * 2.1 + rnd * 39.0) * (1.0 - isF);
+
         vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        float dist = max(1.0, -mv.z);
+        float world = isF > 0.5 ? 5.0 : 0.40 * (0.75 + 0.5 * rnd) * (1.0 + glow * 0.7);
+        float px = world * uPxF / dist;
+        float coc = uCocK * abs(dist - uFocus) / dist;   // depth of field
+        float size = clamp(px + coc, 1.25 * uDpr, mix(34.0, 64.0, isF) * uDpr);
+        gl_PointSize = size;
+        float energy = min(1.0, (px * px) / (size * size));
+
+        vec3 col; float bright;
+        if      (kind < 0.5) { col = vec3(0.98, 0.80, 0.58); bright = 0.75 + 0.65 * rnd; }
+        else if (kind < 1.5) { col = vec3(0.72, 0.83, 0.95); bright = 0.80 + 0.65 * rnd; }
+        else if (kind < 2.5) { col = vec3(0.95, 0.42, 0.30); bright = 0.75 + 0.5 * rnd; }
+        else if (kind < 3.5) { col = vec3(0.92, 0.96, 1.05); bright = 1.60 + 0.7 * rnd; }
+        else                 { col = vec3(1.00, 0.93, 0.80); bright = 7.0; }
+        col *= bright;
+        col += (glow + after) * vec3(1.0, 0.74, 0.38) * (1.0 - isF);
+
+        // atmospheric perspective: the far side sits in haze
+        float hz = smoothstep(70.0, 230.0, dist);
+        col = mix(col, vec3(0.30, 0.36, 0.46) * bright, hz * 0.45);
+        vA = vis * energy * (isF > 0.5 ? 0.9 : (0.50 + 0.40 * rnd + glow * 0.35 + after)) * (1.0 - hz * 0.25);
+        vCol = col;
         gl_Position = projectionMatrix * mv;
-        gl_PointSize = (1.1 + jit * 0.9 + vGlow * 1.6) * uDpr * (2.6 / -mv.z);
       }`,
     fragmentShader: `
-      precision highp float;
-      varying float vSide, vGlow, vBorn;
+      precision mediump float;
+      varying vec3 vCol; varying float vA, vFlood;
       void main(){
-        if (vBorn < 0.5) discard;
         vec2 q = gl_PointCoord - 0.5;
-        float a = smoothstep(0.5, 0.12, length(q));
-        vec3 celeste = vec3(0.42, 0.67, 0.84);
-        vec3 rojo    = vec3(0.84, 0.30, 0.24);
-        vec3 col = mix(celeste, rojo, vSide);
-        col += vGlow * vec3(0.9, 0.85, 0.7) * 0.8;
-        gl_FragColor = vec4(col, a * (0.5 + vGlow * 0.5));
+        float r2 = dot(q, q) * 4.0;
+        float a = exp(-4.5 * r2);
+        a = mix(a, exp(-18.0 * r2) * 1.2 + 0.30 * exp(-1.4 * r2), vFlood);
+        gl_FragColor = vec4(vCol, vA * a);
       }`,
   });
-  scene.add(new THREE.Points(geo, mat));
+  const pts = new THREE.Points(geo, mat);
+  pts.frustumCulled = false;
+  pts.renderOrder = 10;
+  scene.add(pts);
+
+  // ---- pitch + apron ----
+  const pitch = new THREE.Mesh(
+    new THREE.PlaneGeometry(150, 112.5),
+    new THREE.MeshBasicMaterial({ map: pitchTexture() })
+  );
+  pitch.rotation.x = -Math.PI / 2;
+  scene.add(pitch);
+
+  // ---- architecture: tier fascias + canopy, silhouetted ----
+  const [f1, f2, f3] = built.tierFronts;
+  scene.add(ringStrip(A0 - 0.6, B0 - 0.6, Y0 - 0.2, A0 - 0.6, B0 - 0.6, 0.1, 0x0b0908));
+  scene.add(ringStrip(f2[0] - 0.5, f2[1] - 0.5, f2[2], f2[0] - 0.5, f2[1] - 0.5, f2[2] - 1.9, 0x0a0807));
+  scene.add(ringStrip(f3[0] - 0.5, f3[1] - 0.5, f3[2], f3[0] - 0.5, f3[1] - 0.5, f3[2] - 2.2, 0x0a0807));
+  scene.add(ringStrip(aT + 9, bT + 9, yT + 11, aT - 6, bT - 6, yT + 9, 0x050403));
+
+  // ---- sky: night gradient + the bowl's light dome ----
+  const sky = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    depthWrite: false, depthTest: false,
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    fragmentShader: `
+      precision mediump float; varying vec2 vUv;
+      float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+      void main(){
+        float y = vUv.y;
+        vec3 col = mix(vec3(0.045, 0.038, 0.030), vec3(0.012, 0.015, 0.024), smoothstep(0.30, 0.95, y));
+        col += vec3(0.090, 0.074, 0.050) * exp(-pow((y - 0.50) * 2.1, 2.0))
+             * (0.7 + 0.3 * exp(-pow((vUv.x - 0.5) * 2.2, 2.0)));
+        col += (h(gl_FragCoord.xy) - 0.5) * 0.006;
+        gl_FragColor = vec4(col, 1.0);
+      }`,
+  }));
+  sky.renderOrder = -10; sky.frustumCulled = false;
+  scene.add(sky);
+
+  // ---- finishing pass: film grain + vignette ----
+  const grain = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, depthTest: false,
+    uniforms: { uGr: { value: 0 } },
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    fragmentShader: `
+      precision mediump float; varying vec2 vUv; uniform float uGr;
+      float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+      void main(){
+        float n = h(gl_FragCoord.xy + fract(uGr) * vec2(31.7, 17.3));
+        vec2 q = vUv * 2.0 - 1.0;
+        float vig = smoothstep(0.62, 1.42, length(q * vec2(1.0, 1.15)));
+        vec3 col = mix(vec3(n), vec3(0.0), clamp(vig * 1.4, 0.0, 1.0));
+        gl_FragColor = vec4(col, 0.045 + vig * 0.34);
+      }`,
+  }));
+  grain.renderOrder = 999; grain.frustumCulled = false;
+  grainU = grain.material.uniforms.uGr;
+  scene.add(grain);
+
+  // ---- the camera: an elevated gantry inside the bowl ----
+  const rc = ART.rng(seed + ":cam");
+  camEnd = new THREE.Vector3(12 + rc() * 12, 25 + rc() * 4, 63 + rc() * 8);
+  camStart = camEnd.clone().add(new THREE.Vector3(-5, 4, 8));
+  camLook = new THREE.Vector3(-8 + rc() * 6, 13.5, -38);
+  focusD = camEnd.distanceTo(new THREE.Vector3(0, 18, -90));
+  mat.uniforms.uFocus.value = focusD;
 }
 
-let raf;
-function loop(tms) {
-  const t = tms / 1000;
-  const cycle = t % 34;
-  const clock = Math.min(120, (cycle / 26) * 120);
-  mat.uniforms.uTime.value = t;
-  mat.uniforms.uClock.value = clock;
-  mat.uniforms.uDpr.value = F.DPR;
-  // slow drift — never a still frame
-  camera.position.set(Math.sin(t * 0.05) * 0.22, Math.cos(t * 0.04) * 0.14, camZ);
-  camera.lookAt(0, 0, 0);
+/* ---------------- run once, then rest ---------------- */
+const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+function draw(t) {
+  lastT = t;
+  mat.uniforms.uT.value = t;
+  mat.uniforms.uRun.value = ss(T0 - 0.5, T0 + 0.5, t) * (1 - ss(T1, T1 + 0.7, t));
+  grainU.value = frozen ? DUR : t;
+  const k = 1 - Math.pow(1 - Math.min(1, t / 9.8), 3);
+  camera.position.lerpVectors(camStart, camEnd, k);
+  camera.lookAt(camLook);
   renderer.render(scene, camera);
-  raf = requestAnimationFrame(loop);
 }
-queueMicrotask(() => { if (!renderer) build(); raf || requestAnimationFrame(loop); });
+let start;
+function loop(now) {
+  if (start === undefined) start = now;
+  const t = Math.min(DUR, (now - start) / 1000);
+  draw(t);
+  if (t >= DUR) { frozen = true; return; }              // the exposure closes
+  requestAnimationFrame(loop);
+}
+queueMicrotask(() => {
+  if (!renderer) build();
+  if (RM) { frozen = true; draw(DUR); }
+  else requestAnimationFrame(loop);
+});
 </script>

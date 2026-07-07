@@ -9,11 +9,14 @@
 precision highp float;
 uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
 
-// 008 — e · resonancia — a chladni plate sings the match. Fine sand on a
-// dark steel plate migrates to the nodal lines while the drive frequency
-// sweeps five resonance modes, one per goal — (2,3) 29' … (5,6) 111' —
-// agitated while the tone moves, locking crisp when it lands. Every
-// finished mode leaves ~8% of its figure behind: the plate remembers.
+// 008 — e · resonancia — a chladni plate sings the match. The dark steel
+// plate IS the whole slot, edge to edge (bleed): fine sand migrates to the
+// nodal lines of rectangular-plate modes cos(nπx/a)·cos(mπy/b), mixed in
+// pairs the way near-degenerate resonances superpose on a real plate. The
+// drive sweeps five resonances, one per goal — 29' … 111' — sand agitated
+// while the tone moves, locking crisp when it lands. Every finished mode
+// leaves ~8% of its figure behind, and grains drift a touch denser toward
+// the rim, as on a real plate. A small driver post holds the center clear.
 // Arrives once over 10s, then rests.
 
 const float PI = 3.14159265358979;
@@ -27,21 +30,16 @@ float vnoise(vec2 p){
              mix(hash(i+vec2(0.,1.)), hash(i+vec2(1.,1.)), f.x), f.y);
 }
 
-// square-plate chladni function, x,y in [-1,1]
-float chl(vec2 pc, float n, float m){
-  return cos(n*PI*pc.x)*cos(m*PI*pc.y) - cos(m*PI*pc.x)*cos(n*PI*pc.y);
+// rectangular-plate chladni pair — x,y normalized to the plate's own edges
+// [-1,1], so the figure composes across the full rectangle. s mixes the
+// companion mode (−1: antisymmetric pair, +1: symmetric pair).
+float chl(vec2 pc, float n, float m, float s){
+  return cos(n*PI*pc.x)*cos(m*PI*pc.y) + s*cos(m*PI*pc.x)*cos(n*PI*pc.y);
 }
 
 void main(){
   vec2 p = gl_FragCoord.xy / u_res;
-  float aspect = u_res.x / u_res.y;
-  vec2 q = vec2(p.x*0.75, (p.y-0.5)*0.75/max(aspect,0.001) + 0.5);
-
-  // the plate: square, centered, side 86% of the design width
-  float hs = 0.3225;
-  vec2 pc = (q - vec2(0.375, 0.5)) / hs;
-  float ed = max(abs(pc.x), abs(pc.y));
-  float inPlate = 1.0 - smoothstep(0.985, 1.0, ed);
+  vec2 pc = p*2.0 - 1.0;                     // the plate is the slot
 
   // ---- the drive: five modes, 2s each, smooth crossfades ----
   float m5 = clamp(u_p*5.0 - 0.5, 0.0, 4.0);
@@ -67,29 +65,33 @@ void main(){
   float h2 = hash(jid + vec2(19.3, 7.7));
 
   // evaluate the field at the grain's cell center → whole grains, not gradients
-  vec2 fc = (id + 0.5) * cell;
-  vec2 pcen = fc / u_res;
-  vec2 qc = vec2(pcen.x*0.75, (pcen.y-0.5)*0.75/max(aspect,0.001) + 0.5);
-  vec2 pcc = (qc - vec2(0.375, 0.5)) / hs;
+  vec2 pcc = ((id + 0.5)*cell)/u_res*2.0 - 1.0;
   // per-grain positional jitter while the plate is being retuned
   vec2 pj = pcc + (vec2(h1, h2) - 0.5) * 0.055 * agit;
 
-  float A = w0*chl(pj,2.,3.) + w1*chl(pj,3.,4.) + w2*chl(pj,3.,5.)
-          + w3*chl(pj,4.,5.) + w4*chl(pj,5.,6.);
+  // the symmetric (3,5) pair is amplified ×2.1: its field is shallow, and
+  // unscaled it floods the plate instead of drawing thin nodal ridges
+  float A = w0*chl(pj,2.,3.,-1.) + w1*chl(pj,3.,4.,-1.) + w2*chl(pj,2.,5.,-1.)
+          + w3*2.1*chl(pj,3.,5., 1.) + w4*chl(pj,4.,5.,-1.);
 
   float sandIn = smoothstep(0.0, 0.06, u_p);
   float th = 0.30 + 0.26*agit;               // sand spreads while agitated
   float dens = pow(smoothstep(th, 0.0, abs(A)), 1.35);
+
+  // sand drifts a touch denser toward the borders, like a real plate's rim
+  float bord = max(abs(pcc.x), abs(pcc.y));
+  float rimAcc = smoothstep(0.86, 1.0, bord);
+  dens = min(1.0, dens*(1.0 + 0.22*rimAcc));
 
   // rounded grain footprint inside the cell
   float shape = smoothstep(0.56, 0.30, length(fract(gl_FragCoord.xy/cell) - 0.5));
 
   float grain = step(1.0 - dens*0.92*sandIn, h1) * (0.55 + 0.45*h2);
 
-  // stray grains scattered in the low-|A| basins
+  // stray grains scattered in the low-|A| basins, plus a sparse rim drift
   float basin = smoothstep(1.15, 0.15, abs(A));
   float h3 = hash(id + vec2(57.0, 3.1));
-  float stray = step(1.0 - 0.05*basin*sandIn, h3) * (0.30 + 0.40*h2);
+  float stray = step(1.0 - (0.05*basin + 0.024*rimAcc)*sandIn, h3) * (0.30 + 0.40*h2);
 
   // sand in flight while the tone changes
   float h4 = hash(jid + vec2(101.0, 47.0));
@@ -101,41 +103,34 @@ void main(){
   float r2 = smoothstep(2.80, 3.05, ms);
   float r3 = smoothstep(3.80, 4.00, ms);
   float resDens =
-      r0*smoothstep(0.16, 0.0, abs(chl(pcc,2.,3.)))
-    + r1*smoothstep(0.16, 0.0, abs(chl(pcc,3.,4.)))
-    + r2*smoothstep(0.16, 0.0, abs(chl(pcc,3.,5.)))
-    + r3*smoothstep(0.16, 0.0, abs(chl(pcc,4.,5.)));
+      r0*smoothstep(0.16, 0.0, abs(chl(pcc,2.,3.,-1.)))
+    + r1*smoothstep(0.16, 0.0, abs(chl(pcc,3.,4.,-1.)))
+    + r2*smoothstep(0.16, 0.0, abs(chl(pcc,2.,5.,-1.)))
+    + r3*smoothstep(0.16, 0.0, abs(2.1*chl(pcc,3.,5., 1.)));
   float h5 = hash(id + vec2(211.0, 5.0));
   float resg = step(1.0 - clamp(resDens, 0.0, 1.0)*0.085, h5) * (0.35 + 0.30*h2);
 
   float sand = clamp(grain + stray + resg + flight, 0.0, 1.0) * shape;
 
-  // the four bolts keep their circle clear of sand
-  float bd = length(abs(pc) - vec2(0.90));
-  sand *= smoothstep(0.045, 0.075, bd);
-  sand *= inPlate * smoothstep(1.0, 0.965, ed);
+  // the driver post at the plate's center keeps its footprint clear
+  float dpix = length(gl_FragCoord.xy - 0.5*u_res);
+  float postR = 0.012*min(u_res.x, u_res.y);
+  sand *= smoothstep(postR*0.95, postR*1.55, dpix);
 
-  // ---- materials ----
-  float lit = 1.0 - 0.5*smoothstep(0.0, 1.4, length(pc));        // center-lit
-  float brush = vnoise(vec2(pc.y*230.0, pc.x*7.0));              // brushed along x
-  vec3 plate = vec3(0.052, 0.055, 0.062) * (0.55 + 0.95*lit)
-             + (brush - 0.5) * 0.022;
-  vec3 voidc = vec3(0.012, 0.013, 0.016) * (0.8 + 0.5*p.y);
-  vec3 col = mix(voidc, plate, inPlate);
+  // ---- materials: the whole surface is the plate ----
+  float lit = 1.0 - 0.42*smoothstep(0.15, 1.85, length(pc - vec2(-0.18, 0.30)));
+  float brush = vnoise(vec2(pc.y*230.0, pc.x*7.0));       // brushed along x
+  float patina = vnoise(pc*3.1 + 7.0);                    // faint mottling
+  vec3 col = vec3(0.052, 0.055, 0.062) * (0.55 + 0.95*lit)
+           + (brush - 0.5) * 0.022
+           + (patina - 0.5) * 0.012;
 
-  // machined rim: dark cut inside, lit chamfer just outside
+  // the driver post: a darker machined disc, one lit arc
+  float post = smoothstep(postR + 1.5, postR - 1.5, dpix);
+  col = mix(col, vec3(0.040, 0.042, 0.048)*(0.7 + 0.6*lit), post);
+  float postRim = smoothstep(1.6, 0.0, abs(dpix - postR));
   float litDir = 0.40 + 0.60*clamp(0.5 + 0.55*pc.y - 0.20*pc.x, 0.0, 1.0);
-  float cut = smoothstep(0.014, 0.002, abs(ed - 0.992));
-  col = mix(col, vec3(0.020, 0.021, 0.024), cut*0.8);
-  float rim = smoothstep(0.010, 0.003, abs(ed - 1.012));
-  col = mix(col, vec3(0.33, 0.34, 0.37)*litDir, rim*0.9);
-
-  // corner bolts, barely lit
-  float boltR = 0.034;
-  float bolt = smoothstep(boltR, boltR - 0.010, bd) * inPlate;
-  col = mix(col, vec3(0.070, 0.072, 0.078)*(0.7 + 0.6*lit), bolt);
-  float boltRim = smoothstep(0.007, 0.0, abs(bd - boltR)) * inPlate;
-  col = mix(col, vec3(0.22, 0.23, 0.25)*litDir, boltRim*0.5);
+  col = mix(col, vec3(0.30, 0.31, 0.34)*litDir, postRim*0.55);
 
   // sand: warm bone with a hint of gold; celeste in argentina's modes,
   // warm in cabo verde's, neutral in the final superposition
@@ -145,11 +140,11 @@ void main(){
   sandc *= 0.82 + 0.22*lit;
   col = mix(col, sandc, sand);
 
-  // grain + vignette
+  // grain + a mild breathing of light toward the corners (never dead)
   float g2 = hash(gl_FragCoord.xy*0.7);
   col += (g2 - 0.5)*0.028;
-  float vig = smoothstep(1.30, 0.42, length(p - vec2(0.5)));
-  col *= mix(0.78, 1.0, vig);
+  float vig = smoothstep(1.55, 0.35, length(p - vec2(0.5)));
+  col *= mix(0.86, 1.0, vig);
 
   gl_FragColor = vec4(col, 1.0);
 }
@@ -161,8 +156,8 @@ let sh = null, done = false, start = null;
 const F = FRAME.mount({
   num: 5, title: "Resonancia", subject: "Argentina vs. Cabo Verde",
   edition: "02/31", date: "06·07·2026",
-  stack: "WebGL — GLSL", time: "66 minutes",
-  desc: "A plate vibrated through five Chladni modes, one per goal, each leaving its residue of sand along the nodal lines. Real plate physics; the final figure holds all five resonances at once.",
+  stack: "WebGL — GLSL", time: "84 minutes",
+  desc: "Fine sand on a dark steel plate, driven through five Chladni resonances — one per goal, 29′ to 111′. Rectangular-plate modes span the surface edge to edge; each locked figure leaves its residue of grains, and the final one rests holding the whole match.",
   bleed: true,
   dark: true, onResize() {
     if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
