@@ -10,22 +10,22 @@ precision highp float;
 uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
 uniform sampler2D u_map;
 
-// 005 — sello — the remontada struck as a letterpress seal on cotton rag.
-// A sheet of handmade paper on dark felt; a die presses the whole design
-// blind into the fibres (a true height field under one raking light), then
-// the ink arrives in match order — so the seal goes wrong before it goes
-// right. Egypt's two marks land first in red ochre; the mark at 21' keeps
-// its deboss but never takes ink (the penalty Shobeir saved); the open
-// ring at 58' gets only a starved kiss of ochre (the goal VAR withdrew).
-// Then three celeste strikes crowd the final quarter-hour, the last two
-// ticks into the stoppage coda, and four gilt hairlines — Egypt's late
-// bookings — pack the ring's closing seam. The score row can only be
-// printed after 90+2; the lettering says so last. Pressed once, inked
-// once, then it rests. Match constants (#defines) are injected from
-// data-005.js.
+// 005 — sello — the remontada set as a compositor's forme and proofed on
+// cotton rag. A sheet of handmade paper on dark felt; the locked-up type
+// presses the whole page blind into the fibres (a true height field under
+// one raking light), then the ink arrives in match order — so the page
+// goes wrong before it goes right. The ninety minutes are ninety sorts in
+// six lines of fifteen, extra leading at half-time, then the stoppage
+// line: twelve smaller sorts, the line the whistle cut short. Goals stand
+// type-high and take their team's ink — Egypt's red ochre lands first;
+// the 21' sort stands type-high but never takes ink (the penalty Shobeir
+// saved); the 58' sort gets only a starved, broken film (the goal VAR
+// withdrew); the four late bookings are gilt rules through their sorts in
+// the last line. A small sol de mayo survives as the printer's head-piece,
+// and the score line may only be inked after 90+2. Pressed once, inked
+// once, then it rests. Match constants (#defines) come from data-005.js.
 
 const float TAU = 6.28318530718;
-const vec2  MC  = vec2(0.0, 0.075);   // medallion centre on the sheet
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
 float vnoise(vec2 p){
@@ -49,94 +49,87 @@ float rsdf(vec2 p, vec2 b, float r){
 // each printed element inks in at its minute of the match
 float cue(float m){ return ease((u_p - (0.50 + m/MINS*0.30)) / 0.07); }
 float goalMin(int i){ return i==0 ? G0 : i==1 ? G1 : i==2 ? G2 : i==3 ? G3 : G4; }
-vec2 seat(float m){ float a = m/MINS*TAU; return vec2(sin(a), cos(a)) * 0.208; }
 vec2 mapUV(vec2 u){ return vec2((u.x + 0.35)/0.70, (0.45 - u.y)/0.90); }
 
-// the die: returns (blind deboss depth, celeste ink, ochre ink, gold ink)
+// the forme: returns (blind deboss depth, celeste ink, ochre ink, gold ink)
 vec4 plate(vec2 u, float aa){
   float press = ease((u_p - 0.14) / 0.28);
   vec4 o = vec4(0.0);
 
-  // the plate mark — the whole die face presses the sheet faintly
-  float pm = smoothstep(0.0055, -0.0055, rsdf(u - vec2(0.0, 0.01), vec2(0.26, 0.355), 0.02));
-  o.x = max(o.x, pm * 0.22);
-
   // the pressed lettering (baked type — R carries the whole strike)
   o.x = max(o.x, texture2D(u_map, mapUV(u)).r * 0.92);
 
-  vec2 v = u - MC;
-  float r = length(v);
-  float phi = atan(v.x, v.y);         // 0 at the top, clockwise
-
-  if (r < 0.30){
-    // hairline rings framing the tick band
-    float ring = band(r - 0.234, 0.0013, aa) + band(r - 0.140, 0.0012, aa);
-    o.x = max(o.x, min(ring, 1.0) * 0.55);
-
-    // one tick per minute played: 90 on the clock + the stoppage coda,
-    // closing the circle at the whistle. Long ticks at 0 / 45 / 90;
-    // the twelve stoppage ticks run finer and shorter.
-    float mn = mod(phi/TAU*MINS + MINS, MINS);
-    float dm = (mn - floor(mn + 0.5)) * (TAU/MINS) * r;
-    float mi = mod(floor(mn + 0.5), MINS);
-    float isP = step(abs(mi - 45.0), 0.25) + step(abs(mi - 90.0), 0.25) + step(mi, 0.25);
-    isP = min(isP, 1.0);
-    float isS = step(90.5, mi) * (1.0 - isP);
-    float w  = mix(mix(0.00115, 0.0021, isP), 0.00085, isS);
-    float r0 = mix(mix(0.163, 0.152, isP), 0.167, isS);
-    float r1 = mix(mix(0.184, 0.188, isP), 0.180, isS);
-    float tick = band(dm, w, aa) * smoothstep(r0 - aa, r0 + aa, r) * smoothstep(r1 + aa, r1 - aa, r);
-    o.x = max(o.x, tick * 0.75);
-
-    // sol de mayo — gold face and sixteen alternating rays
-    float face = smoothstep(aa, -aa, r - 0.042);
-    float t16 = phi/TAU*16.0;
-    float i16 = floor(t16 + 0.5);
-    float fr = abs(t16 - i16);
-    float L = mix(0.118, 0.096, mod(i16, 2.0));
-    float wu = 0.20 * clamp((L - r) / (L - 0.052), 0.0, 1.0);
-    float ray = smoothstep(aa, -aa, (fr - wu) * (TAU/16.0) * max(r, 1e-3))
-              * smoothstep(0.052 - aa, 0.052 + aa, r)
-              * smoothstep(L, L - 0.006, r);
-    float sun = max(face, ray);
-    o.x = max(o.x, sun);
-    o.w = max(o.w, sun * ease((u_p - 0.875) / 0.11));
-
-    // the five goals, seated at their minutes outside the ring
-    for (int i = 0; i < 5; i++){
-      float gm = goalMin(i);
-      float gr = length(v - seat(gm));
-      float m = smoothstep(aa, -aa, gr - 0.0125);
-      o.x = max(o.x, m);
-      float c = m * cue(gm);
-      if (ISARG(i)) o.y = max(o.y, c); else o.z = max(o.z, c);
-    }
-
-    // the penalty, struck blind — the deboss is there, the ink never came
-    float pr = length(v - seat(PEN));
-    o.x = max(o.x, smoothstep(aa, -aa, pr - 0.0115));
-
-    // the goal VAR took back — an open ring, starved of ink (ghosted in main)
-    float hr = length(v - seat(GHOST));
-    float hm = smoothstep(aa, -aa, hr - 0.0125) * smoothstep(-aa, aa, hr - 0.0068);
-    o.x = max(o.x, hm);
-
-    // the bookings — gilt hairlines, all four packed into the closing seam
-    for (int i = 0; i < 4; i++){
-      float cm = i == 0 ? C0 : i == 1 ? C1 : i == 2 ? C2 : C3;
-      float ad = (mod(mn - cm + MINS*0.5, MINS) - MINS*0.5) * (TAU/MINS) * r;
-      float ct = band(ad, 0.0011, aa)
-               * smoothstep(0.196 - aa, 0.196 + aa, r) * smoothstep(0.224 + aa, 0.224 - aa, r);
-      o.x = max(o.x, ct * 0.8);
-      o.w = max(o.w, ct * cue(cm));
+  // the sol de mayo, reduced to the printer's head-piece ornament
+  {
+    vec2 v = u - vec2(0.0, ORNY);
+    float r = length(v);
+    if (r < 0.030){
+      float phi = atan(v.x, v.y);
+      float face = smoothstep(aa, -aa, r - 0.0095);
+      float t16 = phi/TAU*16.0;
+      float i16 = floor(t16 + 0.5);
+      float fr = abs(t16 - i16);
+      float L = mix(0.0245, 0.0195, mod(i16, 2.0));
+      float wu = 0.20 * clamp((L - r) / (L - 0.0115), 0.0, 1.0);
+      float ray = smoothstep(aa, -aa, (fr - wu) * (TAU/16.0) * max(r, 1e-3))
+                * smoothstep(0.0115 - aa, 0.0115 + aa, r)
+                * smoothstep(L, L - 0.0015, r);
+      float sun = max(face, ray);
+      o.x = max(o.x, sun);
+      o.w = max(o.w, sun * ease((u_p - 0.875) / 0.11));
     }
   }
 
-  // the score row — five dots in goal order: ochre, ochre, then celeste
+  // the forme — ninety minute-sorts in six lines of fifteen, extra leading
+  // at half-time, then the stoppage line: twelve smaller sorts, the line
+  // the whistle cut short. Quads press low (furniture); events stand
+  // type-high.
+  {
+    float col = floor((u.x - FX0) / GX);
+    float yy = FTOP - u.y;
+    float gap = step(3.0*GY, yy) * (1.0 - step(3.0*GY + HTG, yy));
+    if (yy >= 3.0*GY + HTG) yy -= HTG;
+    float row = floor(yy / GY);
+    float maxCol = row > 5.5 ? 11.0 : 14.0;
+    if (gap < 0.5 && yy >= 0.0 && row >= 0.0 && row <= 6.0 && col >= 0.0 && col <= maxCol){
+      float m = row < 5.5 ? row*15.0 + col + 1.0 : 91.0 + col;
+      float h = row < 5.5 ? BH : BHC;
+      // hand-set: every sort sits a hair off its socket, at its own height
+      float jx = (hash(vec2(col*1.7 + 3.1, row*2.3 + 1.4)) - 0.5) * 0.0022;
+      float jy = (hash(vec2(row*5.1 + 0.7, col*3.9 + 2.2)) - 0.5) * 0.0022;
+      vec2 bp = vec2(u.x - (FX0 + (col + 0.5)*GX) - jx, yy - row*GY - h*0.5 - jy);
+      float sdb = rsdf(bp, vec2(BW*0.5, h*0.5), 0.0022);
+      float mq = smoothstep(aa, -aa, sdb);           // the sort's body
+      float mf = smoothstep(aa, -aa, sdb + 0.0024);  // its face, for the ink
+      float depth = 0.26 + 0.18 * hash(vec2(m*1.3 + 0.4, 5.9));
+
+      for (int i = 0; i < 5; i++){
+        if (abs(m - goalMin(i)) < 0.5){
+          depth = 1.0;                               // a goal stands type-high
+          float c = mf * cue(goalMin(i));
+          if (ISARG(i)) o.y = max(o.y, c); else o.z = max(o.z, c);
+        }
+      }
+      if (abs(m - PEN) < 0.5) depth = 1.0;     // set type-high, never inked
+      if (abs(m - GHOST) < 0.5) depth = 1.0;   // its starved ink lands in main
+      for (int i = 0; i < 4; i++){
+        float cm = i == 0 ? C0 : i == 1 ? C1 : i == 2 ? C2 : C3;
+        if (abs(m - cm) < 0.5){                // a booking — gilt rule through the sort
+          float hl = band(bp.x, 0.0011, aa)
+                   * smoothstep(h*0.5 + 0.0085, h*0.5 + 0.006, abs(bp.y));
+          o.x = max(o.x, hl * 0.85);
+          o.w = max(o.w, hl * cue(cm));
+        }
+      }
+      o.x = max(o.x, mq * depth);
+    }
+  }
+
+  // the score row — five bullets in goal order: ochre, ochre, then celeste
   for (int i = 0; i < 5; i++){
-    vec2 sp = vec2((float(i) - 2.0) * 0.048, -0.225);
+    vec2 sp = vec2((float(i) - 2.0) * 0.036, -0.245);
     float sr = length(u - sp);
-    float m = smoothstep(aa, -aa, sr - 0.0095);
+    float m = smoothstep(aa, -aa, sr - 0.0075);
     o.x = max(o.x, m);
     float c = m * cue(goalMin(i));
     if (ISARG(i)) o.y = max(o.y, c); else o.z = max(o.z, c);
@@ -223,27 +216,27 @@ void main(){
   vec3 lit = base * (0.36 + 0.82 * diff) * vec3(1.015, 1.0, 0.97);
   lit += pow(specBase, 20.0) * 0.10 * (0.25 + 0.75 * pl.x) * sm;   // pressed fibres shine
 
-  // the ink rides the die — only a hair of slur, never off its socket
+  // the ink rides the forme — only a hair of slur, never off its socket
   vec2 mis = (vec2(hash(vec2(1.3, 9.2)), hash(vec2(8.4, 2.6))) - 0.5) * 0.0012;
   vec4 ink = plate(u + mis, max(aa, 0.0020));
   float mot = clamp(0.78 + 0.30 * fbm(u*95.0 + 4.4), 0.0, 1.0);
   lit = inkLayer(lit, ink.y * sm, vec3(0.196, 0.455, 0.641), mot);        // celeste
   lit = inkLayer(lit, ink.z * sm, vec3(0.575, 0.235, 0.115), mot);        // red ochre
 
-  // the pressed lettering takes its iron-black by cue: the fixed die lines
+  // the pressed lettering takes its iron-black by cue: the fixed lines
   // right after the strike, the score line only once it has come true
   vec3 tk = texture2D(u_map, mapUV(u + mis)).rgb;
   float tA = max(tk.g * ease((u_p - 0.44) / 0.08),
                  tk.b * ease((u_p - 0.845) / 0.08));
   lit = inkLayer(lit, tA * sm, vec3(0.262, 0.240, 0.203), mot);
 
-  // the VAR ghost — a starved kiss of ochre on the open ring
+  // the VAR ghost — a starved, broken film of ochre on the 58' sort
   {
-    vec2 gv = (u + mis * 1.8) - MC;
-    float hr = length(gv - seat(GHOST));
-    float hm = smoothstep(0.0022, -0.0022, hr - 0.0125) * smoothstep(-0.0022, 0.0022, hr - 0.0068);
-    float film = smoothstep(0.22, 0.80, fbm(u*140.0 + 8.2));
-    lit = mix(lit, lit * vec3(0.62, 0.34, 0.23), hm * sm * cue(GHOST) * (0.22 + 0.44*film));
+    vec2 gp = (u + mis * 1.8) - vec2(GHX, GHY);
+    float gsd = rsdf(gp, vec2(BW*0.5 - 0.0012, BH*0.5 - 0.0012), 0.002);
+    float hm = smoothstep(0.0022, -0.0022, gsd);
+    float film = smoothstep(0.30, 0.80, fbm(u*150.0 + 8.2));
+    lit = mix(lit, lit * vec3(0.62, 0.34, 0.23), hm * sm * cue(GHOST) * (0.14 + 0.40*film));
   }
 
   float aG = smoothstep(0.45, 0.75, ink.w * sm);
@@ -261,35 +254,57 @@ void main(){
 }
 </script>
 <script>
-// 005 · sello — Argentina 3–2 Egypt, the remontada, as a letterpress seal.
-// The die's match constants are generated from data-005.js and injected as
-// #defines, so the data file drives the plate. The type is baked once with
-// Canvas 2D (Geist Mono) into a small texture: R = the blind strike,
-// G = the fixed die lines (inked just after the press), B = the score line
-// (inked only after 90+2, when it has come true). Settles once over ~9s —
-// press, then ink in match order — and the rAF loop stops.
+// 005 · sello — Argentina 3–2 Egypt, the remontada, proofed as a
+// compositor's forme in letterpress. The forme's match constants and grid
+// geometry are generated from data-005.js and injected as #defines, so the
+// data file drives the type. The lettering is baked once with Canvas 2D
+// (Geist Mono) into a small texture: R = the blind strike, G = the fixed
+// lines (inked just after the press), B = the score line (inked only after
+// 90+2, when it has come true). Settles once over ~9s — press, then ink in
+// match order — and the rAF loop stops.
 
 const seed = ART.seed("2026-07-07-005");
 const M = window.M5;
 
-// data → die
+// the forme's geometry: six lines of fifteen sorts + the stoppage line
+const FX0 = -0.25, GX = 0.5 / 15, FTOP = 0.27, GY = 0.068, HTG = 0.022;
+const BW = 0.024, BH = 0.050, BHC = 0.034, ORNY = 0.386;
+const sortX = (m) => FX0 + (((m - 1) % 15) + 0.5) * GX;
+const sortY = (m) => {
+  const row = Math.floor((m - 1) / 15);
+  return FTOP - (row * GY + (row >= 3 ? HTG : 0)) - BH / 2;
+};
+
+// data → the forme
 const MINS = M.totalMin;
+const gm = M.disallowed[0].min;
 const defs =
   "#define MINS " + MINS.toFixed(1) + "\n" +
   M.goals.map((g, i) => "#define G" + i + " " + g.min.toFixed(1)).join("\n") + "\n" +
   "#define ISARG(i) (" +
     M.goals.map((g, i) => (g.team === "arg" ? "i==" + i : null)).filter(Boolean).join("||") + ")\n" +
   "#define PEN " + M.penaltyMissed.min.toFixed(1) + "\n" +
-  "#define GHOST " + M.disallowed[0].min.toFixed(1) + "\n" +
-  M.cards.map((c, i) => "#define C" + i + " " + (c.ringAt || c.min).toFixed(1)).join("\n") + "\n";
+  "#define GHOST " + gm.toFixed(1) + "\n" +
+  M.cards.map((c, i) => "#define C" + i + " " + c.min.toFixed(1)).join("\n") + "\n" +
+  "#define FX0 (" + FX0.toFixed(5) + ")\n" +
+  "#define GX " + GX.toFixed(5) + "\n" +
+  "#define FTOP " + FTOP.toFixed(5) + "\n" +
+  "#define GY " + GY.toFixed(5) + "\n" +
+  "#define HTG " + HTG.toFixed(5) + "\n" +
+  "#define BW " + BW.toFixed(5) + "\n" +
+  "#define BH " + BH.toFixed(5) + "\n" +
+  "#define BHC " + BHC.toFixed(5) + "\n" +
+  "#define ORNY " + ORNY.toFixed(5) + "\n" +
+  "#define GHX " + sortX(gm).toFixed(5) + "\n" +
+  "#define GHY " + sortY(gm).toFixed(5) + "\n";
 
 let sh = null, gl = null, tex = null, done = false, start = null, fontsOK = false;
 
 const F = FRAME.mount({
   num: 5, title: "Sello", subject: "Argentina vs. Egypt",
   edition: "05/31", date: "07·07·2026",
-  stack: "WebGL — GLSL + baked type", time: "97 minutes",
-  desc: "Letterpress on cotton rag — a die struck blind, then inked in match order, so the seal goes wrong before it goes right. Egypt's two marks land first in red ochre; at 21' a deboss that never took ink (the penalty Shobeir saved); at 58' an open ring starved of it (the goal VAR withdrew). Then three celeste strikes crowd the final quarter-hour, the last at 90+2', and the ring closes at the whistle.",
+  stack: "WebGL — GLSL + baked type", time: "128 minutes",
+  desc: "Letterpress on cotton rag — the match set as a compositor's forme: ninety minute-sorts in six lines of fifteen, leading at half-time, then the stoppage line the whistle cut at twelve. Inked in match order, the page goes wrong before it goes right — Egypt's ochre lands first, the 21' sort stands type-high but never inked (the penalty), the 58' sort is starved (the goal VAR withdrew), and three celeste crowd the final line and a half. The score is set only after 90+2.",
   dark: true, onResize() {
     if (!sh) {
       sh = ART.shader(F.canvas, defs + document.getElementById("frag").textContent, ["u_p", "u_map"]);
@@ -316,8 +331,8 @@ const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const DUR = RM ? 500 : 9000;
 
 /* ---- the type, baked in sheet space: u ∈ [-0.35, 0.35] × [-0.45, 0.45].
-   R = every letter's blind deboss; G = the fixed die lines; B = the score
-   line, which the seal may only ink after the comeback is complete. ---- */
+   R = every letter's blind deboss; G = the fixed lines; B = the score
+   line, which the page may only ink after the comeback is complete. ---- */
 const tcv = document.createElement("canvas");
 function bake() {
   if (!gl) return;
@@ -349,9 +364,9 @@ function bake() {
     x.filter = "none";
     x.fillText(text, TW / 2, Y(sy));
   }
-  line("MUNDIAL 2026 · OCTAVOS DE FINAL", 0.330, 0.0165, "rgb(255,255,0)");
-  line("ARGENTINA 3 – EGIPTO 2", -0.283, 0.0190, "rgb(255,0,255)");
-  line("ATLANTA · 07·07·2026", -0.325, 0.0165, "rgb(255,255,0)");
+  line("MUNDIAL 2026 · OCTAVOS DE FINAL", 0.335, 0.0165, "rgb(255,255,0)");
+  line("ARGENTINA 3 – EGIPTO 2", -0.295, 0.0190, "rgb(255,0,255)");
+  line("ATLANTA · 07·07·2026", -0.333, 0.0165, "rgb(255,255,0)");
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tcv);
 }

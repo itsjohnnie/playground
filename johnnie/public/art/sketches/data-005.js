@@ -18,13 +18,12 @@
    match page + commentary (gameId 760509), Sofascore/SI, NBC, Fox, beIN,
    VAVEL and Yahoo live blogs. Counts are exact per ESPN/FIFA.
    APPROXIMATIONS + OMISSIONS (deliberate, documented): xG 2.80–0.98 is
-   single-source (Sofascore via SI) and held approximate; the 90+12' card
-   is drawn at 101.6 on the ring so the hairline sits just inside the
-   closing seam rather than on it; the Egypt bench staffer's 21'/90+4'
-   cards are single-source and omitted; the 31' post is not marked (the
-   die records goals and their negations only); first-half stoppage (+7)
-   is not drawn — the ring is the 90 clock minutes plus the 12 played of
-   second-half stoppage, closing at the whistle. */
+   single-source (Sofascore via SI) and held approximate; the Egypt bench
+   staffer's 21'/90+4' cards are single-source and omitted; the 31' post
+   is not marked (the die records goals and their negations only);
+   first-half stoppage (+7) is not drawn — the forme sets the 90 clock
+   minutes as six lines of fifteen sorts, plus the twelve played of
+   second-half stoppage as the short last line, cut at the whistle. */
 window.M5 = {
   home: { id: "arg", name: "argentina", score: 3 },
   away: { id: "egy", name: "egipto", score: 2 },
@@ -50,12 +49,12 @@ window.M5 = {
     { min: 93,  team: "egy", player: "shobeir",   label: "90+3" },
     { min: 94,  team: "egy", player: "h. fathy",  label: "90+4" },
     { min: 98,  team: "egy", player: "m. attia",  label: "90+8" },
-    { min: 102, team: "egy", player: "h. hassan", label: "90+12", ringAt: 101.6 },
+    { min: 102, team: "egy", player: "h. hassan", label: "90+12" },
   ],
   breaks: [23, 71],            // drinks
   periods: [45, 90],
   stoppage: { announced: 7, played: 12, firstHalf: 7 },
-  totalMin: 102,               // the ring: 90' + 12 of stoppage
+  totalMin: 102,               // the forme: 90' + 12 of stoppage
 
   possession: { arg: 63.6, egy: 36.4 },
   shots: { arg: 19, egy: 5 },

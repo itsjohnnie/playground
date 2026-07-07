@@ -30,8 +30,17 @@
 // rests. Rested, it can be turned by hand: a drag yaws the landform and
 // tilts the surveyor's view within clamps, 1:1 under the finger, then coasts
 // on damped momentum to rest — rendering only while the hand or the momentum
-// moves it (no idle loop). Reduced motion jumps straight to the resting
-// isometric. Line quality is cartographic and fine: ~52 levels, every
+// moves it (no idle loop). A double tap (double click on desktop) dollies
+// the lens toward the tapped feature — one strong-eased move to ~2.1x — and
+// a second double tap returns to the resting framing; two quick taps within
+// 300ms/24px read as the gesture, so a drag never zooms, and drags keep
+// turning the plate while zoomed. The rAF stops whenever the move settles.
+// Reduced motion jumps straight to the resting isometric (and snaps the
+// zoom without positional animation). The lettering is survey-sheet: ALL
+// CAPS in two instruments — player and team names in tracked Geist Sans,
+// minute numerals and data captions in Geist Mono — sprites baked at 8x
+// oversample so the caps stay razor at 3x DPR through the 2.1x zoom.
+// Line quality is cartographic and fine: ~52 levels, every
 // contour drawn at an exact pixel width with a 1px analytic AA ramp
 // (fwidth), index contours every 5th a touch heavier, minor contours
 // dissolving to their average tone where slopes bunch them below legibility
@@ -57,14 +66,14 @@ const BONE = new THREE.Color("#f2ece1");
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 let renderer, scene, camera, world, tip, built = false, done = false;
-let terraMat, pins = [], plateSprites = [];
+let terra, terraMat, pins = [], plateSprites = [];
 
 const F = FRAME.mount({
   num: 1, title: "Terreno", subject: "Argentina vs. Algeria",
   edition: "01/31", date: "16·06·2026",
   stack: "Three.js + WebGL", time: "96 minutes",
   desc: "A survey plate of the opening match: attacking intensity raised into a bone-white contour landform afloat on the dark of the room, minute by minute along the long axis. The three summits are Messi’s goals — 17′, 60′, 76′, his first World Cup hat-trick — all rising from Argentina’s half; Algeria’s side stays low ground, dissolving at the shoreline. The relief is drawn once, then rests.",
-  ratio: 1.6, open: true, gesture: true,   // the drag is ours: it turns the plate
+  ratio: 1.6, open: true, gesture: true,   // the touch is ours: drag turns, double tap dollies
   dark: true, onResize(w, h, dpr) {
     if (!built) build();
     // crispness: this piece renders once + on demand, so it can afford a
@@ -169,25 +178,43 @@ function field(min, w) {
 }
 let maxH = 1;
 
-/* ---------- text sprites (after the mono font loads) ---------- */
-function textSprite(str, hex, px, hWorld) {
-  const dpr = 6, pad = 8;         // oversampled: never upscaled on a 3x screen
+/* ---------- text sprites (after both fonts load) ----------
+   survey-sheet lettering: ALL CAPS in two instruments — names in Geist
+   Sans (weight 560, tracked a touch), minute numerals and data in Geist
+   Mono — one system, two pens. Baked at 8x oversample: never upscaled at
+   3x DPR, even through the 2.1x double-tap zoom. */
+const SEG = (t, f, a) => ({ t: String(t).toUpperCase(), f: f || "mono", a: a == null ? 1 : a });
+function textSprite(parts, hex, px, hWorld) {
+  if (typeof parts === "string") parts = [SEG(parts)];
+  const dpr = 8, pad = 10, P = px * dpr;
   const c = document.createElement("canvas");
   const g = c.getContext("2d");
-  g.font = px * dpr + "px 'Geist Mono', ui-monospace, monospace";
-  c.width = Math.ceil(g.measureText(str).width) + pad * 2;
-  c.height = px * dpr + pad * 2;
-  g.font = px * dpr + "px 'Geist Mono', ui-monospace, monospace";
-  g.fillStyle = hex;
+  const pen = (s) => {              // the two pens; resize resets ctx, so re-inked per part
+    g.font = s.f === "sans"
+      ? "560 " + P + "px 'Geist', ui-sans-serif, sans-serif"
+      : "460 " + P + "px 'Geist Mono', ui-monospace, monospace";
+    if ("letterSpacing" in g) g.letterSpacing = (s.f === "sans" ? 0.075 * P : 0) + "px";
+  };
+  let W = 0;
+  for (const s of parts) { pen(s); s.w = g.measureText(s.t).width; W += s.w; }
+  c.width = Math.ceil(W) + pad * 2;
+  c.height = Math.ceil(P * 1.2) + pad * 2;
   g.textBaseline = "middle";
-  g.fillText(str, pad, c.height / 2);
+  let x = pad;
+  for (const s of parts) {
+    pen(s);
+    g.fillStyle = hex;
+    g.globalAlpha = s.a;
+    g.fillText(s.t, x, c.height / 2);
+    x += s.w;
+  }
   const tex = new THREE.CanvasTexture(c);
   tex.anisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 1;
   const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false });
   const sp = new THREE.Sprite(m);
   sp.renderOrder = 2;             // annotations settle over the transparent land
-  const h = hWorld || 0.062 * (px / 12);
-  sp.scale.set(h * c.width / c.height, h, 1);
+  const h = hWorld || 0.062 * (px / 12);   // h = the type size in world units
+  sp.scale.set(c.width * h / P, c.height * h / P, 1);
   return sp;
 }
 // sheet furniture holds two seats: the vertical roll and the resting terrain
@@ -213,11 +240,24 @@ function frameCamera(aspect) {
   distPlan = Math.max(1.95 / vt, 0.88 / ht); // fit the 94' + captions, clear of the pill
   placeCamera();
 }
+// the double-tap dolly: 0 = resting framing · 1 = 2.1x on the tapped feature.
+// A dolly, not a fov move — the linework is analytic (fwidth), so the
+// contours hold their exact pixel width at any distance.
+const ZOOMX = 2.1, Z_MS = 720, TAP_MS = 300, TAP_PX = 24;
+let zk = 0, zTo = 0, zRaf = 0;
+const zLocal = new THREE.Vector3();        // the tapped point, plate-local: it turns with the plate
+const _look = new THREE.Vector3(), _zw = new THREE.Vector3();
 function placeCamera() {
-  const d = distPlan + (distRest - distPlan) * dolly;
+  const d0 = distPlan + (distRest - distPlan) * dolly;
+  const d = d0 * (1 - zk * (1 - 1 / ZOOMX));
   const ty = -0.18 + 0.28 * dolly;         // plan centres strip + captions; rest looks up a hair
-  camera.position.set(0, ty + Math.sin(el) * d, Math.cos(el) * d);
-  camera.lookAt(0, ty, 0);
+  _look.set(0, ty, 0);
+  if (zk > 0) {                            // the gaze slides toward the tapped feature
+    world.updateWorldMatrix(true, false);
+    _look.lerp(_zw.copy(zLocal).applyMatrix4(world.matrixWorld), zk);
+  }
+  camera.position.set(_look.x, _look.y + Math.sin(el) * d, _look.z + Math.cos(el) * d);
+  camera.lookAt(_look);
   terraMat.uniforms.uDist.value = d;       // depth fade tracks the dolly
 }
 
@@ -375,7 +415,8 @@ function build() {
         #include <colorspace_fragment>
       }`,
   });
-  world.add(new THREE.Mesh(geo, terraMat));
+  terra = new THREE.Mesh(geo, terraMat);
+  world.add(terra);
 
   // --- goal pins + labels + plate captions (annotations in bone)
   const labels = [];
@@ -393,10 +434,14 @@ function build() {
     pins.push({ g, mat: pinMat, sprite: null });
     labels.push({ g, x, y, z });
   }
-  document.fonts.ready.then(() => {
+  Promise.all([                     // both pens must be inked before baking
+    document.fonts.load("560 64px 'Geist'"),
+    document.fonts.load("460 64px 'Geist Mono'"),
+  ]).then(() => {
     for (const l of labels) {
-      const txt = l.g.min + "’ " + l.g.player;      // 17' messi · 60' messi · 76' messi
-      const s = textSprite(txt, "rgba(242,236,225,.95)", 12, 0.081);
+      // 17’ MESSI · 60’ MESSI · 76’ MESSI — numeral mono, name sans
+      const s = textSprite([SEG(l.g.min + "’ "), SEG(l.g.player, "sans")],
+        "rgba(242,236,225,.95)", 12, 0.081);
       s.center.set(l.g.min > 50 ? 1 : 0, 0);   // late peaks label leftward, into the frame
       s.position.set(l.x, l.y + 0.185, l.z);
       s.material.opacity = 0;
@@ -417,7 +462,8 @@ function build() {
       pin.renderOrder = 1;
       world.add(pin);
       plateSprites.push({ s: pin, o: 0.3, line: true, tilt: true });
-      const t = textSprite(d.min + "’ " + d.player + " · anulado", "rgba(242,236,225,.5)", 10, 0.058);
+      const t = textSprite([SEG(d.min + "’ "), SEG(d.player, "sans"), SEG(" · anulado", "mono", 0.75)],
+        "rgba(242,236,225,.5)", 10, 0.058);
       t.center.set(0.5, 0);                   // centred on its pin — stays on screen
       t.position.set(x, y + 0.125, z);
       t.material.opacity = 0;
@@ -428,18 +474,20 @@ function build() {
     // being plotted, re-seated off the near-left corner once the plate lies
     // down (two seats; they fade through the turn). In plan, plate-local
     // +x is DOWN the screen and +z is screen-LEFT.
-    const capA = textSprite(M.home.name + " · xg " + M.xg.arg.toFixed(2) + " · " + M.shots.arg + " tiros",
+    const capA = textSprite([SEG(M.home.name, "sans"),
+      SEG(" · xg " + M.xg.arg.toFixed(2) + " · " + M.shots.arg + " tiros", "mono", 0.82)],
       "rgba(242,236,225,.62)", 11, 0.068);
     world.add(capA);
     plateSprites.push({ s: capA, o: 1,
       plan: { p: [TL / 2 + 0.08, 0, WL / 2], c: [0, 1] },
-      rest: { p: [-TL / 2 + 0.07, -0.115, WL / 2 + 0.26], c: [0, 0.5] } });
-    const capC = textSprite(M.away.name + " · xg " + M.xg.alg.toFixed(2) + " · " + M.shots.alg + " tiros",
+      rest: { p: [-TL / 2 + 0.07, -0.175, WL / 2 + 0.28], c: [0, 0.5] } });
+    const capC = textSprite([SEG(M.away.name, "sans"),
+      SEG(" · xg " + M.xg.alg.toFixed(2) + " · " + M.shots.alg + " tiros", "mono", 0.82)],
       "rgba(242,236,225,.62)", 11, 0.068);
     world.add(capC);
     plateSprites.push({ s: capC, o: 1,
       plan: { p: [TL / 2 + 0.205, 0, WL / 2], c: [0, 1] },
-      rest: { p: [-TL / 2 + 0.07, -0.195, WL / 2 + 0.36], c: [0, 0.5] } });
+      rest: { p: [-TL / 2 + 0.07, -0.255, WL / 2 + 0.38], c: [0, 0.5] } });
     // the surveyor's minute scale: down the left side of the vertical roll,
     // along the near edge once the terrain rests
     for (const m of [0, 45, 90]) {
@@ -546,6 +594,8 @@ function loop(tms) {
 const clampV = (v, a, b) => Math.min(b, Math.max(a, v));
 let dragging = false, ptrId = null, lx = 0, ly = 0, lt = 0;
 let vYaw = 0, vEl = 0, iRaf = 0, queued = false;
+let tx0 = 0, ty0 = 0, tt0 = 0, moved = 0;  // tap discrimination
+let lastTapT = 0, lastTapX = 0, lastTapY = 0;
 
 function applyView() {
   if (!built) return;
@@ -598,6 +648,7 @@ cv.addEventListener("pointerdown", (e) => {
   dragging = true;
   cv.setPointerCapture(ptrId);
   lx = e.clientX; ly = e.clientY; lt = e.timeStamp;
+  tx0 = e.clientX; ty0 = e.clientY; tt0 = e.timeStamp; moved = 0;
   vYaw = vEl = 0;
   if (iRaf) { cancelAnimationFrame(iRaf); iRaf = 0; }       // the hand takes over
   cv.style.cursor = "grabbing";
@@ -612,6 +663,7 @@ cv.addEventListener("pointermove", (e) => {
   vYaw = 0.75 * vYaw + 0.25 * (dYaw / dt);                  // smoothed release velocity
   vEl = 0.75 * vEl + 0.25 * (dEl / dt);
   lx = e.clientX; ly = e.clientY; lt = e.timeStamp;
+  moved = Math.max(moved, Math.hypot(e.clientX - tx0, e.clientY - ty0));
   kick();
 });
 const letGo = (e) => {
@@ -619,11 +671,68 @@ const letGo = (e) => {
   dragging = false;
   ptrId = null;
   cv.style.cursor = "grab";
+  // a tap: quick, with almost no drift. Two of them inside 300ms/24px are
+  // the zoom gesture (works as double-click on desktop — same pointer path)
+  if (e.type === "pointerup" && moved < TAP_PX * 0.5 && e.timeStamp - tt0 < TAP_MS) {
+    if (e.timeStamp - lastTapT < TAP_MS &&
+        Math.hypot(e.clientX - lastTapX, e.clientY - lastTapY) < TAP_PX) {
+      lastTapT = 0;
+      tapZoom(e.clientX, e.clientY);
+    } else {
+      lastTapT = e.timeStamp; lastTapX = e.clientX; lastTapY = e.clientY;
+    }
+    return;
+  }
+  lastTapT = 0;                     // a drag is never half of a double tap
   if (e.timeStamp - lt > 90) { vYaw = vEl = 0; return; }    // held still, then let go
   if (!REDUCED && (Math.abs(vYaw) > 0.05 || Math.abs(vEl) > 0.05)) coast2();
 };
 cv.addEventListener("pointerup", letGo);
 cv.addEventListener("pointercancel", letGo);
+
+/* ---------- the double tap: dolly in on the feature, and back ---------- */
+// One confident strong-eased move toward the tapped point (~2.1x), the same
+// move home on the next double tap. While zoomed the drag still turns the
+// plate — and because the gaze tracks the tapped feature plate-locally, the
+// landform pivots around it. Renders only while the move runs: when it
+// settles, the rAF stops and the plate rests again.
+const raycaster = new THREE.Raycaster();
+const NDC = new THREE.Vector2();
+const FLOOR = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+function startZoom(to) {
+  zTo = to;
+  if (zRaf) { cancelAnimationFrame(zRaf); zRaf = 0; }
+  if (REDUCED) {                    // no positional animation: snap, render once
+    zk = to; applyView(); if (done) render(); return;
+  }
+  const from = zk, t0z = performance.now();
+  const step = (now) => {
+    const k = clamp01((now - t0z) / Z_MS);
+    const e = k < 0.5 ? 16 * k * k * k * k * k : 1 - Math.pow(-2 * k + 2, 5) / 2;
+    zk = from + (to - from) * e;
+    applyView();
+    if (done) render();
+    zRaf = k < 1 ? requestAnimationFrame(step) : 0;         // settled: no idle loop
+  };
+  zRaf = requestAnimationFrame(step);
+}
+function tapZoom(cx, cy) {
+  if (!done) return;                // the lens moves only once the plate rests
+  if (zTo === 1) { startZoom(0); return; }                  // and back out
+  const r = cv.getBoundingClientRect();
+  NDC.set(((cx - r.left) / r.width) * 2 - 1, -(((cy - r.top) / r.height) * 2 - 1));
+  raycaster.setFromCamera(NDC, camera);
+  const hit = raycaster.intersectObject(terra, false)[0];
+  const p = hit ? hit.point.clone()
+    : raycaster.ray.intersectPlane(FLOOR, new THREE.Vector3());
+  if (!p) return;                   // tapped past the horizon: stay put
+  world.updateWorldMatrix(true, false);
+  zLocal.copy(world.worldToLocal(p));
+  zLocal.x = clampV(zLocal.x, -TL / 2, TL / 2);             // hold to the plate
+  zLocal.z = clampV(zLocal.z, -WL / 2 - 0.2, WL / 2 + 0.2);
+  zLocal.y = clampV(zLocal.y, 0, H_MAX);
+  startZoom(1);
+}
 
 queueMicrotask(() => {
   if (!built) build();
