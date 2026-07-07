@@ -25,6 +25,9 @@ const seed = ART.seed("2026-06-22-002");
 const N = ART.makeNoise(seed);
 const M = window.M2;
 const INK = "rgba(23,21,17,";
+// neutral archival white — the sheet cooled off the warm sand of the kit
+// palette (johnnie: "more neutral, not so ivory"), faintest warmth kept
+const PAPER = "#ecebe8";
 // the record clerk's hand: Geist Sans, all caps, gently tracked
 const FONT = (px) => "500 " + px + "px 'Geist', ui-sans-serif, system-ui, sans-serif";
 const TRACK = "0.05em";
@@ -82,7 +85,7 @@ function buildPaper() {
   p.save();
   p.shadowColor = "rgba(0,0,0,0.5)";
   p.shadowBlur = 34 * DPR; p.shadowOffsetY = 12 * DPR;
-  p.fillStyle = M.ink.paper;
+  p.fillStyle = PAPER;
   p.fill(deckle);
   p.shadowColor = "rgba(0,0,0,0.38)";
   p.shadowBlur = 7 * DPR; p.shadowOffsetY = 2.5 * DPR;
@@ -90,7 +93,7 @@ function buildPaper() {
   p.restore();
   p.save();
   p.clip(deckle);
-  p.strokeStyle = "rgba(88,76,58,0.16)"; // torn-fiber edge tone
+  p.strokeStyle = "rgba(70,68,62,0.15)"; // torn-fiber edge tone, neutral
   p.lineWidth = 2.6 * DPR;
   p.stroke(deckle);
   p.restore();
@@ -98,7 +101,9 @@ function buildPaper() {
 
 function build() {
   buildPaper();
-  X0 = px + 0.205 * pw; X1 = px + 0.862 * pw;
+  // the trace block sits dead-center on the sheet — symmetric margins;
+  // the annotations hang balanced either side
+  X0 = px + 0.19 * pw; X1 = px + 0.81 * pw;
   T0 = py + 0.108 * ph; B0 = py + 0.948 * ph;
   S = (B0 - T0) / (TOTAL - 1);
   fs = Math.min(11.5 * DPR, Math.max(0.022 * pw, 7.5 * DPR));
@@ -283,7 +288,7 @@ function inkGrad(g, heavy) {
 function drawLine(g, i, clip) {
   const L = lines[i], pts = L.pts;
   const n = Math.max(2, Math.min(pts.length, Math.ceil(clip * (pts.length - 1)) + 1));
-  g.fillStyle = M.ink.paper;
+  g.fillStyle = PAPER;
   g.beginPath();
   g.moveTo(pts[0].x, L.y + 1.6 * DPR);
   for (let j = 0; j < n; j++) g.lineTo(pts[j].x, pts[j].y);
@@ -368,9 +373,9 @@ function render(pos) {
   ctx.save();
   ctx.clip(deckle);
   const lg = ctx.createLinearGradient(0, py, 0, py + ph);
-  lg.addColorStop(0, "rgba(255,252,244,0.055)");
-  lg.addColorStop(0.35, "rgba(255,252,244,0)");
-  lg.addColorStop(1, "rgba(58,48,34,0.05)");
+  lg.addColorStop(0, "rgba(255,255,253,0.055)");
+  lg.addColorStop(0.35, "rgba(255,255,253,0)");
+  lg.addColorStop(1, "rgba(45,44,40,0.05)");
   ctx.fillStyle = lg;
   ctx.fillRect(px - 8, py - 8, pw + 16, ph + 16);
   ctx.globalCompositeOperation = "multiply";

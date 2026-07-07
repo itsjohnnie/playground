@@ -258,7 +258,7 @@ void main(){
 // compositor's forme in letterpress. The forme's match constants and grid
 // geometry are generated from data-005.js and injected as #defines, so the
 // data file drives the type. The lettering is baked once with Canvas 2D
-// (Geist Mono) into a small texture: R = the blind strike, G = the fixed
+// (Geist Sans) into a small texture: R = the blind strike, G = the fixed
 // lines (inked just after the press), B = the score line (inked only after
 // 90+2, when it has come true). Settles once over ~9s — press, then ink in
 // match order — and the rAF loop stops.
@@ -346,8 +346,8 @@ function bake() {
   function line(text, sy, size, col) {
     let fpx = (size / 0.70) * TW;
     const set = (v) => {
-      if ("letterSpacing" in x) x.letterSpacing = (v * 0.30).toFixed(1) + "px";
-      x.font = "500 " + v.toFixed(1) + "px 'Geist Mono', ui-monospace, monospace";
+      if ("letterSpacing" in x) x.letterSpacing = (v * 0.15).toFixed(1) + "px";
+      x.font = "600 " + v.toFixed(1) + "px 'Geist', ui-sans-serif, system-ui, sans-serif";
       x.textAlign = "center"; x.textBaseline = "middle";
     };
     set(fpx);
@@ -364,16 +364,16 @@ function bake() {
     x.filter = "none";
     x.fillText(text, TW / 2, Y(sy));
   }
-  line("MUNDIAL 2026 · OCTAVOS DE FINAL", 0.335, 0.0165, "rgb(255,255,0)");
-  line("ARGENTINA 3 – EGIPTO 2", -0.295, 0.0190, "rgb(255,0,255)");
-  line("ATLANTA · 07·07·2026", -0.333, 0.0165, "rgb(255,255,0)");
+  line("MUNDIAL 2026 · OCTAVOS DE FINAL", 0.335, 0.0170, "rgb(255,255,0)");
+  line("ARGENTINA 3 – EGIPTO 2", -0.295, 0.0205, "rgb(255,0,255)");
+  line("ATLANTA · 07·07·2026", -0.333, 0.0160, "rgb(255,255,0)");
   gl.bindTexture(gl.TEXTURE_2D, tex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tcv);
 }
 
 // re-strike the type once the real face arrives (usually mid-press)
 Promise.race([
-  document.fonts.load('500 32px "Geist Mono"'),
+  document.fonts.load('600 32px "Geist"'),
   new Promise((r) => setTimeout(r, 1600)),
 ]).then(() => {
   fontsOK = true;
