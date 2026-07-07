@@ -1,44 +1,31 @@
 {
   "project": "a daily generative art practice, after Zach Lieberman",
-  "batch_note": "Ten studies of one match — Argentina vs. Cabo Verde, Mundial 2026.",
+  "batch_note": "Argentina at the Mundial 2026 — one piece per match.",
   "sketches": [
     {
-      "n": "008j",
-      "title": "Órbitas",
-      "date": "2026-07-06",
-      "file": "sketches/008j.html",
-      "medium": "canvas · kepler 3d",
-      "tags": [
-        "orbits",
-        "3d",
-        "gravity"
-      ],
-      "status": "candidate",
-      "note": "The goal as gravity, seen from above the plane: 33 shots on inclined Kepler ellipses around a glowing torus; the five goals spiral in at their minute and leave standing bells.",
-      "num": 10,
-      "subject": "Cabo Verde vs. Argentina"
-    },
-    {
-      "n": "008i",
-      "title": "Minutos",
-      "date": "2026-07-06",
-      "file": "sketches/008i.html",
-      "medium": "dom · kinetic type",
+      "n": "001",
+      "num": 1,
+      "title": "Terreno",
+      "subject": "Argentina vs. Algeria",
+      "date": "2026-06-16",
+      "file": "sketches/001.html",
+      "medium": "three.js · relief",
       "tags": [
         "data",
-        "typography",
-        "swiss"
+        "topography",
+        "night"
       ],
       "status": "candidate",
-      "note": "The match told only in type: 120 minutes tick by, goal numerals slam full-width and stack into the ledger.",
-      "num": 9,
-      "subject": "Cabo Verde vs. Argentina"
+      "ratio": 1.6,
+      "note": "Match pressure surveyed as terrain: bone-white contours on the dark room, drawn once. Messi's hat-trick is the three summits."
     },
     {
-      "n": "008h",
+      "n": "002",
+      "num": 2,
       "title": "Sismógrafo",
-      "date": "2026-07-06",
-      "file": "sketches/008h.html",
+      "subject": "Argentina vs. Austria",
+      "date": "2026-06-22",
+      "file": "sketches/002.html",
       "medium": "canvas · plotter",
       "tags": [
         "data",
@@ -46,47 +33,15 @@
         "plotter"
       ],
       "status": "candidate",
-      "note": "120 stacked seismic traces, one per minute; shots tremble, goals spike off the chart.",
-      "num": 8,
-      "subject": "Cabo Verde vs. Argentina"
+      "note": "A plotter's seismogram of the match, one tremor per minute; the record run deep into stoppage."
     },
     {
-      "n": "008g",
-      "title": "Pileta",
-      "date": "2026-07-06",
-      "file": "sketches/008g.html",
-      "medium": "glsl · caustics",
-      "tags": [
-        "water",
-        "caustics",
-        "night"
-      ],
-      "status": "candidate",
-      "note": "A miami hotel pool at night, from above: caustic filaments over the depth gradient, tile grid wobbling under the same refraction. Five standing ripple rings at the goal minutes on an invisible 120' clock — the 111' own goal rings twice. Settles, then the water keeps barely breathing.",
-      "num": 7,
-      "subject": "Cabo Verde vs. Argentina"
-    },
-    {
-      "n": "008f",
-      "title": "Tapiz",
-      "date": "2026-07-06",
-      "file": "sketches/008f.html",
-      "medium": "glsl · tapestry",
-      "tags": [
-        "tapestry",
-        "craft",
-        "riso"
-      ],
-      "status": "candidate",
-      "note": "The match hand-knotted as a pampa tapestry: guarda-pampa bands at the goal minutes, carved relief that catches the light, yarn twist, abrash, fringe — woven once on a bare warp.",
-      "num": 6,
-      "subject": "Cabo Verde vs. Argentina"
-    },
-    {
-      "n": "008e",
+      "n": "003",
+      "num": 3,
       "title": "Resonancia",
-      "date": "2026-07-06",
-      "file": "sketches/008e.html",
+      "subject": "Jordan vs. Argentina",
+      "date": "2026-06-27",
+      "file": "sketches/003.html",
       "medium": "glsl · chladni",
       "tags": [
         "chladni",
@@ -94,74 +49,24 @@
         "sand"
       ],
       "status": "candidate",
-      "note": "A chladni plate sings the match: sand on dark steel migrates to the nodal lines as the drive sweeps five resonance modes, one per goal — agitated between tones, crisp when locked. Every finished mode leaves ~8% of its figure behind. Then the plate rests.",
-      "num": 5,
-      "subject": "Cabo Verde vs. Argentina"
+      "note": "A plate vibrated through four Chladni resonances, one per goal; each leaves its residue of sand."
     },
     {
-      "n": "008d",
-      "title": "Terreno",
-      "date": "2026-07-06",
-      "file": "sketches/008d.html",
-      "medium": "three.js · relief",
-      "tags": [
-        "data",
-        "topography",
-        "plotter"
-      ],
-      "status": "candidate",
-      "note": "A topographic paper relief of match pressure: shots as hills, goals as mountains, contours in ink.",
+      "n": "004",
       "num": 4,
-      "ratio": 1.6,
-      "subject": "Cabo Verde vs. Argentina"
-    },
-    {
-      "n": "008c",
-      "title": "Organismo",
-      "date": "2026-07-06",
-      "file": "sketches/008c.html",
-      "medium": "canvas · physarum",
+      "title": "Bronce",
+      "subject": "Argentina vs. Cabo Verde",
+      "date": "2026-07-03",
+      "file": "sketches/004.html",
+      "medium": "canvas heightfield · glsl relief",
       "tags": [
-        "physarum",
-        "simulation",
-        "organism"
+        "bronze",
+        "relief",
+        "cast",
+        "sol de mayo"
       ],
       "status": "candidate",
-      "note": "The match as a living culture: two physarum colonies (argentina 64%, cabo verde 36%) grow a transport network across a petri dish, feeding on five food bodies set at the goal minutes. The colonies braid, wall each other off at a dark seam, then the network is fixed.",
-      "num": 3,
-      "subject": "Cabo Verde vs. Argentina"
-    },
-    {
-      "n": "008b",
-      "title": "64.478",
-      "date": "2026-07-06",
-      "file": "sketches/008b.html",
-      "medium": "three.js · gpu points",
-      "tags": [
-        "data",
-        "particles",
-        "crowd"
-      ],
-      "status": "candidate",
-      "note": "Every person in the stadium, one gpu point each — 64,478 souls leaning with the match; goals ripple through the crowd.",
-      "num": 2,
-      "subject": "Cabo Verde vs. Argentina"
-    },
-    {
-      "n": "008a",
-      "title": "Bruma",
-      "date": "2026-07-06",
-      "file": "sketches/008a.html",
-      "medium": "glsl · fluid dither",
-      "tags": [
-        "fluid",
-        "dither",
-        "settle"
-      ],
-      "status": "candidate",
-      "note": "The match as weather: five pigments arrive and melt through a nested domain warp into fluid tongues — ink in slow water. The dither lives in the pigment; flows once, then rests.",
-      "num": 1,
-      "subject": "Cabo Verde vs. Argentina"
+      "note": "A commemorative plaque, sand-cast in bronze; one raking lamp settles, the patina keeps the score."
     }
   ]
 }

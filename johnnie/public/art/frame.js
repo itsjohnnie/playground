@@ -11,12 +11,15 @@
   const FRAME = {};
 
   // mount({ num, edition, subject, title, date, stack, time, desc,
-  //         ratio, bleed, dark, noCanvas, onResize })
+  //         ratio, bleed, open, dark, noCanvas, onResize })
   //  → { stage, canvas, W, H, DPR, setTone }
   // stage is the artwork surface. ratio = width/height of the artwork on
   // desktop (0.75 default; 1.6 landscape; bleed fills the whole art region).
-  // On ≤820px the artwork is always full-screen. onResize(W, H, DPR) fires
-  // deferred once at mount, then on every resize.
+  // open: the artwork sits directly on the room — no box: the surface is
+  // transparent and fills the region; the piece grounds itself in the room's
+  // #0d0a07 (or draws with alpha). On ≤820px the artwork is always
+  // full-screen. onResize(W, H, DPR) fires deferred once at mount, then on
+  // every resize.
   FRAME.mount = function (o) {
     const thumb = window.ART && ART.isThumb;
     const num = "#" + String(o.num || 0).padStart(3, "0");
@@ -29,7 +32,7 @@
     document.head.appendChild(fav);
 
     const ratio = o.ratio || 0.75;
-    const artBg = o.dark ? "#0a0a0c" : "#e9e3d5";
+    const artBg = o.open ? "transparent" : (o.dark ? "#0a0a0c" : "#e9e3d5");
     const dot = " · ";
     const date = (o.date || "").split("·").join(dot); // 06·07·2026 → spaced dots
 
@@ -139,7 +142,7 @@ ${thumb ? `body{display:block;padding:0}
           '<div class="row"><span class="k">Stack</span><span class="v">' + esc(o.stack) + "</span></div>" +
           '<div class="row"><span class="k">Time spent</span><span class="v">' + esc(o.time) + "</span></div>" +
         "</div>" +
-        '<p class="cap">seeded by its date — tap the artwork to reseed</p>' +
+        '<p class="cap">seeded by its date</p>' +
       "</div>" +
       '<nav class="go" aria-label="pieces"></nav>' +
       '<button class="x" aria-label="close">✕</button>';
@@ -178,12 +181,7 @@ ${thumb ? `body{display:block;padding:0}
     addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
 
     if (!thumb) {
-      let lastSwipe = 0;
-      stage.addEventListener("click", (e) => {
-        if (e.target.closest("a,button")) return;
-        if (Date.now() - lastSwipe < 500) return;   // a swipe is not a tap
-        ART.reseed();
-      });
+      // clicks never restart the piece; reseed is the r key only
       addEventListener("keydown", (e) => { if (e.key === "r") ART.reseed(); });
 
       // ← → navigation: arrows at the panel's foot, swipe on the artwork,
@@ -229,7 +227,6 @@ ${thumb ? `body{display:block;padding:0}
             const t = e.changedTouches[0];
             const dx = t.clientX - sx, dy = t.clientY - sy;
             if (Math.abs(dx) > 60 && Math.abs(dx) > 1.8 * Math.abs(dy)) {
-              lastSwipe = Date.now();
               dx < 0 ? go(next, 1) : go(prev, -1);
             }
           }, { passive: true });
@@ -255,7 +252,7 @@ ${thumb ? `body{display:block;padding:0}
         return;
       }
       const rw = room.clientWidth, rh = room.clientHeight;
-      if (o.bleed) { stage.style.width = rw + "px"; stage.style.height = rh + "px"; return; }
+      if (o.bleed || o.open) { stage.style.width = rw + "px"; stage.style.height = rh + "px"; return; }
       let w = rw, h = w / ratio;
       if (h > rh) { h = rh; w = h * ratio; }
       stage.style.width = Math.round(w) + "px";

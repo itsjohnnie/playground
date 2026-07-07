@@ -1,71 +1,185 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<canvas id="c"></canvas>
+<body>
 <script src="../art.js"></script>
+<script src="../frame.js"></script>
+<script src="data-004.js"></script>
 <script id="frag" type="x-shader">
 precision highp float;
-uniform vec2 u_res; uniform float u_time; uniform float u_seed;
+uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
 
-// 003 · misregistration — two riso ink layers of warped stripes printed
-// slightly off-register. The moiré is the drawing.
+// 008 — e · resonancia — a chladni plate sings the match. The dark steel
+// plate IS the whole slot, edge to edge (bleed): fine sand migrates to the
+// nodal lines of rectangular-plate modes cos(nπx/a)·cos(mπy/b), mixed in
+// pairs the way near-degenerate resonances superpose on a real plate. The
+// drive sweeps five resonances, one per goal — 29' … 111' — sand agitated
+// while the tone moves, locking crisp when it lands. Every finished mode
+// leaves ~8% of its figure behind, and grains drift a touch denser toward
+// the rim, as on a real plate. A small driver post holds the center clear.
+// Arrives once over 10s, then rests.
 
-float hash(float n){ return fract(sin(n*127.1 + u_seed*311.7)*43758.5453); }
+const float PI = 3.14159265358979;
 
-vec2 rot(vec2 p, float a){
-  float c = cos(a), s = sin(a);
-  return vec2(c*p.x - s*p.y, s*p.x + c*p.y);
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1.,0.)), f.x),
+             mix(hash(i+vec2(0.,1.)), hash(i+vec2(1.,1.)), f.x), f.y);
 }
 
-// one ink layer: stripes bent by stacked sines
-float layer(vec2 uv, float phase, float freq, float ang){
-  vec2 p = rot(uv, ang);
-  float warp =
-      0.22*sin(p.y*2.1 + phase)
-    + 0.11*sin(p.y*4.7 - phase*0.7 + 2.0)
-    + 0.05*sin(p.y*9.3 + phase*1.3);
-  float s = sin((p.x + warp)*freq);
-  return smoothstep(0.0, 0.25, s);   // fat soft stripes
+// rectangular-plate chladni pair — x,y normalized to the plate's own edges
+// [-1,1], so the figure composes across the full rectangle. s mixes the
+// companion mode (−1: antisymmetric pair, +1: symmetric pair).
+float chl(vec2 pc, float n, float m, float s){
+  return cos(n*PI*pc.x)*cos(m*PI*pc.y) + s*cos(m*PI*pc.x)*cos(n*PI*pc.y);
 }
 
 void main(){
-  vec2 uv = (gl_FragCoord.xy*2.0 - u_res) / min(u_res.x, u_res.y);
-  float t = u_time*0.12;
+  vec2 p = gl_FragCoord.xy / u_res;
+  vec2 pc = p*2.0 - 1.0;                     // the plate is the slot
 
-  float a1 = (hash(1.0)-0.5)*0.5;
-  float a2 = a1 + 0.04 + hash(2.0)*0.06;      // nearly parallel → moiré
-  float f  = 28.0 + hash(3.0)*18.0;
+  // ---- the drive: five modes, 2s each, smooth crossfades ----
+  float m5 = clamp(u_p*5.0 - 0.5, 0.0, 4.0);
+  float mi = floor(min(m5, 3.999));
+  float mf = m5 - mi;
+  float cf = smoothstep(0.25, 0.75, mf);
+  float ms = mi + cf;                        // plateau-crossfade mode position
+  float agit = cf*(1.0-cf)*4.0;              // crossfade derivative → agitation
 
-  float L1 = layer(uv, t, f, a1);
-  // second pass drifts off-register, like a misfed sheet
-  vec2 off = vec2(sin(t*0.43)*0.012, cos(t*0.31)*0.012);
-  float L2 = layer(uv + off, t*1.07 + 3.0, f*1.015, a2);
+  float w0 = clamp(1.0-abs(ms-0.0), 0.0, 1.0);
+  float w1 = clamp(1.0-abs(ms-1.0), 0.0, 1.0);
+  float w2 = clamp(1.0-abs(ms-2.0), 0.0, 1.0);
+  float w3 = clamp(1.0-abs(ms-3.0), 0.0, 1.0);
+  float w4 = clamp(1.0-abs(ms-4.0), 0.0, 1.0);
 
-  // riso: multiply translucent inks on paper
-  vec3 paper = vec3(0.965, 0.949, 0.912);
-  vec3 blue  = vec3(0.145, 0.259, 0.725);     // riso blue
-  vec3 pink  = vec3(0.968, 0.220, 0.478);     // fluorescent pink
-  vec3 col = paper;
-  col *= mix(vec3(1.0), blue, L1*0.85);
-  col *= mix(vec3(1.0), pink, L2*0.80);
+  // ---- sand as grains: one cell ≈ one grain ----
+  float cell = max(1.25, u_res.x/430.0);
+  vec2 id = floor(gl_FragCoord.xy / cell);
+  float shake = step(0.05, agit);
+  float h0 = hash(id + vec2(3.1, 17.0));
+  vec2 jid = id + shake*floor(u_time*16.0 + h0*6.0)*vec2(3.0, 17.0);
+  float h1 = hash(jid);
+  float h2 = hash(jid + vec2(19.3, 7.7));
 
-  // ink starvation near edges + grain
-  float vig = smoothstep(1.75, 0.6, length(uv));
-  col = mix(paper, col, mix(0.85, 1.0, vig));
-  float g = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)))*43758.5453);
-  col += (g-0.5)*0.04;
+  // evaluate the field at the grain's cell center → whole grains, not gradients
+  vec2 pcc = ((id + 0.5)*cell)/u_res*2.0 - 1.0;
+  // per-grain positional jitter while the plate is being retuned
+  vec2 pj = pcc + (vec2(h1, h2) - 0.5) * 0.055 * agit;
+
+  // the symmetric (3,5) pair is amplified ×2.1: its field is shallow, and
+  // unscaled it floods the plate instead of drawing thin nodal ridges
+  float A = w0*chl(pj,2.,3.,-1.) + w1*chl(pj,3.,4.,-1.) + w2*chl(pj,2.,5.,-1.)
+          + w3*2.1*chl(pj,3.,5., 1.) + w4*chl(pj,4.,5.,-1.);
+
+  float sandIn = smoothstep(0.0, 0.06, u_p);
+  float th = 0.30 + 0.26*agit;               // sand spreads while agitated
+  float dens = pow(smoothstep(th, 0.0, abs(A)), 1.35);
+
+  // sand drifts a touch denser toward the borders, like a real plate's rim
+  float bord = max(abs(pcc.x), abs(pcc.y));
+  float rimAcc = smoothstep(0.86, 1.0, bord);
+  dens = min(1.0, dens*(1.0 + 0.22*rimAcc));
+
+  // rounded grain footprint inside the cell
+  float shape = smoothstep(0.56, 0.30, length(fract(gl_FragCoord.xy/cell) - 0.5));
+
+  float grain = step(1.0 - dens*0.92*sandIn, h1) * (0.55 + 0.45*h2);
+
+  // stray grains scattered in the low-|A| basins, plus a sparse rim drift
+  float basin = smoothstep(1.15, 0.15, abs(A));
+  float h3 = hash(id + vec2(57.0, 3.1));
+  float stray = step(1.0 - (0.05*basin + 0.024*rimAcc)*sandIn, h3) * (0.30 + 0.40*h2);
+
+  // sand in flight while the tone changes
+  float h4 = hash(jid + vec2(101.0, 47.0));
+  float flight = agit * 0.55 * step(0.962, h4);
+
+  // ghost residue — each finished mode leaves ~8% of its figure
+  float r0 = smoothstep(0.80, 1.05, ms);
+  float r1 = smoothstep(1.80, 2.05, ms);
+  float r2 = smoothstep(2.80, 3.05, ms);
+  float r3 = smoothstep(3.80, 4.00, ms);
+  float resDens =
+      r0*smoothstep(0.16, 0.0, abs(chl(pcc,2.,3.,-1.)))
+    + r1*smoothstep(0.16, 0.0, abs(chl(pcc,3.,4.,-1.)))
+    + r2*smoothstep(0.16, 0.0, abs(chl(pcc,2.,5.,-1.)))
+    + r3*smoothstep(0.16, 0.0, abs(2.1*chl(pcc,3.,5., 1.)));
+  float h5 = hash(id + vec2(211.0, 5.0));
+  float resg = step(1.0 - clamp(resDens, 0.0, 1.0)*0.085, h5) * (0.35 + 0.30*h2);
+
+  float sand = clamp(grain + stray + resg + flight, 0.0, 1.0) * shape;
+
+  // the driver post at the plate's center keeps its footprint clear
+  float dpix = length(gl_FragCoord.xy - 0.5*u_res);
+  float postR = 0.012*min(u_res.x, u_res.y);
+  sand *= smoothstep(postR*0.95, postR*1.55, dpix);
+
+  // ---- materials: the whole surface is the plate ----
+  float lit = 1.0 - 0.42*smoothstep(0.15, 1.85, length(pc - vec2(-0.18, 0.30)));
+  float brush = vnoise(vec2(pc.y*230.0, pc.x*7.0));       // brushed along x
+  float patina = vnoise(pc*3.1 + 7.0);                    // faint mottling
+  vec3 col = vec3(0.052, 0.055, 0.062) * (0.55 + 0.95*lit)
+           + (brush - 0.5) * 0.022
+           + (patina - 0.5) * 0.012;
+
+  // the driver post: a darker machined disc, one lit arc
+  float post = smoothstep(postR + 1.5, postR - 1.5, dpix);
+  col = mix(col, vec3(0.040, 0.042, 0.048)*(0.7 + 0.6*lit), post);
+  float postRim = smoothstep(1.6, 0.0, abs(dpix - postR));
+  float litDir = 0.40 + 0.60*clamp(0.5 + 0.55*pc.y - 0.20*pc.x, 0.0, 1.0);
+  col = mix(col, vec3(0.30, 0.31, 0.34)*litDir, postRim*0.55);
+
+  // sand: warm bone with a hint of gold; celeste in argentina's modes,
+  // warm in cabo verde's, neutral in the final superposition
+  vec3 sandc = vec3(0.905, 0.865, 0.760);
+  sandc = mix(sandc, vec3(0.700, 0.855, 0.950), (w0 + w2)*0.22);
+  sandc = mix(sandc, vec3(0.945, 0.800, 0.640), (w1 + w3)*0.22);
+  sandc *= 0.82 + 0.22*lit;
+  col = mix(col, sandc, sand);
+
+  // grain + a mild breathing of light toward the corners (never dead)
+  float g2 = hash(gl_FragCoord.xy*0.7);
+  col += (g2 - 0.5)*0.028;
+  float vig = smoothstep(1.55, 0.35, length(p - vec2(0.5)));
+  col *= mix(0.86, 1.0, vig);
+
+  // open: the plate falls off into the room's darkness at its borders —
+  // no box, the steel floats on the page ground (#0d0a07)
+  float dEdge = min(min(p.x, 1.0 - p.x), min(p.y, 1.0 - p.y));
+  col = mix(vec3(0.051, 0.039, 0.027), col, smoothstep(0.0, 0.11, dEdge));
 
   gl_FragColor = vec4(col, 1.0);
 }
 </script>
 <script>
-  const seed = ART.seed("2026-07-06-003");
-  const canvas = ART.fit(document.getElementById("c"));
-  const sh = ART.shader(canvas, document.getElementById("frag").textContent);
-  const sf = ART.rng(seed)() * 100;
-  (function loop(t) {
-    sh.draw(t / 1000, sf);
+const seed = ART.seed("2026-07-06-008e");
+let sh = null, done = false, start = null;
+
+const F = FRAME.mount({
+  num: 5, title: "Resonancia", subject: "Argentina vs. Cabo Verde",
+  edition: "02/31", date: "06·07·2026",
+  stack: "WebGL — GLSL", time: "84 minutes",
+  desc: "Fine sand on a dark steel plate, driven through five Chladni resonances — one per goal, 29′ to 111′. Rectangular-plate modes span the surface edge to edge; each locked figure leaves its residue of grains, and the final one rests holding the whole match.",
+  bleed: true, open: true,
+  dark: true, onResize() {
+    if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
+    done = false;          // re-render after resize
     requestAnimationFrame(loop);
-  })(0);
-  ART.chrome({ n: "003", title: "misregistration", date: "2026-07-06" });
+  },
+});
+const sf = ART.rng(seed)() * 100;
+
+// the drive sweeps once (10s), locks the fifth figure, then the plate rests
+function loop(tms) {
+  if (!sh || done) return;
+  if (start === null) start = tms;
+  const p = Math.min(1, (tms - start) / 10000);
+  sh.gl.uniform1f(sh.extra.u_p, p);
+  sh.draw(tms / 1000, sf);
+  if (p >= 1) { done = true; return; }
+  requestAnimationFrame(loop);
+}
 </script>
