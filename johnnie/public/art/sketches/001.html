@@ -342,13 +342,15 @@ function build() {
     const capA = textSprite(M.home.name + " · xg " + M.xg.arg.toFixed(2) + " · " + M.shots.arg + " tiros",
       "rgba(242,236,225,.62)", 11, 0.068);
     capA.center.set(0, 0.5);
-    capA.position.set(-TL / 2 + 0.07, -0.115, WL / 2 + 0.30);
+    // the two lines are set apart in y AND along the plate plane (z), so
+    // they stay two lines in the top-down plan too (y is invisible from above)
+    capA.position.set(-TL / 2 + 0.07, -0.115, WL / 2 + 0.26);
     world.add(capA);
     plateSprites.push({ s: capA, o: 1 });
     const capC = textSprite(M.away.name + " · xg " + M.xg.alg.toFixed(2) + " · " + M.shots.alg + " tiros",
       "rgba(242,236,225,.62)", 11, 0.068);
     capC.center.set(0, 0.5);
-    capC.position.set(-TL / 2 + 0.07, -0.195, WL / 2 + 0.30);
+    capC.position.set(-TL / 2 + 0.07, -0.195, WL / 2 + 0.36);
     world.add(capC);
     plateSprites.push({ s: capC, o: 1 });
     // the surveyor's minute scale along the near edge
