@@ -45,7 +45,7 @@
    panel, artworks cross-blend — no reload flash. Browsers without
    cross-document view transitions simply navigate. */
 @view-transition{navigation:auto}
-@media (min-width:821px){.panel{view-transition-name:sheet}}
+@media (min-width:821px){.panel{view-transition-name:sheet}.top{view-transition-name:topbar}}
 .room{view-transition-name:artwork}
 ::view-transition-group(sheet),::view-transition-group(artwork){
 animation-duration:380ms;animation-timing-function:cubic-bezier(0.23,1,0.32,1)}
@@ -54,17 +54,18 @@ animation-duration:300ms}
 @media (prefers-reduced-motion:reduce){
 ::view-transition-group(*),::view-transition-image-pair(*),
 ::view-transition-old(*),::view-transition-new(*){animation:none!important}}
+a{text-underline-offset:3px}
 html,body{margin:0;background:#0d0a07;height:100%}
 body{height:100dvh;overflow:hidden;box-sizing:border-box;
 font-family:'Geist',ui-sans-serif,system-ui,sans-serif;font-weight:430;
-padding:clamp(14px,2.4vw,34px);display:grid;column-gap:clamp(14px,2.4vw,34px);
+padding:clamp(0px,2.4vw,34px);display:grid;column-gap:clamp(14px,2.4vw,34px);
 grid-template-columns:clamp(380px,42vw,600px) 1fr}
 .panel{position:relative;background:#f2f1ee;color:#16130f;overflow:auto;
-border-radius:clamp(22px,2.8vw,40px);container-type:inline-size;
-padding:clamp(26px,5.5cqi,44px) clamp(26px,6cqi,48px);
+border-radius:clamp(0px,3vw,40px);container-type:inline-size;
+padding:clamp(24px,4vw,52px) clamp(22px,4.5vw,60px) clamp(28px,4.5vw,56px);
 display:flex;flex-direction:column;scrollbar-width:thin}
 .top{display:grid;grid-template-columns:1.15fr 1fr auto;gap:12px;
-font-size:clamp(11.5px,2.7cqi,13.5px);line-height:1.8;letter-spacing:.01em}
+font-size:clamp(11.5px,1.4vw,13.5px);line-height:1.8;letter-spacing:.01em}
 .top .lab{font-weight:560;letter-spacing:.045em;text-transform:uppercase}
 .top a{color:inherit;text-decoration:none}
 @media (hover:hover) and (pointer:fine){.top a:hover{text-decoration:underline}}
@@ -127,9 +128,9 @@ top:max(10px,env(safe-area-inset-top));
 bottom:max(10px,env(safe-area-inset-bottom));
 margin:0;border-radius:26px;animation:none;
 box-shadow:0 30px 80px rgba(0,0,0,.6);
-transform:translateY(103%);opacity:0;pointer-events:none;
-transition:transform 460ms cubic-bezier(0.32,0.72,0,1),opacity 320ms ease}
-body.open .panel{transform:none;opacity:1;pointer-events:auto}
+transform:translateY(103%);pointer-events:none;
+transition:transform 460ms cubic-bezier(0.32,0.72,0,1)}
+body.open .panel{transform:none;pointer-events:auto}
 body.open .scrim{opacity:1;pointer-events:auto}
 body.open .pill{opacity:0;pointer-events:none}
 .x{display:flex;align-items:center;justify-content:center;margin:0 auto;
@@ -137,7 +138,7 @@ width:44px;height:44px;border-radius:999px;cursor:pointer;
 background:rgba(22,19,15,.06);border:0;color:#16130f;font:inherit;font-size:16px;
 transition:transform 160ms cubic-bezier(0.23,1,0.32,1)}
 .x:active{transform:scale(0.94)}
-@media (prefers-reduced-motion:reduce){.panel{transition:opacity 200ms ease}}
+@media (prefers-reduced-motion:reduce){.panel{transition:none}}
 }
 ${thumb ? `body{display:block;padding:0}
 .panel,.pill,.scrim{display:none!important}
