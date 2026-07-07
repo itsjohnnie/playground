@@ -46,6 +46,10 @@ float chl(vec2 pc, float n, float m, float s){
 void main(){
   vec2 p = gl_FragCoord.xy / u_res;
   vec2 pc = p*2.0 - 1.0;                     // the plate is the slot
+  // width-anchored: lobes keep their proportions on tall screens — the
+  // pattern extends vertically instead of stretching (identity at 3:4)
+  float arY = (u_res.y/u_res.x) * 0.75;
+  pc.y *= arY;
 
   // ---- the drive: four modes, 2.5s each, smooth crossfades — except the
   // penalty's arrival (segment u_snap), which lands as one hard snap ----
@@ -73,6 +77,7 @@ void main(){
 
   // evaluate the field at the grain's cell center → whole grains, not gradients
   vec2 pcc = ((id + 0.5)*cell)/u_res*2.0 - 1.0;
+  pcc.y *= arY;                              // same width-anchored plate space
   // per-grain positional jitter while the plate is being retuned
   vec2 pj = pcc + (vec2(h1, h2) - 0.5) * 0.055 * agit;
 
