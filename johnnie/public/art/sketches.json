@@ -67,6 +67,23 @@
       ],
       "status": "candidate",
       "note": "A commemorative plaque, sand-cast in bronze; one raking lamp settles, the patina keeps the score."
+    },
+    {
+      "n": "005",
+      "num": 5,
+      "title": "Sello",
+      "subject": "Argentina vs. Egypt",
+      "date": "2026-07-07",
+      "file": "sketches/005.html",
+      "medium": "letterpress on cotton rag · glsl height-field",
+      "tags": [
+        "letterpress",
+        "seal",
+        "remontada",
+        "sol de mayo"
+      ],
+      "status": "candidate",
+      "note": "The die goes wrong before it goes right — a blind mark for the missed penalty, a starved ring for the VAR goal, three celeste strikes crowding the end; the score line is inked only after 90+2, when it has come true."
     }
   ]
 }
