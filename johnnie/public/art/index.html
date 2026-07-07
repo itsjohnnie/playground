@@ -197,6 +197,17 @@
           '<span class="d">' + date + "</span>";
         days.appendChild(a);
       });
+      // prerender a day the moment it's hovered or touched — activation is
+      // instant, no load flicker; unsupporting browsers ignore this
+      const spec = document.createElement("script");
+      spec.type = "speculationrules";
+      spec.textContent = JSON.stringify({
+        prerender: [{
+          urls: Array.from(days.querySelectorAll("a.day"), (el) => el.getAttribute("href")),
+          eagerness: "moderate",
+        }],
+      });
+      document.head.appendChild(spec);
     })
     .catch(() => {
       days.innerHTML = '<p class="note">the atelier didn’t load — reload to try again.</p>';
