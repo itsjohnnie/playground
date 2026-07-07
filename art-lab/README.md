@@ -59,6 +59,9 @@ johnnie/public/art/          ← the live site (johnnies.life/art)
    - `ART.chrome({n, title, date, dark})` — caption, back link, click-to-reseed
 4. **Title it** with one lowercase word or short phrase, like a diary entry.
 5. **Add the manifest entry** to `sketches.json` (status: `"candidate"`).
+   Array order doesn't matter: the gallery and the piece-to-piece nav both
+   sort by **date (newest first), then `n` ascending within a date** — that
+   sort is the display convention, not the array.
 6. **Verify it renders** (headless screenshot at 2s and 8s — no black frames,
    no console errors), then commit + push.
 7. Keep it under ~an hour of effort. Post at the moment it crosses the

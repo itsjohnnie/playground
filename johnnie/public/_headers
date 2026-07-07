@@ -17,3 +17,8 @@
 
 /art/art.js
   Cache-Control: max-age=60, must-revalidate
+
+# vendored libraries and fonts never change in place — cache hard so
+# three.js (~750KB) and Geist aren't re-fetched per piece or per visit
+/art/lib/*
+  Cache-Control: public, max-age=31536000, immutable

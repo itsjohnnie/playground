@@ -2,8 +2,9 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>art — a daily sketch practice</title>
+<title>art — contact sheet (variant b)</title>
 <meta name="description" content="One small piece of generative art every day. After Zach Lieberman.">
+<meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='38' cy='44' r='30' fill='%236cabd6' opacity='.88'/><circle cx='62' cy='56' r='30' fill='%23d5493c' opacity='.72'/></svg>">
 <style>
   :root {
@@ -19,7 +20,8 @@
     font-weight: 100 900; font-style: normal; font-display: swap; }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--paper); color: var(--ink); }
-  /* Mobile-first: one centered column; everything hangs off the middle. */
+  /* Contact-sheet variant: prints sunk into the paper, wall labels below.
+     No white card chrome, no elevation — the page IS the sheet. */
   body {
     font: 14px/1.65 'Geist Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     letter-spacing: 0.02em;
@@ -61,37 +63,32 @@
   .grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 36px;
     width: 100%;
     max-width: 440px;   /* phone: one comfortable centered column */
   }
   @media (min-width: 720px) {
-    .grid { grid-template-columns: repeat(2, 1fr); max-width: 760px; gap: 26px; }
+    .grid { grid-template-columns: repeat(2, 1fr); max-width: 760px; gap: 40px 30px; }
   }
   @media (min-width: 1080px) {
-    .grid { grid-template-columns: repeat(3, 1fr); max-width: 1100px; gap: 30px; }
+    .grid { grid-template-columns: repeat(3, 1fr); max-width: 1100px; gap: 48px 34px; }
   }
   :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); }
   .card {
     display: block;
     text-decoration: none;
     color: inherit;
-    border: 1px solid var(--line);
-    background: #fff;
     opacity: 0;
     transform: translateY(8px);
     animation: card-in 340ms var(--ease-out) forwards;
     animation-delay: var(--d, 0ms);
-    transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
   }
   @keyframes card-in {
     to { opacity: 1; transform: translateY(0); }
   }
+  .card .thumb { transition: border-color 200ms var(--ease-out); }
   @media (hover: hover) and (pointer: fine) {
-    .card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 12px 32px rgba(23, 21, 18, 0.12);
-    }
+    .card:hover .thumb { border-color: rgba(23, 21, 18, 0.42); }
   }
   .card:active { transform: scale(0.98); }
   @media (prefers-reduced-motion: reduce) {
@@ -103,7 +100,8 @@
     position: relative;
     aspect-ratio: 3 / 4;   /* the pieces are 3:4 portrait stages */
     overflow: hidden;
-    background: #e9e3d5;   /* stage paper — no dark flash under light pieces */
+    border: 1px solid var(--line);   /* a hairline rule, not a floating card */
+    background: #e9e3d5;             /* stage paper — no dark flash while loading */
   }
   .thumb iframe {
     position: absolute;
@@ -117,7 +115,8 @@
     transition: opacity 300ms ease;
   }
   .thumb iframe.ready { opacity: 1; }
-  .meta { padding: 12px 14px 14px; border-top: 1px solid var(--line); }
+  /* the wall label: set straight on the paper, no box */
+  .meta { padding: 10px 2px 0; }
   .meta .row {
     display: flex;
     justify-content: space-between;
@@ -127,7 +126,7 @@
   .meta b { font-weight: 500; }
   .meta .date { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
   .meta .tags {
-    margin-top: 4px;
+    margin-top: 3px;
     font-size: 11px;
     color: var(--ink-soft);
     text-transform: lowercase;
@@ -157,6 +156,7 @@
      Gradients, dither, ink, optics, feedback. After
      <a href="https://zach.li" rel="noopener">Zach Lieberman</a>'s daily sketch practice.</p>
   <p class="batch" id="batch"></p>
+  <p class="batch">variant b · contact sheet — <a href="./">see variant a</a></p>
 </header>
 
 <main class="grid" id="grid" aria-label="sketches"></main>
@@ -205,7 +205,7 @@
         const date = s.date.split("-").reverse().join("·"); // 2026-07-06 → 06·07·2026
         a.innerHTML =
           '<div class="thumb"><iframe loading="lazy" data-src="' + s.file +
-          '?thumb=1" title="' + s.n + " · " + s.title + '" tabindex="-1"></iframe></div>' +
+          '?thumb=1&bare=1" title="' + s.n + " · " + s.title + '" tabindex="-1"></iframe></div>' +
           '<div class="meta"><div class="row"><b>' + s.n + ' · <span lang="es">' + s.title +
           "</span></b><span class='date'>" + date + "</span></div>" +
           '<div class="tags">' + s.medium + " — " + s.tags.join(", ") + "</div></div>";
