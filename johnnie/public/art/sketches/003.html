@@ -76,10 +76,11 @@ void main(){
   // per-grain positional jitter while the plate is being retuned
   vec2 pj = pcc + (vec2(h1, h2) - 0.5) * 0.055 * agit;
 
-  // the symmetric (3,5) pair is amplified ×2.1: its field is shallow, and
-  // unscaled it floods the plate instead of drawing thin nodal ridges
-  float A = w0*chl(pj,2.,3.,-1.) + w1*chl(pj,3.,4.,-1.) + w2*chl(pj,2.,5.,-1.)
-          + w3*2.1*chl(pj,3.,5., 1.) + w4*chl(pj,4.,5.,-1.);
+  // the symmetric pairs are amplified — (1,4) ×1.6, (3,5) ×2.1: their fields
+  // are shallow, and unscaled they flood the plate instead of drawing thin
+  // nodal ridges. minute order: 19' → 31' (pen) → 55' (jor) → 80'.
+  float A = w0*chl(pj,2.,3.,-1.) + w1*1.6*chl(pj,1.,4., 1.)
+          + w2*chl(pj,3.,4.,-1.) + w3*2.1*chl(pj,3.,5., 1.);
 
   float sandIn = smoothstep(0.0, 0.06, u_p);
   float th = 0.30 + 0.26*agit;               // sand spreads while agitated
@@ -107,13 +108,11 @@ void main(){
   // ghost residue — each finished mode leaves ~8% of its figure
   float r0 = smoothstep(0.80, 1.05, ms);
   float r1 = smoothstep(1.80, 2.05, ms);
-  float r2 = smoothstep(2.80, 3.05, ms);
-  float r3 = smoothstep(3.80, 4.00, ms);
+  float r2 = smoothstep(2.80, 3.00, ms);
   float resDens =
       r0*smoothstep(0.16, 0.0, abs(chl(pcc,2.,3.,-1.)))
-    + r1*smoothstep(0.16, 0.0, abs(chl(pcc,3.,4.,-1.)))
-    + r2*smoothstep(0.16, 0.0, abs(chl(pcc,2.,5.,-1.)))
-    + r3*smoothstep(0.16, 0.0, abs(2.1*chl(pcc,3.,5., 1.)));
+    + r1*smoothstep(0.16, 0.0, abs(1.6*chl(pcc,1.,4., 1.)))
+    + r2*smoothstep(0.16, 0.0, abs(chl(pcc,3.,4.,-1.)));
   float h5 = hash(id + vec2(211.0, 5.0));
   float resg = step(1.0 - clamp(resDens, 0.0, 1.0)*0.085, h5) * (0.35 + 0.30*h2);
 
@@ -139,11 +138,14 @@ void main(){
   float litDir = 0.40 + 0.60*clamp(0.5 + 0.55*pc.y - 0.20*pc.x, 0.0, 1.0);
   col = mix(col, vec3(0.30, 0.31, 0.34)*litDir, postRim*0.55);
 
-  // sand: warm bone with a hint of gold; celeste in argentina's modes,
-  // warm in cabo verde's, neutral in the final superposition
+  // sand: warm bone with a hint of gold; celeste in argentina's three modes,
+  // and jordan's answer inked a desaturated kit-red — never cartoon
+  vec4 wv = vec4(w0, w1, w2, w3);
+  float wArg = dot(wv, u_team);
+  float wJor = dot(wv, 1.0 - u_team);
   vec3 sandc = vec3(0.905, 0.865, 0.760);
-  sandc = mix(sandc, vec3(0.700, 0.855, 0.950), (w0 + w2)*0.22);
-  sandc = mix(sandc, vec3(0.945, 0.800, 0.640), (w1 + w3)*0.22);
+  sandc = mix(sandc, vec3(0.700, 0.855, 0.950), wArg*0.22);
+  sandc = mix(sandc, vec3(0.660, 0.340, 0.290), wJor*0.30);
   sandc *= 0.82 + 0.22*lit;
   col = mix(col, sandc, sand);
 
@@ -162,24 +164,35 @@ void main(){
 }
 </script>
 <script>
-const seed = ART.seed("2026-07-06-008e");
+const seed = ART.seed("2026-06-27-003");
 let sh = null, done = false, start = null;
 
+// the match, from data-003.js: goals in minute order drive the four modes
+const goals = window.M3.goals.slice().sort((a, b) => a.min - b.min);
+
 const F = FRAME.mount({
-  num: 5, title: "Resonancia", subject: "Argentina vs. Cabo Verde",
-  edition: "02/31", date: "06·07·2026",
+  num: 3, title: "Resonancia", subject: "Jordan vs. Argentina",
+  edition: "03/31", date: "27·06·2026",
   stack: "WebGL — GLSL", time: "84 minutes",
-  desc: "Fine sand on a dark steel plate, driven through five Chladni resonances — one per goal, 29′ to 111′. Rectangular-plate modes span the surface edge to edge; each locked figure leaves its residue of grains, and the final one rests holding the whole match.",
+  desc: "Fine sand on a dark steel plate, driven through four Chladni resonances — one per goal, 19′ to 80′. Rectangular-plate modes span the surface edge to edge; the penalty lands as a single hard strike, Jordan's answer at 55′ inks its figure a quiet kit-red among the celeste, and each locked mode leaves its residue of grains under the one that rests holding the match.",
   bleed: true, open: true,
   dark: true, onResize() {
-    if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
+    if (!sh) {
+      sh = ART.shader(F.canvas, document.getElementById("frag").textContent,
+        ["u_p", "u_team", "u_snap"]);
+      // per-mode scorer (1 = argentina) and the snapping transition (into
+      // the penalty mode) — derived from the match data, not hardcoded
+      const t = goals.map((g) => (g.team === "arg" ? 1 : 0));
+      sh.gl.uniform4f(sh.extra.u_team, t[0], t[1], t[2], t[3]);
+      sh.gl.uniform1f(sh.extra.u_snap, goals.findIndex((g) => g.pen) - 1);
+    }
     done = false;          // re-render after resize
     requestAnimationFrame(loop);
   },
 });
 const sf = ART.rng(seed)() * 100;
 
-// the drive sweeps once (10s), locks the fifth figure, then the plate rests
+// the drive sweeps once (10s), locks the fourth figure, then the plate rests
 function loop(tms) {
   if (!sh || done) return;
   if (start === null) start = tms;
