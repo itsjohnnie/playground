@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence, animate, useMotionValue, useTransform } from 'framer-motion'
-import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown, ArrowDownUp } from 'lucide-react'
+import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown, Plus, Minus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
@@ -9,12 +9,10 @@ import {
   type Match,
   type Player,
   type ScoreReason,
-  TRUCO_POINTS,
-  ENVIDO_POINTS,
   BUENAS_THRESHOLD,
   SCORE_REASON_LABEL,
 } from '@/types/game'
-import { calcFaltaEnvido, detectRoundMode, splitScore, isInBuenas } from '@/utils/scoring'
+import { detectRoundMode, splitScore, isInBuenas } from '@/utils/scoring'
 
 interface GameScreenProps {
   match: Match
@@ -25,7 +23,6 @@ interface GameScreenProps {
 }
 
 export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: GameScreenProps) {
-  const [scoringFor, setScoringFor] = useState<null | 'A' | 'B'>(null)
   const [menu, setMenu] = useState(false)
   const [confirmAbandon, setConfirmAbandon] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -36,11 +33,6 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
   function teamPlayers(side: 'A' | 'B') {
     const ids = side === 'A' ? match.teamA.playerIds : match.teamB.playerIds
     return ids.map(playerById).filter(Boolean) as Player[]
-  }
-
-  function score(team: 'A' | 'B', pts: number, reason: ScoreReason) {
-    onScore(team, pts, reason)
-    setScoringFor(null)
   }
 
   return (
@@ -82,7 +74,6 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
           players={teamPlayers('A')}
           score={match.scoreA}
           highlight={match.scoreA > match.scoreB}
-          onOpenSheet={() => setScoringFor('A')}
           onQuickAdd={() => onScore('A', 1, 'manual')}
           onQuickSub={() => onScore('A', -1, 'manual')}
           right={false}
@@ -92,7 +83,6 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
           players={teamPlayers('B')}
           score={match.scoreB}
           highlight={match.scoreB > match.scoreA}
-          onOpenSheet={() => setScoringFor('B')}
           onQuickAdd={() => onScore('B', 1, 'manual')}
           onQuickSub={() => onScore('B', -1, 'manual')}
           right={true}
@@ -121,22 +111,6 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
           )}
         </AnimatePresence>
       </div>
-
-      {/* Score sheet */}
-      <Sheet
-        open={!!scoringFor}
-        onClose={() => setScoringFor(null)}
-        title={scoringFor ? `Sumó ${scoringFor === 'A' ? match.teamA.name : match.teamB.name}` : ''}
-      >
-        {scoringFor && (
-          <ScoreSheet
-            roundMode={roundMode}
-            myScore={scoringFor === 'A' ? match.scoreA : match.scoreB}
-            theirScore={scoringFor === 'A' ? match.scoreB : match.scoreA}
-            onPick={(pts, reason) => score(scoringFor, pts, reason)}
-          />
-        )}
-      </Sheet>
 
       {/* Options sheet */}
       <Sheet open={menu} onClose={() => setMenu(false)} title="Opciones">
@@ -215,13 +189,12 @@ const SWIPE_VEL = 380   // px / second
 const MAX_DRAG_PX = 110
 
 function TeamPanel({
-  name, players, score, highlight, onOpenSheet, onQuickAdd, onQuickSub, right,
+  name, players, score, highlight, onQuickAdd, onQuickSub, right,
 }: {
   name: string
   players: Player[]
   score: number
   highlight: boolean
-  onOpenSheet: () => void
   onQuickAdd: () => void
   onQuickSub: () => void
   right: boolean
@@ -289,7 +262,10 @@ function TeamPanel({
     snapBack()
 
     if (!wasDrag) {
-      onOpenSheet()
+      // Tap → +1 point. No sheet, no reason picker. Multi-point wins
+      // (retruco, envido, etc.) get counted by tapping N times.
+      onQuickAdd()
+      flash('up')
       return
     }
 
@@ -317,10 +293,10 @@ function TeamPanel({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpenSheet() } }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onQuickAdd(); flash('up') } }}
       style={{ touchAction: 'none' }}
       className={`group relative flex flex-col gap-3 px-4 py-5 text-left overflow-hidden ${right ? '' : 'border-r border-line/70'} hover-elevate select-none cursor-pointer`}
-      aria-label={`Sumar puntos a ${name}. Tocá para abrir las opciones, arrastrá hacia arriba para sumar, hacia abajo para restar.`}
+      aria-label={`Sumar puntos a ${name}. Tocá para sumar un punto, arrastrá hacia abajo para restar.`}
     >
       {/* Swipe hint arrows — only visible while dragging, stay anchored.
           Up = basto green, down = copa red — same hues as the Spanish suits. */}
@@ -366,14 +342,28 @@ function TeamPanel({
         </div>
       </motion.div>
 
-      {/* Static bottom row — palitos and deslizá hint share a baseline */}
+      {/* Static bottom row — palitos on the left, explicit ± steppers
+          on the right. The steppers stop pointer propagation so a tap on
+          them never registers as a tap on the surrounding panel (which
+          would double-fire a +1). */}
       <div className="mt-auto flex items-end justify-between gap-2">
         <div className="flex flex-col gap-1.5">
           <Palitos count={malas} accent={!inBuenas && score > 0} />
           {score >= BUENAS_THRESHOLD && <Palitos count={buenas} accent={true} />}
         </div>
-        <div className="pointer-events-none inline-flex items-center gap-1 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
-          <ArrowDownUp className="size-3" aria-hidden /> deslizá
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Stepper
+            icon={Minus}
+            onTap={() => { onQuickSub(); flash('down') }}
+            aria-label={`Restar un punto a ${name}`}
+            variant="sub"
+          />
+          <Stepper
+            icon={Plus}
+            onTap={() => { onQuickAdd(); flash('up') }}
+            aria-label={`Sumar un punto a ${name}`}
+            variant="add"
+          />
         </div>
       </div>
 
@@ -382,6 +372,41 @@ function TeamPanel({
           tears down the old context and starts a fresh one. */}
       {pulse && <PulseGlow key={pulse + score} kind={pulse} />}
     </div>
+  )
+}
+
+// ─── Stepper: explicit +/− button inside a TeamPanel ────────
+// Stops pointer propagation so the surrounding panel never sees the
+// tap as an implicit +1.
+
+function Stepper({
+  icon: Icon,
+  onTap,
+  variant,
+  ...rest
+}: {
+  icon: typeof Plus
+  onTap: () => void
+  variant: 'add' | 'sub'
+} & React.AriaAttributes) {
+  const cls =
+    variant === 'add'
+      ? 'text-accent border-accent/40 hover:border-accent/70'
+      : 'text-ink-muted border-line/60 hover:border-line hover:text-ink'
+  return (
+    <button
+      type="button"
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+      onPointerMove={(e) => e.stopPropagation()}
+      onPointerCancel={(e) => e.stopPropagation()}
+      onClick={(e) => { e.stopPropagation(); onTap() }}
+      style={{ touchAction: 'manipulation' }}
+      className={`pressable inline-flex size-10 items-center justify-center rounded-sm border bg-surface-hi/70 backdrop-blur-sm ${cls}`}
+      {...rest}
+    >
+      <Icon className="size-4" strokeWidth={2.4} aria-hidden />
+    </button>
   )
 }
 
@@ -426,106 +451,3 @@ function PalitoGroup({ count, accent }: { count: number; accent: boolean }) {
   )
 }
 
-// ─── Score sheet (bottom sheet content) ──────────────────────
-
-function ScoreSheet({
-  roundMode, myScore, theirScore, onPick,
-}: {
-  roundMode: 'redondo' | 'picapica'
-  myScore: number
-  theirScore: number
-  onPick: (pts: number, reason: ScoreReason) => void
-}) {
-  const falta = calcFaltaEnvido(theirScore, myScore, roundMode)
-  return (
-    <div className="flex flex-col gap-5 pb-2 max-h-[70vh] overflow-y-auto">
-      <Section title="Truco">
-        <Row label="Truco"
-          left={{ pts: TRUCO_POINTS.truco.refused, sub: 'no quiso', reason: 'truco_rechazado' }}
-          right={{ pts: TRUCO_POINTS.truco.won, sub: 'ganó', reason: 'truco' }}
-          onPick={onPick}
-        />
-        <Row label="Retruco"
-          left={{ pts: TRUCO_POINTS.retruco.refused, sub: 'no quiso', reason: 'retruco_rechazado' }}
-          right={{ pts: TRUCO_POINTS.retruco.won, sub: 'ganó', reason: 'retruco' }}
-          onPick={onPick}
-        />
-        <Row label="Vale Cuatro"
-          left={{ pts: TRUCO_POINTS.vale4.refused, sub: 'no quiso', reason: 'vale4_rechazado' }}
-          right={{ pts: TRUCO_POINTS.vale4.won, sub: 'ganó', reason: 'vale4' }}
-          onPick={onPick}
-        />
-      </Section>
-
-      <Section title="Envido">
-        <Row label="Envido"
-          left={{ pts: ENVIDO_POINTS.envido.refused, sub: 'no quiso', reason: 'envido_rechazado' }}
-          right={{ pts: ENVIDO_POINTS.envido.won, sub: 'ganó', reason: 'envido' }}
-          onPick={onPick}
-        />
-        <Row label="Real Envido"
-          left={{ pts: ENVIDO_POINTS.realenvido.refused, sub: 'no quiso', reason: 'real_envido_rechazado' }}
-          right={{ pts: ENVIDO_POINTS.realenvido.won, sub: 'ganó', reason: 'real_envido' }}
-          onPick={onPick}
-        />
-        <Row label={`Falta Envido${roundMode === 'picapica' ? ' (=6)' : ''}`}
-          left={{ pts: Math.max(1, Math.floor(falta / 2)), sub: 'no quiso', reason: 'falta_envido_rechazado' }}
-          right={{ pts: falta, sub: 'ganó', reason: 'falta_envido' }}
-          onPick={onPick}
-        />
-      </Section>
-
-      <Section title="Manual">
-        <div className="grid grid-cols-4 gap-2">
-          {[1, 2, 3, 4].map((pts) => (
-            <button
-              key={pts}
-              onClick={() => onPick(pts, 'manual')}
-              className="pressable rounded-sm border border-line bg-surface-hi py-3 text-ink hover-elevate"
-            >
-              <span className="tabular text-lg font-semibold">+{pts}</span>
-            </button>
-          ))}
-        </div>
-      </Section>
-    </div>
-  )
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-2">
-      <p className="eyebrow">{title}</p>
-      <div className="flex flex-col gap-1.5">{children}</div>
-    </section>
-  )
-}
-
-function Row({
-  label, left, right, onPick,
-}: {
-  label: string
-  left: { pts: number; sub: string; reason: ScoreReason }
-  right: { pts: number; sub: string; reason: ScoreReason }
-  onPick: (pts: number, reason: ScoreReason) => void
-}) {
-  return (
-    <div className="grid grid-cols-[1fr_auto_auto] items-center gap-2">
-      <span className="font-display text-ink text-base">{label}</span>
-      <button
-        onClick={() => onPick(left.pts, left.reason)}
-        className="pressable rounded-sm border border-line bg-surface-hi px-3 py-2 text-ink hover-elevate min-w-[68px]"
-      >
-        <div className="text-[10px] text-ink-soft leading-none mb-0.5">{left.sub}</div>
-        <div className="tabular text-base font-semibold">+{left.pts}</div>
-      </button>
-      <button
-        onClick={() => onPick(right.pts, right.reason)}
-        className="pressable rounded-sm bg-accent text-accent-ink px-3 py-2 hover:bg-accent-hi min-w-[68px]"
-      >
-        <div className="text-[10px] opacity-75 leading-none mb-0.5">{right.sub}</div>
-        <div className="tabular text-base font-semibold">+{right.pts}</div>
-      </button>
-    </div>
-  )
-}
