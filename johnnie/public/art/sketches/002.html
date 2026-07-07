@@ -4,127 +4,230 @@
 <body>
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
-<script src="data-004.js"></script>
+<script src="data-002.js"></script>
 <script>
-// 008 — h · sismógrafo — the match as a seismograph record. 120 plotter
-// lines, one per minute, stacked 1' (top) to 120' (bottom). Energy per
-// minute = per-phase xG density (real, M8.xgPhase) + gaussian spikes at
-// shot minutes (real per-phase counts; exact minutes seeded — approximation)
-// + mountains at the five real goal minutes that invade neighboring lines.
-// argentina shakes the LEFT half of each line, cabo verde the RIGHT.
-// Near-black ink on paper; only the goal peaks carry the team tint.
-// Plotter truth: constant pen width, low-freq hand wobble, ink-pool dots
-// where the pen pauses. Draws itself over the 26 s replay, holds, redraws.
+// 002 — sismógrafo — Argentina 2–0 Austria as a seismograph record.
+// A deckle-edged paper strip floats on the dark room (open mount): 96
+// plotter lines, one per minute, 1' (top) to 90+6' (bottom). Energy per
+// minute = per-half xG density (M2.xgPhase) + gaussian spikes at shot
+// minutes (pinned where the commentary gives them, remainder seeded) +
+// mountains at the two goals. Argentina shakes the LEFT half of each line,
+// Austria the RIGHT; ink weight follows possession (54–46). The 9' missed
+// penalty is a marked early tremor; the 76' and 90+2' bookings cut BELOW
+// the baseline as a sharp zigzag — everything else in the match rises,
+// discipline digs down. The record ends on its deepest spike: Messi at
+// 90+5', his 18th World Cup goal, inked in gold ochre on the final line.
+// Plotter truth: baseline drift down the roll, ragged pen-down margins,
+// ink pooling where the pen turns hard, a heavier pen on event lines.
+// The record draws itself once (~11 s) and the rAF loop stops.
 
-const seed = ART.seed("2026-07-06-008h");
+const seed = ART.seed("2026-06-22-002");
 const N = ART.makeNoise(seed);
-const M = window.M8;
+const M = window.M2;
 const INK = "rgba(23,21,17,";
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const TOTAL = M.totalMin; // 96
 
 let W, H, DPR, S, T0, B0, X0, X1, fs, lines, grain, off, offCtx;
-let drawn = 0, lastCycle = 1e9;
+let paperC, deckle, px, py, pw, ph;
+let drawn = 0, settled = false, start;
 
 const F = FRAME.mount({
-  num: 8, title: "Sismógrafo", subject: "Argentina vs. Cabo Verde",
-  edition: "02/31", date: "06·07·2026",
-  stack: "Canvas 2D", time: "44 minutes",
-  desc: "A plotter's seismogram of the hundred and twenty minutes, one tremor per minute: amplitude is intensity, ink weight is possession, and the marked events are the goals.",
-  dark: false, onResize(w, h, dpr) { W = w; H = h; DPR = dpr; build(); },
+  num: 2, title: "Sismógrafo", subject: "Argentina vs. Austria",
+  edition: "02/31", date: "22·06·2026",
+  stack: "Canvas 2D", time: "48 minutes",
+  desc: "A plotter’s seismogram of the match, one tremor per minute from kickoff to the sixth minute of stoppage: amplitude is intensity, ink weight is possession, and the two bookings cut below the line at 76’ and 90+2’. The record ends on its deepest spike — Messi at 90+5’, his eighteenth World Cup goal, more than anyone has ever scored.",
+  open: true, dark: true,
+  onResize(w, h, dpr) { W = w; H = h; DPR = dpr; build(); },
 });
 const ctx = F.canvas.getContext("2d");
 
-function build() {
-  T0 = 0.148 * H; B0 = 0.868 * H; X0 = 0.17 * W; X1 = 0.83 * W;
-  S = (B0 - T0) / 119;
-  fs = Math.max(0.0165 * W, 7.5 * DPR);
+const mm = (m) => (m > 90 ? "90+" + (m - 90) : m) + "’";
+const ss = (a, b, v) => {
+  const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
 
-  // seeded shot minutes within real per-phase counts (008a idiom)
-  const Rt = ART.rng(seed + "ticks");
-  const ticks = { arg: [], cpv: [] };
-  for (const team of ["arg", "cpv"]) {
-    const all = [];
-    M.shotsPhase[team].forEach((count, pi) => {
-      const [a, b] = [[0, 45], [45, 90], [90, 120]][pi];
-      for (let i = 0; i < count; i++) all.push(a + 2 + Rt() * (b - a - 4));
-    });
-    for (let i = all.length - 1; i > 0; i--) {
-      const j = (Rt() * (i + 1)) | 0;
-      [all[i], all[j]] = [all[j], all[i]];
+function buildPaper() {
+  // the record strip — a paper object on the room
+  ph = 0.955 * H;
+  pw = Math.min(0.94 * W, 0.66 * ph);
+  ph = Math.min(ph, pw / 0.55);
+  px = (W - pw) / 2; py = (H - ph) / 2 + 0.004 * H;
+
+  // deckle edge: low-freq warp + fiber-scale roughness, seeded
+  deckle = new Path2D();
+  const rough = (s, e) =>
+    (1.1 * N.noise2(s * 2.3, e * 7.31) + 2.4 * N.noise2(s * 11.7, e * 7.31 + 3.1) * 0.55) * 2.1 * DPR;
+  const nE = 46;
+  for (let e = 0; e < 4; e++) {
+    for (let k = 0; k <= nE; k++) {
+      const s = k / nE, d = rough(s + e * 1.7, e);
+      let x, y;
+      if (e === 0) { x = px + s * pw; y = py - d; }
+      else if (e === 1) { x = px + pw + d; y = py + s * ph; }
+      else if (e === 2) { x = px + (1 - s) * pw; y = py + ph + d; }
+      else { x = px - d; y = py + (1 - s) * ph; }
+      k === 0 && e === 0 ? deckle.moveTo(x, y) : deckle.lineTo(x, y);
     }
-    all.forEach((min, i) => ticks[team].push({ min, on: i < M.onTarget[team] }));
+  }
+  deckle.closePath();
+
+  paperC = document.createElement("canvas");
+  paperC.width = W; paperC.height = H;
+  const p = paperC.getContext("2d");
+  p.save();
+  p.shadowColor = "rgba(0,0,0,0.5)";
+  p.shadowBlur = 34 * DPR; p.shadowOffsetY = 12 * DPR;
+  p.fillStyle = M.ink.paper;
+  p.fill(deckle);
+  p.shadowColor = "rgba(0,0,0,0.38)";
+  p.shadowBlur = 7 * DPR; p.shadowOffsetY = 2.5 * DPR;
+  p.fill(deckle);
+  p.restore();
+  p.save();
+  p.clip(deckle);
+  p.strokeStyle = "rgba(88,76,58,0.16)"; // torn-fiber edge tone
+  p.lineWidth = 2.6 * DPR;
+  p.stroke(deckle);
+  p.restore();
+}
+
+function build() {
+  buildPaper();
+  X0 = px + 0.205 * pw; X1 = px + 0.862 * pw;
+  T0 = py + 0.108 * ph; B0 = py + 0.948 * ph;
+  S = (B0 - T0) / (TOTAL - 1);
+  fs = Math.min(11.5 * DPR, Math.max(0.022 * pw, 7.5 * DPR));
+
+  // shot ticks: pinned real minutes + seeded remainder within exact counts
+  const Rt = ART.rng(seed + "ticks");
+  const spans = [[1, 45], [46, TOTAL]];
+  const ticks = { arg: [], aut: [] };
+  for (const team of ["arg", "aut"]) {
+    const seeded = [];
+    M.shotsPhase[team].forEach((count, pi) => {
+      const [a, b] = spans[pi];
+      const pinned = M.shotMinutes[team].filter((s) => s.min >= a && s.min <= b);
+      for (let i = 0; i < count - pinned.length; i++)
+        seeded.push({ min: a + 1.5 + Rt() * (b - a - 3), on: false });
+    });
+    const need = M.onTarget[team] - M.shotMinutes[team].filter((s) => s.on).length;
+    seeded.forEach((s, i) => { if (i < need) s.on = true; });
+    ticks[team] = M.shotMinutes[team].concat(seeded);
   }
 
-  const plen = [45, 45, 30];
+  const plen = [45, TOTAL - 45];
   const dens = {}; let dmax = 0;
-  for (const tm of ["arg", "cpv"]) {
+  for (const tm of ["arg", "aut"]) {
     dens[tm] = M.xgPhase[tm].map((x, i) => x / plen[i]);
     dmax = Math.max(dmax, ...dens[tm]);
   }
-  const phaseOf = (m) => (m <= 45 ? 0 : m <= 90 ? 1 : 2);
+  const phaseOf = (m) => (m <= 45 ? 0 : 1);
 
-  // energy at minute m for one team: xG simmer + shot spikes + goal mountains
+  // energy at minute m for one team: xG simmer + shot spikes + penalty +
+  // goal mountains (the record goal kept separate — it carries the gold)
   function amp(team, m) {
     let a = (dens[team][phaseOf(m)] / dmax) * 0.8;
     for (const s of ticks[team]) {
       const d = m - s.min;
       a += (s.on ? 2.0 : 1.0) * Math.exp(-d * d / (2 * 0.55 * 0.55));
     }
-    let g = 0;
+    if (M.penalty.team === team) {
+      const d = m - M.penalty.min;
+      a += 2.3 * Math.exp(-d * d / (2 * 0.6 * 0.6));
+    }
+    let g1 = 0, g2 = 0;
     for (const go of M.goals) if (go.team === team) {
       const d = m - (go.exact || go.min);
-      g += 7.6 * Math.exp(-d * d / (2 * 1.15 * 1.15));
+      if (go.record) g2 += 10.8 * Math.exp(-d * d / (2 * 1.3 * 1.3));
+      else g1 += 6.8 * Math.exp(-d * d / (2 * 1.05 * 1.05));
     }
-    return { a: Math.min(a + g, 8.6) * S, g: Math.min(g, 8.6) * S };
+    return { a: Math.min(a + g1 + g2, 11.8) * S, g1: g1 * S, g2: g2 * S };
   }
 
-  const ss = (a, b, v) => {
-    const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
-    return t * t * (3 - 2 * t);
-  };
+  const tri = (x) => 4 * Math.abs((x % 1 + 1) % 1 - 0.5) - 1;
 
   lines = [];
-  const nS = 150;
-  for (let i = 0; i < 120; i++) {
-    const m = i + 1, y0 = T0 + i * S;
-    const A = amp("arg", m), C = amp("cpv", m);
-    const heavy = m === 45 || m === 90 || m === 105;
+  const nS = 240;
+  for (let i = 0; i < TOTAL; i++) {
+    const m = i + 1;
+    // baseline drift: the roll feeds unevenly down the page
+    const y0 = T0 + i * S + 0.55 * S * N.noise2(3.7, i * 0.083);
+    const Rl = ART.rng(seed + "line" + i);
+    const xj = (Rl() - 0.5) * 0.014 * pw; // ragged pen-down margin
+    const A = amp("arg", m), C = amp("aut", m);
+    const cardsHere = M.cards.filter((c) => c.min === m);
+    const goal = M.goals.find((g) => g.min === m);
+    const heavy = m === 45 || m === 90;
+    const event = !!(goal || cardsHere.length || m === M.penalty.min);
     const pts = [];
     for (let j = 0; j < nS; j++) {
-      const u = j / (nS - 1), x = X0 + u * (X1 - X0);
+      const u = j / (nS - 1), x = X0 + xj + u * (X1 - X0);
       const taper = ss(0, 0.05, u) * ss(1, 0.95, u);
       const winA = Math.exp(-(((u - 0.27) / 0.17) ** 2));
       const winC = Math.exp(-(((u - 0.73) / 0.17) ** 2));
       const shape = 0.3 + 0.7 * (0.5 + 0.5 * N.fbm2(u * 11 + i * 0.61, i * 3.17, 3));
       const hf = N.noise2(u * 70, i * 9.3);
       const main = (A.a * winA + C.a * winC) * shape * taper * (1 + 0.25 * hf);
-      const gA = A.g * winA * shape * taper, gC = C.g * winC * shape * taper;
+      const gT1 = A.g1 * winA * shape * taper;
+      const gT2 = A.g2 * winA * shape * taper;
       const tremor = 0.10 * S * N.noise2(u * 90 + i * 4.4, i * 17.7);
-      const wob = 0.16 * S * N.noise2(u * 2.1, i * 0.83);
+      const wob = 0.22 * S * N.noise2(u * 1.6 + i * 0.05, i * 0.29);
+      let y = y0 - (main + tremor + wob);
+      // booking signature: a sharp zigzag that cuts BELOW the baseline
+      for (const c of cardsHere) {
+        const uc = c.team === "arg" ? 0.30 : 0.70;
+        const env = Math.exp(-(((u - uc) / 0.052) ** 2)) * taper;
+        y += env * S * (0.62 * tri(u * 40 + i * 0.7) + 0.16);
+      }
       let tint = null;
-      if (gA > 2.3 * S || gC > 2.3 * S)
-        tint = gA > gC ? M.ink.argDeep : M.ink.cpvDeep;
-      pts.push({ x, y: y0 - (main + tremor + wob), tint });
+      if (gT2 > 2.3 * S) tint = M.ink.goldDeep;
+      else if (gT1 > 2.3 * S) tint = M.ink.argDeep;
+      pts.push({ x, y, tint });
     }
-    const peaks = [];
+
+    // ink pooling: peaks, hard direction changes, the deepest booking dip
+    const pools = [];
     for (let j = 2; j < nS - 2; j++) {
       if (y0 - pts[j].y > 2.4 * S &&
           pts[j].y < pts[j - 1].y && pts[j].y <= pts[j + 1].y &&
           pts[j].y < pts[j - 2].y && pts[j].y < pts[j + 2].y)
-        peaks.push(pts[j]);
+        pools.push({ x: pts[j].x, y: pts[j].y, r: 1.35 * DPR, tint: pts[j].tint });
     }
-    let label = null;
-    const go = M.goals.find((g) => g.min === m);
-    if (go) label = {
-      left: go.team === "arg", l1: go.min + "’", l2: go.player,
-      col: go.team === "arg" ? M.ink.argDeep : M.ink.cpvDeep,
-    };
-    lines.push({ y: y0, pts, peaks, heavy, label });
+    for (let j = 3; j < nS - 3; j++) {
+      const c = Math.abs(pts[j - 2].y - 2 * pts[j].y + pts[j + 2].y);
+      if (c > 1.35 * S && Rl() < 0.16 && pools.length < 7)
+        pools.push({ x: pts[j].x, y: pts[j].y, r: (1.0 + 0.7 * Rl()) * DPR, tint: pts[j].tint });
+    }
+    if (cardsHere.length) {
+      let dj = 0;
+      for (let j = 0; j < nS; j++) if (pts[j].y > pts[dj].y) dj = j;
+      if (pts[dj].y > y0 + 0.25 * S)
+        pools.push({ x: pts[dj].x, y: pts[dj].y, r: 1.55 * DPR, tint: null });
+    }
+
+    // margin annotations, the record clerk's hand
+    const labs = [];
+    if (goal) labs.push({
+      left: true, l1: mm(goal.min), l2: goal.player + " · " + goal.nth + "º",
+      col: goal.record ? M.ink.goldDeep : M.ink.argDeep,
+    });
+    if (m === M.penalty.min)
+      labs.push({ left: true, single: true, l1: mm(m) + " penal", col: INK + "0.55)" });
+    for (const c of cardsHere)
+      labs.push({ left: c.team === "arg", single: true,
+                  l1: mm(c.min) + " " + c.player, col: INK + "0.62)" });
+    if (heavy) labs.push({ left: false, single: true, l1: mm(m), col: INK + "0.38)" });
+
+    lines.push({ y: y0, pts, pools, heavy, event, labs });
   }
 
   off = document.createElement("canvas");
   off.width = W; off.height = H;
   offCtx = off.getContext("2d");
-  for (let k = 0; k < Math.min(drawn, 120); k++) drawLine(offCtx, k, 1);
+  stamp(offCtx);
+  for (let k = 0; k < Math.min(drawn, TOTAL); k++) drawLine(offCtx, k, 1);
 
   grain = document.createElement("canvas");
   grain.width = W; grain.height = H;
@@ -137,6 +240,34 @@ function build() {
     img.data[i + 3] = 24;
   }
   g.putImageData(img, 0, 0);
+
+  if (settled) render(TOTAL);
+}
+
+// the printed header of the record form — set before the pen moves
+function stamp(g) {
+  const f = fs * 0.92;
+  g.font = f + "px 'Geist Mono', ui-monospace, monospace";
+  const xL = px + 0.048 * pw, xR = px + 0.952 * pw;
+  const y1 = py + 0.038 * ph + f, y2 = y1 + f * 1.6;
+  g.fillStyle = INK + "0.5)";
+  g.textAlign = "left";
+  g.fillText("reg. nº 002 · mundial 2026 · grupo j", xL, y1);
+  g.fillText("estadio de dallas, arlington · 22·06·2026", xL, y2);
+  g.textAlign = "right";
+  g.fillText("arg 2–0 aut", xR, y1);
+  g.fillText("70 649", xR, y2);
+}
+
+// possession as ink weight: argentina's half of the line runs darker
+function inkGrad(g, heavy) {
+  const al = (p) => Math.min(1, 0.70 + 0.25 * (p - 46) / 8 + (heavy ? 0.06 : 0)).toFixed(2);
+  const gr = g.createLinearGradient(X0, 0, X1, 0);
+  gr.addColorStop(0, INK + al(M.possession.arg) + ")");
+  gr.addColorStop(0.42, INK + al(M.possession.arg) + ")");
+  gr.addColorStop(0.58, INK + al(M.possession.aut) + ")");
+  gr.addColorStop(1, INK + al(M.possession.aut) + ")");
+  return gr;
 }
 
 // draw one record line onto g, clipped to fraction `clip` of its width;
@@ -151,14 +282,15 @@ function drawLine(g, i, clip) {
   g.lineTo(pts[n - 1].x, L.y + 1.6 * DPR);
   g.closePath();
   g.fill();
-  g.lineWidth = (L.heavy ? 1.6 : 1.05) * DPR;
+  g.lineWidth = (L.heavy ? 1.6 : L.event ? 1.42 : 1.05) * DPR;
   g.lineJoin = "round"; g.lineCap = "round";
+  const base = inkGrad(g, L.heavy || L.event);
   let j0 = 0;
   while (j0 < n - 1) {
     const c = pts[j0].tint;
     let j1 = j0 + 1;
     while (j1 < n && pts[j1].tint === c) j1++;
-    g.strokeStyle = c || INK + (L.heavy ? "0.95)" : "0.85)");
+    g.strokeStyle = c || base;
     g.beginPath();
     g.moveTo(pts[j0].x, pts[j0].y);
     for (let j = j0 + 1; j <= Math.min(j1, n - 1); j++) g.lineTo(pts[j].x, pts[j].y);
@@ -166,61 +298,81 @@ function drawLine(g, i, clip) {
     j0 = j1;
   }
   if (clip >= 1) {
-    const dot = (p, r, col) => {
+    const dot = (x, y, r, col) => {
       g.fillStyle = col;
-      g.beginPath(); g.arc(p.x, p.y, r, 0, 7); g.fill();
+      g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
     };
-    dot(pts[0], 1.15 * DPR, INK + "0.55)");
-    dot(pts[pts.length - 1], 1.15 * DPR, INK + "0.55)");
-    for (const p of L.peaks) dot(p, 1.35 * DPR, p.tint || INK + "0.75)");
-    if (L.label) {
-      g.font = fs + "px 'Geist Mono', ui-monospace, monospace";
-      g.fillStyle = L.label.col;
-      g.textAlign = L.label.left ? "right" : "left";
-      const lx = L.label.left ? X0 - 0.015 * W : X1 + 0.015 * W;
-      g.fillText(L.label.l1, lx, L.y - fs * 0.25);
-      g.fillText(L.label.l2, lx, L.y + fs * 0.85);
+    dot(pts[0].x, pts[0].y, 1.15 * DPR, INK + "0.55)");
+    dot(pts[pts.length - 1].x, pts[pts.length - 1].y, 1.15 * DPR, INK + "0.55)");
+    for (const p of L.pools) dot(p.x, p.y, p.r, p.tint || INK + "0.78)");
+    for (const lab of L.labs) {
+      const mono = (s) => s + "px 'Geist Mono', ui-monospace, monospace";
+      const lx = lab.left ? X0 - 0.018 * pw : X1 + 0.018 * pw;
+      // fit-guard: an annotation never leaves the sheet
+      const maxw = lab.left ? lx - px - 0.028 * pw : px + pw - 0.028 * pw - lx;
+      let f = fs;
+      g.font = mono(f);
+      const tw = Math.max(g.measureText(lab.l1).width,
+        lab.l2 ? g.measureText(lab.l2).width : 0);
+      if (tw > maxw) { f = Math.max(6 * DPR, f * maxw / tw); g.font = mono(f); }
+      g.fillStyle = lab.col;
+      g.textAlign = lab.left ? "right" : "left";
+      if (lab.single) { g.fillText(lab.l1, lx, L.y + f * 0.35); continue; }
+      g.fillText(lab.l1, lx, L.y - f * 0.25);
+      g.fillText(lab.l2, lx, L.y + f * 0.85);
     }
   }
 }
 
-function draw(tms) {
-  const t = tms / 1000, cycle = t % 34;
-  if (cycle < lastCycle) { offCtx.clearRect(0, 0, W, H); drawn = 0; }
-  lastCycle = cycle;
-  const pos = Math.min(1, cycle / 26) * 120;
-  while (drawn < Math.floor(pos) && drawn < 120) { drawLine(offCtx, drawn, 1); drawn++; }
-
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = M.ink.paper;
-  ctx.fillRect(0, 0, W, H);
+function render(pos) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.drawImage(paperC, 0, 0);
   ctx.drawImage(off, 0, 0);
 
-  if (pos < 120) {
-    const i = Math.min(119, Math.floor(pos)), frac = pos - i;
+  if (pos < TOTAL) {
+    const i = Math.min(TOTAL - 1, Math.floor(pos)), frac = pos - i;
     drawLine(ctx, i, Math.max(0.02, frac));
     const pts = lines[i].pts;
     const pj = Math.max(0, Math.min(pts.length - 1, Math.ceil(frac * (pts.length - 1))));
     ctx.fillStyle = INK + "0.9)";
     ctx.beginPath(); ctx.arc(pts[pj].x, pts[pj].y, 2.1 * DPR, 0, 7); ctx.fill();
-    // travelling minute readout (skipped next to right-margin goal labels)
-    const nearCpvLabel = (k) => k >= 0 && k < 120 && lines[k].label && !lines[k].label.left;
-    if (!nearCpvLabel(i) && !nearCpvLabel(i - 1) && !nearCpvLabel(i + 1)) {
+    // travelling minute readout (skipped next to right-margin labels)
+    const nearR = (k) => k >= 0 && k < TOTAL && lines[k].labs.some((l) => !l.left);
+    if (!nearR(i) && !nearR(i - 1) && !nearR(i + 1)) {
       ctx.font = fs + "px 'Geist Mono', ui-monospace, monospace";
       ctx.fillStyle = INK + "0.4)";
       ctx.textAlign = "left";
-      ctx.fillText((i + 1) + "’", X1 + 0.02 * W, lines[i].y + fs * 0.35);
+      ctx.fillText(mm(i + 1), X1 + 0.018 * pw, lines[i].y + fs * 0.35);
     }
   } else {
-    // the pen rests at the end of line 120, ink pooling
-    const p = lines[119].pts[lines[119].pts.length - 1];
-    ctx.fillStyle = INK + (0.55 + 0.3 * Math.sin(t * 2.2)).toFixed(2) + ")";
-    ctx.beginPath(); ctx.arc(p.x, p.y, 2.4 * DPR, 0, 7); ctx.fill();
+    // the pen rests where the record ends, one last pool of ink
+    const p = lines[TOTAL - 1].pts[lines[TOTAL - 1].pts.length - 1];
+    ctx.fillStyle = INK + "0.72)";
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2.3 * DPR, 0, 7); ctx.fill();
   }
 
+  // finishing pass, clipped to the sheet: raking light + paper grain
+  ctx.save();
+  ctx.clip(deckle);
+  const lg = ctx.createLinearGradient(0, py, 0, py + ph);
+  lg.addColorStop(0, "rgba(255,252,244,0.055)");
+  lg.addColorStop(0.35, "rgba(255,252,244,0)");
+  lg.addColorStop(1, "rgba(58,48,34,0.05)");
+  ctx.fillStyle = lg;
+  ctx.fillRect(px - 8, py - 8, pw + 16, ph + 16);
   ctx.globalCompositeOperation = "multiply";
   ctx.drawImage(grain, 0, 0);
-  ctx.globalCompositeOperation = "source-over";
+  ctx.restore();
+}
+
+// the record draws itself once — ~11 s, top to bottom — then rests
+function draw(tms) {
+  if (start === undefined) start = tms;
+  const t = (tms - start) / 1000;
+  const pos = RM ? TOTAL : Math.min(TOTAL, t * 8.4);
+  while (drawn < Math.floor(pos) && drawn < TOTAL) { drawLine(offCtx, drawn, 1); drawn++; }
+  render(pos);
+  if (pos >= TOTAL) { settled = true; return; } // settled — the loop stops
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);

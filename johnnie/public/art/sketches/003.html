@@ -144,7 +144,7 @@ void main(){
   float wArg = dot(wv, u_team);
   float wJor = dot(wv, 1.0 - u_team);
   vec3 sandc = vec3(0.905, 0.865, 0.760);
-  sandc = mix(sandc, vec3(0.700, 0.855, 0.950), wArg*0.22);
+  sandc = mix(sandc, vec3(0.700, 0.855, 0.950), wArg*0.27);
   sandc = mix(sandc, vec3(0.660, 0.340, 0.290), wJor*0.30);
   sandc *= 0.82 + 0.22*lit;
   col = mix(col, sandc, sand);
@@ -192,11 +192,13 @@ const F = FRAME.mount({
 });
 const sf = ART.rng(seed)() * 100;
 
-// the drive sweeps once (10s), locks the fourth figure, then the plate rests
+// the drive sweeps once (10s), locks the fourth figure, then the plate rests;
+// reduced motion goes straight to the final locked composition
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
 function loop(tms) {
   if (!sh || done) return;
   if (start === null) start = tms;
-  const p = Math.min(1, (tms - start) / 10000);
+  const p = still ? 1 : Math.min(1, (tms - start) / 10000);
   sh.gl.uniform1f(sh.extra.u_p, p);
   sh.draw(tms / 1000, sf);
   if (p >= 1) { done = true; return; }
