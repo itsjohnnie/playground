@@ -330,15 +330,32 @@ function inkGrad(g, heavy) {
   return gr;
 }
 
+// the live tremor: a resting needle's static. Two low-frequency waves along
+// the line plus a whole-line breath — sub-pixel, phases drifting per line.
+// Fills the JY scratch for one line at time t (seconds).
+function tremor(L, t) {
+  for (let j = 0; j < NS; j++) {
+    const u = j / (NS - 1);
+    JY[j] = JQ * (0.55 * Math.sin(u * 2.6 + t * 1.05 + L.phA)
+                + 0.30 * Math.sin(u * 8.3 - t * 0.65 + L.phB)
+                + 0.15 * Math.sin(t * 0.33 + L.phC));
+  }
+}
+
 // draw one record line onto g, clipped to fraction `clip` of its width;
-// each line first fills ground under itself (occludes the mountains above)
-function drawLine(g, i, clip) {
+// each line first fills ground under itself (occludes the mountains above).
+// Pass t (seconds) to lay the line down with the live tremor — the trace's
+// shape, tints and weights are untouched; only a sub-pixel y drift rides it.
+function drawLine(g, i, clip, t) {
   const L = lines[i], pts = L.pts;
   const n = Math.max(2, Math.min(pts.length, Math.ceil(clip * (pts.length - 1)) + 1));
+  const live = t !== undefined;
+  if (live) tremor(L, t);
   g.fillStyle = ROOM;
   g.beginPath();
   g.moveTo(pts[0].x, L.y + 1.6 * DPR);
-  for (let j = 0; j < n; j++) g.lineTo(pts[j].x, pts[j].y);
+  if (live) for (let j = 0; j < n; j++) g.lineTo(pts[j].x, pts[j].y + JY[j]);
+  else for (let j = 0; j < n; j++) g.lineTo(pts[j].x, pts[j].y);
   g.lineTo(pts[n - 1].x, L.y + 1.6 * DPR);
   g.closePath();
   g.fill();
@@ -352,38 +369,43 @@ function drawLine(g, i, clip) {
     while (j1 < n && pts[j1].tint === c) j1++;
     g.strokeStyle = c || base;
     g.beginPath();
-    g.moveTo(pts[j0].x, pts[j0].y);
-    for (let j = j0 + 1; j <= Math.min(j1, n - 1); j++) g.lineTo(pts[j].x, pts[j].y);
+    g.moveTo(pts[j0].x, pts[j0].y + (live ? JY[j0] : 0));
+    const jEnd = Math.min(j1, n - 1);
+    if (live) for (let j = j0 + 1; j <= jEnd; j++) g.lineTo(pts[j].x, pts[j].y + JY[j]);
+    else for (let j = j0 + 1; j <= jEnd; j++) g.lineTo(pts[j].x, pts[j].y);
     g.stroke();
     j0 = j1;
   }
-  if (clip >= 1) {
-    const dot = (x, y, r, col) => {
-      g.fillStyle = col;
-      g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
-    };
-    dot(pts[0].x, pts[0].y, 1.15 * DPR, INK + "0.55)");
-    dot(pts[pts.length - 1].x, pts[pts.length - 1].y, 1.15 * DPR, INK + "0.55)");
-    for (const p of L.pools) dot(p.x, p.y, p.r, p.tint || INK + "0.78)");
-    for (const lab of L.labs) {
-      const lx = lab.left ? X0 - 0.018 * pw : X1 + 0.018 * pw;
-      const l1 = lab.l1.toUpperCase(), l2 = lab.l2 && lab.l2.toUpperCase();
-      // fit-guard: an annotation never leaves the sheet (Sans metrics)
-      const maxw = lab.left ? lx - px - 0.028 * pw : px + pw - 0.028 * pw - lx;
-      let f = fs;
-      g.font = FONT(f);
-      g.letterSpacing = TRACK;
-      const tw = Math.max(g.measureText(l1).width, l2 ? g.measureText(l2).width : 0);
-      if (tw > maxw) { f = Math.max(6 * DPR, f * maxw / tw); g.font = FONT(f); }
-      g.fillStyle = lab.col;
-      g.textAlign = lab.left ? "right" : "left";
-      if (lab.single) g.fillText(l1, lx, L.y + f * 0.35);
-      else {
-        g.fillText(l1, lx, L.y - f * 0.25);
-        g.fillText(l2, lx, L.y + f * 0.85);
-      }
-      g.letterSpacing = "0px";
+}
+
+// the still marks of one line: endpoint dots, ink pools, margin annotations
+function decorLine(g, i) {
+  const L = lines[i], pts = L.pts;
+  const dot = (x, y, r, col) => {
+    g.fillStyle = col;
+    g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  };
+  dot(pts[0].x, pts[0].y, 1.15 * DPR, INK + "0.55)");
+  dot(pts[pts.length - 1].x, pts[pts.length - 1].y, 1.15 * DPR, INK + "0.55)");
+  for (const p of L.pools) dot(p.x, p.y, p.r, p.tint || INK + "0.78)");
+  for (const lab of L.labs) {
+    const lx = lab.left ? X0 - 0.018 * pw : X1 + 0.018 * pw;
+    const l1 = lab.l1.toUpperCase(), l2 = lab.l2 && lab.l2.toUpperCase();
+    // fit-guard: an annotation never leaves the sheet (Sans metrics)
+    const maxw = lab.left ? lx - px - 0.028 * pw : px + pw - 0.028 * pw - lx;
+    let f = fs;
+    g.font = FONT(f);
+    g.letterSpacing = TRACK;
+    const tw = Math.max(g.measureText(l1).width, l2 ? g.measureText(l2).width : 0);
+    if (tw > maxw) { f = Math.max(6 * DPR, f * maxw / tw); g.font = FONT(f); }
+    g.fillStyle = lab.col;
+    g.textAlign = lab.left ? "right" : "left";
+    if (lab.single) g.fillText(l1, lx, L.y + f * 0.35);
+    else {
+      g.fillText(l1, lx, L.y - f * 0.25);
+      g.fillText(l2, lx, L.y + f * 0.85);
     }
+    g.letterSpacing = "0px";
   }
 }
 
@@ -418,11 +440,20 @@ function render(pos) {
     ctx.beginPath(); ctx.arc(p.x, p.y, 2.3 * DPR, 0, 7); ctx.fill();
   }
 
-  // finishing pass — per ground
+  finish();
+}
+
+// finishing pass — per ground. With t the grain shimmers faintly with the
+// record's static: a slow breath of density only — no drift, no flicker;
+// the traces carry the life, the grain merely doesn't sit dead on them.
+function finish(t) {
+  const ga = t !== undefined ? 0.96 + 0.04 * Math.sin(t * 0.9) : 1;
   if (DARK) {
     // a whisper of light film grain, already masked to breathe out around
     // the block; the room itself stays untouched darkness
+    ctx.globalAlpha = ga;
     ctx.drawImage(grain, 0, 0);
+    ctx.globalAlpha = 1;
   } else {
     // paper: raking light down the sheet + dark grain, multiplied
     ctx.save();
@@ -433,19 +464,42 @@ function render(pos) {
     ctx.fillStyle = lg;
     ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = ga;
     ctx.drawImage(grain, 0, 0);
     ctx.restore();
   }
 }
 
-// the record draws itself once — ~11 s, top to bottom — then rests
+// the settled record, alive: re-stroke every trace with the needle's static
+// (the still layer rides on top, baked), the pen resting on the last point
+function renderLive(t) {
+  ctx.clearRect(0, 0, W, H);
+  if (GROUND) { ctx.fillStyle = GROUND; ctx.fillRect(0, 0, W, H); }
+  for (let i = 0; i < TOTAL; i++) drawLine(ctx, i, 1, t);
+  ctx.drawImage(decor, 0, 0);
+  // the pen quivers with its line — JY still holds the last trace's tremor
+  const L = lines[TOTAL - 1], p = L.pts[L.pts.length - 1];
+  ctx.fillStyle = INK + "0.72)";
+  ctx.beginPath(); ctx.arc(p.x, p.y + JY[NS - 1], 2.3 * DPR, 0, 7); ctx.fill();
+  finish(t);
+}
+
+// the record draws itself once — ~11 s, top to bottom — then stays alive:
+// the loop keeps running at half rate (every other rAF tick) laying the
+// traces down with the resting needle's static. Reduced motion settles
+// instantly and the loop stops — the still record is the artwork.
 function draw(tms) {
   if (start === undefined) start = tms;
   const t = (tms - start) / 1000;
   const pos = RM ? TOTAL : Math.min(TOTAL, t * 8.4);
-  while (drawn < Math.floor(pos) && drawn < TOTAL) { drawLine(offCtx, drawn, 1); drawn++; }
-  render(pos);
-  if (pos >= TOTAL) { settled = true; return; } // settled — the loop stops
+  while (drawn < Math.floor(pos) && drawn < TOTAL) {
+    drawLine(offCtx, drawn, 1); decorLine(offCtx, drawn); drawn++;
+  }
+  if (pos >= TOTAL) {
+    settled = true;
+    if (RM) { render(TOTAL); return; } // reduced motion: the record rests
+    if ((tick++ & 1) === 0) renderLive(t);
+  } else render(pos);
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
