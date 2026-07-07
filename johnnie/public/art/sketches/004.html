@@ -8,11 +8,19 @@
 <script id="frag" type="x-shader">
 precision highp float;
 uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
+uniform vec4 u_geo;           // hw, hh, pad, T — face half-extents, texture pad, thickness (px)
+// the pose + lighting frame, hoisted to the CPU (per frame, not per pixel):
+uniform vec3 u_cx, u_cy, u_ro, u_rd;  // world->slab: o = p.x·cx + p.y·cy + ro, ray dir rd
+uniform vec3 u_ls, u_hv, u_lf, u_bn;  // key light, half-vector, fill, floor bounce (slab space)
+uniform vec3 u_lw;                    // key light, world space (for the wall)
+uniform vec2 u_lp;                    // lamp pool anchor on the wall (world px)
 uniform sampler2D u_map;
 
-// u_map: RG = surface normal xy, B = height, A = cavity (concave/convex).
-// One warm key light rakes across the relief as u_p goes 0 -> 1, then rests
-// at the upper left. Patina sits in the recesses, wear on the proud edges.
+// u_map (slab-face space): RG = surface normal xy, B = height, A = cavity.
+// The slab is a real extruded rounded-rect raycast orthographically: relief
+// on the face, sand-cast side walls, a bevelled arris where face meets edge,
+// a thrown shadow on the felt wall behind. Tilting the slab (u_tilt) moves
+// every highlight because lighting is done in slab space.
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
 float vnoise(vec2 p){
@@ -21,92 +29,158 @@ float vnoise(vec2 p){
   return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
              mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
 }
+float sdRR(vec2 q, vec2 b, float r){
+  vec2 w = abs(q) - b + r;
+  return min(max(w.x, w.y), 0.0) + length(max(w, 0.0)) - r;
+}
+vec2 sdGrad(vec2 q, vec2 b, float r){
+  vec2 w = abs(q) - b + r;
+  vec2 g = (w.x > 0.0 && w.y > 0.0) ? normalize(w)
+         : (w.x > w.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
+  return g * sign(q + vec2(1e-4));
+}
 
 void main(){
   vec2 fc = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
-  vec2 uv = fc / u_res;
-  float dw = min(u_res.x, u_res.y*0.75);
+  vec2 p = fc - 0.5*u_res;                    // world px, origin at slab centre
+  float hw = u_geo.x, hh = u_geo.y, pad = u_geo.z, T = u_geo.w;
+  float S = hw*2.0/0.9;                       // the old design unit
+  float r = 0.0444*hw;                        // corner radius of the cast
+  vec2 b = vec2(hw, hh);
+  vec2 hwt = b + pad;
 
-  vec4 m = texture2D(u_map, uv);
-  vec2 nxy = m.xy*2.0 - 1.0;
-  vec3 N = vec3(nxy, sqrt(max(0.04, 1.0 - dot(nxy, nxy))));
-  float h = m.z;
-  float cav = (m.w - 0.5)*2.0;
+  // pose: slab rotated about its core; the ray enters slab space pre-baked
+  vec3 o = p.x*u_cx + p.y*u_cy + u_ro;        // ortho ray in slab space
+  vec3 d = u_rd;
+
+  float tT = -o.z/d.z;                        // face plane z = 0
+  float tB = (-T - o.z)/d.z;                  // underside z = -T
+  vec2 q0 = o.xy + tT*d.xy;
+  vec2 q1 = o.xy + tB*d.xy;
+  float sd0 = sdRR(q0, b, r), sd1 = sdRR(q1, b, r);
+  float cov = 1.0 - smoothstep(-0.9, 0.9, min(sd0, sd1));  // silhouette, AA'd
 
   // the lamp: grazing from the lower right, arcs overhead, settles upper left
-  float pe = u_p*u_p*(3.0 - 2.0*u_p);
-  float az = mix(0.46, -2.25, pe);
-  float el = mix(0.13, 0.56, pe);
-  vec3 L = normalize(vec3(cos(az)*cos(el), sin(az)*cos(el), sin(el)));
-  vec2 Lh = normalize(L.xy);
-  vec3 Hv = normalize(L + vec3(0.0, 0.0, 1.0));
-
-  float plaque = smoothstep(0.20, 0.32, h);
-  float occ  = smoothstep(0.03, -0.20, cav);            // recesses -> patina
-  float wear = smoothstep(0.06, 0.26, cav) * plaque;    // proud edges -> polish
-
-  // cast shadow: march a few taps toward the lamp
-  float D = 0.055*dw;
-  float tanel = L.z / max(length(L.xy), 1e-3);
-  float shad = 0.0;
-  for (int k = 1; k <= 4; k++){
-    float s = float(k)*0.0055*dw;
-    float hs = texture2D(u_map, uv + Lh*s/u_res).z;
-    float blk = ((hs - h)*D - s*tanel) / D;
-    shad = max(shad, smoothstep(0.0, 0.10, blk));
-  }
-  shad *= 0.75;
-
-  // material
-  float mot = 0.6*vnoise(fc/(dw*0.055)) + 0.4*vnoise(fc/(dw*0.012));
-  vec3 bronze = vec3(0.40, 0.27, 0.15) * (0.80 + 0.45*mot);
-  vec3 patina = vec3(0.085, 0.082, 0.062);
-  vec3 gold   = vec3(0.90, 0.66, 0.33);
-  vec3 alb = mix(bronze, patina, occ*0.88);
-  alb = mix(alb, gold, wear*0.60);
-  float felt = vnoise(fc/(dw*0.0035));
-  vec3 galb = vec3(0.055, 0.050, 0.043) * (0.75 + 0.55*felt);
-  alb = mix(galb, alb, plaque);
-
-  // light
-  float dif = max(dot(N, L), 0.0) * (1.0 - shad);
-  vec2 lpos = clamp(vec2(0.5) + Lh*0.38, 0.0, 1.0);
-  vec2 ld = (uv - lpos) * u_res / dw;
-  float fall = clamp(1.16 - 0.28*length(ld), 0.35, 1.2);
+  vec3 Lw = u_lw;
+  vec3 Ls = u_ls;
+  vec3 Hv = u_hv;
+  vec3 Lfs = u_lf;
   vec3 key = vec3(1.06, 0.97, 0.86);
-  float ndh = max(dot(N, Hv), 0.0);
-  float spec = pow(ndh, 64.0)*(0.55 + 1.8*wear) + pow(ndh, 12.0)*0.18;
-  spec *= (1.0 - shad) * mix(0.06, 1.0, plaque) * (1.0 - occ*0.7);
-  vec3 Lf = normalize(vec3(0.55, 0.35, 0.45));
-  float fil = max(dot(N, Lf), 0.0)*0.16;
-  float ao = 1.0 - occ*0.55;
-  vec3 col = alb*(key*dif*fall*1.65 + vec3(0.80, 0.88, 1.02)*fil*ao + 0.055*ao)
-           + key*spec*fall;
+  vec3 cool = vec3(0.80, 0.88, 1.02);
+  float fall = clamp(1.16 - 0.28*length(p - u_lp)/S, 0.35, 1.2);
+
+  // ---- the felt wall behind, and the shadow the slab throws on it ----
+  vec3 col = vec3(0.0);
+  if (cov < 0.999){                           // skip the wall under the slab
+    float felt = vnoise(p/(S*0.0035));
+    vec3 galb = vec3(0.055, 0.050, 0.043)*(0.75 + 0.55*felt);
+    float gap = 0.18*hw;                      // the plaque stands proud of the wall
+    vec2 po = p + Lw.xy*((0.5*T + gap)/max(Lw.z, 0.35));
+    float wsh = (1.0 - smoothstep(0.0, 0.09*S, sdRR(po, b*1.02, r)))*0.85;
+    col = galb*(key*max(Lw.z, 0.0)*fall*1.5*(1.0 - wsh) + vec3(0.10)*(1.0 - 0.6*wsh));
+  }
+
+  if (cov > 0.001){
+    vec3 sc;
+    if (sd0 < 0.0){
+      // ---- the face: relief under the lamp ----
+      vec2 uv = (q0 + hwt)/(2.0*hwt);
+      vec4 m = texture2D(u_map, uv);
+      float bw = 0.026*hw;                    // arris width
+      if (sd0 < -bw - 2.0){                   // parallax: re-strike at relief depth
+        float t2 = ((m.z - 0.58)*0.05*S - o.z)/d.z;
+        uv = (o.xy + t2*d.xy + hwt)/(2.0*hwt);
+        m = texture2D(u_map, uv);
+      }
+      vec2 nxy = m.xy*2.0 - 1.0;
+      vec3 N = vec3(nxy, sqrt(max(0.04, 1.0 - dot(nxy, nxy))));
+      float h = m.z, cav = (m.w - 0.5)*2.0;
+      float occ  = smoothstep(0.03, -0.20, cav);          // recesses -> patina
+      float wear = smoothstep(0.06, 0.26, cav);           // proud edges -> polish
+      float fb = smoothstep(-bw, -0.12*bw, sd0);          // bevelled arris
+      if (fb > 0.0){
+        vec3 Nb = normalize(vec3(sdGrad(q0, b, r)*0.80, 0.62));
+        N = normalize(mix(N, Nb, fb));
+        wear = max(wear, fb*0.85);
+        occ *= 1.0 - fb;
+      }
+      // cast shadow: march a few taps toward the lamp
+      float D = 0.055*S;
+      float tanel = Ls.z/max(length(Ls.xy), 1e-3);
+      vec2 Lh = normalize(Ls.xy);
+      float shad = 0.0;
+      for (int k = 1; k <= 4; k++){
+        float s = float(k)*0.0055*S;
+        float hs = texture2D(u_map, uv + Lh*s/(2.0*hwt)).z;
+        shad = max(shad, smoothstep(0.0, 0.10, ((hs - h)*D - s*tanel)/D));
+      }
+      shad *= 0.75;
+      float mot = 0.6*vnoise(q0/(S*0.055) + 7.3) + 0.4*vnoise(q0/(S*0.012));
+      vec3 alb = mix(vec3(0.40, 0.27, 0.15)*(0.80 + 0.45*mot),
+                     vec3(0.085, 0.082, 0.062), occ*0.88);
+      alb = mix(alb, vec3(0.90, 0.66, 0.33), wear*0.60);
+      float dif = max(dot(N, Ls), 0.0)*(1.0 - shad);
+      float ndh = max(dot(N, Hv), 0.0);
+      float spec = pow(ndh, 64.0)*(0.55 + 1.8*wear) + pow(ndh, 12.0)*0.24;
+      spec *= (1.0 - shad)*(1.0 - occ*0.7);
+      float fil = max(dot(N, Lfs), 0.0)*0.16;
+      float ao = 1.0 - occ*0.55;
+      sc = alb*(key*dif*fall*1.65 + cool*fil*ao + 0.055*ao) + key*spec*fall;
+    } else {
+      // ---- side wall: rough sand-cast edge ----
+      float ta = tT, tb = tB;
+      for (int k = 0; k < 7; k++){
+        float tm = 0.5*(ta + tb);
+        if (sdRR(o.xy + tm*d.xy, b, r) > 0.0) ta = tm; else tb = tm;
+      }
+      float th = 0.5*(ta + tb);
+      vec2 qh = o.xy + th*d.xy;
+      float zh = o.z + th*d.z;
+      vec2 g = sdGrad(qh, b, r);
+      float u1 = qh.x*0.8 + qh.y*0.8;
+      float sg = vnoise(vec2(u1, zh*2.0)/(S*0.004));       // sand grain
+      float sb = vnoise(vec2(u1, zh*2.0)/(S*0.022) + 3.1); // slump blotches
+      vec3 N = normalize(vec3(g + (sg - 0.5)*0.55*vec2(g.y, -g.x), (sb - 0.5)*0.6));
+      float fa = smoothstep(-0.20*T, 0.0, zh);             // arris from this side
+      N = normalize(mix(N, normalize(vec3(g*0.8, 0.62)), fa*0.5));
+      float dif = max(dot(N, Ls), 0.0);
+      float fil = max(dot(N, Lfs), 0.0)*0.44;
+      float bnc = max(dot(N, u_bn), 0.0)*0.32;
+      float aoz = mix(0.48, 1.0, (zh + T)/T);              // dark toward the wall
+      vec3 alb = vec3(0.33, 0.225, 0.13)*(0.62 + 0.55*sb)*(0.82 + 0.36*sg);
+      float ndh = max(dot(N, Hv), 0.0);
+      float spec = pow(ndh, 10.0)*0.25 + pow(ndh, 48.0)*0.30*fa;
+      sc = alb*aoz*(key*dif*fall*1.55 + cool*fil + vec3(0.55, 0.42, 0.30)*bnc + 0.09)
+         + key*spec*fall*aoz;
+    }
+    col = mix(col, sc, cov);
+  }
 
   // exposure rises with the lamp, then the print
   col *= mix(0.55, 1.0, smoothstep(0.0, 0.30, u_p));
   col = col/(1.0 + 0.42*col);
   col = pow(col, vec3(0.90));
-  vec2 vq = (uv - 0.5) * vec2(u_res.x/dw, u_res.y/dw);
-  col *= mix(0.70, 1.0, smoothstep(1.25, 0.45, length(vq)));
+  col *= mix(0.70, 1.0, smoothstep(1.35, 0.50, length(p)/S));
   col += (hash(fc*0.83) - 0.5)*0.028;
 
   gl_FragColor = vec4(col, 1.0);
 }
 </script>
 <script>
-// 008 — j · bronce — a commemorative plaque, sand-cast in bronze.
+// 004 · bronce — a commemorative plaque, sand-cast in bronze.
 // The relief is authored as a real heightfield (Canvas 2D: foundry
 // lettering, a 120-minute chapter ring, the sol de mayo, guarda pampa
-// bands), then normals + cavity are baked on the CPU and the metal is
-// lit in GLSL — patina pooled in the recesses, wear on the proud edges,
-// cast shadows marched toward the lamp. Every mark is the match:
-// Argentina's three goals raised from the metal, Cabo Verde's two sunk
-// into it (the 111' own goal ringed), period marks at 45/90/105,
-// hydration notches at 26' and 73', scorers and venue in raised type.
-// One raking light crosses the plaque over ~9s and settles; the loop
-// stops — the final frame is the photograph. Casting flaws (pits, edge
-// slump, face undulation) are seeded; tap to recast.
+// bands), normals + cavity are baked on the CPU, and the metal is a real
+// SLAB now: an extruded rounded-rect raycast in GLSL — thick sand-cast
+// side walls, a bevelled arris, patina pooled in the recesses, wear on the
+// proud edges, a thrown shadow on the felt wall it stands proud of.
+// Every mark is the match: Argentina's three goals raised from the metal,
+// Cabo Verde's two sunk into it (the 111' own goal ringed), period marks
+// at 45/90/105, hydration notches at 26' and 73', scorers and venue in
+// raised type. One raking light crosses the plaque over ~9s and settles;
+// then the piece rests. Drag to take it in hand — the slab tilts a few
+// degrees and every highlight slides; release and it settles back.
+// Rendering is on demand: no rAF at rest.
 
 const seed = ART.seed("2026-07-03-004");
 const M = window.M8;
@@ -114,20 +188,30 @@ const TAU = Math.PI * 2;
 
 let W = 0, H = 0, DPR = 1;
 let sh = null, gl = null, tex = null;
-let built = false, animOn = false, curP = 0, t0 = 0, buildTimer = 0;
+let built = false, mounted = false, curP = 0, buildTimer = 0;
 let fontsOK = false;
+let GEO = null;
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const DUR = 9200;
+
+// the hand: rest pose + drag delta (radians), damped spring on release
+const REST = [0.15, -0.07];
+const MAXD = 0.19;                 // ~11° of hand each axis
+const KDRAG = 0.0014;              // rad per css px, 1:1 under the finger
+let tx = 0, ty = 0, vx = 0, vy = 0, dragging = false;
+let raf = 0, lastT = 0, arriving = false, arriveT0 = 0;
 
 const F = FRAME.mount({
   num: 4, title: "Bronce", subject: "Argentina vs. Cabo Verde",
   edition: "04/31", date: "03·07·2026",
-  stack: "Canvas 2D → GLSL relief", time: "88 minutes",
-  desc: "A commemorative plaque, sand-cast in bronze: the full 120 minutes ring a sol de mayo — Argentina's three goals raised from the metal, Cabo Verde's two struck into it. One raking lamp crosses the relief and settles; the patina keeps the score.",
-  dark: true, onResize(w, h, dpr) {
+  stack: "Canvas 2D → GLSL relief", time: "131 minutes",
+  desc: "A commemorative slab, sand-cast in bronze: the full 120 minutes ring a sol de mayo — Argentina's three goals raised from the metal, Cabo Verde's two struck into it. One raking lamp crosses the relief and settles; the patina keeps the score. Take it in hand — a slow drag tilts the slab, and the light answers.",
+  dark: true, gesture: true, onResize(w, h, dpr) {
     W = w; H = h; DPR = dpr;
     if (!sh) {
-      sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p", "u_map"]);
+      sh = ART.shader(F.canvas, document.getElementById("frag").textContent,
+                      ["u_p", "u_map", "u_geo", "u_cx", "u_cy", "u_ro", "u_rd",
+                       "u_ls", "u_hv", "u_lf", "u_bn", "u_lw", "u_lp"]);
       gl = sh.gl;
       tex = gl.createTexture();
       gl.activeTexture(gl.TEXTURE0);
@@ -155,25 +239,36 @@ function schedule() {
   buildTimer = setTimeout(rebuild, built ? 140 : 0);
 }
 
-/* ---------- the height master: white raises the metal, black sinks it ---------- */
+/* ---------- the height master: white raises the metal, black sinks it ----------
+   Baked in slab-face space: the texture IS the face, plus a small pad. */
 
 const hc = document.createElement("canvas");
 const tc = document.createElement("canvas");
 
 function rebuild() {
-  const S = Math.min(W, H * 0.75), DH = S / 0.75;
-  const cx = W / 2, top = (H - DH) / 2;
-  hc.width = W; hc.height = H;
-  const x = hc.getContext("2d", { willReadFrequently: true });
-  x.fillStyle = "#000"; x.fillRect(0, 0, W, H);
+  // the object in the room: smaller on phones (dark room around it),
+  // near the old proportions on desktop
+  const narrow = H / W > 1.45;
+  const slabW = Math.round(Math.min((narrow ? 0.78 : 0.86) * W, 0.62 * H));
+  const faceH = Math.round(slabW * 1.37037);
+  const pad = Math.round(0.03 * slabW);
+  const TW = slabW + 2 * pad, TH = faceH + 2 * pad;
+  GEO = { hw: slabW / 2, hh: faceH / 2, pad, T: 0.08 * slabW };
 
+  // virtual frame so the composition keeps its authored fractions
+  const S = slabW / 0.9, DH = S / 0.75;
   const mg = 0.05 * S;
-  const PX0 = cx - S / 2 + mg, PY0 = top + mg, PW = S - 2 * mg, PH = DH - 2 * mg;
+  const cx = TW / 2, top = pad - mg;
+  const PX0 = pad, PY0 = pad, PW = slabW, PH = faceH;
   const RC = { x: cx, y: top + 0.565 * DH };
   const RR = 0.27 * S;
 
+  hc.width = TW; hc.height = TH;
+  const x = hc.getContext("2d", { willReadFrequently: true });
+  x.fillStyle = "#000"; x.fillRect(0, 0, TW, TH);
+
   function layer(fn, blur, alpha, mode) {
-    tc.width = W; tc.height = H;
+    tc.width = TW; tc.height = TH;
     const c = tc.getContext("2d");
     fn(c);
     x.save();
@@ -236,8 +331,8 @@ function rebuild() {
                       : g.player.toUpperCase()) + " " + g.min + "’")
     .join("  ·  ");
 
-  /* 1 — the plaque body (its edge bevel comes from the blur) */
-  layer((c) => { c.fillStyle = "#fff"; plaquePath(c, 0, 0.02 * S); c.fill(); }, 0.0035 * S, 0.58);
+  /* 1 — the plaque body: crisp to the edge (the arris is cut in the shader) */
+  layer((c) => { c.fillStyle = "#fff"; plaquePath(c, 0, 0.02 * S); c.fill(); }, 0.0012 * S, 0.58);
 
   /* 2 — casting slump along the edges */
   layer((c) => {
@@ -400,9 +495,9 @@ function rebuild() {
     }
   }, 0.0016 * S, 0.30);
 
-  bake(x, S);
+  bake(x, S, TW, TH);
   built = true;
-  if (!animOn) { animOn = true; start(); } else render();
+  if (!mounted) { mounted = true; start(); } else render();
 }
 
 /* ---------- bake: heights -> normals + cavity, upload ---------- */
@@ -431,17 +526,17 @@ function boxBlur(a, w, h, r, passes) {
   }
 }
 
-function bake(x, S) {
-  const img = x.getImageData(0, 0, W, H);
-  const N = W * H;
+function bake(x, S, tw, th) {
+  const img = x.getImageData(0, 0, tw, th);
+  const N = tw * th;
   const hgt = new Float32Array(N);
   for (let i = 0; i < N; i++) hgt[i] = img.data[i * 4] / 255;
-  boxBlur(hgt, W, H, 1, 1);                // soften 8-bit steps
+  boxBlur(hgt, tw, th, 1, 1);              // soften 8-bit steps
 
   // seeded casting texture: low-frequency face undulation + sand grain
   const nz = ART.makeNoise(seed + "cast");
   const gs = Math.max(8, Math.round(S * 0.03));
-  const gw = Math.ceil(W / gs) + 2, gh = Math.ceil(H / gs) + 2;
+  const gw = Math.ceil(tw / gs) + 2, gh = Math.ceil(th / gs) + 2;
   const und = new Float32Array(gw * gh);
   for (let gy = 0; gy < gh; gy++)
     for (let gx = 0; gx < gw; gx++)
@@ -450,10 +545,10 @@ function bake(x, S) {
   const Rg = ART.rng(seed + "grain");
   for (let i = 0; i < grain.length; i++) grain[i] = Rg() - 0.5;
 
-  for (let y = 0; y < H; y++) {
+  for (let y = 0; y < th; y++) {
     const fy = y / gs, y0 = fy | 0, ty = fy - y0;
-    for (let xx = 0; xx < W; xx++) {
-      const i = y * W + xx;
+    for (let xx = 0; xx < tw; xx++) {
+      const i = y * tw + xx;
       const fx = xx / gs, x0 = fx | 0, tx = fx - x0;
       const u00 = und[y0 * gw + x0], u10 = und[y0 * gw + x0 + 1];
       const u01 = und[(y0 + 1) * gw + x0], u11 = und[(y0 + 1) * gw + x0 + 1];
@@ -465,15 +560,15 @@ function bake(x, S) {
   }
 
   const hb = hgt.slice();
-  boxBlur(hb, W, H, Math.max(4, Math.round(S * 0.011)), 3);
+  boxBlur(hb, tw, th, Math.max(4, Math.round(S * 0.011)), 3);
 
   const out = new Uint8ClampedArray(N * 4);
   const D = 0.05 * S;
-  for (let y = 0; y < H; y++) {
-    for (let xx = 0; xx < W; xx++) {
-      const i = y * W + xx;
-      const xm = i - (xx > 0 ? 1 : 0), xp = i + (xx < W - 1 ? 1 : 0);
-      const ym = i - (y > 0 ? W : 0), yp = i + (y < H - 1 ? W : 0);
+  for (let y = 0; y < th; y++) {
+    for (let xx = 0; xx < tw; xx++) {
+      const i = y * tw + xx;
+      const xm = i - (xx > 0 ? 1 : 0), xp = i + (xx < tw - 1 ? 1 : 0);
+      const ym = i - (y > 0 ? tw : 0), yp = i + (y < th - 1 ? tw : 0);
       const nx = -(hgt[xp] - hgt[xm]) * 0.5 * D;
       const ny = -(hgt[yp] - hgt[ym]) * 0.5 * D;
       const il = 1 / Math.sqrt(nx * nx + ny * ny + 1);
@@ -485,24 +580,134 @@ function bake(x, S) {
     }
   }
   gl.bindTexture(gl.TEXTURE_2D, tex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, new ImageData(out, W, H));
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, new ImageData(out, tw, th));
 }
 
-/* ---------- the exposure: one pass of the lamp, then rest ---------- */
+/* ---------- render on demand: arrival, the hand, the settle ---------- */
 
 function render() {
-  if (!sh || !built) return;
+  if (!sh || !built || !GEO) return;
+  const rx = REST[0] + tx, ry = REST[1] + ty;
+  // RT = Ry(-ry)·Rx(-rx): world -> slab space (rows below)
+  const ca = Math.cos(rx), sa = Math.sin(rx), cb = Math.cos(ry), sb = Math.sin(ry);
+  const RT = [
+    [cb, sb * sa, -sb * ca],
+    [0, ca, sa],
+    [sb, -cb * sa, cb * ca],
+  ];
+  const mul = (v) => [
+    RT[0][0] * v[0] + RT[0][1] * v[1] + RT[0][2] * v[2],
+    RT[1][0] * v[0] + RT[1][1] * v[1] + RT[1][2] * v[2],
+    RT[2][0] * v[0] + RT[2][1] * v[1] + RT[2][2] * v[2],
+  ];
+  const norm = (v) => {
+    const l = Math.hypot(v[0], v[1], v[2]);
+    return [v[0] / l, v[1] / l, v[2] / l];
+  };
+  const col0 = [RT[0][0], RT[1][0], RT[2][0]];   // o = p.x·col0 + p.y·col1 + ro
+  const col1 = [RT[0][1], RT[1][1], RT[2][1]];
+  const rd = mul([0, 0, -1]);
+  const hT = GEO.T / 2;
+  const ro = [RT[0][2] * hT, RT[1][2] * hT, RT[2][2] * hT - hT];
+  // lamp choreography (world), then into slab space
+  const pe = curP * curP * (3 - 2 * curP);
+  const az = 0.46 + (-2.25 - 0.46) * pe, el = 0.13 + (0.56 - 0.13) * pe;
+  const Lw = [Math.cos(az) * Math.cos(el), Math.sin(az) * Math.cos(el), Math.sin(el)];
+  const Ls = mul(Lw);
+  const Vs = [-rd[0], -rd[1], -rd[2]];
+  const Hv = norm([Ls[0] + Vs[0], Ls[1] + Vs[1], Ls[2] + Vs[2]]);
+  const Lf = mul(norm([0.55, 0.35, 0.45]));
+  const Bn = mul(norm([0.15, 0.85, 0.35]));
+  const S = (2 * GEO.hw) / 0.9;
+  const ll = Math.hypot(Lw[0], Lw[1]) || 1;
   gl.uniform1f(sh.extra.u_p, curP);
+  gl.uniform4f(sh.extra.u_geo, GEO.hw, GEO.hh, GEO.pad, GEO.T);
+  gl.uniform3f(sh.extra.u_cx, col0[0], col0[1], col0[2]);
+  gl.uniform3f(sh.extra.u_cy, col1[0], col1[1], col1[2]);
+  gl.uniform3f(sh.extra.u_ro, ro[0], ro[1], ro[2]);
+  gl.uniform3f(sh.extra.u_rd, rd[0], rd[1], rd[2]);
+  gl.uniform3f(sh.extra.u_ls, Ls[0], Ls[1], Ls[2]);
+  gl.uniform3f(sh.extra.u_hv, Hv[0], Hv[1], Hv[2]);
+  gl.uniform3f(sh.extra.u_lf, Lf[0], Lf[1], Lf[2]);
+  gl.uniform3f(sh.extra.u_bn, Bn[0], Bn[1], Bn[2]);
+  gl.uniform3f(sh.extra.u_lw, Lw[0], Lw[1], Lw[2]);
+  gl.uniform2f(sh.extra.u_lp, (Lw[0] / ll) * 0.38 * S, (Lw[1] / ll) * 0.38 * S);
   sh.draw(0, sf);
+}
+
+function wake() {
+  if (!raf) { lastT = performance.now(); raf = requestAnimationFrame(loop); }
+}
+function loop(t) {
+  raf = 0;
+  const dt = Math.min(0.05, Math.max(1e-3, (t - lastT) / 1000));
+  lastT = t;
+  let more = false;
+  if (arriving) {
+    curP = Math.min(1, (t - arriveT0) / DUR);
+    if (curP < 1) more = true; else arriving = false;
+  }
+  if (dragging) {
+    more = true;
+  } else if (tx || ty || vx || vy) {       // damped ease back to rest
+    const w0 = 8.5;
+    vx += (-w0 * w0 * tx - 2 * w0 * vx) * dt;
+    vy += (-w0 * w0 * ty - 2 * w0 * vy) * dt;
+    tx += vx * dt; ty += vy * dt;
+    if (Math.abs(tx) < 5e-4 && Math.abs(ty) < 5e-4 &&
+        Math.abs(vx) < 4e-3 && Math.abs(vy) < 4e-3) {
+      tx = ty = vx = vy = 0;               // settled: this frame is the last
+    } else more = true;
+  }
+  render();
+  if (more) raf = requestAnimationFrame(loop);
 }
 function start() {
   if (RM) { curP = 1; render(); return; }
-  t0 = performance.now();
-  (function tick(t) {
-    curP = Math.min(1, (t - t0) / DUR);
-    render();
-    if (curP < 1) requestAnimationFrame(tick);
-    // else: the loop stops — the final frame is the photograph
-  })(t0);
+  arriving = true; arriveT0 = performance.now();
+  wake();
 }
+
+/* ---------- the hand: drag tilts the slab, the light answers ---------- */
+
+(function hand() {
+  const el = F.stage;
+  el.style.touchAction = "none";
+  el.style.cursor = "grab";
+  const clamp = (v) => MAXD * Math.tanh(v / MAXD);
+  let sx = 0, sy = 0, bx = 0, by = 0, px = 0, py = 0, pt = 0, id = -1;
+  el.addEventListener("pointerdown", (e) => {
+    if (id >= 0) return;
+    id = e.pointerId;
+    try { el.setPointerCapture(id); } catch (_) {}
+    dragging = true;
+    sx = e.clientX; sy = e.clientY; bx = tx; by = ty;
+    px = tx; py = ty; pt = performance.now();
+    vx = vy = 0;
+    el.style.cursor = "grabbing";
+    wake();
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!dragging || e.pointerId !== id) return;
+    tx = clamp(bx - (e.clientY - sy) * KDRAG);   // vertical drag rolls it in the hand
+    ty = clamp(by - (e.clientX - sx) * KDRAG);
+    const now = performance.now(), dt = Math.max(8, now - pt) / 1000;
+    vx = 0.5 * vx + 0.5 * (tx - px) / dt;        // carry a little momentum out
+    vy = 0.5 * vy + 0.5 * (ty - py) / dt;
+    px = tx; py = ty; pt = now;
+    wake();
+  });
+  const drop = (e) => {
+    if (e.pointerId !== id) return;
+    id = -1; dragging = false;
+    const vc = 1.2;                              // gentle release, no fling
+    vx = Math.max(-vc, Math.min(vc, vx * 0.4));
+    vy = Math.max(-vc, Math.min(vc, vy * 0.4));
+    el.style.cursor = "grab";
+    wake();
+  };
+  el.addEventListener("pointerup", drop);
+  el.addEventListener("pointercancel", drop);
+})();
 </script>
+</body>
