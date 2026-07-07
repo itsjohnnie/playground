@@ -69,42 +69,41 @@ johnnie/public/art/          ← the live site (johnnies.life/art)
 
 ### Presentation (don't break this)
 
-Johnnie views the site primarily on his phone. Presentation is **mobile-first**
-with **the composition always in the middle**, and since 008 every piece lives
-inside **the frame** (`johnnie/public/art/frame.js`):
+Johnnie views the site primarily on his phone. Since the sixth curation
+(07·07, from Johnnie's own mock) every piece is presented as **the atelier
+sheet** (`johnnie/public/art/frame.js`):
 
-- A **3:4 portrait stage**, centered, with a fixed Swiss overlay: a **6×8
-  hairline grid**, set in **Geist Mono** (the Geist family — Sans, Mono,
-  Pixel Square — is self-hosted in `art/lib/fonts/` and @font-face'd by
-  frame.js for pieces to use). Frame type is **mostly uppercase**, one small
-  size, **two weights**: regular, with a bolder lead line per cell (piece
-  number, score). URLs stay lowercase (`.lc`). Geist Pixel is for expressive
-  moments inside pieces (e.g. minutos' giant counter), never for the frame.
-- The frame holds the constants — piece number/variant, title, date, Johnnie's
-  info, the data line, the tech stamp — in fixed grid slots. It never changes.
-  All creativity happens on the canvas layer *behind* it.
-- Usage: `FRAME.mount({n, v, title, date, data, tech, dark, noCanvas,
-  onResize})` → `{stage, canvas, W, H, DPR}`. Use `ART.seed/rng/makeNoise`
-  for determinism. See `sketches/008a.html` (canvas), `008b.html` (three.js —
-  vendored at `art/lib/three.module.min.js`, import map included), and the
-  other 008 studies for GLSL / DOM patterns.
-- **Mobile is full-bleed**: on screens ≤700px the stage fills 100dvw×100dvh —
-  the art IS the screen, no ground visible. Desktop stays a centered 3:4.
-  Compose width-anchored: shader pieces use the design-space remap
-  `q = vec2(p.x*0.75, (p.y-0.5)*0.75/aspect + 0.5)` so the composition keeps
-  its proportions and the scene extends vertically on tall screens; three.js
-  pieces dolly the camera back when `aspect < 0.75` (see 008b/008d).
-- **Navigation lives in the frame**: the "← art" breadcrumb is a frame cell
-  (top-right), and frame.js adds prev/next ‹ › affordances + swipe (touch) +
-  arrow keys between pieces, ordered per the manifest. Nothing floats
-  outside the stage.
-- `F.setTone(dark)` re-inks the frame at runtime — for pieces that change
-  register mid-life (minutos' night ending).
+- A **white catalog page on a near-black room**, set in **Geist Sans**,
+  sentence case. Order: header (JOHNNIE'S ATELIER / ← Art · Daily Practice /
+  johnnies.life/art · date / #num) → **the artwork slot** → reseed caption →
+  the day's subject as a headline → a short wall-label description → a white
+  spec card (Title / Edition / Stack / Time spent) → big ← → navigation.
+  The sheet never changes; the artwork is the only variable.
+- Usage: `FRAME.mount({num, edition, subject, title, date, stack, time,
+  desc, ratio, bleed, dark, noCanvas, onResize})` → `{stage, canvas, W, H,
+  DPR}`. `stage` IS the artwork slot. `ratio` is slot width/height —
+  **per-piece**: 0.75 portrait default, 1.6 landscape (terreno),
+  `bleed: true` runs to the sheet edges (resonancia). `dark` sets the slot's
+  ground while loading. Use `ART.seed/rng/makeNoise` for determinism;
+  three.js is vendored at `art/lib/three.module.min.js`.
+- **Compose for your declared ratio** and tolerate resize: the slot follows
+  the sheet width (~320–825px). Shader pieces keep the design-space remap
+  habit (anchor composition to width, extend scenery on the other axis);
+  three.js pieces dolly to fit.
+- **Navigation lives in the sheet**: ← Art breadcrumb top-left, big ← →
+  arrows at the foot, swipe on the artwork, arrow keys. Ordered by the
+  manifest sort (date desc, n asc). URL matching strips `.html`
+  (production serves extensionless).
+- Tap on the artwork = reseed (disclosed in the caption). `r` key too.
 - Temporal replay pieces use `cycle = t % 34; clock = min(120, cycle/26*120)`;
   settle pieces animate 0→100 once and stop their rAF loop.
-- Batch 001 (001–007) predates the frame and uses the legacy square
+- Batch 001 (001–007) predates the sheet and uses the legacy square
   `ART.fit`/`ART.chrome` — leave those as history.
-- Gallery previews load each piece with `?thumb=1` — handled by frame.js.
+- Gallery previews load each piece with `?thumb=1` — frame.js then renders
+  the artwork alone, filling the iframe; the gallery card supplies the
+  label. Cards honor a per-piece `ratio` field in `sketches.json`.
+- Geist Mono / Geist Pixel remain available for use **inside** artworks
+  (annotations, counters) — never on the sheet.
 
 ### Taste profile (learned from Johnnie's curation — read before making anything)
 
@@ -127,6 +126,18 @@ inside **the frame** (`johnnie/public/art/frame.js`):
   elements arriving, settling — and then REST as a finished composition
   (stop the rAF loop). The arrival is the performance; the final frame is
   the artwork.
+- **2026-07-07 (sixth):** Johnnie supplied his own Figma mock and the
+  presentation became the atelier sheet (see Presentation above). Verdicts:
+  bruma **not up to standard, replace**; 64.478 "maybe has something,
+  still kinda lame" — improve hard; organismo **laggy/choppy** — performance
+  is part of craft; terreno "very interesting" → black ground, white
+  topography, landscape, play once; resonancia — square inset felt awkward,
+  bleed it to the edges; tapiz regressed ("looked better before") — realism
+  is the bar, revisit; pileta — caustics cool, **ripples unrealistic**;
+  minutos still lame, improve a lot; órbitas **replace entirely**.
+  Lessons: performance jank reads as broken craft; a crop that fights the
+  medium (square plate in a portrait slot) reads as awkward; realism
+  regressions are noticed immediately.
 
 ### House rules (adapted from Lieberman's)
 

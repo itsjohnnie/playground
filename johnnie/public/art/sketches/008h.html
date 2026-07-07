@@ -25,9 +25,11 @@ let W, H, DPR, S, T0, B0, X0, X1, fs, lines, grain, off, offCtx;
 let drawn = 0, lastCycle = 1e9;
 
 const F = FRAME.mount({
-  n: "008", v: "h", title: "sismógrafo", date: "06·07·2026",
-  data: M.frameData, tech: "canvas · plotter", dark: false,
-  onResize(w, h, dpr) { W = w; H = h; DPR = dpr; build(); },
+  num: 8, title: "Sismógrafo", subject: "Argentina vs. Cabo Verde",
+  edition: "02/31", date: "06·07·2026",
+  stack: "Canvas 2D", time: "44 minutes",
+  desc: "A plotter's seismogram of the hundred and twenty minutes, one tremor per minute: amplitude is intensity, ink weight is possession, and the marked events are the goals.",
+  dark: false, onResize(w, h, dpr) { W = w; H = h; DPR = dpr; build(); },
 });
 const ctx = F.canvas.getContext("2d");
 

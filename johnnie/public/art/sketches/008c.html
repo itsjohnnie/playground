@@ -47,9 +47,11 @@ const FOOD_PEAK  = 0.60;   // gaussian food deposit peak
 const K_NORM     = 0.30;   // trail -> intensity soft mapping
 
 const F = FRAME.mount({
-  n: "008", v: "c", title: "organismo", date: "06·07·2026",
-  data: window.M8.frameData, tech: "canvas · physarum", dark: true,
-  onResize(w, h, dpr) {
+  num: 3, title: "Organismo", subject: "Argentina vs. Cabo Verde",
+  edition: "02/31", date: "06·07·2026",
+  stack: "Canvas 2D — physarum", time: "87 minutes",
+  desc: "Two colonies of slime-mould agents — one celeste, one rojo — forage the same ground under the real Jones model, sensing and turning. Territory follows possession; the veins are where they fought for it.",
+  dark: true, onResize(w, h, dpr) {
     W = w; H = h; DPR = dpr;
     build();
     done = false; start = null;

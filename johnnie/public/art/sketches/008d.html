@@ -34,10 +34,12 @@ let renderer, scene, camera, built = false, dollyK = 1;
 let terraMat, pins = [], grainTex, grainScene, grainCam;
 
 const F = FRAME.mount({
-  n: "008", v: "d", title: "terreno", date: "06·07·2026",
-  data: M.frameData, tech: "three.js · relief",
-  dark: false,
-  onResize(w, h, dpr) {
+  num: 4, title: "Terreno", subject: "Argentina vs. Cabo Verde",
+  edition: "02/31", date: "06·07·2026",
+  stack: "Three.js + WebGL", time: "74 minutes",
+  desc: "The match as terrain: its intensity raised into a contour relief, minute by minute along the long axis. The peaks are the five goals; the high ridge past 90' is the prórroga.",
+  ratio: 1.6,
+  dark: false, onResize(w, h, dpr) {
     if (!built) build();
     renderer.setPixelRatio(dpr);
     renderer.setSize(w / dpr, h / dpr, false);

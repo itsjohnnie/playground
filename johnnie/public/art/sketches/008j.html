@@ -23,10 +23,11 @@ const CT = Math.cos(TILT), ST = Math.sin(TILT);
 
 let W, H, DPR, U, CX, CY, bodies = [], strikers = [], dust = [];
 const F = FRAME.mount({
-  n: "008", v: "j", title: "órbitas", date: "06·07·2026",
-  data: M.frameData, tech: "canvas · kepler 3d",
-  dark: true,
-  onResize(w, h, dpr) {
+  num: 10, title: "Órbitas", subject: "Argentina vs. Cabo Verde",
+  edition: "02/31", date: "06·07·2026",
+  stack: "Canvas 2D", time: "79 minutes",
+  desc: "The match as a small planetary system — every scorer an orbit, every goal a bell struck on the way past.",
+  dark: true, onResize(w, h, dpr) {
     W = w; H = h; DPR = dpr;
     U = Math.min(W, H * 0.75);
     CX = W / 2; CY = H / 2;
