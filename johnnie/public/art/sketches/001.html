@@ -17,7 +17,11 @@
 // shots, none on target, one goal ruled offside at 8'. The relief rises
 // once, left to right behind a plotter cursor over ~8s, its bone-white
 // contour lines emerging as the terrain climbs through the level planes —
-// then the loop stops and the plate rests. data: counts, goal minutes and
+// then the loop stops and the plate rests. Rested, it can be turned by
+// hand: a drag yaws the plate and tilts the surveyor's view within clamps,
+// 1:1 under the finger, then coasts on damped momentum to rest — rendering
+// only while the hand or the momentum moves it (no idle loop).
+// data: counts, goal minutes and
 // totals exact from M1 (see data-001.js for sources); per-half splits,
 // individual shot minutes and across-pitch placement seeded (no location
 // data exists). three.js · white ink on black.
@@ -36,15 +40,15 @@ const NIGHT = new THREE.Color("#0a0a0c");
 const BONE = new THREE.Color("#f2ece1");
 const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-let renderer, scene, camera, built = false, done = false;
-let terraMat, pins = [], plateSprites = [], overlayScene, overlayCam;
+let renderer, scene, camera, world, built = false, done = false;
+let terraMat, pins = [], plateSprites = [];
 
 const F = FRAME.mount({
   num: 1, title: "Terreno", subject: "Argentina vs. Algeria",
   edition: "01/31", date: "16·06·2026",
   stack: "Three.js + WebGL", time: "96 minutes",
   desc: "A survey plate of the opening match: attacking intensity raised into bone-white contour lines on a black ground, minute by minute along the long axis. The three summits are Messi’s goals — 17′, 60′, 76′, his first World Cup hat-trick — all rising from Argentina’s half of the plate; Algeria’s side stays low ground. The relief is drawn once, then rests.",
-  ratio: 1.6, open: true,
+  ratio: 1.6, open: true, gesture: true,   // the drag is ours: it turns the plate
   dark: true, onResize(w, h, dpr) {
     if (!built) build();
     renderer.setPixelRatio(dpr);
@@ -131,15 +135,21 @@ function textSprite(str, hex, px, hWorld) {
   return sp;
 }
 
-/* ---------- camera: static surveyor's view, fit for landscape ---------- */
+/* ---------- camera: surveyor's view, fit for landscape, turnable ---------- */
 const TGT = new THREE.Vector3(0, 0.10, 0);
+const YAW0 = -0.16, EL0 = 0.38;            // the resting pose: slight diagonal, 3/4 view
+const YAW_LIM = 1.05;                      // how far the hand may turn it, either way
+const EL_MIN = 0.14, EL_MAX = 0.92;        // never under the plate, never top-down
+let yaw = YAW0, el = EL0, dist = 6.6;
 function frameCamera(aspect) {
   camera.aspect = aspect;
   camera.updateProjectionMatrix();
   const hf = Math.atan(Math.tan(camera.fov * Math.PI / 360) * aspect);
-  const dist = Math.max(1.86 / Math.tan(hf),                     // fit the plate's length
-                        1.02 / Math.tan(camera.fov * Math.PI / 360)); // fit its height
-  const el = 0.38;                                               // elevated 3/4, no orbit
+  dist = Math.max(1.86 / Math.tan(hf),                     // fit the plate's length
+                  1.02 / Math.tan(camera.fov * Math.PI / 360)); // fit its height
+  placeCamera();
+}
+function placeCamera() {
   camera.position.set(TGT.x, TGT.y + Math.sin(el) * dist, TGT.z + Math.cos(el) * dist);
   camera.lookAt(TGT);
   terraMat.uniforms.uDist.value = dist;        // depth fade tracks the dolly
@@ -155,8 +165,8 @@ function build() {
   scene.background = null;                // open: no box, no ground of its own
   camera = new THREE.PerspectiveCamera(20, 1.6, 0.1, 80);
 
-  const world = new THREE.Group();
-  world.rotation.y = -0.16;                  // the plate sits at a slight diagonal
+  world = new THREE.Group();
+  world.rotation.y = yaw;                    // the plate sits at a slight diagonal
   scene.add(world);
 
   // --- terrain geometry: final heights baked, raised by the clock in-shader
@@ -346,49 +356,14 @@ function build() {
     }
     if (done) finish();                       // fonts landed after the plate rested
   });
-
-  // --- overlay: paper-fibre grain in the black + a photographed vignette
-  overlayScene = new THREE.Scene();
-  overlayCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  const gc = document.createElement("canvas");
-  gc.width = gc.height = 256;
-  const gg = gc.getContext("2d");
-  const img = gg.createImageData(256, 256);
-  const Rg = ART.rng(seed + "-grain");
-  for (let i = 0; i < img.data.length; i += 4) {
-    let v = (Rg() * 8) | 0;
-    if (Rg() < 0.012) v += 8;                 // the odd brighter fleck of fibre
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 255;
-  }
-  gg.putImageData(img, 0, 0);
-  const grainTex = new THREE.CanvasTexture(gc);
-  grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping;
-  grainTex.repeat.set(4, 6);                  // stretched texels: a horizontal fibre bias
-  const grain = new THREE.Mesh(new THREE.PlaneGeometry(2, 2),
-    new THREE.MeshBasicMaterial({ map: grainTex, blending: THREE.AdditiveBlending,
-      transparent: true, depthTest: false, depthWrite: false }));
-  grain.renderOrder = 0;
-  // open mode: no full-region grain — it would silhouette the box
-  const vig = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-    transparent: true, depthTest: false, depthWrite: false,
-    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
-    fragmentShader: `
-      varying vec2 vUv;
-      void main(){
-        vec2 q = vUv - vec2(0.47, 0.56);      // the lamp sits high and a touch left
-        q.x *= 1.35;
-        gl_FragColor = vec4(vec3(0.0), smoothstep(0.42, 1.05, length(q)) * 0.42);
-      }`,
-  }));
-  vig.renderOrder = 1;
-  // open mode: no vignette — it would paint the box back in
+  // open mode: no full-region grain overlay and no vignette — they would
+  // silhouette the box / paint it back in. (The old overlay pass rendered
+  // an empty scene every frame; removed outright.)
 }
 
 function render() {
   renderer.clear();
   renderer.render(scene, camera);
-  renderer.render(overlayScene, overlayCam);
 }
 
 /* ---------- the one performance: rise, draw, rest ---------- */
@@ -431,6 +406,91 @@ function loop(tms) {
   if (clock > TOTAL + 12) { finish(); return; }  // risen, drawn, labelled — rest
   requestAnimationFrame(loop);
 }
+
+/* ---------- the hand: drag to turn the plate ---------- */
+// 1:1 under the pointer, momentum with friction on release, hard-damped at
+// the clamps (no springs). Renders on demand — once the momentum dies the
+// rAF stops again and the plate rests.
+const clampV = (v, a, b) => Math.min(b, Math.max(a, v));
+let dragging = false, ptrId = null, lx = 0, ly = 0, lt = 0;
+let vYaw = 0, vEl = 0, iRaf = 0, queued = false;
+
+function applyView() {
+  if (!built) return;
+  world.rotation.y = yaw;
+  placeCamera();
+}
+function kick() {                 // one on-demand frame, capped at display rate
+  if (queued) return;
+  queued = true;
+  requestAnimationFrame(() => {
+    queued = false;
+    applyView();
+    if (done && !iRaf) render();  // the intro/inertia loops render themselves
+  });
+}
+function coast() {                // momentum: velocity, friction, rest
+  if (iRaf) return;
+  let pt = performance.now();
+  const step = (t) => {
+    const dt = Math.min(0.05, Math.max(0.001, (t - pt) / 1000));
+    pt = t;
+    yaw += vYaw * dt;
+    el += vEl * dt;
+    if (yaw <= YAW0 - YAW_LIM || yaw >= YAW0 + YAW_LIM) {   // damp to the limit,
+      yaw = clampV(yaw, YAW0 - YAW_LIM, YAW0 + YAW_LIM);    // never past it
+      vYaw = 0;
+    }
+    if (el <= EL_MIN || el >= EL_MAX) {
+      el = clampV(el, EL_MIN, EL_MAX);
+      vEl = 0;
+    }
+    const f = Math.exp(-dt / 0.35);                         // friction
+    vYaw *= f; vEl *= f;
+    applyView();
+    if (done) render();
+    if (!dragging && (Math.abs(vYaw) > 0.02 || Math.abs(vEl) > 0.02)) {
+      iRaf = requestAnimationFrame(step);
+    } else { iRaf = 0; }                                    // rest: no idle loop
+  };
+  iRaf = requestAnimationFrame(step);
+}
+
+const cv = F.canvas;
+cv.style.touchAction = "none";    // full-screen stage on phones: the drag is ours
+cv.style.cursor = "grab";
+cv.addEventListener("pointerdown", (e) => {
+  if (ptrId !== null) return;     // first pointer only — this is not a pinch
+  ptrId = e.pointerId;
+  dragging = true;
+  cv.setPointerCapture(ptrId);
+  lx = e.clientX; ly = e.clientY; lt = e.timeStamp;
+  vYaw = vEl = 0;
+  if (iRaf) { cancelAnimationFrame(iRaf); iRaf = 0; }       // the hand takes over
+  cv.style.cursor = "grabbing";
+});
+cv.addEventListener("pointermove", (e) => {
+  if (!dragging || e.pointerId !== ptrId) return;
+  const dYaw = (e.clientX - lx) / (cv.clientWidth || 1) * 2.6;   // full sweep ≈ 150°
+  const dEl = (ly - e.clientY) / (cv.clientHeight || 1) * 1.6;   // drag up: look down on it
+  const dt = Math.max(0.008, (e.timeStamp - lt) / 1000);
+  yaw = clampV(yaw + dYaw, YAW0 - YAW_LIM, YAW0 + YAW_LIM);
+  el = clampV(el + dEl, EL_MIN, EL_MAX);
+  vYaw = 0.75 * vYaw + 0.25 * (dYaw / dt);                  // smoothed release velocity
+  vEl = 0.75 * vEl + 0.25 * (dEl / dt);
+  lx = e.clientX; ly = e.clientY; lt = e.timeStamp;
+  kick();
+});
+const letGo = (e) => {
+  if (e.pointerId !== ptrId) return;
+  dragging = false;
+  ptrId = null;
+  cv.style.cursor = "grab";
+  if (e.timeStamp - lt > 90) { vYaw = vEl = 0; return; }    // held still, then let go
+  if (!REDUCED && (Math.abs(vYaw) > 0.05 || Math.abs(vEl) > 0.05)) coast();
+};
+cv.addEventListener("pointerup", letGo);
+cv.addEventListener("pointercancel", letGo);
 
 queueMicrotask(() => {
   if (!built) build();
