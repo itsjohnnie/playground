@@ -204,6 +204,16 @@ function rebuild() {
   }
   const white = "rgba(255,255,255,", black = "rgba(0,0,0,";
   const mAngle = (min) => -Math.PI / 2 + (min / 120) * TAU;
+  // casting flaws must not land in the lettering
+  const textBands = [[0.175, 0.335], [0.825, 0.905]];
+  function flawSpot(Rn, m) {
+    for (let k = 0; k < 20; k++) {
+      const px = PX0 + m + Rn() * (PW - 2 * m), py = PY0 + m + Rn() * (PH - 2 * m);
+      const fy = (py - top) / DH;
+      if (!textBands.some(([a, b]) => fy > a && fy < b)) return [px, py];
+    }
+    return [PX0 + m, PY0 + PH / 2];
+  }
 
   function guarda(c, gy, halfW) {
     c.fillStyle = "#fff";
