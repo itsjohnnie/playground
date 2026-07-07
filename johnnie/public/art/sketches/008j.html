@@ -270,7 +270,7 @@ function rebuild() {
   layer((c) => {
     c.fillStyle = "#fff"; c.strokeStyle = "#fff";
     guarda(c, top + 0.125 * DH, 0.30 * S);
-    guarda(c, top + 0.916 * DH, 0.30 * S);
+    guarda(c, top + 0.902 * DH, 0.30 * S);
 
     setFont(c, 0.046 * S);
     c.fillText(M.home.name.toUpperCase() + "  " + M.home.score, cx, top + 0.197 * DH);
@@ -278,8 +278,8 @@ function rebuild() {
     setFont(c, 0.020 * S, 500);
     c.fillText(scorers("arg"), cx, top + 0.232 * DH);
     c.fillText(scorers("cpv"), cx, top + 0.309 * DH);
-    c.fillText(M.competition.toUpperCase() + (M.aet ? "  ·  PRÓRROGA" : ""), cx, top + 0.852 * DH);
-    c.fillText(M.venue.toUpperCase().replace(", ", "  ·  ") + "  ·  " + M.date, cx, top + 0.880 * DH);
+    c.fillText(M.competition.toUpperCase() + (M.aet ? "  ·  PRÓRROGA" : ""), cx, top + 0.842 * DH);
+    c.fillText(M.venue.toUpperCase().replace(", ", "  ·  ") + "  ·  " + M.date, cx, top + 0.868 * DH);
 
     // 120 minute ticks; kickoff + period marks longer
     for (let m = 0; m < 120; m++) {
@@ -297,14 +297,6 @@ function rebuild() {
     for (const g of M.goals) {
       const a = mAngle(g.min), rn = RR + 0.052 * S;
       c.fillText(g.min + "’", RC.x + Math.cos(a) * rn, RC.y + Math.sin(a) * rn);
-    }
-    // cabo verde bowl lips
-    c.lineWidth = 0.0045 * S;
-    for (const g of M.goals) if (g.team === "cpv") {
-      const a = mAngle(g.min);
-      c.beginPath();
-      c.arc(RC.x + Math.cos(a) * RR, RC.y + Math.sin(a) * RR, 0.026 * S, 0, TAU);
-      c.stroke();
     }
     // sol de mayo — 32 rays, straight and wavy alternating
     for (let k = 0; k < 32; k++) {
@@ -331,21 +323,27 @@ function rebuild() {
     }
     // metal splash specks
     const Rs = ART.rng(seed + "speck");
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6; i++) {
+      const [px, py] = flawSpot(Rs, 0.08 * S);
       c.beginPath();
-      c.arc(PX0 + 0.08 * S + Rs() * (PW - 0.16 * S), PY0 + 0.08 * S + Rs() * (PH - 0.16 * S),
-            (0.001 + 0.0015 * Rs()) * S, 0, TAU);
+      c.arc(px, py, (0.001 + 0.0015 * Rs()) * S, 0, TAU);
       c.fill();
     }
   }, 0.0016 * S, 0.26, "lighter");
 
   /* 5 — tall relief: goal domes, sol disc, mounting screws */
   layer((c) => {
-    for (const g of M.goals) if (g.team === "arg") {
+    c.strokeStyle = "#fff";
+    for (const g of M.goals) {
       const a = mAngle(g.min);
       const bx = RC.x + Math.cos(a) * RR, by = RC.y + Math.sin(a) * RR;
-      dome(c, bx, by, 0.026 * S, white);
-      dome(c, bx, by, 0.010 * S, white);
+      if (g.team === "arg") {
+        dome(c, bx, by, 0.026 * S, white);
+        dome(c, bx, by, 0.010 * S, white);
+      } else {                            // the bowl's lip catches the lamp
+        c.lineWidth = 0.0045 * S;
+        c.beginPath(); c.arc(bx, by, 0.025 * S, 0, TAU); c.stroke();
+      }
     }
     dome(c, RC.x, RC.y, 0.052 * S, white);
     dome(c, RC.x, RC.y, 0.022 * S, white);
@@ -362,7 +360,7 @@ function rebuild() {
     for (const g of M.goals) {
       const a = mAngle(g.min);
       const bx = RC.x + Math.cos(a) * RR, by = RC.y + Math.sin(a) * RR;
-      if (g.team === "cpv") dome(c, bx, by, 0.022 * S, black);
+      if (g.team === "cpv") dome(c, bx, by, 0.020 * S, black);
       if (g.og) {                       // the own goal, ringed
         c.lineWidth = 0.0035 * S;
         c.beginPath(); c.arc(bx, by, 0.038 * S, 0, TAU); c.stroke();
@@ -375,9 +373,9 @@ function rebuild() {
             0.0045 * S, 0, TAU);
       c.fill();
     }
-    setFont(c, 0.0155 * S, 500);
-    c.textAlign = "right";
-    c.fillText("FUND. J.A. · Nº 008", PX0 + PW - 0.055 * S, PY0 + PH - 0.052 * S);
+    setFont(c, 0.013 * S, 500);
+    c.textAlign = "right";                // stamped in the outer margin, foundry habit
+    c.fillText("FUND. J.A. · Nº 008", PX0 + PW - 0.06 * S, PY0 + PH - 0.0205 * S);
     const Rq = ART.rng(seed + "screw");
     const sc = 0.095 * S;
     c.lineWidth = 0.004 * S;
@@ -391,9 +389,9 @@ function rebuild() {
     }
     const Rp = ART.rng(seed + "pits");
     for (let i = 0; i < 12; i++) {
+      const [px, py] = flawSpot(Rp, 0.06 * S);
       c.beginPath();
-      c.arc(PX0 + 0.06 * S + Rp() * (PW - 0.12 * S), PY0 + 0.06 * S + Rp() * (PH - 0.12 * S),
-            (0.0015 + 0.003 * Rp()) * S, 0, TAU);
+      c.arc(px, py, (0.0015 + 0.003 * Rp()) * S, 0, TAU);
       c.fill();
     }
   }, 0.0016 * S, 0.30);

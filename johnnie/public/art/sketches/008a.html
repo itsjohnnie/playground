@@ -202,11 +202,11 @@ void main(){
   vec3 lit = base * (0.36 + 0.82 * diff) * vec3(1.015, 1.0, 0.97);
   lit += pow(specBase, 20.0) * 0.10 * (0.25 + 0.75 * pl.x) * sm;   // pressed fibres shine
 
-  // the ink, pulled a hair out of register
-  vec2 mis = (vec2(hash(vec2(1.3, 9.2)), hash(vec2(8.4, 2.6))) - 0.5) * 0.0042;
+  // the ink rides the die — only a hair of slur, never off its socket
+  vec2 mis = (vec2(hash(vec2(1.3, 9.2)), hash(vec2(8.4, 2.6))) - 0.5) * 0.0012;
   vec4 ink = plate(u + mis, max(aa, 0.0020));
   float mot = clamp(0.78 + 0.30 * fbm(u*95.0 + 4.4), 0.0, 1.0);
-  lit = inkLayer(lit, ink.y * sm, vec3(0.169, 0.416, 0.600), mot);        // celeste
+  lit = inkLayer(lit, ink.y * sm, vec3(0.196, 0.455, 0.641), mot);        // celeste
   lit = inkLayer(lit, ink.z * sm, vec3(0.659, 0.173, 0.133), mot);        // rojo
   float aG = smoothstep(0.45, 0.75, ink.w * sm);
   vec3 gold = vec3(0.833, 0.647, 0.204) * (0.35 + 0.90 * diff)

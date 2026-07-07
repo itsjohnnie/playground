@@ -325,6 +325,7 @@ const F = FRAME.mount({
 const sf = ART.rng(seed)() * 100;
 
 function render(tms) {
+  window.__p = prog; // debug
   sh.gl.uniform1f(sh.extra.u_p, prog);
   sh.draw(tms / 1000, sf);
 }
