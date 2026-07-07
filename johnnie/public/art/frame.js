@@ -1,10 +1,11 @@
-/* frame.js — the constant, second edition.
-   Every piece is presented as a catalog sheet from Johnnie's atelier: a white
-   page on a near-black ground, set in Geist Sans, sentence case. The sheet
-   carries the header (atelier · practice · date · number), the artwork in its
-   slot, the day's subject as a headline, a short prose description, a spec
-   table (title / edition / stack / time spent) and ← → navigation.
-   The artwork is the only thing that changes; the sheet never does.
+/* frame.js — the constant, third edition (from Johnnie's mocks).
+   The atelier: a near-black room. On desktop, a white data panel sits on the
+   LEFT — header, the day's subject as a headline, wall-label prose, a spec
+   card, ← → navigation — and the ARTWORK hangs on the RIGHT, spotlit on the
+   dark ground at its own aspect ratio. On phones the artwork IS the screen,
+   full bleed, and the panel opens as a smooth sheet-modal from a small pill.
+   Set in Geist Sans, sentence case. The artwork is the only thing that
+   changes; the room and the panel never do.
    Requires art.js (seed/rng/reseed + isThumb). */
 (function () {
   const FRAME = {};
@@ -12,13 +13,14 @@
   // mount({ num, edition, subject, title, date, stack, time, desc,
   //         ratio, bleed, dark, noCanvas, onResize })
   //  → { stage, canvas, W, H, DPR, setTone }
-  // stage is the artwork slot; onResize(W, H, DPR) fires deferred once at
-  // mount, then on every resize. ratio is the slot's width/height (default
-  // 3:4 portrait, e.g. 1.6 for landscape); bleed runs it to the sheet edges.
+  // stage is the artwork surface. ratio = width/height of the artwork on
+  // desktop (0.75 default; 1.6 landscape; bleed fills the whole art region).
+  // On ≤820px the artwork is always full-screen. onResize(W, H, DPR) fires
+  // deferred once at mount, then on every resize.
   FRAME.mount = function (o) {
     const thumb = window.ART && ART.isThumb;
     const num = "#" + String(o.num || 0).padStart(3, "0");
-    document.title = num + " · " + (o.title || "") + " — johnnie's atelier";
+    document.title = num + " · " + (o.title || "") + " — johnnie’s atelier";
     const fav = document.createElement("link");
     fav.rel = "icon";
     fav.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>" +
@@ -28,85 +30,137 @@
 
     const ratio = o.ratio || 0.75;
     const artBg = o.dark ? "#0a0a0c" : "#e9e3d5";
+    const dot = " · ";
+    const date = (o.date || "").split("·").join(dot); // 06·07·2026 → spaced dots
 
     const css = document.createElement("style");
     css.textContent = `
 @font-face{font-family:'Geist';src:url('../lib/fonts/Geist-Variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
 @font-face{font-family:'Geist Mono';src:url('../lib/fonts/GeistMono-Variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
 @font-face{font-family:'Geist Pixel';src:url('../lib/fonts/GeistPixel-Square.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
-html,body{margin:0;background:#0d0a07}
-body{min-height:100dvh;display:flex;align-items:flex-start;justify-content:center;
-padding:${thumb ? "0" : "clamp(0px, 3.5vw, 52px)"}}
-.sheet{position:relative;width:min(100%,960px);background:#f2f1ee;color:#16130f;
-container-type:inline-size;border-radius:clamp(0px,3.2vw,36px);
+html,body{margin:0;background:#0d0a07;height:100%}
+body{height:100dvh;overflow:hidden;box-sizing:border-box;
 font-family:'Geist',ui-sans-serif,system-ui,sans-serif;font-weight:430;
---pad:clamp(22px,7cqi,68px);padding:clamp(20px,5cqi,48px) var(--pad) clamp(26px,6cqi,56px);
-box-shadow:0 30px 80px rgba(0,0,0,.5)}
-@media (max-width:700px){body{padding:0}.sheet{border-radius:0;min-height:100dvh;box-shadow:none}}
-.top{display:grid;grid-template-columns:1.2fr 1fr auto;gap:12px;
-font-size:clamp(11px,1.55cqi,14px);line-height:1.8;letter-spacing:.01em}
-.top .r{text-align:right}
+padding:clamp(14px,2.4vw,34px);display:grid;column-gap:clamp(14px,2.4vw,34px);
+grid-template-columns:clamp(380px,42vw,600px) 1fr}
+.panel{position:relative;background:#f2f1ee;color:#16130f;overflow:auto;
+border-radius:clamp(22px,2.8vw,40px);container-type:inline-size;
+padding:clamp(26px,5.5cqi,44px) clamp(26px,6cqi,48px);
+display:flex;flex-direction:column;scrollbar-width:thin}
+.top{display:grid;grid-template-columns:1.15fr 1fr auto;gap:12px;
+font-size:clamp(11.5px,2.7cqi,13.5px);line-height:1.8;letter-spacing:.01em}
 .top .lab{font-weight:560;letter-spacing:.045em;text-transform:uppercase}
-.top a{color:inherit;text-decoration:none;font-weight:430}
+.top a{color:inherit;text-decoration:none}
 @media (hover:hover) and (pointer:fine){.top a:hover{text-decoration:underline}}
-.art{position:relative;margin:clamp(24px,5.5cqi,52px) 0 0;aspect-ratio:${ratio};
-background:${artBg};overflow:hidden;
-${o.bleed ? "margin-left:calc(-1*var(--pad));margin-right:calc(-1*var(--pad));" : ""}}
-.art canvas.art-c{position:absolute;inset:0;width:100%;height:100%;display:block}
-.cap{margin:10px 0 0;font-size:clamp(10px,1.3cqi,12px);color:rgba(22,19,15,.55);text-align:right}
-h1{font-size:clamp(34px,6.6cqi,64px);font-weight:460;letter-spacing:-0.022em;
-line-height:1.08;margin:clamp(30px,7cqi,64px) 0 0;text-wrap:balance}
-.desc{font-size:clamp(14px,1.75cqi,16.5px);line-height:1.8;font-weight:430;
-color:rgba(22,19,15,.88);max-width:66ch;margin:clamp(16px,3cqi,26px) 0 0}
+.mid{margin:auto 0;padding:clamp(26px,7cqi,56px) 0}
+h1{font-size:clamp(32px,9cqi,58px);font-weight:460;letter-spacing:-0.022em;
+line-height:1.1;margin:0;text-wrap:balance}
+.desc{font-size:clamp(13.5px,3.1cqi,16px);line-height:1.75;font-weight:430;
+color:rgba(22,19,15,.88);max-width:60ch;margin:clamp(14px,3.5cqi,24px) 0 0}
 .desc a{color:inherit}
-.specs{margin:clamp(30px,6.5cqi,56px) 0 0;font-size:clamp(12px,1.6cqi,14.5px);
-background:#fff;border-radius:clamp(10px,1.8cqi,16px);
-padding:clamp(4px,1cqi,8px) clamp(16px,3cqi,26px)}
+.specs{margin:clamp(24px,6cqi,44px) 0 0;font-size:clamp(12px,2.9cqi,14px);
+background:#fff;border-radius:clamp(10px,2.6cqi,16px);
+padding:clamp(4px,1.4cqi,8px) clamp(16px,4.4cqi,26px);
+box-shadow:0 1px 2px rgba(22,19,15,.04)}
 .specs .row{display:flex;justify-content:space-between;align-items:baseline;
-gap:16px;padding:clamp(11px,1.8cqi,15px) 0;
-border-bottom:1px solid rgba(22,19,15,.08)}
+gap:16px;padding:clamp(11px,2.8cqi,15px) 0;border-bottom:1px solid rgba(22,19,15,.08)}
 .specs .row:last-child{border-bottom:0}
-.specs .k{font-weight:520;font-size:clamp(10.5px,1.35cqi,12px);letter-spacing:.06em;
+.specs .k{font-weight:520;font-size:clamp(10.5px,2.5cqi,12px);letter-spacing:.06em;
 text-transform:uppercase;color:rgba(22,19,15,.62)}
 .specs .v{text-align:right}
-.go{margin:clamp(34px,8cqi,72px) 0 0;display:flex;justify-content:space-between;align-items:center}
-.go a{color:inherit;text-decoration:none;font-size:clamp(28px,4.6cqi,42px);
-line-height:1;padding:8px 2px;transition:transform 180ms cubic-bezier(0.23,1,0.32,1)}
+.cap{margin:clamp(12px,3cqi,18px) 0 0;font-size:clamp(10.5px,2.5cqi,12px);
+color:rgba(22,19,15,.5)}
+.go{margin-top:clamp(22px,6cqi,40px);display:flex;justify-content:space-between;align-items:center}
+.go a{color:inherit;text-decoration:none;font-size:clamp(26px,7cqi,38px);
+line-height:1;padding:6px 2px;transition:transform 180ms cubic-bezier(0.23,1,0.32,1)}
 @media (hover:hover) and (pointer:fine){
 .go a.next:hover{transform:translateX(5px)}
 .go a.prev:hover{transform:translateX(-5px)}}
-.sheet{animation:sheet-in 420ms cubic-bezier(0.23,1,0.32,1)}
-@keyframes sheet-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.sheet{animation:sheet-fade 200ms ease}
-@keyframes sheet-fade{from{opacity:0}to{opacity:1}}}
-${thumb ? `.sheet{padding:0;border-radius:0;min-height:100dvh;box-shadow:none;background:${artBg}}
-.top,h1,.desc,.specs,.go,.cap{display:none}
-.art{position:absolute;inset:0;margin:0;aspect-ratio:auto}` : ""}`;
+.room{position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
+.art{position:relative;background:${artBg};overflow:hidden}
+.art canvas.art-c{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scrim,.pill,.x{display:none}
+.panel{animation:panel-in 420ms cubic-bezier(0.23,1,0.32,1)}
+@keyframes panel-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.panel{animation:panel-fade 200ms ease}
+@keyframes panel-fade{from{opacity:0}to{opacity:1}}}
+
+@media (max-width:820px){
+body{display:block;padding:0}
+.room{position:fixed;inset:0}
+.art{position:absolute;inset:0}
+.pill{display:flex;align-items:center;gap:8px;position:fixed;z-index:12;
+left:50%;transform:translateX(-50%);
+bottom:calc(14px + env(safe-area-inset-bottom));
+background:rgba(13,10,7,.55);color:#f2ece1;border:1px solid rgba(242,236,225,.16);
+backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+border-radius:999px;padding:10px 18px;font:inherit;font-size:13px;cursor:pointer;
+transition:transform 200ms cubic-bezier(0.23,1,0.32,1),opacity 200ms}
+.pill:active{transform:translateX(-50%) scale(0.96)}
+.scrim{display:block;position:fixed;inset:0;z-index:14;background:rgba(5,3,2,.45);
+opacity:0;pointer-events:none;transition:opacity 320ms ease}
+.panel{position:fixed;z-index:15;left:10px;right:10px;
+top:max(10px,env(safe-area-inset-top));
+bottom:max(10px,env(safe-area-inset-bottom));
+margin:0;border-radius:26px;animation:none;padding-top:64px;
+box-shadow:0 30px 80px rgba(0,0,0,.6);
+transform:translateY(103%);opacity:0;pointer-events:none;
+transition:transform 460ms cubic-bezier(0.32,0.72,0,1),opacity 320ms ease}
+body.open .panel{transform:none;opacity:1;pointer-events:auto}
+body.open .scrim{opacity:1;pointer-events:auto}
+body.open .pill{opacity:0;pointer-events:none}
+.x{display:flex;align-items:center;justify-content:center;position:absolute;
+top:14px;right:14px;width:36px;height:36px;border-radius:999px;cursor:pointer;
+background:rgba(22,19,15,.06);border:0;color:#16130f;font:inherit;font-size:16px}
+@media (prefers-reduced-motion:reduce){.panel{transition:opacity 200ms ease}}
+}
+${thumb ? `body{display:block;padding:0}
+.panel,.pill,.scrim{display:none!important}
+.room{position:fixed;inset:0}
+.art{position:absolute;inset:0;margin:0}` : ""}`;
     document.head.appendChild(css);
 
-    const sheet = document.createElement("div");
-    sheet.className = "sheet";
     const esc = (s) => String(s == null ? "" : s);
-    sheet.innerHTML =
+    const panel = document.createElement("aside");
+    panel.className = "panel";
+    panel.setAttribute("aria-label", "about this piece");
+    panel.innerHTML =
       '<header class="top">' +
         '<div><span class="lab">Johnnie’s atelier</span><br><a href="../">← Art</a></div>' +
-        '<div><span class="m">Daily Practice</span><br><a href="https://johnnies.life/art" tabindex="-1">johnnies.life/art</a></div>' +
-        '<div class="r"><span class="m">' + esc(o.date) + "</span><br>" + num + "</div>" +
+        '<div><span class="m">Daily Practice</span><br>' + date + "</div>" +
+        '<div><a href="https://johnnies.life/art" tabindex="-1">johnnies.life/art</a><br>' + num + "</div>" +
       "</header>" +
-      '<div class="art"></div>' +
-      '<p class="cap">seeded by its date — tap the artwork to reseed</p>' +
-      "<h1>" + esc(o.subject || o.title) + "</h1>" +
-      (o.desc ? '<p class="desc">' + o.desc + "</p>" : "") +
-      '<div class="specs">' +
-        '<div class="row"><span class="k">Title</span><span class="v" lang="es">' + esc(o.title) + "</span></div>" +
-        '<div class="row"><span class="k">Edition</span><span class="v">' + esc(o.edition) + "</span></div>" +
-        '<div class="row"><span class="k">Stack</span><span class="v">' + esc(o.stack) + "</span></div>" +
-        '<div class="row"><span class="k">Time spent</span><span class="v">' + esc(o.time) + "</span></div>" +
+      '<div class="mid">' +
+        "<h1>" + esc(o.subject || o.title) + "</h1>" +
+        (o.desc ? '<p class="desc">' + o.desc + "</p>" : "") +
+        '<div class="specs">' +
+          '<div class="row"><span class="k">Title</span><span class="v" lang="es">' + esc(o.title) + "</span></div>" +
+          '<div class="row"><span class="k">Edition</span><span class="v">' + esc(o.edition) + "</span></div>" +
+          '<div class="row"><span class="k">Stack</span><span class="v">' + esc(o.stack) + "</span></div>" +
+          '<div class="row"><span class="k">Time spent</span><span class="v">' + esc(o.time) + "</span></div>" +
+        "</div>" +
+        '<p class="cap">seeded by its date — tap the artwork to reseed</p>' +
       "</div>" +
-      '<nav class="go" aria-label="pieces"></nav>';
-    document.body.appendChild(sheet);
+      '<nav class="go" aria-label="pieces"></nav>' +
+      '<button class="x" aria-label="close">✕</button>';
 
-    const stage = sheet.querySelector(".art");
+    const room = document.createElement("div");
+    room.className = "room";
+    const stage = document.createElement("div");
+    stage.className = "art";
+    room.appendChild(stage);
+
+    const scrim = document.createElement("div");
+    scrim.className = "scrim";
+    const pill = document.createElement("button");
+    pill.className = "pill";
+    pill.innerHTML = num + dot + esc(o.title);
+    pill.setAttribute("aria-label", "about this piece");
+
+    document.body.appendChild(panel);
+    document.body.appendChild(room);
+    if (!thumb) { document.body.appendChild(scrim); document.body.appendChild(pill); }
+
     let canvas = null;
     if (!o.noCanvas) {
       canvas = document.createElement("canvas");
@@ -116,16 +170,23 @@ ${thumb ? `.sheet{padding:0;border-radius:0;min-height:100dvh;box-shadow:none;ba
       stage.appendChild(canvas);
     }
 
+    // the sheet-modal (phones)
+    const setOpen = (v) => document.body.classList.toggle("open", v);
+    pill.addEventListener("click", () => setOpen(true));
+    panel.querySelector(".x").addEventListener("click", () => setOpen(false));
+    scrim.addEventListener("click", () => setOpen(false));
+    addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
+
     if (!thumb) {
       let lastSwipe = 0;
       stage.addEventListener("click", (e) => {
-        if (e.target.closest("a")) return;
+        if (e.target.closest("a,button")) return;
         if (Date.now() - lastSwipe < 500) return;   // a swipe is not a tap
         ART.reseed();
       });
       addEventListener("keydown", (e) => { if (e.key === "r") ART.reseed(); });
 
-      // ← → navigation: the arrows at the sheet's foot, swipe on the artwork,
+      // ← → navigation: arrows at the panel's foot, swipe on the artwork,
       // arrow keys anywhere. Production serves extensionless URLs, so match
       // basenames with the extension stripped.
       const base = (p) => p.split("/").pop().replace(/\.html$/, "");
@@ -142,12 +203,12 @@ ${thumb ? `.sheet{padding:0;border-radius:0;min-height:100dvh;box-shadow:none;ba
           const next = list[(i + 1) % list.length];
 
           const go = (file, dir) => {
-            sheet.style.transition = "transform 180ms ease, opacity 180ms ease";
-            sheet.style.transform = "translateX(" + dir * -26 + "px)";
-            sheet.style.opacity = "0.55";
+            room.style.transition = "transform 180ms ease, opacity 180ms ease";
+            room.style.transform = "translateX(" + dir * -30 + "px)";
+            room.style.opacity = "0.4";
             setTimeout(() => { location.href = file; }, 160);
           };
-          const nav = sheet.querySelector(".go");
+          const nav = panel.querySelector(".go");
           const mk = (cls, file, glyph, dir) => {
             const a = document.createElement("a");
             a.className = cls;
@@ -182,13 +243,29 @@ ${thumb ? `.sheet{padding:0;border-radius:0;min-height:100dvh;box-shadow:none;ba
     }
 
     const F = { stage, canvas, W: 0, H: 0, DPR: 1 };
-    // kept for pieces that change register mid-life; the sheet itself no
-    // longer needs re-inking (the facts live on white, not over the art)
+    // kept for pieces that change register mid-life; the panel no longer
+    // needs re-inking (the facts live on white, not over the art)
     F.setTone = function () {};
+    function fit() {
+      // desktop: fit the artwork into the room at its ratio (contain);
+      // phones/thumbs: the .art element is absolutely full-screen already
+      const fixed = getComputedStyle(room).position === "fixed";
+      if (fixed || thumb) {
+        stage.style.width = ""; stage.style.height = "";
+        return;
+      }
+      const rw = room.clientWidth, rh = room.clientHeight;
+      if (o.bleed) { stage.style.width = rw + "px"; stage.style.height = rh + "px"; return; }
+      let w = rw, h = w / ratio;
+      if (h > rh) { h = rh; w = h * ratio; }
+      stage.style.width = Math.round(w) + "px";
+      stage.style.height = Math.round(h) + "px";
+    }
     function resize(defer) {
+      fit();
       F.DPR = Math.min(devicePixelRatio || 1, 2);
-      F.W = Math.round(stage.offsetWidth * F.DPR);
-      F.H = Math.round(stage.offsetHeight * F.DPR);
+      F.W = Math.round(stage.offsetWidth * F.DPR) || Math.round(innerWidth * F.DPR);
+      F.H = Math.round(stage.offsetHeight * F.DPR) || Math.round(innerHeight * F.DPR);
       if (canvas) { canvas.width = F.W; canvas.height = F.H; }
       if (!o.onResize) return;
       const run = () => o.onResize(F.W, F.H, F.DPR);
