@@ -302,13 +302,22 @@ function build() {
       world.add(s);
       pins.find((pp) => pp.g === l.g).sprite = s;
     }
-    // the one mark on argelia's side: the goal that wasn't (8', offside)
+    // the one mark on argelia's side: the goal that wasn't (8', offside) —
+    // a shorter, dimmer pin, lifted clear of the relief, read off the plate
     for (const d of M.disallowed) {
       const e = EV[d.team].find((x) => x.dis === d);
-      const t = textSprite(d.min + "’ " + d.player + " · anulado", "rgba(242,236,225,.48)", 10, 0.058);
-      t.center.set(0, 0);
-      t.position.set((e.min / TOTAL - 0.5) * TL,
-        field(e.min, e.w) / maxH * H_MAX + 0.05, e.w * (WL / 2));
+      const x = (e.min / TOTAL - 0.5) * TL;
+      const z = e.w * (WL / 2);
+      const y = field(e.min, e.w) / maxH * H_MAX;
+      const pinGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x, y + 0.012, z), new THREE.Vector3(x, y + 0.115, z)]);
+      const pin = new THREE.Line(pinGeo,
+        new THREE.LineBasicMaterial({ color: BONE, transparent: true, opacity: 0 }));
+      world.add(pin);
+      plateSprites.push({ s: pin, o: 0.3, line: true });
+      const t = textSprite(d.min + "’ " + d.player + " · anulado", "rgba(242,236,225,.5)", 10, 0.058);
+      t.center.set(1, 0);                     // extends leftward, into the empty room
+      t.position.set(x, y + 0.125, z);
       t.material.opacity = 0;
       world.add(t);
       plateSprites.push({ s: t, o: 1 });

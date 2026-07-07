@@ -183,3 +183,9 @@ From the research — directions not yet tried:
 - Water-caustics light study (his 2024 East River obsession)
 - Iridescent thin-film palette on dark ground (oil-slick)
 - Blob inside blob inside blob
+
+## The token counter
+
+The /art homepage states how many tokens the project has cost. Refresh it at
+the end of a working session: run `python3 art-lab/tools/count-tokens.py` and
+update the `.cost` line in `johnnie/public/art/index.html` with the new total.
