@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence, animate, useMotionValue, useTransform } from 'framer-motion'
-import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown, ArrowDownUp } from 'lucide-react'
+import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown, Plus, Minus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
@@ -342,14 +342,28 @@ function TeamPanel({
         </div>
       </motion.div>
 
-      {/* Static bottom row — palitos and deslizá hint share a baseline */}
+      {/* Static bottom row — palitos on the left, explicit ± steppers
+          on the right. The steppers stop pointer propagation so a tap on
+          them never registers as a tap on the surrounding panel (which
+          would double-fire a +1). */}
       <div className="mt-auto flex items-end justify-between gap-2">
         <div className="flex flex-col gap-1.5">
           <Palitos count={malas} accent={!inBuenas && score > 0} />
           {score >= BUENAS_THRESHOLD && <Palitos count={buenas} accent={true} />}
         </div>
-        <div className="pointer-events-none inline-flex items-center gap-1 text-[10px] text-ink-soft uppercase tracking-wide opacity-50">
-          <ArrowDownUp className="size-3" aria-hidden /> deslizá
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Stepper
+            icon={Minus}
+            onTap={() => { onQuickSub(); flash('down') }}
+            aria-label={`Restar un punto a ${name}`}
+            variant="sub"
+          />
+          <Stepper
+            icon={Plus}
+            onTap={() => { onQuickAdd(); flash('up') }}
+            aria-label={`Sumar un punto a ${name}`}
+            variant="add"
+          />
         </div>
       </div>
 
@@ -358,6 +372,41 @@ function TeamPanel({
           tears down the old context and starts a fresh one. */}
       {pulse && <PulseGlow key={pulse + score} kind={pulse} />}
     </div>
+  )
+}
+
+// ─── Stepper: explicit +/− button inside a TeamPanel ────────
+// Stops pointer propagation so the surrounding panel never sees the
+// tap as an implicit +1.
+
+function Stepper({
+  icon: Icon,
+  onTap,
+  variant,
+  ...rest
+}: {
+  icon: typeof Plus
+  onTap: () => void
+  variant: 'add' | 'sub'
+} & React.AriaAttributes) {
+  const cls =
+    variant === 'add'
+      ? 'text-accent border-accent/40 hover:border-accent/70'
+      : 'text-ink-muted border-line/60 hover:border-line hover:text-ink'
+  return (
+    <button
+      type="button"
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+      onPointerMove={(e) => e.stopPropagation()}
+      onPointerCancel={(e) => e.stopPropagation()}
+      onClick={(e) => { e.stopPropagation(); onTap() }}
+      style={{ touchAction: 'manipulation' }}
+      className={`pressable inline-flex size-10 items-center justify-center rounded-sm border bg-surface-hi/70 backdrop-blur-sm ${cls}`}
+      {...rest}
+    >
+      <Icon className="size-4" strokeWidth={2.4} aria-hidden />
+    </button>
   )
 }
 
