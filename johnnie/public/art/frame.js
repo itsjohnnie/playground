@@ -257,6 +257,16 @@ ${thumb ? `body{display:block;padding:0}
           nav.appendChild(xBtn);   // ✕ sits centered between the arrows
           mk("next", next, "→");
 
+          // the neighbors and the index are prerendered in the background —
+          // navigating activates a fully-drawn page: no load, no flicker.
+          // Browsers without speculation rules simply ignore this.
+          const spec = document.createElement("script");
+          spec.type = "speculationrules";
+          spec.textContent = JSON.stringify({
+            prerender: [{ urls: [href(prev), href(next), "../"], eagerness: "immediate" }],
+          });
+          document.head.appendChild(spec);
+
           // no swipe navigation — every composition owns its own touch;
           // moving between matches is the arrows and arrow keys
           addEventListener("keydown", (e) => {
