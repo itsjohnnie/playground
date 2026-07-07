@@ -63,6 +63,7 @@ grid-template-columns:clamp(380px,42vw,600px) 1fr}
 .panel{position:relative;background:#f2f1ee;color:#16130f;overflow:auto;
 border-radius:clamp(0px,3vw,40px);container-type:inline-size;
 padding:clamp(24px,4vw,52px) clamp(22px,4.5vw,60px) clamp(28px,4.5vw,56px);
+box-shadow:0 30px 90px rgba(0,0,0,.38);
 display:flex;flex-direction:column;scrollbar-width:thin}
 .top{display:grid;grid-template-columns:1.15fr 1fr auto;gap:12px;
 font-size:clamp(11.5px,1.4vw,13.5px);line-height:1.8;letter-spacing:.01em}
@@ -78,7 +79,8 @@ color:rgba(22,19,15,.88);max-width:60ch;margin:clamp(14px,3.5cqi,24px) 0 0}
 .specs{margin:clamp(24px,6cqi,44px) 0 0;font-size:clamp(12px,2.9cqi,14px);
 background:#fff;border-radius:clamp(10px,2.6cqi,16px);
 padding:clamp(4px,1.4cqi,8px) clamp(16px,4.4cqi,26px);
-box-shadow:0 1px 2px rgba(22,19,15,.04)}
+border:1px solid rgba(22,19,15,.07);
+box-shadow:0 1px 2px rgba(22,19,15,.05), 0 4px 14px rgba(22,19,15,.04)}
 .specs .row{display:flex;justify-content:space-between;align-items:baseline;
 gap:16px;padding:clamp(11px,2.8cqi,15px) 0;border-bottom:1px solid rgba(22,19,15,.08)}
 .specs .row:last-child{border-bottom:0}
