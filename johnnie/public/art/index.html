@@ -15,6 +15,18 @@
   }
   @font-face { font-family: 'Geist'; src: url('lib/fonts/Geist-Variable.woff2') format('woff2');
     font-weight: 100 900; font-style: normal; font-display: swap; }
+  /* seamless navigation: the sheet morphs into the piece's data panel
+     (cross-document view transition); unsupported browsers just navigate */
+  @view-transition { navigation: auto; }
+  @media (min-width: 821px) { .sheet { view-transition-name: sheet; } }
+  ::view-transition-group(sheet) {
+    animation-duration: 380ms;
+    animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*), ::view-transition-image-pair(*),
+    ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--room); }
   body {
@@ -70,6 +82,11 @@
     margin: 0;
   }
   .intro a { color: inherit; }
+  .intro .cost {
+    margin-top: 14px;
+    font-size: clamp(11px, 1.3vw, 12.5px);
+    letter-spacing: 0.01em;
+  }
   .days {
     margin-top: auto;
     padding-top: clamp(48px, 9vh, 110px);
@@ -131,6 +148,8 @@
     <p>A 31-day project from Johnnie — one subject a day, studied in code and
        curated hard. After <a href="https://zach.li" rel="noopener">Zach
        Lieberman</a>’s daily sketch practice.</p>
+    <p class="cost">495,875,757 tokens spent so far, counted from the studio’s
+       own transcripts.</p>
   </section>
 
   <nav class="days" id="days" aria-label="days"></nav>
@@ -156,7 +175,10 @@
         seen.add(s.date);
         const a = document.createElement("a");
         a.className = "day";
-        a.href = s.file;
+        // production serves extensionless URLs — link directly so the view
+        // transition isn't broken by a redirect; local dev keeps .html
+        a.href = location.pathname.endsWith(".html")
+          ? s.file : s.file.replace(/\.html$/, "");
         a.style.setProperty("--d", Math.min(i++ * 60, 480) + "ms");
         const date = s.date.split("-").reverse().join(" · "); // 2026-07-06 → 06 · 07 · 2026
         a.innerHTML = '<span class="t">' + (s.subject || s.title) + '</span>' +

@@ -156,3 +156,27 @@ Also this morning: first impeccable critique (18/40) — found the P0 that
 production never had piece navigation (extensionless URLs vs .html matching).
 Fixed along with error states, contrast floors, scoped reseed, immutable lib
 caching, and GL-context recycling in the gallery.
+
+## Séptima curaduría — 2026-07-07 (the restructure)
+
+The practice reorganizes around **Argentina's Mundial 2026 run — one piece per
+match**. Verified results (Wikipedia Group J / FIFA / Yahoo):
+
+- #001 · 16·06 · Argentina 3–0 Algeria (Arrowhead, KC; Messi 17' 60' 76' — his
+  first WC hat-trick; att 69,045; ref Marciniak) → **Terreno** adapted
+- #002 · 22·06 · Argentina 2–0 Austria (AT&T, Dallas; Messi 38', 90+5' — the
+  all-time WC scoring record; yellows Medina 76', Paredes 90+2'; att 70,649)
+  → **Sismógrafo** adapted
+- #003 · 27·06 · Jordan 1–3 Argentina (AT&T; Lo Celso 19', Lautaro 31' pen,
+  Messi 80'; att 70,649) → **Resonancia** adapted (four modes)
+- #004 · 03·07 · Argentina 3–2 Cabo Verde aet (Hard Rock, Miami; the existing
+  researched dataset) → **Bronce** (new: sand-cast plaque)
+- #005 · 07·07 · Argentina vs. Egypt, R16, Atlanta — played TODAY; the piece
+  is made tonight with the real result (something new).
+
+Everything else removed from the codebase per Johnnie: batch 001 legacy
+(001–008.html) and the other studies (bruma/sello, 64.478, organismo, tapiz,
+pileta, minutos, órbitas → sello & bronce survive as adapted/kept pieces only
+in git history where replaced). Also this round: artworks sit OVER the room —
+no boxes (`open` mount mode; terreno + resonancia float directly on #0d0a07);
+click no longer reseeds (r key only); organismo retired for lag.

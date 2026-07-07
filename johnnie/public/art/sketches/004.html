@@ -1,72 +1,508 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<canvas id="c"></canvas>
+<body>
 <script src="../art.js"></script>
-<script>
-// 004 · lenses — a quiet grid of dots, disturbed by invisible glass.
-// Three lenses wander the field; dots swell and slide as they pass.
-// After Lieberman's magnifying-lens studies.
+<script src="../frame.js"></script>
+<script src="data-004.js"></script>
+<script id="frag" type="x-shader">
+precision highp float;
+uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
+uniform sampler2D u_map;
 
-const seed = ART.seed("2026-07-06-004");
-const R = ART.rng(seed);
-const canvas = ART.fit(document.getElementById("c"));
-const ctx = canvas.getContext("2d");
+// u_map: RG = surface normal xy, B = height, A = cavity (concave/convex).
+// One warm key light rakes across the relief as u_p goes 0 -> 1, then rests
+// at the upper left. Patina sits in the recesses, wear on the proud edges.
 
-const lenses = [];
-for (let i = 0; i < 3; i++) {
-  lenses.push({
-    // lissajous parameters — each lens on its own slow figure
-    ax: 0.25 + R() * 0.3, ay: 0.25 + R() * 0.3,
-    fx: 0.11 + R() * 0.13, fy: 0.09 + R() * 0.12,
-    px: R() * Math.PI * 2, py: R() * Math.PI * 2,
-    r: 0.16 + R() * 0.14,      // radius, in min-dimension units
-    mag: 1.8 + R() * 1.6,      // magnification strength
-  });
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+             mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
 }
 
-function draw(tms) {
-  const t = tms / 1000;
-  const W = canvas.width, H = canvas.height;
-  const m = Math.min(W, H);
-  ctx.fillStyle = "#111015";
-  ctx.fillRect(0, 0, W, H);
+void main(){
+  vec2 fc = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
+  vec2 uv = fc / u_res;
+  float dw = min(u_res.x, u_res.y*0.75);
 
-  const cx = W / 2, cy = H / 2;
-  const pos = lenses.map((L) => ({
-    x: cx + Math.sin(t * L.fx * Math.PI * 2 + L.px) * L.ax * W,
-    y: cy + Math.sin(t * L.fy * Math.PI * 2 + L.py) * L.ay * H,
-    r: L.r * m, mag: L.mag,
-  }));
+  vec4 m = texture2D(u_map, uv);
+  vec2 nxy = m.xy*2.0 - 1.0;
+  vec3 N = vec3(nxy, sqrt(max(0.04, 1.0 - dot(nxy, nxy))));
+  float h = m.z;
+  float cav = (m.w - 0.5)*2.0;
 
-  const gap = m / 42;
-  const r0 = gap * 0.16;
-  ctx.fillStyle = "#efe9dc";
+  // the lamp: grazing from the lower right, arcs overhead, settles upper left
+  float pe = u_p*u_p*(3.0 - 2.0*u_p);
+  float az = mix(0.46, -2.25, pe);
+  float el = mix(0.13, 0.56, pe);
+  vec3 L = normalize(vec3(cos(az)*cos(el), sin(az)*cos(el), sin(el)));
+  vec2 Lh = normalize(L.xy);
+  vec3 Hv = normalize(L + vec3(0.0, 0.0, 1.0));
 
-  for (let x = gap / 2; x < W + gap; x += gap) {
-    for (let y = gap / 2; y < H + gap; y += gap) {
-      let dx = 0, dy = 0, scale = 1;
-      for (const L of pos) {
-        const ox = x - L.x, oy = y - L.y;
-        const d = Math.hypot(ox, oy);
-        if (d < L.r && d > 1e-4) {
-          const n = d / L.r;
-          // bulge: pull points outward from center, ease at rim
-          const k = (1 - n) * (1 - n);
-          const push = k * L.r * 0.35 * (L.mag - 1) * 0.5;
-          dx += (ox / d) * push;
-          dy += (oy / d) * push;
-          scale += k * (L.mag - 1);
-        }
+  float plaque = smoothstep(0.20, 0.32, h);
+  float occ  = smoothstep(0.03, -0.20, cav);            // recesses -> patina
+  float wear = smoothstep(0.06, 0.26, cav) * plaque;    // proud edges -> polish
+
+  // cast shadow: march a few taps toward the lamp
+  float D = 0.055*dw;
+  float tanel = L.z / max(length(L.xy), 1e-3);
+  float shad = 0.0;
+  for (int k = 1; k <= 4; k++){
+    float s = float(k)*0.0055*dw;
+    float hs = texture2D(u_map, uv + Lh*s/u_res).z;
+    float blk = ((hs - h)*D - s*tanel) / D;
+    shad = max(shad, smoothstep(0.0, 0.10, blk));
+  }
+  shad *= 0.75;
+
+  // material
+  float mot = 0.6*vnoise(fc/(dw*0.055)) + 0.4*vnoise(fc/(dw*0.012));
+  vec3 bronze = vec3(0.40, 0.27, 0.15) * (0.80 + 0.45*mot);
+  vec3 patina = vec3(0.085, 0.082, 0.062);
+  vec3 gold   = vec3(0.90, 0.66, 0.33);
+  vec3 alb = mix(bronze, patina, occ*0.88);
+  alb = mix(alb, gold, wear*0.60);
+  float felt = vnoise(fc/(dw*0.0035));
+  vec3 galb = vec3(0.055, 0.050, 0.043) * (0.75 + 0.55*felt);
+  alb = mix(galb, alb, plaque);
+
+  // light
+  float dif = max(dot(N, L), 0.0) * (1.0 - shad);
+  vec2 lpos = clamp(vec2(0.5) + Lh*0.38, 0.0, 1.0);
+  vec2 ld = (uv - lpos) * u_res / dw;
+  float fall = clamp(1.16 - 0.28*length(ld), 0.35, 1.2);
+  vec3 key = vec3(1.06, 0.97, 0.86);
+  float ndh = max(dot(N, Hv), 0.0);
+  float spec = pow(ndh, 64.0)*(0.55 + 1.8*wear) + pow(ndh, 12.0)*0.18;
+  spec *= (1.0 - shad) * mix(0.06, 1.0, plaque) * (1.0 - occ*0.7);
+  vec3 Lf = normalize(vec3(0.55, 0.35, 0.45));
+  float fil = max(dot(N, Lf), 0.0)*0.16;
+  float ao = 1.0 - occ*0.55;
+  vec3 col = alb*(key*dif*fall*1.65 + vec3(0.80, 0.88, 1.02)*fil*ao + 0.055*ao)
+           + key*spec*fall;
+
+  // exposure rises with the lamp, then the print
+  col *= mix(0.55, 1.0, smoothstep(0.0, 0.30, u_p));
+  col = col/(1.0 + 0.42*col);
+  col = pow(col, vec3(0.90));
+  vec2 vq = (uv - 0.5) * vec2(u_res.x/dw, u_res.y/dw);
+  col *= mix(0.70, 1.0, smoothstep(1.25, 0.45, length(vq)));
+  col += (hash(fc*0.83) - 0.5)*0.028;
+
+  gl_FragColor = vec4(col, 1.0);
+}
+</script>
+<script>
+// 008 — j · bronce — a commemorative plaque, sand-cast in bronze.
+// The relief is authored as a real heightfield (Canvas 2D: foundry
+// lettering, a 120-minute chapter ring, the sol de mayo, guarda pampa
+// bands), then normals + cavity are baked on the CPU and the metal is
+// lit in GLSL — patina pooled in the recesses, wear on the proud edges,
+// cast shadows marched toward the lamp. Every mark is the match:
+// Argentina's three goals raised from the metal, Cabo Verde's two sunk
+// into it (the 111' own goal ringed), period marks at 45/90/105,
+// hydration notches at 26' and 73', scorers and venue in raised type.
+// One raking light crosses the plaque over ~9s and settles; the loop
+// stops — the final frame is the photograph. Casting flaws (pits, edge
+// slump, face undulation) are seeded; tap to recast.
+
+const seed = ART.seed("2026-07-03-004");
+const M = window.M8;
+const TAU = Math.PI * 2;
+
+let W = 0, H = 0, DPR = 1;
+let sh = null, gl = null, tex = null;
+let built = false, animOn = false, curP = 0, t0 = 0, buildTimer = 0;
+let fontsOK = false;
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DUR = 9200;
+
+const F = FRAME.mount({
+  num: 4, title: "Bronce", subject: "Argentina vs. Cabo Verde",
+  edition: "04/31", date: "03·07·2026",
+  stack: "Canvas 2D → GLSL relief", time: "88 minutes",
+  desc: "A commemorative plaque, sand-cast in bronze: the full 120 minutes ring a sol de mayo — Argentina's three goals raised from the metal, Cabo Verde's two struck into it. One raking lamp crosses the relief and settles; the patina keeps the score.",
+  dark: true, onResize(w, h, dpr) {
+    W = w; H = h; DPR = dpr;
+    if (!sh) {
+      sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p", "u_map"]);
+      gl = sh.gl;
+      tex = gl.createTexture();
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.uniform1i(sh.extra.u_map, 0);
+    }
+    schedule();
+  },
+});
+const sf = ART.rng(seed)() * 100;
+
+// wait for the mono face so the cast lettering is the real letterform
+Promise.race([
+  document.fonts.load('600 32px "Geist Mono"'),
+  new Promise((r) => setTimeout(r, 1600)),
+]).then(() => { fontsOK = true; if (sh) schedule(); });
+
+function schedule() {
+  if (!fontsOK || !sh || !W) return;
+  clearTimeout(buildTimer);
+  buildTimer = setTimeout(rebuild, built ? 140 : 0);
+}
+
+/* ---------- the height master: white raises the metal, black sinks it ---------- */
+
+const hc = document.createElement("canvas");
+const tc = document.createElement("canvas");
+
+function rebuild() {
+  const S = Math.min(W, H * 0.75), DH = S / 0.75;
+  const cx = W / 2, top = (H - DH) / 2;
+  hc.width = W; hc.height = H;
+  const x = hc.getContext("2d", { willReadFrequently: true });
+  x.fillStyle = "#000"; x.fillRect(0, 0, W, H);
+
+  const mg = 0.05 * S;
+  const PX0 = cx - S / 2 + mg, PY0 = top + mg, PW = S - 2 * mg, PH = DH - 2 * mg;
+  const RC = { x: cx, y: top + 0.565 * DH };
+  const RR = 0.27 * S;
+
+  function layer(fn, blur, alpha, mode) {
+    tc.width = W; tc.height = H;
+    const c = tc.getContext("2d");
+    fn(c);
+    x.save();
+    if (blur) x.filter = "blur(" + blur.toFixed(2) + "px)";
+    x.globalAlpha = alpha;
+    x.globalCompositeOperation = mode || "source-over";
+    x.drawImage(tc, 0, 0);
+    x.restore();
+    x.filter = "none";
+  }
+  function plaquePath(c, inset, r) {
+    const a = PX0 + inset, b = PY0 + inset, w = PW - 2 * inset, h = PH - 2 * inset;
+    c.beginPath();
+    if (c.roundRect) c.roundRect(a, b, w, h, r); else c.rect(a, b, w, h);
+  }
+  function setFont(c, px, wgt) {
+    if ("letterSpacing" in c) c.letterSpacing = (px * 0.12).toFixed(1) + "px";
+    c.font = (wgt || 600) + " " + px.toFixed(1) + "px 'Geist Mono', ui-monospace, monospace";
+    c.textAlign = "center"; c.textBaseline = "middle";
+  }
+  function dome(c, px, py, r, ink) {
+    const g = c.createRadialGradient(px, py, 0, px, py, r);
+    g.addColorStop(0, ink + "1)");
+    g.addColorStop(0.72, ink + "0.55)");
+    g.addColorStop(1, ink + "0)");
+    c.fillStyle = g;
+    c.beginPath(); c.arc(px, py, r, 0, TAU); c.fill();
+  }
+  const white = "rgba(255,255,255,", black = "rgba(0,0,0,";
+  const mAngle = (min) => -Math.PI / 2 + (min / 120) * TAU;
+  // casting flaws must not land in the lettering
+  const textBands = [[0.175, 0.335], [0.825, 0.905]];
+  function flawSpot(Rn, m) {
+    for (let k = 0; k < 20; k++) {
+      const px = PX0 + m + Rn() * (PW - 2 * m), py = PY0 + m + Rn() * (PH - 2 * m);
+      const fy = (py - top) / DH;
+      if (!textBands.some(([a, b]) => fy > a && fy < b)) return [px, py];
+    }
+    return [PX0 + m, PY0 + PH / 2];
+  }
+
+  function guarda(c, gy, halfW) {
+    c.fillStyle = "#fff";
+    const bh = 0.030 * S, dwd = 0.052 * S;
+    c.fillRect(cx - halfW - 0.02 * S, gy - bh / 2 - 0.013 * S, 2 * (halfW + 0.02 * S), 0.0035 * S);
+    c.fillRect(cx - halfW - 0.02 * S, gy + bh / 2 + 0.0095 * S, 2 * (halfW + 0.02 * S), 0.0035 * S);
+    const n = Math.round((2 * halfW) / (dwd * 1.45));
+    const sp = (2 * halfW) / n;
+    for (let i = 0; i < n; i++) {
+      const dx = cx + (i - (n - 1) / 2) * sp;
+      for (let j = -3; j <= 3; j++) {
+        const bw = dwd * (1 - Math.abs(j) * 0.26);
+        c.fillRect(dx - bw / 2, gy + j * (bh / 7) - bh / 14, bw, bh / 7);
       }
-      const rr = r0 * scale;
-      ctx.beginPath();
-      ctx.arc(x + dx, y + dy, rr, 0, Math.PI * 2);
-      ctx.fill();
     }
   }
-  requestAnimationFrame(draw);
+
+  const scorers = (team) => M.goals.filter((g) => g.team === team)
+    .map((g) => (g.og ? g.player.replace(/^og\s*·\s*/, "").toUpperCase() + " (E.C.)"
+                      : g.player.toUpperCase()) + " " + g.min + "’")
+    .join("  ·  ");
+
+  /* 1 — the plaque body (its edge bevel comes from the blur) */
+  layer((c) => { c.fillStyle = "#fff"; plaquePath(c, 0, 0.02 * S); c.fill(); }, 0.0035 * S, 0.58);
+
+  /* 2 — casting slump along the edges */
+  layer((c) => {
+    const Re = ART.rng(seed + "edge");
+    for (let i = 0; i < 26; i++) {
+      const side = (Re() * 4) | 0, t = Re();
+      let px, py;
+      if (side === 0) { px = PX0 + t * PW; py = PY0; }
+      else if (side === 1) { px = PX0 + t * PW; py = PY0 + PH; }
+      else if (side === 2) { px = PX0; py = PY0 + t * PH; }
+      else { px = PX0 + PW; py = PY0 + t * PH; }
+      c.fillStyle = Re() < 0.5 ? "#fff" : "#000";
+      c.beginPath();
+      c.ellipse(px, py, (0.006 + 0.014 * Re()) * S, (0.004 + 0.008 * Re()) * S, Re() * Math.PI, 0, TAU);
+      c.fill();
+    }
+  }, 0.006 * S, 0.10);
+
+  /* 3 — raised rim + chapter-ring plateau */
+  layer((c) => {
+    c.strokeStyle = "#fff"; c.lineWidth = 0.009 * S;
+    plaquePath(c, 0.042 * S, 0.012 * S); c.stroke();
+  }, 0.0022 * S, 0.20, "lighter");
+  layer((c) => {
+    c.strokeStyle = "#fff"; c.lineWidth = 0.075 * S;
+    c.beginPath(); c.arc(RC.x, RC.y, RR, 0, TAU); c.stroke();
+  }, 0.010 * S, 0.06, "lighter");
+
+  /* 4 — raised type, ticks, bands, rays */
+  layer((c) => {
+    c.fillStyle = "#fff"; c.strokeStyle = "#fff";
+    guarda(c, top + 0.125 * DH, 0.30 * S);
+    guarda(c, top + 0.902 * DH, 0.30 * S);
+
+    setFont(c, 0.046 * S);
+    c.fillText(M.home.name.toUpperCase() + "  " + M.home.score, cx, top + 0.197 * DH);
+    c.fillText(M.away.name.toUpperCase() + "  " + M.away.score, cx, top + 0.274 * DH);
+
+    // 120 minute ticks; kickoff + period marks longer
+    for (let m = 0; m < 120; m++) {
+      const a = mAngle(m);
+      const per = m === 0 || M.periods.indexOf(m) >= 0;
+      const li = (per ? 0.034 : 0.016) * S;
+      c.lineWidth = (per ? 0.005 : 0.0028) * S;
+      c.beginPath();
+      c.moveTo(RC.x + Math.cos(a) * (RR - li / 2), RC.y + Math.sin(a) * (RR - li / 2));
+      c.lineTo(RC.x + Math.cos(a) * (RR + li / 2), RC.y + Math.sin(a) * (RR + li / 2));
+      c.stroke();
+    }
+    // sol de mayo — 32 rays, straight and wavy alternating
+    for (let k = 0; k < 32; k++) {
+      const a = -Math.PI / 2 + (k / 32) * TAU;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      if (k % 2 === 0) {
+        const r0 = 0.062 * S, r1 = 0.185 * S, bw = 0.0055 * S;
+        c.beginPath();
+        c.moveTo(RC.x + ca * r0 - sa * bw, RC.y + sa * r0 + ca * bw);
+        c.lineTo(RC.x + ca * r0 + sa * bw, RC.y + sa * r0 - ca * bw);
+        c.lineTo(RC.x + ca * r1, RC.y + sa * r1);
+        c.closePath(); c.fill();
+      } else {
+        c.lineWidth = 0.0055 * S;
+        c.beginPath();
+        for (let s = 0; s <= 12; s++) {
+          const t = s / 12, r = 0.062 * S + t * 0.113 * S;
+          const off = Math.sin(t * TAU * 1.25) * 0.0075 * S * (1 - t * 0.4);
+          const px = RC.x + ca * r - sa * off, py = RC.y + sa * r + ca * off;
+          s ? c.lineTo(px, py) : c.moveTo(px, py);
+        }
+        c.stroke();
+      }
+    }
+    // metal splash specks
+    const Rs = ART.rng(seed + "speck");
+    for (let i = 0; i < 6; i++) {
+      const [px, py] = flawSpot(Rs, 0.08 * S);
+      c.beginPath();
+      c.arc(px, py, (0.001 + 0.0015 * Rs()) * S, 0, TAU);
+      c.fill();
+    }
+  }, 0.0016 * S, 0.26, "lighter");
+
+  /* 4b — the small strike lines get a crisper bevel so the counters survive */
+  layer((c) => {
+    c.fillStyle = "#fff";
+    setFont(c, 0.020 * S, 500);
+    c.fillText(scorers("arg"), cx, top + 0.232 * DH);
+    c.fillText(scorers("cpv"), cx, top + 0.309 * DH);
+    c.fillText(M.competition.toUpperCase() + (M.aet ? "  ·  PRÓRROGA" : ""), cx, top + 0.842 * DH);
+    c.fillText(M.venue.toUpperCase().replace(", ", "  ·  ") + "  ·  " + M.date, cx, top + 0.868 * DH);
+    setFont(c, 0.026 * S);
+    for (const g of M.goals) {
+      const a = mAngle(g.min), rn = RR + 0.052 * S;
+      c.fillText(g.min + "’", RC.x + Math.cos(a) * rn, RC.y + Math.sin(a) * rn);
+    }
+  }, 0.0009 * S, 0.28, "lighter");
+
+  /* 5 — tall relief: goal domes, sol disc, mounting screws */
+  layer((c) => {
+    c.strokeStyle = "#fff";
+    for (const g of M.goals) {
+      const a = mAngle(g.min);
+      const bx = RC.x + Math.cos(a) * RR, by = RC.y + Math.sin(a) * RR;
+      if (g.team === "arg") {
+        dome(c, bx, by, 0.026 * S, white);
+        dome(c, bx, by, 0.010 * S, white);
+      } else {                            // the bowl's lip catches the lamp
+        c.lineWidth = 0.0045 * S;
+        c.beginPath(); c.arc(bx, by, 0.025 * S, 0, TAU); c.stroke();
+      }
+    }
+    dome(c, RC.x, RC.y, 0.052 * S, white);
+    dome(c, RC.x, RC.y, 0.022 * S, white);
+    const sc = 0.095 * S;
+    for (const [px, py] of [[PX0 + sc, PY0 + sc], [PX0 + PW - sc, PY0 + sc],
+                            [PX0 + sc, PY0 + PH - sc], [PX0 + PW - sc, PY0 + PH - sc]]) {
+      dome(c, px, py, 0.015 * S, white);
+    }
+  }, 0.0016 * S, 0.34, "lighter");
+
+  /* 6 — struck into the metal: bowls, engravings, pits, screw slots */
+  layer((c) => {
+    c.fillStyle = "#000"; c.strokeStyle = "#000";
+    for (const g of M.goals) {
+      const a = mAngle(g.min);
+      const bx = RC.x + Math.cos(a) * RR, by = RC.y + Math.sin(a) * RR;
+      if (g.team === "cpv") dome(c, bx, by, 0.020 * S, black);
+      if (g.og) {                       // the own goal, ringed
+        c.lineWidth = 0.0035 * S;
+        c.beginPath(); c.arc(bx, by, 0.038 * S, 0, TAU); c.stroke();
+      }
+    }
+    for (const bm of M.breaks) {        // hydration notches
+      const a = mAngle(bm);
+      c.beginPath();
+      c.arc(RC.x + Math.cos(a) * (RR - 0.045 * S), RC.y + Math.sin(a) * (RR - 0.045 * S),
+            0.0045 * S, 0, TAU);
+      c.fill();
+    }
+    setFont(c, 0.013 * S, 500);
+    c.textAlign = "right";                // stamped in the outer margin, foundry habit
+    c.fillText("FUND. J.A. · Nº 008", PX0 + PW - 0.06 * S, PY0 + PH - 0.0205 * S);
+    const Rq = ART.rng(seed + "screw");
+    const sc = 0.095 * S;
+    c.lineWidth = 0.004 * S;
+    for (const [px, py] of [[PX0 + sc, PY0 + sc], [PX0 + PW - sc, PY0 + sc],
+                            [PX0 + sc, PY0 + PH - sc], [PX0 + PW - sc, PY0 + PH - sc]]) {
+      const a = Rq() * Math.PI, r = 0.010 * S;
+      c.beginPath();
+      c.moveTo(px - Math.cos(a) * r, py - Math.sin(a) * r);
+      c.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r);
+      c.stroke();
+    }
+    const Rp = ART.rng(seed + "pits");
+    for (let i = 0; i < 12; i++) {
+      const [px, py] = flawSpot(Rp, 0.06 * S);
+      c.beginPath();
+      c.arc(px, py, (0.0015 + 0.003 * Rp()) * S, 0, TAU);
+      c.fill();
+    }
+  }, 0.0016 * S, 0.30);
+
+  bake(x, S);
+  built = true;
+  if (!animOn) { animOn = true; start(); } else render();
 }
-requestAnimationFrame(draw);
-ART.chrome({ n: "004", title: "lenses", date: "2026-07-06", dark: true });
+
+/* ---------- bake: heights -> normals + cavity, upload ---------- */
+
+function boxBlur(a, w, h, r, passes) {
+  const t = new Float32Array(a.length);
+  const iw = 1 / (2 * r + 1);
+  for (let p = 0; p < passes; p++) {
+    for (let y = 0; y < h; y++) {          // horizontal
+      const o = y * w;
+      let acc = a[o] * (r + 1);
+      for (let i = 1; i <= r; i++) acc += a[o + Math.min(i, w - 1)];
+      for (let xx = 0; xx < w; xx++) {
+        t[o + xx] = acc * iw;
+        acc += a[o + Math.min(xx + r + 1, w - 1)] - a[o + Math.max(xx - r, 0)];
+      }
+    }
+    for (let xx = 0; xx < w; xx++) {       // vertical
+      let acc = t[xx] * (r + 1);
+      for (let i = 1; i <= r; i++) acc += t[xx + Math.min(i, h - 1) * w];
+      for (let y = 0; y < h; y++) {
+        a[y * w + xx] = acc * iw;
+        acc += t[xx + Math.min(y + r + 1, h - 1) * w] - t[xx + Math.max(y - r, 0) * w];
+      }
+    }
+  }
+}
+
+function bake(x, S) {
+  const img = x.getImageData(0, 0, W, H);
+  const N = W * H;
+  const hgt = new Float32Array(N);
+  for (let i = 0; i < N; i++) hgt[i] = img.data[i * 4] / 255;
+  boxBlur(hgt, W, H, 1, 1);                // soften 8-bit steps
+
+  // seeded casting texture: low-frequency face undulation + sand grain
+  const nz = ART.makeNoise(seed + "cast");
+  const gs = Math.max(8, Math.round(S * 0.03));
+  const gw = Math.ceil(W / gs) + 2, gh = Math.ceil(H / gs) + 2;
+  const und = new Float32Array(gw * gh);
+  for (let gy = 0; gy < gh; gy++)
+    for (let gx = 0; gx < gw; gx++)
+      und[gy * gw + gx] = nz.fbm2((gx * gs) / S * 2.6, (gy * gs) / S * 2.6, 3);
+  const grain = new Float32Array(256 * 256);
+  const Rg = ART.rng(seed + "grain");
+  for (let i = 0; i < grain.length; i++) grain[i] = Rg() - 0.5;
+
+  for (let y = 0; y < H; y++) {
+    const fy = y / gs, y0 = fy | 0, ty = fy - y0;
+    for (let xx = 0; xx < W; xx++) {
+      const i = y * W + xx;
+      const fx = xx / gs, x0 = fx | 0, tx = fx - x0;
+      const u00 = und[y0 * gw + x0], u10 = und[y0 * gw + x0 + 1];
+      const u01 = und[(y0 + 1) * gw + x0], u11 = und[(y0 + 1) * gw + x0 + 1];
+      const u = (u00 * (1 - tx) + u10 * tx) * (1 - ty) + (u01 * (1 - tx) + u11 * tx) * ty;
+      const g = grain[(xx & 255) + ((y & 255) << 8)];
+      const on = Math.min(1, Math.max(0, (hgt[i] - 0.30) / 0.15)); // plaque only
+      hgt[i] += u * 0.07 * on + g * (0.0025 + 0.0035 * on);
+    }
+  }
+
+  const hb = hgt.slice();
+  boxBlur(hb, W, H, Math.max(4, Math.round(S * 0.011)), 3);
+
+  const out = new Uint8ClampedArray(N * 4);
+  const D = 0.05 * S;
+  for (let y = 0; y < H; y++) {
+    for (let xx = 0; xx < W; xx++) {
+      const i = y * W + xx;
+      const xm = i - (xx > 0 ? 1 : 0), xp = i + (xx < W - 1 ? 1 : 0);
+      const ym = i - (y > 0 ? W : 0), yp = i + (y < H - 1 ? W : 0);
+      const nx = -(hgt[xp] - hgt[xm]) * 0.5 * D;
+      const ny = -(hgt[yp] - hgt[ym]) * 0.5 * D;
+      const il = 1 / Math.sqrt(nx * nx + ny * ny + 1);
+      const o = i * 4;
+      out[o] = (nx * il * 0.5 + 0.5) * 255;
+      out[o + 1] = (ny * il * 0.5 + 0.5) * 255;
+      out[o + 2] = hgt[i] * 255;
+      out[o + 3] = ((hgt[i] - hb[i]) * 2.2 + 0.5) * 255;
+    }
+  }
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, new ImageData(out, W, H));
+}
+
+/* ---------- the exposure: one pass of the lamp, then rest ---------- */
+
+function render() {
+  if (!sh || !built) return;
+  gl.uniform1f(sh.extra.u_p, curP);
+  sh.draw(0, sf);
+}
+function start() {
+  if (RM) { curP = 1; render(); return; }
+  t0 = performance.now();
+  (function tick(t) {
+    curP = Math.min(1, (t - t0) / DUR);
+    render();
+    if (curP < 1) requestAnimationFrame(tick);
+    // else: the loop stops — the final frame is the photograph
+  })(t0);
+}
 </script>

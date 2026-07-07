@@ -11,12 +11,15 @@
   const FRAME = {};
 
   // mount({ num, edition, subject, title, date, stack, time, desc,
-  //         ratio, bleed, dark, noCanvas, onResize })
+  //         ratio, bleed, open, dark, noCanvas, onResize })
   //  → { stage, canvas, W, H, DPR, setTone }
   // stage is the artwork surface. ratio = width/height of the artwork on
   // desktop (0.75 default; 1.6 landscape; bleed fills the whole art region).
-  // On ≤820px the artwork is always full-screen. onResize(W, H, DPR) fires
-  // deferred once at mount, then on every resize.
+  // open: the artwork sits directly on the room — no box: the surface is
+  // transparent and fills the region; the piece grounds itself in the room's
+  // #0d0a07 (or draws with alpha). On ≤820px the artwork is always
+  // full-screen. onResize(W, H, DPR) fires deferred once at mount, then on
+  // every resize.
   FRAME.mount = function (o) {
     const thumb = window.ART && ART.isThumb;
     const num = "#" + String(o.num || 0).padStart(3, "0");
@@ -29,7 +32,7 @@
     document.head.appendChild(fav);
 
     const ratio = o.ratio || 0.75;
-    const artBg = o.dark ? "#0a0a0c" : "#e9e3d5";
+    const artBg = o.open ? "transparent" : (o.dark ? "#0a0a0c" : "#e9e3d5");
     const dot = " · ";
     const date = (o.date || "").split("·").join(dot); // 06·07·2026 → spaced dots
 
@@ -38,6 +41,19 @@
 @font-face{font-family:'Geist';src:url('../lib/fonts/Geist-Variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
 @font-face{font-family:'Geist Mono';src:url('../lib/fonts/GeistMono-Variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
 @font-face{font-family:'Geist Pixel';src:url('../lib/fonts/GeistPixel-Square.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+/* seamless navigation: the white sheet morphs between the index and the
+   panel, artworks cross-blend — no reload flash. Browsers without
+   cross-document view transitions simply navigate. */
+@view-transition{navigation:auto}
+@media (min-width:821px){.panel{view-transition-name:sheet}}
+.room{view-transition-name:artwork}
+::view-transition-group(sheet),::view-transition-group(artwork){
+animation-duration:380ms;animation-timing-function:cubic-bezier(0.23,1,0.32,1)}
+::view-transition-old(artwork),::view-transition-new(artwork){
+animation-duration:300ms}
+@media (prefers-reduced-motion:reduce){
+::view-transition-group(*),::view-transition-image-pair(*),
+::view-transition-old(*),::view-transition-new(*){animation:none!important}}
 html,body{margin:0;background:#0d0a07;height:100%}
 body{height:100dvh;overflow:hidden;box-sizing:border-box;
 font-family:'Geist',ui-sans-serif,system-ui,sans-serif;font-weight:430;
@@ -139,7 +155,7 @@ ${thumb ? `body{display:block;padding:0}
           '<div class="row"><span class="k">Stack</span><span class="v">' + esc(o.stack) + "</span></div>" +
           '<div class="row"><span class="k">Time spent</span><span class="v">' + esc(o.time) + "</span></div>" +
         "</div>" +
-        '<p class="cap">seeded by its date — tap the artwork to reseed</p>' +
+        '<p class="cap">seeded by its date</p>' +
       "</div>" +
       '<nav class="go" aria-label="pieces"></nav>' +
       '<button class="x" aria-label="close">✕</button>';
@@ -170,6 +186,12 @@ ${thumb ? `body{display:block;padding:0}
       stage.appendChild(canvas);
     }
 
+    // when a view transition is running, the panel group already morphs —
+    // skip the entrance animation so the two don't fight
+    addEventListener("pagereveal", (e) => {
+      if (e.viewTransition) panel.style.animation = "none";
+    });
+
     // the sheet-modal (phones)
     const setOpen = (v) => document.body.classList.toggle("open", v);
     pill.addEventListener("click", () => setOpen(true));
@@ -178,12 +200,7 @@ ${thumb ? `body{display:block;padding:0}
     addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
 
     if (!thumb) {
-      let lastSwipe = 0;
-      stage.addEventListener("click", (e) => {
-        if (e.target.closest("a,button")) return;
-        if (Date.now() - lastSwipe < 500) return;   // a swipe is not a tap
-        ART.reseed();
-      });
+      // clicks never restart the piece; reseed is the r key only
       addEventListener("keydown", (e) => { if (e.key === "r") ART.reseed(); });
 
       // ← → navigation: arrows at the panel's foot, swipe on the artwork,
@@ -202,24 +219,25 @@ ${thumb ? `body{display:block;padding:0}
           const prev = list[(i - 1 + list.length) % list.length];
           const next = list[(i + 1) % list.length];
 
-          const go = (file, dir) => {
-            room.style.transition = "transform 180ms ease, opacity 180ms ease";
-            room.style.transform = "translateX(" + dir * -30 + "px)";
-            room.style.opacity = "0.4";
-            setTimeout(() => { location.href = file; }, 160);
-          };
+          // production serves extensionless URLs — link them directly so the
+          // view transition isn't broken by a redirect (and swipes skip a
+          // round-trip); local dev keeps .html
+          const href = (f) =>
+            location.pathname.endsWith(".html") ? f : f.replace(/\.html$/, "");
+          // navigation is a cross-document view transition (the artwork
+          // cross-blends, the panel morphs) — no manual slide needed
+          const go = (file) => { location.href = href(file); };
           const nav = panel.querySelector(".go");
-          const mk = (cls, file, glyph, dir) => {
+          const mk = (cls, file, glyph) => {
             const a = document.createElement("a");
             a.className = cls;
-            a.href = file;
+            a.href = href(file);
             a.textContent = glyph;
             a.setAttribute("aria-label", cls === "prev" ? "previous piece" : "next piece");
-            a.addEventListener("click", (e) => { e.preventDefault(); go(file, dir); });
             nav.appendChild(a);
           };
-          mk("prev", prev, "←", -1);
-          mk("next", next, "→", 1);
+          mk("prev", prev, "←");
+          mk("next", next, "→");
 
           let sx = 0, sy = 0;
           stage.addEventListener("touchstart", (e) => {
@@ -229,13 +247,12 @@ ${thumb ? `body{display:block;padding:0}
             const t = e.changedTouches[0];
             const dx = t.clientX - sx, dy = t.clientY - sy;
             if (Math.abs(dx) > 60 && Math.abs(dx) > 1.8 * Math.abs(dy)) {
-              lastSwipe = Date.now();
-              dx < 0 ? go(next, 1) : go(prev, -1);
+              dx < 0 ? go(next) : go(prev);
             }
           }, { passive: true });
           addEventListener("keydown", (e) => {
-            if (e.key === "ArrowRight") go(next, 1);
-            if (e.key === "ArrowLeft") go(prev, -1);
+            if (e.key === "ArrowRight") go(next);
+            if (e.key === "ArrowLeft") go(prev);
           });
         })
         // loud on purpose: a silent catch here once shipped a dead nav
@@ -255,7 +272,7 @@ ${thumb ? `body{display:block;padding:0}
         return;
       }
       const rw = room.clientWidth, rh = room.clientHeight;
-      if (o.bleed) { stage.style.width = rw + "px"; stage.style.height = rh + "px"; return; }
+      if (o.bleed || o.open) { stage.style.width = rw + "px"; stage.style.height = rh + "px"; return; }
       let w = rw, h = w / ratio;
       if (h > rh) { h = rh; w = h * ratio; }
       stage.style.width = Math.round(w) + "px";

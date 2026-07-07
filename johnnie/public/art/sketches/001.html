@@ -1,72 +1,440 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<canvas id="c"></canvas>
+<body>
 <script src="../art.js"></script>
-<script id="frag" type="x-shader">
-precision highp float;
-uniform vec2 u_res; uniform float u_time; uniform float u_seed;
+<script src="../frame.js"></script>
+<script src="data-001.js"></script>
+<script type="importmap">{ "imports": { "three": "../lib/three.module.min.js" } }</script>
+<script type="module">
+// #001 — terreno — the match as a survey plate.
+// A black plate photographed in a dark room: x = the 90'+stoppage along the
+// long axis, height = attacking pressure, depth = the width of the pitch
+// (argentina works one half, argelia the other). Broad swells come from
+// per-half xG rates, hills from all 17 shots (taller when on target),
+// summits from the three goals — all argentina, all messi (17' 60' 76',
+// his first world cup hat-trick). Argelia's side stays low ground: seven
+// shots, none on target, one goal ruled offside at 8'. The relief rises
+// once, left to right behind a plotter cursor over ~8s, its bone-white
+// contour lines emerging as the terrain climbs through the level planes —
+// then the loop stops and the plate rests. data: counts, goal minutes and
+// totals exact from M1 (see data-001.js for sources); per-half splits,
+// individual shot minutes and across-pitch placement seeded (no location
+// data exists). three.js · white ink on black.
 
-// 001 · pool — soft color-field blobs breathing into each other.
-// Each blob carries its own high-chroma ink; where fields overlap the
-// colors mix like wet pigment. After Lieberman's color-blend studies.
+import * as THREE from "three";
 
-float hash(float n){ return fract(sin(n*127.1+u_seed*311.7)*43758.5453); }
+const seed = ART.seed("2026-06-16-001");
+const M = window.M1;
 
-void main(){
-  vec2 uv = (gl_FragCoord.xy*2.0 - u_res) / min(u_res.x, u_res.y);
-  float t = u_time*0.22;
+const TOTAL = M.totalMin;                  // 90' + stoppage — no prórroga
+const TL = 3.0, WL = 1.32;                 // world length (time) / depth (pitch width)
+const SEG_T = 96, SEG_W = 48;
+const C_ARG = -0.42, C_ALG = 0.42;         // team centres across the pitch (w in -1..1)
+const H_MAX = 0.46;                        // tallest summit, world units
+const NIGHT = new THREE.Color("#0a0a0c");
+const BONE = new THREE.Color("#f2ece1");
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  // paper
-  vec3 col = vec3(0.956, 0.937, 0.898);
+let renderer, scene, camera, built = false, done = false;
+let terraMat, pins = [], plateSprites = [], overlayScene, overlayCam;
 
-  vec3 acc = vec3(0.0);
-  float wsum = 0.0;
+const F = FRAME.mount({
+  num: 1, title: "Terreno", subject: "Argentina vs. Algeria",
+  edition: "01/31", date: "16·06·2026",
+  stack: "Three.js + WebGL", time: "96 minutes",
+  desc: "A survey plate of the opening match: attacking intensity raised into bone-white contour lines on a black ground, minute by minute along the long axis. The three summits are Messi’s goals — 17′, 60′, 76′, his first World Cup hat-trick — all rising from Argentina’s half of the plate; Algeria’s side stays low ground. The relief is drawn once, then rests.",
+  ratio: 1.6, open: true,
+  dark: true, onResize(w, h, dpr) {
+    if (!built) build();
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(w / dpr, h / dpr, false);
+    frameCamera(w / h);
+    if (done) render();
+  },
+});
 
-  for (int i = 0; i < 7; i++) {
-    float fi = float(i);
-    float h1 = hash(fi*3.1), h2 = hash(fi*7.7), h3 = hash(fi*13.3);
-    // slow drifting orbits, each blob on its own rhythm
-    vec2 p = vec2(
-      sin(t*(0.5+h1*0.7) + h2*6.2832) * (0.35+h3*0.55),
-      cos(t*(0.4+h2*0.8) + h1*6.2832) * (0.30+h1*0.5)
-    );
-    float r = 0.28 + h3*0.30;
-    float d = length(uv - p);
-    float w = exp(-(d*d)/(r*r));           // gaussian field
+/* ---------- the heightmap ---------- */
+const gauss = (d, s) => Math.exp(-(d * d) / (2 * s * s));
 
-    // per-blob ink: saturated hues spread around the wheel
-    float hue = fract(h1 + fi*0.145 + sin(t*0.3+fi)*0.02);
-    vec3 ink = clamp(abs(mod(hue*6.0 + vec3(0.0,4.0,2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
-    ink = ink*ink*(3.0-2.0*ink);
-    ink = mix(vec3(0.5), ink, 0.9);        // keep chroma high but not neon
-
-    acc += ink * w;
-    wsum += w;
-  }
-
-  float density = 1.0 - exp(-wsum*1.6);            // how much pigment landed
-  vec3 pigment = acc / max(wsum, 1e-4);            // blended hue
-  // multiply-ish absorption: pigment darkens paper where dense
-  col = mix(col, pigment * mix(vec3(1.0), col, 0.35), density);
-
-  // soft vignette + grain so it sits like a print
-  float vig = smoothstep(1.6, 0.5, length(uv));
-  col *= mix(0.92, 1.0, vig);
-  float g = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898,78.233)))*43758.5453);
-  col += (g-0.5)*0.035;
-
-  gl_FragColor = vec4(col, 1.0);
+// per-half xG as a rate (per 45'), smoothly interpolated across the match
+function phaseRate(team, min) {
+  const rate = M.xgPhase[team].map((v, i) => v / [45, TOTAL - 45][i] * 45);
+  const mids = [22.5, (45 + TOTAL) / 2];
+  if (min <= mids[0]) return rate[0];
+  if (min >= mids[1]) return rate[1];
+  const t = (min - mids[0]) / (mids[1] - mids[0]);
+  return rate[0] + (rate[1] - rate[0]) * (t * t * (3 - 2 * t));
 }
-</script>
-<script>
-  const seed = ART.seed("2026-07-06-001");
-  const canvas = ART.fit(document.getElementById("c"));
-  const sh = ART.shader(canvas, document.getElementById("frag").textContent);
-  const sf = ART.rng(seed)() * 100;
-  (function loop(t) {
-    sh.draw(t / 1000, sf);
-    requestAnimationFrame(loop);
-  })(0);
-  ART.chrome({ n: "001", title: "pool", date: "2026-07-06" });
+
+// seeded shot events (real per-phase counts; goals + the disallowed at
+// their true minutes)
+function events(team) {
+  const Rt = ART.rng(seed + "-ev-" + team);
+  const phases = [[0, 45], [45, TOTAL]];
+  const goals = M.goals.filter((g) => g.team === team);
+  const dis = M.disallowed.filter((d) => d.team === team);
+  const ev = [];
+  M.shotsPhase[team].forEach((count, pi) => {
+    const [a, b] = phases[pi];
+    const fixed = goals.filter((g) => g.min > a && g.min <= b).length +
+                  dis.filter((d) => d.min > a && d.min <= b).length;
+    for (let i = 0; i < count - fixed; i++)
+      ev.push({ min: a + 2 + Rt() * (b - a - 4), goal: null });
+  });
+  for (let i = ev.length - 1; i > 0; i--) {
+    const j = (Rt() * (i + 1)) | 0;
+    [ev[i], ev[j]] = [ev[j], ev[i]];
+  }
+  const nOn = M.onTarget[team] - goals.length;
+  ev.forEach((e, i) => (e.on = i < nOn));
+  dis.forEach((d) => ev.push({ min: d.min, on: false, dis: d }));
+  goals.forEach((g) => ev.push({ min: g.min, on: true, goal: g }));
+  const c = team === "arg" ? C_ARG : C_ALG;
+  ev.forEach((e) => {
+    e.w = c + (Rt() - 0.5) * (e.goal ? 0.22 : 0.55);
+    e.amp = e.goal ? 0.225 : e.dis ? 0.068 : e.on ? 0.052 : 0.028;
+    e.sMin = e.goal ? 2.6 : 1.5;
+    e.sW = e.goal ? 0.27 : 0.17;
+  });
+  return ev;
+}
+const EV = { arg: events("arg"), alg: events("alg") };
+
+// height at (minute, w)
+function field(min, w) {
+  let h = 0;
+  h += phaseRate("arg", min) * 0.055 * (0.25 + 0.75 * gauss(w - C_ARG, 0.5));
+  h += phaseRate("alg", min) * 0.055 * (0.25 + 0.75 * gauss(w - C_ALG, 0.5));
+  for (const e of EV.arg) h += e.amp * gauss(min - e.min, e.sMin) * gauss(w - e.w, e.sW);
+  for (const e of EV.alg) h += e.amp * gauss(min - e.min, e.sMin) * gauss(w - e.w, e.sW);
+  return h;
+}
+
+/* ---------- text sprites (after the mono font loads) ---------- */
+function textSprite(str, hex, px, hWorld) {
+  const dpr = 3, pad = 8;
+  const c = document.createElement("canvas");
+  const g = c.getContext("2d");
+  g.font = px * dpr + "px 'Geist Mono', ui-monospace, monospace";
+  c.width = Math.ceil(g.measureText(str).width) + pad * 2;
+  c.height = px * dpr + pad * 2;
+  g.font = px * dpr + "px 'Geist Mono', ui-monospace, monospace";
+  g.fillStyle = hex;
+  g.textBaseline = "middle";
+  g.fillText(str, pad, c.height / 2);
+  const tex = new THREE.CanvasTexture(c);
+  const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false });
+  const sp = new THREE.Sprite(m);
+  const h = hWorld || 0.062 * (px / 12);
+  sp.scale.set(h * c.width / c.height, h, 1);
+  return sp;
+}
+
+/* ---------- camera: static surveyor's view, fit for landscape ---------- */
+const TGT = new THREE.Vector3(0, 0.10, 0);
+function frameCamera(aspect) {
+  camera.aspect = aspect;
+  camera.updateProjectionMatrix();
+  const hf = Math.atan(Math.tan(camera.fov * Math.PI / 360) * aspect);
+  const dist = Math.max(1.86 / Math.tan(hf),                     // fit the plate's length
+                        1.02 / Math.tan(camera.fov * Math.PI / 360)); // fit its height
+  const el = 0.38;                                               // elevated 3/4, no orbit
+  camera.position.set(TGT.x, TGT.y + Math.sin(el) * dist, TGT.z + Math.cos(el) * dist);
+  camera.lookAt(TGT);
+  terraMat.uniforms.uDist.value = dist;        // depth fade tracks the dolly
+}
+
+/* ---------- build ---------- */
+function build() {
+  built = true;
+  renderer = new THREE.WebGLRenderer({ canvas: F.canvas, antialias: true, alpha: true });
+  renderer.autoClear = false;
+  renderer.setClearColor(0x0d0a07, 0);   // open: the room shows through
+  scene = new THREE.Scene();
+  scene.background = null;                // open: no box, no ground of its own
+  camera = new THREE.PerspectiveCamera(20, 1.6, 0.1, 80);
+
+  const world = new THREE.Group();
+  world.rotation.y = -0.16;                  // the plate sits at a slight diagonal
+  scene.add(world);
+
+  // --- terrain geometry: final heights baked, raised by the clock in-shader
+  const geo = new THREE.PlaneGeometry(TL, WL, SEG_T, SEG_W);
+  geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  const n = p.count;
+  const aH = new Float32Array(n), aMin = new Float32Array(n);
+  let maxH = 0;
+  const raw = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const min = (p.getX(i) / TL + 0.5) * TOTAL;
+    const w = p.getZ(i) / (WL / 2);
+    raw[i] = field(min, w);
+    aMin[i] = min;
+    if (raw[i] > maxH) maxH = raw[i];
+  }
+  for (let i = 0; i < n; i++) {
+    p.setY(i, raw[i] / maxH * H_MAX);
+    aH[i] = raw[i] / maxH;
+  }
+  p.needsUpdate = true;
+  geo.computeVertexNormals();                // final-state normals for the raking light
+  geo.setAttribute("aH", new THREE.BufferAttribute(aH, 1));
+  geo.setAttribute("aMin", new THREE.BufferAttribute(aMin, 1));
+
+  terraMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uNight: { value: NIGHT },
+      uBone: { value: BONE },
+      uLevels: { value: 24.0 },
+      uClock: { value: 0 },   // uncapped — keeps rising terrain past the whistle
+      uCursor: { value: 0 },  // capped at TOTAL — the plotter's rule
+      uSweep: { value: 1 },
+      uPlate: { value: 0 },
+      uDist: { value: 6.6 },
+    },
+    vertexShader: `
+      attribute float aH, aMin;
+      uniform float uClock;
+      varying float vH, vMin, vRise, vLit, vZ;
+      varying vec2 vUv;
+      void main(){
+        vH = aH; vMin = aMin; vUv = uv;
+        float r = clamp((uClock - aMin) / 7.0, 0.0, 1.0);
+        r = r * r * (3.0 - 2.0 * r);
+        vRise = r;
+        vec3 pos = position;
+        pos.y *= r;
+        // raking light from the upper left of the plate
+        vLit = max(dot(normalize(normal), normalize(vec3(-0.55, 0.75, 0.4))), 0.0);
+        vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+        vZ = -mv.z;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      precision highp float;
+      uniform vec3 uNight, uBone;
+      uniform float uLevels, uCursor, uSweep, uPlate, uDist;
+      varying float vH, vMin, vRise, vLit, vZ;
+      varying vec2 vUv;
+      float h21(vec2 p){ p = fract(p * vec2(123.34, 345.45)); p += dot(p, p + 34.345); return fract(p.x * p.y); }
+      float n2(vec2 p){
+        vec2 i = floor(p), f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x),
+                   mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y);
+      }
+      float contour(float lv, float th){
+        float f = fract(lv);
+        float d = min(f, 1.0 - f);
+        float w = fwidth(lv);
+        return 1.0 - smoothstep(w * th * 0.6, w * th * 1.6, d);
+      }
+      float halo(float lv, float th){
+        float f = fract(lv);
+        float d = min(f, 1.0 - f);
+        float w = fwidth(lv);
+        return 1.0 - smoothstep(0.0, w * th * 6.0, d);
+      }
+      void main(){
+        float hAbs = vH * vRise;
+        // hand wobble: the pen wanders a hair off the true level (kept slow,
+        // or the lines fragment into static)
+        float wob = (n2(vUv * vec2(34.0, 15.0)) - 0.5) + (n2(vUv * vec2(88.0, 38.0)) - 0.5) * 0.35;
+        float lv = hAbs * uLevels + wob * 0.11;
+        float lvM = lv / 5.0 + wob * 0.02;
+        // minor lines + heavier index lines every 5th, with a soft ink halo
+        float minor = contour(lv, 1.0) * 0.5;
+        float major = contour(lvM, 1.2) * 0.9;
+        float crisp = max(minor, major);
+        float glow = max(halo(lv, 1.0) * 0.05, halo(lvM, 1.2) * 0.10);
+        float gate = smoothstep(0.006, 0.02, hAbs);
+        float a = (crisp + glow) * gate;
+        float bright = 0.62 + 0.38 * smoothstep(0.0, 0.85, hAbs);  // ink catches light on the summits
+        // plate border
+        float bd = min(min(vUv.x, 1.0 - vUv.x) / fwidth(vUv.x),
+                       min(vUv.y, 1.0 - vUv.y) / fwidth(vUv.y));
+        float borderA = (1.0 - smoothstep(0.7, 1.8, bd)) * 0.40 * uPlate;
+        // period rules at 45 / 90 (the sliver past 90 is stoppage)
+        float wm = fwidth(vMin) * 1.1;
+        float pr = 0.0;
+        pr = max(pr, 1.0 - smoothstep(wm * 0.6, wm * 1.7, abs(vMin - 45.0)));
+        pr = max(pr, 1.0 - smoothstep(wm * 0.6, wm * 1.7, abs(vMin - 90.0)));
+        float prA = pr * 0.14 * uPlate;
+        // plotter cursor: a fine rule at the current minute, gone after the whistle
+        float cur = (1.0 - smoothstep(wm * 0.7, wm * 2.4, abs(vMin - uCursor))) * uSweep * 0.45;
+        // the plate face, barely lifted from the room by the raking light
+        vec3 base = uNight + uBone * (vLit * vRise * 0.032 + hAbs * 0.02);
+        vec3 col = base;
+        col = mix(col, uBone * 0.52, clamp(borderA + prA, 0.0, 1.0));
+        col = mix(col, uBone * bright, clamp(a, 0.0, 1.0));
+        col = mix(col, uBone * 0.8, cur);
+        // depth falls into the dark of the room (relative to the dolly)
+        col = mix(col, uNight, smoothstep(uDist - 0.4, uDist + 2.4, vZ) * 0.35);
+        gl_FragColor = vec4(col, 1.0);
+        #include <colorspace_fragment>
+      }`,
+  });
+  world.add(new THREE.Mesh(geo, terraMat));
+
+  // --- goal pins + labels + plate captions (annotations in bone)
+  const labels = [];
+  for (const g of M.goals) {
+    const e = EV[g.team].find((x) => x.goal === g);
+    const x = (e.min / TOTAL - 0.5) * TL;
+    const z = e.w * (WL / 2);
+    const y = field(e.min, e.w) / maxH * H_MAX;
+    const pinGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(x, y + 0.012, z), new THREE.Vector3(x, y + 0.17, z)]);
+    const pinMat = new THREE.LineBasicMaterial({ color: BONE, transparent: true, opacity: 0 });
+    world.add(new THREE.Line(pinGeo, pinMat));
+    pins.push({ g, mat: pinMat, sprite: null });
+    labels.push({ g, x, y, z });
+  }
+  document.fonts.ready.then(() => {
+    for (const l of labels) {
+      const txt = l.g.min + "’ " + l.g.player;      // 17' messi · 60' messi · 76' messi
+      const s = textSprite(txt, "rgba(242,236,225,.95)", 12, 0.081);
+      s.center.set(l.g.min > 50 ? 1 : 0, 0);   // late peaks label leftward, into the frame
+      s.position.set(l.x, l.y + 0.185, l.z);
+      s.material.opacity = 0;
+      world.add(s);
+      pins.find((pp) => pp.g === l.g).sprite = s;
+    }
+    // the one mark on argelia's side: the goal that wasn't (8', offside) —
+    // a shorter, dimmer pin, lifted clear of the relief, read off the plate
+    for (const d of M.disallowed) {
+      const e = EV[d.team].find((x) => x.dis === d);
+      const x = (e.min / TOTAL - 0.5) * TL;
+      const z = e.w * (WL / 2);
+      const y = field(e.min, e.w) / maxH * H_MAX;
+      const pinGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x, y + 0.012, z), new THREE.Vector3(x, y + 0.115, z)]);
+      const pin = new THREE.Line(pinGeo,
+        new THREE.LineBasicMaterial({ color: BONE, transparent: true, opacity: 0 }));
+      world.add(pin);
+      plateSprites.push({ s: pin, o: 0.3, line: true });
+      const t = textSprite(d.min + "’ " + d.player + " · anulado", "rgba(242,236,225,.5)", 10, 0.058);
+      t.center.set(1, 0);                     // extends leftward, into the empty room
+      t.position.set(x, y + 0.125, z);
+      t.material.opacity = 0;
+      world.add(t);
+      plateSprites.push({ s: t, o: 1 });
+    }
+    // engraved captions off the near-left corner of the plate
+    const capA = textSprite(M.home.name + " · xg " + M.xg.arg.toFixed(2) + " · " + M.shots.arg + " tiros",
+      "rgba(242,236,225,.62)", 11, 0.068);
+    capA.center.set(0, 0.5);
+    capA.position.set(-TL / 2 + 0.07, -0.115, WL / 2 + 0.30);
+    world.add(capA);
+    plateSprites.push({ s: capA, o: 1 });
+    const capC = textSprite(M.away.name + " · xg " + M.xg.alg.toFixed(2) + " · " + M.shots.alg + " tiros",
+      "rgba(242,236,225,.62)", 11, 0.068);
+    capC.center.set(0, 0.5);
+    capC.position.set(-TL / 2 + 0.07, -0.195, WL / 2 + 0.30);
+    world.add(capC);
+    plateSprites.push({ s: capC, o: 1 });
+    // the surveyor's minute scale along the near edge
+    for (const m of [0, 45, 90]) {
+      const t = textSprite(m + "’", "rgba(242,236,225,.55)", 10, 0.058);
+      t.center.set(0.5, 1);
+      t.position.set((m / TOTAL - 0.5) * TL, -0.02, WL / 2 + 0.10);
+      t.material.opacity = 0;
+      world.add(t);
+      plateSprites.push({ s: t, o: 1 });
+    }
+    if (done) finish();                       // fonts landed after the plate rested
+  });
+
+  // --- overlay: paper-fibre grain in the black + a photographed vignette
+  overlayScene = new THREE.Scene();
+  overlayCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const gc = document.createElement("canvas");
+  gc.width = gc.height = 256;
+  const gg = gc.getContext("2d");
+  const img = gg.createImageData(256, 256);
+  const Rg = ART.rng(seed + "-grain");
+  for (let i = 0; i < img.data.length; i += 4) {
+    let v = (Rg() * 8) | 0;
+    if (Rg() < 0.012) v += 8;                 // the odd brighter fleck of fibre
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  gg.putImageData(img, 0, 0);
+  const grainTex = new THREE.CanvasTexture(gc);
+  grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping;
+  grainTex.repeat.set(4, 6);                  // stretched texels: a horizontal fibre bias
+  const grain = new THREE.Mesh(new THREE.PlaneGeometry(2, 2),
+    new THREE.MeshBasicMaterial({ map: grainTex, blending: THREE.AdditiveBlending,
+      transparent: true, depthTest: false, depthWrite: false }));
+  grain.renderOrder = 0;
+  // open mode: no full-region grain — it would silhouette the box
+  const vig = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    transparent: true, depthTest: false, depthWrite: false,
+    vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+    fragmentShader: `
+      varying vec2 vUv;
+      void main(){
+        vec2 q = vUv - vec2(0.47, 0.56);      // the lamp sits high and a touch left
+        q.x *= 1.35;
+        gl_FragColor = vec4(vec3(0.0), smoothstep(0.42, 1.05, length(q)) * 0.42);
+      }`,
+  }));
+  vig.renderOrder = 1;
+  // open mode: no vignette — it would paint the box back in
+}
+
+function render() {
+  renderer.clear();
+  renderer.render(scene, camera);
+  renderer.render(overlayScene, overlayCam);
+}
+
+/* ---------- the one performance: rise, draw, rest ---------- */
+const DRAW = 8.2, LEAD = 0.5;                 // the 94' drawn in 8.2s, after a beat
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+let t0 = null;
+
+function finish() {
+  done = true;
+  const U = terraMat.uniforms;
+  U.uClock.value = TOTAL + 80;
+  U.uCursor.value = TOTAL + 80;
+  U.uSweep.value = 0;
+  U.uPlate.value = 1;
+  for (const ps of plateSprites) ps.s.material.opacity = ps.o;
+  for (const pin of pins) {
+    pin.mat.opacity = 0.55;
+    if (pin.sprite) pin.sprite.material.opacity = 0.95;
+  }
+  render();                                    // the final frame IS the artwork
+}
+
+function loop(tms) {
+  if (t0 === null) t0 = tms;
+  const t = (tms - t0) / 1000;
+  const clock = Math.max(0, t - LEAD) * (TOTAL / DRAW);
+  const U = terraMat.uniforms;
+  U.uClock.value = clock;
+  U.uCursor.value = Math.min(TOTAL, clock);
+  U.uSweep.value = clock < TOTAL ? 1 : clamp01(1 - (clock - TOTAL) / 5);
+  const plateK = clamp01(t / 0.9);
+  U.uPlate.value = plateK * plateK * (3 - 2 * plateK);
+  for (const ps of plateSprites) ps.s.material.opacity = ps.o * plateK;
+  for (const pin of pins) {
+    const k = clamp01((clock - pin.g.min) / 4);
+    pin.mat.opacity = k * 0.55;
+    if (pin.sprite) pin.sprite.material.opacity = k * 0.95;
+  }
+  render();
+  if (clock > TOTAL + 12) { finish(); return; }  // risen, drawn, labelled — rest
+  requestAnimationFrame(loop);
+}
+
+queueMicrotask(() => {
+  if (!built) build();
+  if (REDUCED) finish();
+  else requestAnimationFrame(loop);
+});
 </script>
