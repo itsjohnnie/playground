@@ -227,9 +227,9 @@ const F = FRAME.mount({
 });
 const sf = ART.rng(seed)() * 100;
 
-// wait for the mono face so the cast lettering is the real letterform
+// wait for the sans face so the cast lettering is the real letterform
 Promise.race([
-  document.fonts.load('600 32px "Geist Mono"'),
+  document.fonts.load('600 32px "Geist"'),
   new Promise((r) => setTimeout(r, 1600)),
 ]).then(() => { fontsOK = true; if (sh) schedule(); });
 
@@ -285,8 +285,9 @@ function rebuild() {
     if (c.roundRect) c.roundRect(a, b, w, h, r); else c.rect(a, b, w, h);
   }
   function setFont(c, px, wgt) {
-    if ("letterSpacing" in c) c.letterSpacing = (px * 0.12).toFixed(1) + "px";
-    c.font = (wgt || 600) + " " + px.toFixed(1) + "px 'Geist Mono', ui-monospace, monospace";
+    // cast sans: engraver's tracking — wide-set caps so the bevel never bridges
+    if ("letterSpacing" in c) c.letterSpacing = (px * 0.16).toFixed(1) + "px";
+    c.font = (wgt || 600) + " " + px.toFixed(1) + "px 'Geist', ui-sans-serif, sans-serif";
     c.textAlign = "center"; c.textBaseline = "middle";
   }
   function dome(c, px, py, r, ink) {
