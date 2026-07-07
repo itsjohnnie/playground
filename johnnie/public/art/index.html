@@ -2,87 +2,91 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>art — a daily sketch practice</title>
+<title>Art — Johnnie’s atelier</title>
 <meta name="description" content="One small piece of generative art every day. After Zach Lieberman.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='38' cy='44' r='30' fill='%236cabd6' opacity='.88'/><circle cx='62' cy='56' r='30' fill='%23d5493c' opacity='.72'/></svg>">
 <style>
   :root {
-    --paper: #f4f0e6;
-    --ink: #171512;
-    --ink-soft: rgba(23, 21, 18, 0.64);
-    --ink-faint: rgba(23, 21, 18, 0.62);  /* ≥4.5:1 on --paper at small sizes */
-    --line: rgba(23, 21, 18, 0.12);
+    --ground: #0d0a07;          /* the dark room */
+    --bone: #f2ece1;
+    --bone-soft: rgba(242, 236, 225, 0.78);
+    --bone-faint: rgba(242, 236, 225, 0.6);
+    --sheet: #f2f1ee;           /* the prints */
+    --ink: #16130f;
+    --ink-dim: rgba(22, 19, 15, 0.6);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   }
   @font-face { font-family: 'Geist'; src: url('lib/fonts/Geist-Variable.woff2') format('woff2');
     font-weight: 100 900; font-style: normal; font-display: swap; }
-  @font-face { font-family: 'Geist Mono'; src: url('lib/fonts/GeistMono-Variable.woff2') format('woff2');
-    font-weight: 100 900; font-style: normal; font-display: swap; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--paper); color: var(--ink); }
-  /* Mobile-first: one centered column; everything hangs off the middle. */
+  html, body { margin: 0; background: var(--ground); color: var(--bone); }
   body {
-    font: 14px/1.65 'Geist Mono', ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    letter-spacing: 0.02em;
-    padding: max(24px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
-             max(32px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    font: 15px/1.7 'Geist', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 430;
+    padding: max(28px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+             max(36px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
     display: flex;
     flex-direction: column;
     align-items: center;
   }
   header {
-    max-width: 560px;
+    max-width: 620px;
     text-align: center;
-    margin: clamp(8px, 4vh, 48px) 0 clamp(32px, 6vh, 64px);
+    margin: clamp(10px, 4vh, 56px) 0 clamp(36px, 6vh, 72px);
+  }
+  .atelier {
+    font-size: 12px;
+    font-weight: 560;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--bone-soft);
+    margin: 0 0 18px;
   }
   h1 {
-    font-family: 'Geist', sans-serif;
-    font-size: clamp(30px, 8vw, 44px);
-    font-weight: 550;
-    letter-spacing: -0.02em;
-    margin: 0 0 14px;
-    text-transform: lowercase;
+    font-size: clamp(38px, 9vw, 64px);
+    font-weight: 460;
+    letter-spacing: -0.022em;
+    line-height: 1.05;
+    margin: 0 0 16px;
     text-wrap: balance;
   }
   header p {
-    font-family: 'Geist', sans-serif;
-    font-weight: 430;
-    letter-spacing: 0;
-    color: var(--ink-soft);
+    color: var(--bone-soft);
     margin: 0 0 8px;
   }
-  header a { color: var(--ink); }
+  header a { color: var(--bone); }
   .batch {
-    margin: 10px 0 0;
-    font-size: 12px;
-    color: var(--ink-faint);
-    text-transform: lowercase;
-    letter-spacing: 0.08em;
+    margin: 12px 0 0;
+    font-size: 13px;
+    color: var(--bone-faint);
   }
   .grid {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 28px;
     width: 100%;
     max-width: 440px;   /* phone: one comfortable centered column */
   }
   @media (min-width: 720px) {
-    .grid { grid-template-columns: repeat(2, 1fr); max-width: 760px; gap: 26px; }
+    .grid { grid-template-columns: repeat(2, 1fr); max-width: 780px; gap: 30px; }
   }
   @media (min-width: 1080px) {
-    .grid { grid-template-columns: repeat(3, 1fr); max-width: 1100px; gap: 30px; }
+    .grid { grid-template-columns: repeat(3, 1fr); max-width: 1140px; gap: 34px; }
   }
-  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); }
+  /* each card is a small white print from the atelier */
   .card {
     display: block;
     text-decoration: none;
-    color: inherit;
-    border: 1px solid var(--line);
-    background: #fff;
+    color: var(--ink);
+    background: var(--sheet);
+    border-radius: 14px;
+    padding: 10px 10px 12px;
     opacity: 0;
     transform: translateY(8px);
     animation: card-in 340ms var(--ease-out) forwards;
     animation-delay: var(--d, 0ms);
     transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.42);
   }
   @keyframes card-in {
     to { opacity: 1; transform: translateY(0); }
@@ -90,7 +94,7 @@
   @media (hover: hover) and (pointer: fine) {
     .card:hover {
       transform: translateY(-3px);
-      box-shadow: 0 12px 32px rgba(23, 21, 18, 0.12);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
     }
   }
   .card:active { transform: scale(0.98); }
@@ -101,9 +105,10 @@
   }
   .thumb {
     position: relative;
-    aspect-ratio: 3 / 4;   /* the pieces are 3:4 portrait stages */
+    aspect-ratio: var(--ratio, 3 / 4);
     overflow: hidden;
-    background: #e9e3d5;   /* stage paper — no dark flash under light pieces */
+    border-radius: 7px;
+    background: #e9e3d5;   /* stage paper — no dark flash while loading */
   }
   .thumb iframe {
     position: absolute;
@@ -117,53 +122,48 @@
     transition: opacity 300ms ease;
   }
   .thumb iframe.ready { opacity: 1; }
-  .meta { padding: 12px 14px 14px; border-top: 1px solid var(--line); }
-  .meta .row {
+  .meta {
+    padding: 11px 4px 2px;
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 12px;
+    font-size: 13.5px;
   }
-  .meta b { font-weight: 500; }
-  .meta .date { font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
-  .meta .tags {
-    margin-top: 4px;
-    font-size: 11px;
-    color: var(--ink-soft);
-    text-transform: lowercase;
-    letter-spacing: 0.04em;
-  }
+  .meta b { font-weight: 540; }
+  .meta .date { font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
   footer {
-    margin-top: clamp(48px, 8vh, 96px);
-    font-size: 12px;
-    color: var(--ink-faint);
+    margin-top: clamp(52px, 8vh, 100px);
+    font-size: 13px;
+    color: var(--bone-faint);
     max-width: 560px;
     text-align: center;
   }
   footer p { max-width: 60ch; margin-left: auto; margin-right: auto; }
-  footer a { color: var(--ink-soft); }
+  footer a { color: var(--bone-soft); }
   .grid .note {
     grid-column: 1 / -1;
     text-align: center;
-    color: var(--ink-faint);
-    font-size: 12px;
+    color: var(--bone-faint);
+    font-size: 13px;
     padding: 48px 0;
   }
 </style>
 
 <header>
-  <h1>art</h1>
+  <p class="atelier">Johnnie’s atelier</p>
+  <h1>Art</h1>
   <p>One small piece a day — algorithms trying to not look like algorithms.
      Gradients, dither, ink, optics, feedback. After
-     <a href="https://zach.li" rel="noopener">Zach Lieberman</a>'s daily sketch practice.</p>
+     <a href="https://zach.li" rel="noopener">Zach Lieberman</a>’s daily sketch practice.</p>
   <p class="batch" id="batch"></p>
 </header>
 
-<main class="grid" id="grid" aria-label="sketches"></main>
+<main class="grid" id="grid" aria-label="pieces"></main>
 
 <footer>
-  <p>Every piece is seeded by its date — reload and it's the same.
-     Open one, tap it, and it's reborn. Swipe to walk the row.</p>
+  <p>Every piece is seeded by its date — reload and it’s the same.
+     Open one, tap the artwork, and it’s reborn. Swipe or use the arrows to walk the room.</p>
   <p>Made with WebGL and canvas, one file per day. <a href="/">johnnies.life</a></p>
 </footer>
 
@@ -189,12 +189,12 @@
     .then((r) => r.json())
     .then((data) => {
       document.getElementById("batch").textContent = data.batch_note || "";
-      // display order: newest date first, reading order (a→j) within a date.
+      // display order: newest date first, reading order within a date.
       // manifest array order is irrelevant — this sort is the convention.
       const items = data.sketches.slice()
         .sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n));
       if (!items.length) {
-        grid.innerHTML = '<p class="note">the archive is empty — the first piece is on its way.</p>';
+        grid.innerHTML = '<p class="note">the atelier is empty — the first piece is on its way.</p>';
         return;
       }
       items.forEach((s, i) => {
@@ -202,13 +202,14 @@
         a.className = "card";
         a.href = s.file;
         a.style.setProperty("--d", Math.min(i * 45, 500) + "ms");
+        if (s.ratio) a.style.setProperty("--ratio", s.ratio);
+        const num = "#" + String(s.num || 0).padStart(3, "0");
         const date = s.date.split("-").reverse().join("·"); // 2026-07-06 → 06·07·2026
         a.innerHTML =
           '<div class="thumb"><iframe loading="lazy" data-src="' + s.file +
-          '?thumb=1" title="' + s.n + " · " + s.title + '" tabindex="-1"></iframe></div>' +
-          '<div class="meta"><div class="row"><b>' + s.n + ' · <span lang="es">' + s.title +
-          "</span></b><span class='date'>" + date + "</span></div>" +
-          '<div class="tags">' + s.medium + " — " + s.tags.join(", ") + "</div></div>";
+          '?thumb=1" title="' + num + " · " + s.title + '" tabindex="-1"></iframe></div>' +
+          '<div class="meta"><b>' + num + ' · <span lang="es">' + s.title +
+          "</span></b><span class='date'>" + date + "</span></div>";
         const f = a.querySelector("iframe");
         f.addEventListener("load", () => { if (f.src) f.classList.add("ready"); });
         io.observe(f);
@@ -216,7 +217,7 @@
       });
     })
     .catch(() => {
-      grid.innerHTML = '<p class="note">the archive didn\'t load — reload to try again.</p>';
+      grid.innerHTML = '<p class="note">the atelier didn\'t load — reload to try again.</p>';
     });
 </script>
 </html>

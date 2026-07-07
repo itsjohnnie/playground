@@ -24,10 +24,11 @@ const COUNT = ROWS * COLS;
 
 let renderer, scene, camera, mat, camZ = 3.9;
 const F = FRAME.mount({
-  n: "008", v: "b", title: "64.478", date: "06·07·2026",
-  data: M.frameData, tech: "three.js · gpu points",
-  dark: true,
-  onResize(w, h, dpr) {
+  num: 2, title: "64.478", subject: "Argentina vs. Cabo Verde",
+  edition: "02/31", date: "06·07·2026",
+  stack: "Three.js + WebGL", time: "62 minutes",
+  desc: "Every one of the 64,478 spectators is a single GPU point, gathered into the crowd's shape and released. Their density breathes with the match's five goals.",
+  dark: true, onResize(w, h, dpr) {
     if (!renderer) build();
     renderer.setPixelRatio(dpr);
     renderer.setSize(w / dpr, h / dpr, false);

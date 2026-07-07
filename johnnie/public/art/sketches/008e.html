@@ -159,10 +159,12 @@ const seed = ART.seed("2026-07-06-008e");
 let sh = null, done = false, start = null;
 
 const F = FRAME.mount({
-  n: "008", v: "e", title: "resonancia", date: "06·07·2026",
-  data: window.M8.frameData, tech: "glsl · chladni",
-  dark: true,
-  onResize() {
+  num: 5, title: "Resonancia", subject: "Argentina vs. Cabo Verde",
+  edition: "02/31", date: "06·07·2026",
+  stack: "WebGL — GLSL", time: "66 minutes",
+  desc: "A plate vibrated through five Chladni modes, one per goal, each leaving its residue of sand along the nodal lines. Real plate physics; the final figure holds all five resonances at once.",
+  bleed: true,
+  dark: true, onResize() {
     if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
     done = false;          // re-render after resize
     requestAnimationFrame(loop);

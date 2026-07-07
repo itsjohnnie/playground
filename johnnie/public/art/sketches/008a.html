@@ -138,10 +138,11 @@ const M = window.M8;
 let sh = null, done = false, start = null;
 
 const F = FRAME.mount({
-  n: "008", v: "a", title: "bruma", date: "06·07·2026",
-  data: M.frameData, tech: "glsl · fluid dither",
-  dark: false,
-  onResize() {
+  num: 1, title: "Bruma", subject: "Argentina vs. Cabo Verde",
+  edition: "02/31", date: "06·07·2026",
+  stack: "WebGL — GLSL", time: "48 minutes",
+  desc: "Two inks — celeste and rojo — pushed through a domain-warped flow field and settled as dithered pigment. The volumes follow possession, 64% to 36%; the fleck of gold is the winning goal at 118'.",
+  dark: false, onResize() {
     if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
     done = false;
     start = null;

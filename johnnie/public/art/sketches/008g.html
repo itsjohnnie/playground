@@ -127,10 +127,11 @@ const M = window.M8;
 let sh = null, start = null, last = null, wt = 0;
 
 const F = FRAME.mount({
-  n: "008", v: "g", title: "pileta", date: "06·07·2026",
-  data: M.frameData, tech: "glsl · caustics",
-  dark: true,
-  onResize() {
+  num: 7, title: "Pileta", subject: "Argentina vs. Cabo Verde",
+  edition: "02/31", date: "06·07·2026",
+  stack: "WebGL — GLSL", time: "71 minutes",
+  desc: "Afternoon light through pool water, refracted onto tile. Five standing rings hold the water where the goals fell; the double ring is the golazo at 118'.",
+  dark: true, onResize() {
     if (!sh) sh = ART.shader(F.canvas, document.getElementById("frag").textContent, ["u_p"]);
   },
 });

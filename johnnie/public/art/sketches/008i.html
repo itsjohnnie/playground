@@ -18,9 +18,12 @@ const seed = ART.seed("2026-07-06-008i"); // determinism kept for parity; no ran
 const M = window.M8;
 
 const F = FRAME.mount({
-  n: "008", v: "i", title: "minutos", date: "06·07·2026",
-  data: M.frameData, tech: "dom · kinetic type", dark: false, noCanvas: true,
-});
+  num: 9, title: "Minutos", subject: "Argentina vs. Cabo Verde",
+  edition: "02/31", date: "06·07·2026",
+  stack: "DOM + CSS", time: "58 minutes",
+  desc: "The hundred and twenty minutes, played once as type. Time accelerates through the quiet middle, night falls at full time, and the score is what remains.",
+  dark: false, noCanvas: true,
+  });
 
 const css = document.createElement("style");
 css.textContent = `

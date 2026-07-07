@@ -60,9 +60,12 @@ system — the ban targets reflex scaffolding, not this.)
    are seeded, minimal, and documented in the file header.
 3. **Arrive once, then rest.** Motion is arrival: 0→100 over ~10s, then the
    final frame IS the artwork (render loops stop; water may idle at ~12%).
-4. **The frame is the constant.** 3:4 stage (full-bleed on phones), 6×8
-   hairline grid, Geist Mono, uppercase with bold leads, fixed fact slots.
-   All creativity happens behind it; the frame never changes per piece.
+4. **The sheet is the constant.** Every piece is presented as a catalog
+   sheet from Johnnie's atelier (his own mock, sixth curation): a white
+   page on a dark room — header facts, the artwork in its slot, subject
+   headline, wall-label prose, spec card, ← → navigation. The artwork is
+   the only thing that changes; the sheet never does. Artwork ratios are
+   per-piece (portrait default, landscape and edge-bleed allowed).
 5. **Photographed, not rendered.** Grain, directional light, relief, shadow,
    imperfection — every surface gets a finishing pass that fights sterile CG.
 

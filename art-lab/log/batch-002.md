@@ -136,3 +136,23 @@ the river; grain pass; Spanish captions (it's a love letter). Direction probed:
   elliptical shells, depth-graded trails, glowing torus, standing bells.
 - Taste addendum: "MIT level" = simulations and instruments with real
   physics/algorithms behind them, photographed-experiment finishing.
+
+## Sexta curaduría — 2026-07-07
+
+Johnnie supplied a Figma mock: the presentation becomes **the atelier sheet**
+(white catalog page on a dark room, Geist Sans, artwork slot + headline +
+wall-label prose + spec card + ← → nav). frame.js rewritten; all ten studies
+migrated; gallery restyled to the dark room with white prints. Catalog
+numbering begins: #001–#010 = 008a–008j, edition 02/31.
+
+Piece verdicts (recorded in README taste profile): replace bruma (#001) and
+órbitas (#010); improve 64.478 (#002) and minutos (#009) substantially; fix
+organismo's lag (#003); terreno (#004) → black ground / white topography /
+landscape 1.6 / play once; resonancia (#005) → bleed to the sheet edges;
+tapiz (#006) → recover the realism it lost; pileta (#007) → real ripples.
+sismógrafo (#008) untouched.
+
+Also this morning: first impeccable critique (18/40) — found the P0 that
+production never had piece navigation (extensionless URLs vs .html matching).
+Fixed along with error states, contrast floors, scoped reseed, immutable lib
+caching, and GL-context recycling in the gallery.
