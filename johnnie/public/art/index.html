@@ -161,7 +161,7 @@
     .then((r) => r.json())
     .then((data) => {
       // one line per day: the subject, newest first; a line opens the first
-      // piece of that day and the walk continues with arrows/swipe
+      // piece of that day and the walk continues with the arrows
       const sorted = data.sketches.slice()
         .sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n));
       if (!sorted.length) {
