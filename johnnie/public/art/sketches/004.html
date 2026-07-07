@@ -166,10 +166,15 @@ void main(){
       float ndl = max(dot(N, Ls), 0.0);
       float ndv = max(dot(N, -d), 1e-3);
       float a = max(rough*rough, 2e-3);
+      // machined moments: the arris and the flat border rails are brushed
+      // along their run — the highlight stretches with the brushing
+      float rail = (1.0 - smoothstep(0.006*S, 0.012*S, abs(sd0 + 0.042*S)))*wear;
+      float anis = max(fb, rail*0.8);
       float Dg;
-      if (fb > 0.02){                     // the arris is machined: brushed along its run
+      if (anis > 0.02){
         vec3 Tt = normalize(vec3(-gb.y, gb.x, 0.0) - N*dot(N, vec3(-gb.y, gb.x, 0.0)));
-        Dg = dAniso(Hv, N, Tt, cross(N, Tt), min(a*(1.0 + 2.4*fb), 0.30), a);
+        Dg = dAniso(Hv, N, Tt, cross(N, Tt),
+                    min(a*(1.0 + 2.4*anis), 0.30), a/(1.0 + 1.2*anis));
       } else {
         Dg = dGGX(max(dot(N, Hv), 0.0), a);
       }
@@ -245,6 +250,16 @@ void main(){
 // SLAB now: an extruded rounded-rect raycast in GLSL — thick sand-cast
 // side walls, a bevelled arris, patina pooled in the recesses, wear on the
 // proud edges, a thrown shadow on the felt wall it stands proud of.
+// The alloy is a microfacet metal: GGX/Trowbridge-Reitz with roughness by
+// surface (polished arris ~0.15, worn plateau ~0.30, sand-cast field
+// ~0.55–0.70, raw side walls rougher), Schlick fresnel with F0 = the
+// bronze itself (specular is tinted, diffuse nearly nil where polished),
+// anisotropic D on the machined arris + border rails (highlight stretched
+// along the brushing), and an analytic room — dark floor, warm lamp lobe,
+// faint cool fill, the felt wall behind — sampled by the reflected vector,
+// so the flat plateau carries a moving reflection as the slab tilts.
+// Oxidized recesses stay rough and dielectric; the sand grain breaks the
+// highlight into sparkle under grazing light.
 // Every mark is the match: Argentina's three goals raised from the metal,
 // Cabo Verde's two sunk into it (the 111' own goal ringed), period marks
 // at 45/90/105, hydration notches at 26' and 73', scorers and venue in
