@@ -22,7 +22,8 @@
   // every resize.
   FRAME.mount = function (o) {
     const thumb = window.ART && ART.isThumb;
-    const num = "#" + String(o.num || 0).padStart(3, "0");
+    const num = "#" + (o.num || 0);   // one digit — five matches, not a hundred
+    const edition = String(o.edition || "").replace(/^0+/, "");
     document.title = num + " · " + (o.title || "") + " — johnnie’s atelier";
     const fav = document.createElement("link");
     fav.rel = "icon";
@@ -163,7 +164,7 @@ ${thumb ? `body{display:block;padding:0}
         (o.desc ? '<p class="desc">' + o.desc + "</p>" : "") +
         '<div class="specs">' +
           '<div class="row"><span class="k">Title</span><span class="v" lang="es">' + esc(o.title) + "</span></div>" +
-          '<div class="row"><span class="k">Edition</span><span class="v">' + esc(o.edition) + "</span></div>" +
+          '<div class="row"><span class="k">Edition</span><span class="v">' + esc(edition) + "</span></div>" +
           '<div class="row m-date"><span class="k">Date</span><span class="v">' + date + "</span></div>" +
           '<div class="row"><span class="k">Stack</span><span class="v">' + esc(o.stack) + "</span></div>" +
           '<div class="row"><span class="k">Time spent</span><span class="v">' + esc(o.time) + "</span></div>" +
