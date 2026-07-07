@@ -163,13 +163,17 @@ void main(){
   vec2 v = texture2D(u_vel, vUv).xy;
   vec4 d = texture2D(u_dye, vUv);
   float od = d.r, cd = d.g;
-  // the duel: celeste presses up, ochre presses down
-  float fy = 26.0 * (u_drv.x*cd - u_drv.y*od);
+  // the duel: each front presses toward the line, not past it — the strain
+  // lives at the interface; whatever crosses is pulled back and regathers
+  float sideC = smoothstep(u_drv.z + 0.22, u_drv.z - 0.06, vUv.y);
+  float sideO = smoothstep(u_drv.z - 0.22, u_drv.z + 0.06, vUv.y);
+  float fy = 20.0 * (u_drv.x*cd*sideC - u_drv.y*od*sideO);
   // both masses are held against the score line — compression, strain
   fy += u_msc.x * (u_drv.z - vUv.y) * (od + cd);
-  // opposing drift where the fronts touch — shear billows
+  // opposing drift ONLY where the fronts touch — shear billows at the line,
+  // no net migration inside either mass
   float mz = smoothstep(0.02, 0.25, od*cd*6.0);
-  float fx = u_drv.w * (od - cd) * (6.0 + 16.0*mz);
+  float fx = u_drv.w * (od - cd) * 26.0 * mz;
   // a seeded stir keeps the water alive
   fx += (vnoise(vUv*vec2(3.0,2.2) + vec2(u_time*0.05, u_seed)) - 0.5) * u_msc.y;
   fy += (vnoise(vUv*vec2(2.6,3.4) + vec2(7.7 + u_seed, u_time*0.045)) - 0.5) * u_msc.y;
@@ -254,16 +258,20 @@ float dens(vec2 p){ vec2 d = texture2D(u_dye, p).rg; return d.r + d.g; }
 void main(){
   float asp = u_res.x / u_res.y;
   vec2 uv = vUv;
-  vec4 d0 = texture2D(u_dye, uv);
+  // a fine warp fakes the filaments the coarse grid can't carry
+  vec2 wq = vec2(vnoise(uv*vec2(asp,1.0)*22.0 + u_seed) - 0.5,
+                 vnoise(uv*vec2(asp,1.0)*22.0 + 31.7 + u_seed) - 0.5);
+  vec2 uvd = uv + wq * 0.005;
+  vec4 d0 = texture2D(u_dye, uvd);
   // heavy mottle at two scales — pigment suspended in water, not gradients
   float mo = 0.62 + 0.52*fbm(uv*vec2(asp,1.0)*9.0 + vec2(u_seed, u_time*0.006))
-           + 0.22*(vnoise(uv*vec2(asp,1.0)*38.0 + u_seed) - 0.5);
+           + 0.26*(vnoise(uv*vec2(asp,1.0)*44.0 + u_seed) - 0.5);
   float mc = 0.62 + 0.52*fbm(uv*vec2(asp,1.0)*8.0 + 4.7 + u_seed)
-           + 0.22*(vnoise(uv*vec2(asp,1.0)*34.0 + u_seed + 9.0) - 0.5);
+           + 0.26*(vnoise(uv*vec2(asp,1.0)*40.0 + u_seed + 9.0) - 0.5);
   float od = d0.r * mo;
   float cd = d0.g * mc;
-  float oD = 1.0 - exp(-od*1.05);
-  float cD = 1.0 - exp(-cd*1.05);
+  float oD = 1.0 - exp(-od*1.25);
+  float cD = 1.0 - exp(-cd*1.25);
 
   // one soft raking light on the density field — fronts, not plastic
   vec2 e = u_dpx;
@@ -280,17 +288,18 @@ void main(){
   room *= 0.82 + 0.34*smoothstep(1.15, 0.2, length(rc));
 
   // the inks — desaturated pharaonic ochre, gray-blue celeste; churn muddies
-  vec3 oc = mix(vec3(0.165,0.080,0.048), vec3(0.520,0.262,0.148), pow(oD, 1.5));
-  vec3 cc = mix(vec3(0.058,0.118,0.176), vec3(0.398,0.582,0.716), pow(cD, 1.5));
+  vec3 oc = mix(vec3(0.165,0.080,0.048), vec3(0.548,0.270,0.152), pow(oD, 1.5));
+  vec3 cc = mix(vec3(0.058,0.118,0.176), vec3(0.442,0.630,0.768), pow(cD, 1.5));
   float aI = 1.0 - (1.0-oD)*(1.0-cD);
   vec3 pig = (oc*oD + cc*cD) / max(oD + cD, 1e-4);
   pig = mix(pig, vec3(0.148,0.098,0.080), smoothstep(0.06, 0.42, oD*cD)*0.55);
   vec3 lit = pig * (0.74 + 0.38*diff) + vec3(1.0,0.96,0.88)*spec*0.05*aI;
+  lit *= 0.88 + 0.24*vnoise(uv*vec2(asp,1.0)*90.0 + u_seed*3.0);
 
   // the breath of gold where the celeste breaks through
   float g = u_gold * cD * smoothstep(0.60, 0.84, uv.y)
-          * exp(-pow((uv.x - u_gx)*asp/0.30, 2.0));
-  lit += vec3(0.86,0.63,0.21) * min(g, 0.5) * (0.5 + 0.8*diff);
+          * exp(-pow((uv.x - u_gx)*asp/0.22, 2.0));
+  lit += vec3(0.86,0.63,0.21) * min(g, 0.4) * (0.5 + 0.8*diff);
 
   // the currents float in the room — darkness owns the edges, no box
   float em = smoothstep(0.0, 0.17, uv.x) * smoothstep(1.0, 0.83, uv.x)
@@ -402,8 +411,8 @@ function bindT(unit, tex) {
 }
 
 function alloc(w, h) {
-  simH = 256;
-  simW = Math.max(96, Math.min(320, Math.round(simH * (w / h))));
+  simH = 384;
+  simW = Math.max(128, Math.min(480, Math.round(simH * (w / h))));
   vel = pair(simW, simH); prs = pair(simW, simH);
   div = target(simW, simH); dye = pair(simW, simH);
   for (const tg of [vel.r, vel.w, prs.r, prs.w, div]) {
