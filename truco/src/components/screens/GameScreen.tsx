@@ -332,8 +332,8 @@ function TeamPanel({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-              className={`font-display tabular leading-none ${highlight ? 'text-ink' : 'text-ink/85'}`}
-              style={{ fontSize: 'clamp(56px, 18vw, 88px)' }}
+              className={`tabular leading-none font-semibold tracking-[-0.03em] ${highlight ? 'text-ink' : 'text-ink/85'}`}
+              style={{ fontSize: 'clamp(72px, 22vw, 104px)' }}
             >
               {score}
             </motion.span>
