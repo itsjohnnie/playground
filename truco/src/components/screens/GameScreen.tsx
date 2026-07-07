@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence, animate, useMotionValue, useTransform } from 'framer-motion'
-import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown, Plus, Minus } from 'lucide-react'
+import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown, Plus, Minus, ArrowLeftRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
@@ -27,8 +27,29 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
   const [confirmAbandon, setConfirmAbandon] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
 
+  // Per-match display swap. Data (team A vs team B) never changes;
+  // only which panel is rendered on the left. Persisted to localStorage
+  // so a reload doesn't lose the scorer's preferred orientation.
+  const swapKey = `truco.sideSwap.${match.id}`
+  const [swapped, setSwapped] = useState<boolean>(() => {
+    try { return localStorage.getItem(swapKey) === '1' } catch { return false }
+  })
+  useEffect(() => {
+    try {
+      if (swapped) localStorage.setItem(swapKey, '1')
+      else localStorage.removeItem(swapKey)
+    } catch { /* no storage */ }
+  }, [swapKey, swapped])
+
   const roundMode = detectRoundMode(match.scoreA, match.scoreB)
   const lastEvent = match.events[match.events.length - 1]
+
+  // Left / right panel resolves through the swap flag, but all scoring
+  // handlers keep referring to A / B by data so events stay canonical.
+  const leftSide: 'A' | 'B' = swapped ? 'B' : 'A'
+  const rightSide: 'A' | 'B' = swapped ? 'A' : 'B'
+  const teamOn = (side: 'A' | 'B') => (side === 'A' ? match.teamA : match.teamB)
+  const scoreOn = (side: 'A' | 'B') => (side === 'A' ? match.scoreA : match.scoreB)
 
   function teamPlayers(side: 'A' | 'B') {
     const ids = side === 'A' ? match.teamA.playerIds : match.teamB.playerIds
@@ -70,21 +91,21 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
       {/* Two team panels */}
       <div className="grid grid-cols-2 flex-1 min-h-0 overflow-hidden">
         <TeamPanel
-          name={match.teamA.name}
-          players={teamPlayers('A')}
-          score={match.scoreA}
-          highlight={match.scoreA > match.scoreB}
-          onQuickAdd={() => onScore('A', 1, 'manual')}
-          onQuickSub={() => onScore('A', -1, 'manual')}
+          name={teamOn(leftSide).name}
+          players={teamPlayers(leftSide)}
+          score={scoreOn(leftSide)}
+          highlight={scoreOn(leftSide) > scoreOn(rightSide)}
+          onQuickAdd={() => onScore(leftSide, 1, 'manual')}
+          onQuickSub={() => onScore(leftSide, -1, 'manual')}
           right={false}
         />
         <TeamPanel
-          name={match.teamB.name}
-          players={teamPlayers('B')}
-          score={match.scoreB}
-          highlight={match.scoreB > match.scoreA}
-          onQuickAdd={() => onScore('B', 1, 'manual')}
-          onQuickSub={() => onScore('B', -1, 'manual')}
+          name={teamOn(rightSide).name}
+          players={teamPlayers(rightSide)}
+          score={scoreOn(rightSide)}
+          highlight={scoreOn(rightSide) > scoreOn(leftSide)}
+          onQuickAdd={() => onScore(rightSide, 1, 'manual')}
+          onQuickSub={() => onScore(rightSide, -1, 'manual')}
           right={true}
         />
       </div>
@@ -123,6 +144,14 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
             className="justify-start gap-3"
           >
             <Undo2 className="size-4" /> Deshacer último punto
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            onClick={() => { setSwapped((v) => !v); setMenu(false) }}
+            className="justify-start gap-3"
+          >
+            <ArrowLeftRight className="size-4" /> Cambiar lados
           </Button>
           <Button
             variant="danger"
