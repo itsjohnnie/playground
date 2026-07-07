@@ -7,27 +7,51 @@
 <script src="data-002.js"></script>
 <script>
 // 002 — sismógrafo — Argentina 2–0 Austria as a seismograph record.
-// A deckle-edged paper strip floats on the dark room (open mount): 96
-// plotter lines, one per minute, 1' (top) to 90+6' (bottom). Energy per
-// minute = per-half xG density (M2.xgPhase) + gaussian spikes at shot
-// minutes (pinned where the commentary gives them, remainder seeded) +
-// mountains at the two goals. Argentina shakes the LEFT half of each line,
-// Austria the RIGHT; ink weight follows possession (54–46). The 9' missed
-// penalty is a marked early tremor; the 76' and 90+2' bookings cut BELOW
-// the baseline as a sharp zigzag — everything else in the match rises,
+// Light on dark (johnnie, seventh pass: "remove it from the canvas — light
+// content on dark background"): the paper sheet is gone; the record floats
+// directly on the room's darkness. 96 plotter lines, one per minute, 1'
+// (top) to 90+6' (bottom). Energy per minute = per-half xG density
+// (M2.xgPhase) + gaussian spikes at shot minutes (pinned where the
+// commentary gives them, remainder seeded) + mountains at the two goals.
+// Argentina shakes the LEFT half of each line, Austria the RIGHT; ink
+// weight follows possession (54–46) as trace alpha. The 9' missed penalty
+// is a marked early tremor; the 76' and 90+2' bookings cut BELOW the
+// baseline as a sharp zigzag — everything else in the match rises,
 // discipline digs down. The record ends on its deepest spike: Messi at
-// 90+5', his 18th World Cup goal, inked in gold ochre on the final line.
-// Plotter truth: baseline drift down the roll, ragged pen-down margins,
-// ink pooling where the pen turns hard, a heavier pen on event lines.
-// The record draws itself once (~11 s) and the rAF loop stops.
+// 90+5', his 18th World Cup goal, inked in gold on the final line.
+// Plotter truth kept: baseline drift down the roll, ragged pen-down
+// margins, ink pooling where the pen turns hard, a heavier pen on event
+// lines. Finishing is a whisper of film grain fading out around the block —
+// no rectangle anywhere. Draws itself once (~11 s), then the rAF loop stops.
 
 const seed = ART.seed("2026-06-22-002");
 const N = ART.makeNoise(seed);
 const M = window.M2;
-const INK = "rgba(23,21,17,";
-// neutral archival white — the sheet cooled off the warm sand of the kit
-// palette (johnnie: "more neutral, not so ivory"), faintest warmth kept
-const PAPER = "#ecebe8";
+// —— the inks: two palettes, one switch. Sismógrafo follows the system
+//    scheme (johnnie: light content on dark, "the other way around for
+//    light mode"). dark = luminous bone traces directly on the room
+//    (ground null → transparent, the room shows through); light = the
+//    mirror, near-ink traces on a neutral paper ground. `fill` is what
+//    each trace lays under itself to occlude the mountains above it.
+//    Nothing below this block knows the polarity.
+const PALETTES = {
+  dark:  { ground: null,      fill: "#0d0a07", bone: "242,236,225",
+           celeste: "#8fc6ea", gold: "#e9b32a" },   // accents lifted for dark
+  light: { ground: "#ecebe8", fill: "#ecebe8", bone: "23,21,17",
+           celeste: "#2b6a99", gold: "#a97b12" },   // deep inks for paper
+};
+let DARK, ROOM, GROUND, CELESTE, GOLD, INK;
+const mqLight = matchMedia("(prefers-color-scheme: light)");
+function applyScheme() {
+  DARK = !mqLight.matches; // dark is the house default
+  const P = PALETTES[DARK ? "dark" : "light"];
+  GROUND = P.ground; ROOM = P.fill; CELESTE = P.celeste; GOLD = P.gold;
+  INK = "rgba(" + P.bone + ",";
+}
+applyScheme();
+// a scheme flip re-inks the settled record in place — never replays the
+// arrival (build() redraws the lines already on the roll, then renders)
+mqLight.addEventListener("change", () => { applyScheme(); if (lines) build(); });
 // the record clerk's hand: Geist Sans, all caps, gently tracked
 const FONT = (px) => "500 " + px + "px 'Geist', ui-sans-serif, system-ui, sans-serif";
 const TRACK = "0.05em";
@@ -35,7 +59,7 @@ const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const TOTAL = M.totalMin; // 96
 
 let W, H, DPR, S, T0, B0, X0, X1, fs, lines, grain, off, offCtx;
-let paperC, deckle, px, py, pw, ph;
+let px, py, pw, ph;
 let drawn = 0, settled = false, start;
 
 const F = FRAME.mount({
@@ -54,53 +78,13 @@ const ss = (a, b, v) => {
   return t * t * (3 - 2 * t);
 };
 
-function buildPaper() {
-  // the record strip — a paper object on the room
+function build() {
+  // the record block — the same footprint the paper strip used to hold,
+  // now floating unframed on the ground
   ph = 0.955 * H;
   pw = Math.min(0.94 * W, 0.66 * ph);
   ph = Math.min(ph, pw / 0.55);
   px = (W - pw) / 2; py = (H - ph) / 2 + 0.004 * H;
-
-  // deckle edge: low-freq warp + fiber-scale roughness, seeded
-  deckle = new Path2D();
-  const rough = (s, e) =>
-    (0.75 * N.noise2(s * 2.3, e * 7.31) + 2.4 * N.noise2(s * 11.7, e * 7.31 + 3.1) * 0.55) * 2.1 * DPR;
-  const nE = 46;
-  for (let e = 0; e < 4; e++) {
-    for (let k = 0; k <= nE; k++) {
-      const s = k / nE, d = rough(s + e * 1.7, e);
-      let x, y;
-      if (e === 0) { x = px + s * pw; y = py - d; }
-      else if (e === 1) { x = px + pw + d; y = py + s * ph; }
-      else if (e === 2) { x = px + (1 - s) * pw; y = py + ph + d; }
-      else { x = px - d; y = py + (1 - s) * ph; }
-      k === 0 && e === 0 ? deckle.moveTo(x, y) : deckle.lineTo(x, y);
-    }
-  }
-  deckle.closePath();
-
-  paperC = document.createElement("canvas");
-  paperC.width = W; paperC.height = H;
-  const p = paperC.getContext("2d");
-  p.save();
-  p.shadowColor = "rgba(0,0,0,0.5)";
-  p.shadowBlur = 34 * DPR; p.shadowOffsetY = 12 * DPR;
-  p.fillStyle = PAPER;
-  p.fill(deckle);
-  p.shadowColor = "rgba(0,0,0,0.38)";
-  p.shadowBlur = 7 * DPR; p.shadowOffsetY = 2.5 * DPR;
-  p.fill(deckle);
-  p.restore();
-  p.save();
-  p.clip(deckle);
-  p.strokeStyle = "rgba(70,68,62,0.15)"; // torn-fiber edge tone, neutral
-  p.lineWidth = 2.6 * DPR;
-  p.stroke(deckle);
-  p.restore();
-}
-
-function build() {
-  buildPaper();
   // the trace block sits dead-center on the sheet — symmetric margins;
   // the annotations hang balanced either side
   X0 = px + 0.19 * pw; X1 = px + 0.81 * pw;
@@ -190,8 +174,8 @@ function build() {
         y += env * S * (0.62 * tri(u * 40 + i * 0.7) + 0.16);
       }
       let tint = null;
-      if (gT2 > 2.3 * S) tint = M.ink.goldDeep;
-      else if (gT1 > 2.3 * S) tint = M.ink.argDeep;
+      if (gT2 > 2.3 * S) tint = GOLD;
+      else if (gT1 > 2.3 * S) tint = CELESTE;
       pts.push({ x, y, tint });
     }
 
@@ -219,7 +203,7 @@ function build() {
     const labs = [];
     if (goal) labs.push({
       left: true, l1: mm(goal.min), l2: goal.player + " · " + goal.nth + "º",
-      col: goal.record ? M.ink.goldDeep : M.ink.argDeep,
+      col: goal.record ? GOLD : CELESTE,
     });
     if (m === M.penalty.min)
       labs.push({ left: true, single: true, l1: mm(m) + " penal", col: INK + "0.55)" });
@@ -245,12 +229,38 @@ function build() {
   const g = grain.getContext("2d");
   const img = g.createImageData(W, H);
   const Rg = ART.rng(seed + "grain");
-  for (let i = 0; i < img.data.length; i += 4) {
-    const v = 118 + Rg() * 20 | 0;
-    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
-    img.data[i + 3] = 24;
+  if (DARK) {
+    // dark room: a whisper of light film grain, drawn over the record —
+    // masked below so it breathes out to nothing well before any edge
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = 200 + Rg() * 55 | 0;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = Rg() * 14;
+    }
+  } else {
+    // paper ground: the old dark grain, multiplied over the full sheet
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = 118 + Rg() * 20 | 0;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+      img.data[i + 3] = 24;
+    }
   }
   g.putImageData(img, 0, 0);
+  if (DARK) {
+    // elliptical fade around the trace block — nothing boxy survives
+    g.globalCompositeOperation = "destination-in";
+    g.save();
+    g.translate(W / 2, H / 2);
+    g.scale(pw * 0.9, ph * 0.66);
+    const mg = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+    mg.addColorStop(0, "rgba(0,0,0,1)");
+    mg.addColorStop(0.55, "rgba(0,0,0,0.8)");
+    mg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = mg;
+    g.fillRect(-1, -1, 2, 2);
+    g.restore();
+    g.globalCompositeOperation = "source-over";
+  }
 
   if (settled) render(TOTAL);
 }
@@ -284,11 +294,11 @@ function inkGrad(g, heavy) {
 }
 
 // draw one record line onto g, clipped to fraction `clip` of its width;
-// each line first fills paper under itself (occludes the mountains above)
+// each line first fills ground under itself (occludes the mountains above)
 function drawLine(g, i, clip) {
   const L = lines[i], pts = L.pts;
   const n = Math.max(2, Math.min(pts.length, Math.ceil(clip * (pts.length - 1)) + 1));
-  g.fillStyle = PAPER;
+  g.fillStyle = ROOM;
   g.beginPath();
   g.moveTo(pts[0].x, L.y + 1.6 * DPR);
   for (let j = 0; j < n; j++) g.lineTo(pts[j].x, pts[j].y);
@@ -342,7 +352,9 @@ function drawLine(g, i, clip) {
 
 function render(pos) {
   ctx.clearRect(0, 0, W, H);
-  ctx.drawImage(paperC, 0, 0);
+  // dark: transparent — the record sits directly on the room;
+  // light: the region becomes a plain paper ground
+  if (GROUND) { ctx.fillStyle = GROUND; ctx.fillRect(0, 0, W, H); }
   ctx.drawImage(off, 0, 0);
 
   if (pos < TOTAL) {
@@ -369,18 +381,24 @@ function render(pos) {
     ctx.beginPath(); ctx.arc(p.x, p.y, 2.3 * DPR, 0, 7); ctx.fill();
   }
 
-  // finishing pass, clipped to the sheet: raking light + paper grain
-  ctx.save();
-  ctx.clip(deckle);
-  const lg = ctx.createLinearGradient(0, py, 0, py + ph);
-  lg.addColorStop(0, "rgba(255,255,253,0.055)");
-  lg.addColorStop(0.35, "rgba(255,255,253,0)");
-  lg.addColorStop(1, "rgba(45,44,40,0.05)");
-  ctx.fillStyle = lg;
-  ctx.fillRect(px - 8, py - 8, pw + 16, ph + 16);
-  ctx.globalCompositeOperation = "multiply";
-  ctx.drawImage(grain, 0, 0);
-  ctx.restore();
+  // finishing pass — per ground
+  if (DARK) {
+    // a whisper of light film grain, already masked to breathe out around
+    // the block; the room itself stays untouched darkness
+    ctx.drawImage(grain, 0, 0);
+  } else {
+    // paper: raking light down the sheet + dark grain, multiplied
+    ctx.save();
+    const lg = ctx.createLinearGradient(0, 0, 0, H);
+    lg.addColorStop(0, "rgba(255,255,253,0.055)");
+    lg.addColorStop(0.35, "rgba(255,255,253,0)");
+    lg.addColorStop(1, "rgba(45,44,40,0.05)");
+    ctx.fillStyle = lg;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "multiply";
+    ctx.drawImage(grain, 0, 0);
+    ctx.restore();
+  }
 }
 
 // the record draws itself once — ~11 s, top to bottom — then rests
