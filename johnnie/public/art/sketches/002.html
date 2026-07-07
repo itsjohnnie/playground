@@ -86,7 +86,7 @@ const F = FRAME.mount({
   num: 2, title: "Sismógrafo", subject: "Argentina vs. Austria",
   edition: "02/31", date: "22·06·2026",
   stack: "Canvas 2D", time: "48 minutes", gesture: true,
-  desc: "A plotter’s seismogram of the match, one tremor per minute from kickoff to the sixth minute of stoppage: amplitude is intensity, ink weight is possession, and the two bookings cut below the line at 76’ and 90+2’. The record ends on its deepest spike — Messi at 90+5’, his eighteenth World Cup goal, more than anyone has ever scored.",
+  desc: "A plotter’s seismogram of the match, one tremor per minute from kickoff to the sixth minute of stoppage: amplitude is intensity, ink weight is possession, and the two bookings cut below the line at 76’ and 90+2’. The record ends on its deepest spike — Messi at 90+5’, his eighteenth World Cup goal, more than anyone has ever scored. The needle never quite rests; pass a finger over the sheet and it feels the footsteps.",
   open: true, dark: true,
   onResize(w, h, dpr) { W = w; H = h; DPR = dpr; build(); },
 });
@@ -111,7 +111,7 @@ function build() {
   T0 = py + 0.108 * ph; B0 = py + 0.948 * ph;
   S = (B0 - T0) / (TOTAL - 1);
   fs = Math.min(11.5 * DPR, Math.max(0.022 * pw, 7.5 * DPR));
-  JQ = 0.55 * DPR; // the resting needle's reach — ~0.55 css px, sub-pixel life
+  JQ = 0.38 * DPR; // the resting needle's reach — sub-pixel, life not wobble
 
   // shot ticks: pinned real minutes + seeded remainder within exact counts
   const Rt = ART.rng(seed + "ticks");

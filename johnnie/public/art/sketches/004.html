@@ -150,7 +150,7 @@ void main(){
       // oxidized recesses are matte paint; everywhere else the color IS the alloy
       vec3 alb = mix(vec3(0.40, 0.27, 0.15)*(0.80 + 0.45*mot),
                      vec3(0.085, 0.082, 0.062), occ*0.88);
-      alb = mix(alb, vec3(0.55, 0.38, 0.19), wear*0.40);
+      alb = mix(alb, vec3(0.72, 0.52, 0.26), wear*0.50);
       // roughness by surface: sand-cast field / worn plateau / polished arris
       float rough = mix(mix(0.68, 0.52, mot), 0.30, wear);
       rough = mix(rough, 0.16, fb);
@@ -166,15 +166,20 @@ void main(){
       float ndl = max(dot(N, Ls), 0.0);
       float ndv = max(dot(N, -d), 1e-3);
       float a = max(rough*rough, 2e-3);
+      // machined moments: the arris and the flat border rails are brushed
+      // along their run — the highlight stretches with the brushing
+      float rail = (1.0 - smoothstep(0.006*S, 0.012*S, abs(sd0 + 0.042*S)))*wear;
+      float anis = max(fb, rail*0.8);
       float Dg;
-      if (fb > 0.02){                     // the arris is machined: brushed along its run
+      if (anis > 0.02){
         vec3 Tt = normalize(vec3(-gb.y, gb.x, 0.0) - N*dot(N, vec3(-gb.y, gb.x, 0.0)));
-        Dg = dAniso(Hv, N, Tt, cross(N, Tt), min(a*(1.0 + 2.4*fb), 0.30), a);
+        Dg = dAniso(Hv, N, Tt, cross(N, Tt),
+                    min(a*(1.0 + 2.4*anis), 0.30), a/(1.0 + 1.2*anis));
       } else {
         Dg = dGGX(max(dot(N, Hv), 0.0), a);
       }
       float lit = 1.0 - shad;
-      vec3 spec = key*(Dg*visSmith(ndl, ndv, a)*ndl*lit*fall*(1.0 - occ*0.5))
+      vec3 spec = key*(Dg*visSmith(ndl, ndv, a)*ndl*lit*fall*1.4*(1.0 - occ*0.5))
                 * fresnel(F0, max(dot(Ls, Hv), 0.0));
       float ao = 1.0 - occ*0.55;
       // the room, mirrored in the metal — flat faces come alive as they tilt
@@ -183,9 +188,9 @@ void main(){
                * (1.0 - occ*0.6)*mix(1.0, lit, 0.4);
       float dif = ndl*lit;
       float fil = max(dot(N, Lfs), 0.0)*0.16;
-      sc = alb*(1.0 - metal*0.72)*(key*dif*fall*2.3 + cool*fil*ao*2.0 + 0.10*ao)
+      sc = alb*(1.0 - metal*0.58)*(key*dif*fall*2.3 + cool*fil*ao*2.0 + 0.10*ao)
          + spec + env
-         + F0*a*key*dif*fall*0.35;        // multiple-scatter return off the rough cast
+         + F0*a*key*dif*fall*0.65;        // multiple-scatter return off the rough cast
     } else {
       // ---- side wall: rough sand-cast edge ----
       float ta = tT, tb = tB;
@@ -219,8 +224,8 @@ void main(){
       vec3 spec = key*(Dg*visSmith(ndl, ndv, a)*ndl*fall)
                 * fresnel(F0, max(dot(Ls, Hv), 0.0));
       vec3 Fe = F0 + (max(vec3(1.0 - rough), F0) - F0)*pow(1.0 - ndv, 5.0);
-      vec3 env = envRoom(toWorld(reflect(d, N)), rough, fall)*Fe;
-      sc = alb*0.55*aoz*(key*dif*fall*2.0 + cool*fil*1.6 + vec3(0.55, 0.42, 0.30)*bnc*1.8 + 0.13)
+      vec3 env = envRoom(toWorld(reflect(d, N)), rough, fall)*Fe*1.3;
+      sc = alb*0.80*aoz*(key*dif*fall*2.0 + cool*fil*2.4 + vec3(0.55, 0.42, 0.30)*bnc*2.4 + 0.20)
          + (spec + env)*aoz
          + F0*a*key*dif*fall*0.30*aoz;
     }
@@ -245,6 +250,16 @@ void main(){
 // SLAB now: an extruded rounded-rect raycast in GLSL — thick sand-cast
 // side walls, a bevelled arris, patina pooled in the recesses, wear on the
 // proud edges, a thrown shadow on the felt wall it stands proud of.
+// The alloy is a microfacet metal: GGX/Trowbridge-Reitz with roughness by
+// surface (polished arris ~0.15, worn plateau ~0.30, sand-cast field
+// ~0.55–0.70, raw side walls rougher), Schlick fresnel with F0 = the
+// bronze itself (specular is tinted, diffuse nearly nil where polished),
+// anisotropic D on the machined arris + border rails (highlight stretched
+// along the brushing), and an analytic room — dark floor, warm lamp lobe,
+// faint cool fill, the felt wall behind — sampled by the reflected vector,
+// so the flat plateau carries a moving reflection as the slab tilts.
+// Oxidized recesses stay rough and dielectric; the sand grain breaks the
+// highlight into sparkle under grazing light.
 // Every mark is the match: Argentina's three goals raised from the metal,
 // Cabo Verde's two sunk into it (the 111' own goal ringed), period marks
 // at 45/90/105, hydration notches at 26' and 73', scorers and venue in

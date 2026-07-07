@@ -222,6 +222,22 @@ void main(){
   gl_FragColor = vec4(v, 0., 1.);
 }`;
 
+// the flow map: two advected coordinate fields, re-seeded out of phase and
+// crossfaded, so the fine cloud structure travels, shears and folds WITH the
+// currents instead of sitting on them — liquid, not a screensaver
+const FS_DINIT = `precision highp float;varying vec2 vUv;
+void main(){ gl_FragColor = vec4(vUv, vUv); }`;
+
+const FS_DET = `precision highp float;varying vec2 vUv;
+uniform sampler2D u_vel, u_det;uniform vec2 u_px;uniform float u_dt;uniform vec2 u_rst;
+void main(){
+  vec2 v = texture2D(u_vel, vUv).xy;
+  vec4 c = texture2D(u_det, vUv - v * u_dt * u_px);
+  if (u_rst.x > 0.5) c.rg = vUv;
+  if (u_rst.y > 0.5) c.ba = vUv;
+  gl_FragColor = c;
+}`;
+
 const FS_DYE = `precision highp float;varying vec2 vUv;
 uniform sampler2D u_vel, u_dye;
 uniform vec2 u_px;uniform float u_dt, u_keep, u_seed, u_time, u_asp;
@@ -250,24 +266,24 @@ void main(){
 }`;
 
 const FS_SHOW = `precision highp float;varying vec2 vUv;
-uniform sampler2D u_dye;
+uniform sampler2D u_dye, u_det;
 uniform vec2 u_dpx, u_res;
-uniform float u_seed, u_time, u_gold, u_gx, u_expo;
+uniform float u_seed, u_gold, u_gx, u_expo, u_dwA;
 ${NOISE}
 float dens(vec2 p){ vec2 d = texture2D(u_dye, p).rg; return d.r + d.g; }
 void main(){
   float asp = u_res.x / u_res.y;
   vec2 uv = vUv;
-  // a fine warp fakes the filaments the coarse grid can't carry
-  vec2 wq = vec2(vnoise(uv*vec2(asp,1.0)*22.0 + u_seed) - 0.5,
-                 vnoise(uv*vec2(asp,1.0)*22.0 + 31.7 + u_seed) - 0.5);
-  vec2 uvd = uv + wq * 0.005;
-  vec4 d0 = texture2D(u_dye, uvd);
-  // heavy mottle at two scales — pigment suspended in water, not gradients
-  float mo = 0.62 + 0.52*fbm(uv*vec2(asp,1.0)*9.0 + vec2(u_seed, u_time*0.006))
-           + 0.26*(vnoise(uv*vec2(asp,1.0)*44.0 + u_seed) - 0.5);
-  float mc = 0.62 + 0.52*fbm(uv*vec2(asp,1.0)*8.0 + 4.7 + u_seed)
-           + 0.26*(vnoise(uv*vec2(asp,1.0)*40.0 + u_seed + 9.0) - 0.5);
+  vec4 d0 = texture2D(u_dye, uv);
+  // the mottle rides the flow map — pigment carried, stretched and folded
+  // by the currents themselves; only the film grain is allowed to sit still
+  vec4 cw = texture2D(u_det, uv);
+  vec2 sA = cw.rg * vec2(asp, 1.0), sB = cw.ba * vec2(asp, 1.0);
+  float m  = mix(fbm(sB*9.0 + u_seed),  fbm(sA*9.0 + u_seed),  u_dwA);
+  float hi = mix(vnoise(sB*44.0 + u_seed), vnoise(sA*44.0 + u_seed), u_dwA);
+  float lu = mix(vnoise(sB*90.0 + u_seed*3.0), vnoise(sA*90.0 + u_seed*3.0), u_dwA);
+  float mo = 0.62 + 0.52*m + 0.26*(hi - 0.5);
+  float mc = 0.62 + 0.52*(1.0 - m) + 0.26*(hi - 0.5);
   float od = d0.r * mo;
   float cd = d0.g * mc;
   float oD = 1.0 - exp(-od*1.25);
@@ -294,7 +310,7 @@ void main(){
   vec3 pig = (oc*oD + cc*cD) / max(oD + cD, 1e-4);
   pig = mix(pig, vec3(0.148,0.098,0.080), smoothstep(0.06, 0.42, oD*cD)*0.55);
   vec3 lit = pig * (0.74 + 0.38*diff) + vec3(1.0,0.96,0.88)*spec*0.05*aI;
-  lit *= 0.88 + 0.24*vnoise(uv*vec2(asp,1.0)*90.0 + u_seed*3.0);
+  lit *= 0.88 + 0.24*lu;
 
   // the breath of gold where the celeste breaks through
   float g = u_gold * cD * smoothstep(0.60, 0.84, uv.y)
@@ -335,7 +351,8 @@ const sfN = ART.rng(seed)() * 37;               // seed float for the shaders
 /* ---------------- gl plumbing ---------------- */
 
 let progs = {}, quad = null, halfType = 0, innerFmt = 0;
-let vel, prs, div, dye;
+let vel, prs, div, dye, det;
+const DETP = 7.0;                               // flow-map re-seed period (s)
 
 function boot() {
   gl = F.canvas.getContext("webgl2", { antialias: false, alpha: false, depth: false, preserveDrawingBuffer: false });
@@ -375,7 +392,8 @@ function boot() {
     return { p, loc, U };
   };
   progs = { init: mk(FS_INIT), adv: mk(FS_ADVECT), frc: mk(FS_FORCE), div: mk(FS_DIV),
-            jac: mk(FS_JAC), grd: mk(FS_GRAD), dye: mk(FS_DYE), show: mk(FS_SHOW) };
+            jac: mk(FS_JAC), grd: mk(FS_GRAD), dye: mk(FS_DYE), show: mk(FS_SHOW),
+            dinit: mk(FS_DINIT), det: mk(FS_DET) };
 }
 
 function target(w, h) {
@@ -414,12 +432,13 @@ function alloc(w, h) {
   simH = 384;
   simW = Math.max(128, Math.min(480, Math.round(simH * (w / h))));
   vel = pair(simW, simH); prs = pair(simW, simH);
-  div = target(simW, simH); dye = pair(simW, simH);
+  div = target(simW, simH); dye = pair(simW, simH); det = pair(simW, simH);
   for (const tg of [vel.r, vel.w, prs.r, prs.w, div]) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, tg.f);
     gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
   }
   run(progs.init, dye.r, (U) => gl.uniform1f(U.u_seed, sfN));
+  run(progs.dinit, det.r, () => {});
   tau = 0; lifeT = 0; last = 0;
   ready = true;
   if (RM) { still(); return; }
@@ -467,6 +486,15 @@ function tick(dt, t) {
     gl.uniform2f(U.u_px, px[0], px[1]);
   }); vel.swap();
 
+  // carry the flow map; re-seed each layer on its own beat
+  const rA = Math.floor((lifeT + dt) / DETP) > Math.floor(lifeT / DETP) ? 1 : 0;
+  const rB = Math.floor((lifeT + dt) / DETP + 0.5) > Math.floor(lifeT / DETP + 0.5) ? 1 : 0;
+  run(progs.det, det.w, (U) => {
+    gl.uniform1i(U.u_vel, bindT(0, vel.r)); gl.uniform1i(U.u_det, bindT(1, det.r));
+    gl.uniform2f(U.u_px, px[0], px[1]);
+    gl.uniform1f(U.u_dt, dt); gl.uniform2f(U.u_rst, rA, rB);
+  }); det.swap();
+
   run(progs.dye, dye.w, (U) => {
     gl.uniform1i(U.u_vel, bindT(0, vel.r)); gl.uniform1i(U.u_dye, bindT(1, dye.r));
     gl.uniform2f(U.u_px, px[0], px[1]);
@@ -483,11 +511,13 @@ function tick(dt, t) {
 
 function draw(t, expo) {
   const C = chor(t);
+  const dwA = 1 - Math.abs(2 * ((lifeT / DETP) % 1) - 1);   // layer A weight
   run(progs.show, null, (U) => {
     gl.uniform1i(U.u_dye, bindT(0, dye.r));
+    gl.uniform1i(U.u_det, bindT(1, det.r));
     gl.uniform2f(U.u_dpx, 1 / simW, 1 / simH);
     gl.uniform2f(U.u_res, F.canvas.width, F.canvas.height);
-    gl.uniform1f(U.u_seed, sfN); gl.uniform1f(U.u_time, lifeT);
+    gl.uniform1f(U.u_seed, sfN); gl.uniform1f(U.u_dwA, dwA);
     gl.uniform1f(U.u_gold, C.gold); gl.uniform1f(U.u_gx, gxBreak);
     gl.uniform1f(U.u_expo, expo);
   });
