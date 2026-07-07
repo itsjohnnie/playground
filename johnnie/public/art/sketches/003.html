@@ -46,9 +46,10 @@ float chl(vec2 pc, float n, float m, float s){
 void main(){
   vec2 p = gl_FragCoord.xy / u_res;
   vec2 pc = p*2.0 - 1.0;                     // the plate is the slot
-  // width-anchored: lobes keep their proportions on tall screens — the
-  // pattern extends vertically instead of stretching (identity at 3:4)
-  float arY = (u_res.y/u_res.x) * 0.75;
+  // isotropic plate space: one unit is the same number of pixels on both
+  // axes, so the nodal lobes are truly square everywhere — taller screens
+  // simply hold more figure, never a stretched one
+  float arY = u_res.y/u_res.x;
   pc.y *= arY;
 
   // ---- the drive: four modes, 2.5s each, smooth crossfades — except the
