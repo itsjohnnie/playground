@@ -14,12 +14,15 @@
   // onResize(W, H, DPR) fires deferred once at mount, then on every resize.
   FRAME.mount = function (o) {
     const thumb = window.ART && ART.isThumb;
+    // ?bare=1 (thumbs only): the artwork alone, no frame overlay —
+    // the gallery card's meta row acts as the wall label instead
+    const bare = thumb && new URLSearchParams(location.search).get("bare") === "1";
     document.title = o.n + (o.v ? o.v : "") + " · " + (o.title || "") + " — art";
     const fav = document.createElement("link");
     fav.rel = "icon";
     fav.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>" +
-      "<circle cx='38' cy='44' r='30' fill='%23f5578c' opacity='.85'/>" +
-      "<circle cx='62' cy='56' r='30' fill='%232a49b9' opacity='.75'/></svg>";
+      "<circle cx='38' cy='44' r='30' fill='%236cabd6' opacity='.88'/>" +
+      "<circle cx='62' cy='56' r='30' fill='%23d5493c' opacity='.72'/></svg>";
     document.head.appendChild(fav);
 
     const ink = o.dark ? "244,240,229" : "23,21,17";
@@ -53,7 +56,7 @@ color:rgba(var(--fink),.9);text-transform:uppercase}
 font-weight:640;transition:color 150ms ease}
 @media (hover:hover) and (pointer:fine){.frame .crumb:hover{color:rgba(var(--fink),.97)}}
 .frame .nav{position:absolute;top:50%;transform:translateY(-50%);z-index:6;pointer-events:auto;
-padding:18px 12px;color:rgba(var(--fink),.38);text-decoration:none;
+padding:18px 12px;color:rgba(var(--fink),.52);text-decoration:none;
 font-size:max(16px,3.4cqw);line-height:1;transition:color 150ms ease}
 .frame .nav.prev{left:0}
 .frame .nav.next{right:0}
@@ -64,7 +67,9 @@ background:
  repeating-linear-gradient(to bottom, rgba(var(--fink),.07) 0 1px, transparent 1px calc(100%/8));
 background-position:-1px -1px}
 .frame .cell{padding:.65em .8em;position:relative}
-.frame .dim{color:rgba(var(--fink),.58)}
+.frame .dim{color:rgba(var(--fink),.66)}
+.vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .frame .tl{grid-area:1/1/2/4}
 .frame .tr{grid-area:1/5/2/7;text-align:right}
 .frame .ml{grid-area:2/1/3/3}
@@ -79,10 +84,20 @@ background-position:-1px -1px}
     stage.className = "stage";
     document.body.appendChild(stage);
 
+    const plain = (s) => (s || "").replace(/<br\s*\/?>/gi, ", ").replace(/<[^>]+>/g, "");
+    const h1 = document.createElement("h1");
+    h1.className = "vh";
+    h1.textContent = o.n + (o.v ? o.v : "") + " · " + (o.title || "");
+    stage.appendChild(h1);
+
     let canvas = null;
     if (!o.noCanvas) {
       canvas = document.createElement("canvas");
       canvas.className = "art";
+      canvas.setAttribute("role", "img");
+      canvas.setAttribute("aria-label",
+        "generative artwork: " + (o.title || o.n) +
+        (o.data ? ". " + plain(o.data).toLowerCase() : ""));
       stage.appendChild(canvas);
     }
 
@@ -97,33 +112,44 @@ background-position:-1px -1px}
     frame.innerHTML =
       '<div class="hair"></div>' +
       '<div class="cell tl"><b>' + o.n + (o.v ? " — " + o.v : "") + "</b>" +
-        (o.title ? '<br><span class="dim">' + o.title + "</span>" : "") + "</div>" +
+        (o.title ? '<br><span class="dim" lang="es">' + o.title + "</span>" : "") + "</div>" +
       '<div class="cell tr">' +
         (thumb ? "" : '<a class="crumb" href="../">← art</a><br>') +
         (o.date || "") + "</div>" +
       '<div class="cell ml dim">' +
         (o.info || 'johnnie · daily practice<br><span class="lc">johnnies.life/art</span>') + "</div>" +
       '<div class="cell bl">' + lead(o.data || "") + "</div>" +
-      '<div class="cell br dim">' + (o.tech || "") + "</div>";
-    stage.appendChild(frame);
+      '<div class="cell br dim">' + (o.tech || "") +
+        (thumb ? "" : "<br>tap — reseed") + "</div>";
+    if (!bare) stage.appendChild(frame);
 
     if (!thumb) {
       let lastSwipe = 0;
       addEventListener("click", (e) => {
         if (e.target.closest("a")) return;
         if (Date.now() - lastSwipe < 500) return;   // a swipe is not a tap
+        // reseed only from the interior — the outer ring of grid cells holds
+        // the frame's facts and the nav edges; a stray tap there shouldn't
+        // discard the day's canonical render
+        const r = stage.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+        if (x < 1 / 6 || x > 5 / 6 || y < 1 / 8 || y > 7 / 8) return;
         ART.reseed();
       });
       addEventListener("keydown", (e) => { if (e.key === "r") ART.reseed(); });
 
       // one-by-one navigation: swipe on touch, arrows on keyboards,
-      // ‹ › affordances at the frame's edges
+      // ‹ › affordances at the frame's edges. Production serves these pages
+      // at extensionless URLs, so match basenames with the extension stripped.
+      const base = (p) => p.split("/").pop().replace(/\.html$/, "");
       fetch("../sketches.json")
         .then((r) => r.json())
         .then((d) => {
-          const list = d.sketches.slice().reverse().map((s) => s.file.split("/").pop());
-          const cur = location.pathname.split("/").pop();
-          const i = list.indexOf(cur);
+          // display order: newest date first, reading order (a→j) within a date
+          const list = d.sketches.slice()
+            .sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n))
+            .map((s) => s.file.split("/").pop());
+          const i = list.map(base).indexOf(base(location.pathname));
           if (i < 0 || list.length < 2) return;
           const prev = list[(i - 1 + list.length) % list.length];
           const next = list[(i + 1) % list.length];
@@ -163,7 +189,8 @@ background-position:-1px -1px}
             if (e.key === "ArrowLeft") go(prev, -1);
           });
         })
-        .catch(() => {});
+        // loud on purpose: a silent catch here once shipped a dead nav
+        .catch((e) => console.warn("frame: piece navigation unavailable —", e));
     }
 
     const F = { stage, canvas, W: 0, H: 0, DPR: 1 };
