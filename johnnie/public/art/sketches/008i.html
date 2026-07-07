@@ -76,6 +76,7 @@ css.textContent = `
 #ctr{font-size:min(25cqw,30cqh);line-height:1;font-weight:300;
   font-variant-numeric:tabular-nums;color:rgba(23,21,17,.82);
   transform-origin:50% 62%;will-change:transform;transition:color .25s ease}
+#ctr i{font-style:normal;margin-left:-.34em;opacity:.5} /* pull the prime out of its mono cell */
 #ctr.arg{color:var(--arg)}#ctr.cpv{color:var(--cpv)}
 .k.night #ctr{color:rgba(244,240,229,.92)}
 .k.night #ctr.arg{color:var(--arg)}.k.night #ctr.cpv{color:var(--cpv)}
@@ -114,32 +115,33 @@ css.textContent = `
 
 #poster{position:absolute;inset:0;display:flex;flex-direction:column;
   align-items:center;justify-content:center;text-align:center}
-#poster .pr{opacity:0;transform:translateY(2.4cqw);
+#poster .pr{opacity:0;transform:translateY(1.8cqh);
   transition:opacity .55s ease-out,transform .8s cubic-bezier(.2,.9,.2,1)}
 #poster.in .pr{opacity:1;transform:none}
-.p-comp{font-size:2.3cqw;letter-spacing:.32em;color:var(--dim)}
-.p-teams{margin-top:2.6cqw;font-family:'Geist',ui-sans-serif,system-ui,sans-serif;
-  font-size:4.9cqw;font-weight:500;letter-spacing:-.01em;
+.p-comp{font-size:1.75cqh;letter-spacing:.32em;color:var(--dim)}
+.p-teams{margin-top:2cqh;font-family:'Geist',ui-sans-serif,system-ui,sans-serif;
+  font-size:3.7cqh;font-weight:500;letter-spacing:-.01em;
   color:rgba(244,240,229,.95)}
-.p-score{margin-top:.6cqw;font-family:'Geist',ui-sans-serif,system-ui,sans-serif;
-  font-size:22cqw;font-weight:580;letter-spacing:-.02em;line-height:1.02;
+.p-score{margin-top:.5cqh;font-family:'Geist',ui-sans-serif,system-ui,sans-serif;
+  font-size:min(16.5cqh,26cqw);font-weight:580;letter-spacing:-.02em;line-height:1.02;
   font-variant-numeric:tabular-nums}
 .p-score .pa{color:var(--arg)}.p-score .pc{color:var(--cpv)}
 .p-score .pd{font-weight:250;color:rgba(244,240,229,.32)}
-.p-aet{margin-top:.9cqw;font-size:2.5cqw;letter-spacing:.5em;
+.p-aet{margin-top:.7cqh;font-size:1.9cqh;letter-spacing:.5em;
   padding-left:.5em;color:var(--gold)}
-.p-rule{width:36cqw;height:1px;background:rgba(244,240,229,.22);margin:3.8cqw 0}
-.p-goals{display:grid;gap:1cqw;text-align:left}
-.p-goals .row{display:grid;grid-template-columns:8.5cqw auto;gap:2.4cqw;
+.p-rule{width:min(36cqw,26cqh);height:1px;background:rgba(244,240,229,.22);
+  margin:2.9cqh 0}
+.p-goals{display:grid;gap:.8cqh;text-align:left}
+.p-goals .row{display:grid;grid-template-columns:6.5cqh auto;gap:1.8cqh;
   align-items:baseline}
-.p-goals .gm{text-align:right;font-size:2.9cqw;letter-spacing:.06em}
+.p-goals .gm{text-align:right;font-size:2.2cqh;letter-spacing:.06em}
 .p-goals .gm.arg{color:var(--arg)}.p-goals .gm.cpv{color:var(--cpv)}
 .p-goals .gn{font-family:'Geist',ui-sans-serif,system-ui,sans-serif;
-  font-size:3.3cqw;font-weight:470;color:rgba(244,240,229,.92)}
+  font-size:2.5cqh;font-weight:470;color:rgba(244,240,229,.92)}
 .p-goals .gn i{font-style:normal;font-family:'Geist Mono',ui-monospace,monospace;
-  font-size:2.3cqw;color:var(--dim);margin-left:1cqw;letter-spacing:.08em}
-.p-meta{font-size:2.3cqw;letter-spacing:.2em;color:var(--dim)}
-.p-date{margin-top:1.1cqw;font-size:2.3cqw;letter-spacing:.2em;color:var(--dim)}
+  font-size:1.75cqh;color:var(--dim);margin-left:.8cqh;letter-spacing:.08em}
+.p-meta{font-size:1.75cqh;letter-spacing:.2em;color:var(--dim)}
+.p-date{margin-top:.8cqh;font-size:1.75cqh;letter-spacing:.2em;color:var(--dim)}
 
 #grain{position:absolute;inset:0;pointer-events:none;opacity:.07;
   mix-blend-mode:soft-light;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E")}`;
@@ -157,7 +159,7 @@ K.innerHTML = `
   <div id="live">
     <div id="score"></div>
     <div id="rail"><div id="rul"></div></div>
-    <div id="ctrWrap"><div id="ctr">1’</div><div id="sub"></div></div>
+    <div id="ctrWrap"><div id="ctr">1<i>’</i></div><div id="sub"></div></div>
     <div id="stamp"></div>
     <div id="band"></div>
     <div id="note"></div>
@@ -283,9 +285,12 @@ function fallNight() {
   flood.style.opacity = 1;
   F.setTone(true); // the frame stays legible as night falls
 }
+function setClockNum(n) {
+  const txt = n + "’";
+  if (txt !== lastTxt) { lastTxt = txt; ctr.innerHTML = n + "<i>’</i>"; }
+}
 function setClock(min) {
-  const txt = Math.max(1, Math.min(120, Math.floor(min) + 1)) + "’";
-  if (txt !== lastTxt) { lastTxt = txt; ctr.textContent = txt; }
+  setClockNum(Math.max(1, Math.min(120, Math.floor(min) + 1)));
 }
 function releaseGoal(e) {
   ctr.classList.remove("arg", "cpv");
@@ -324,7 +329,7 @@ function tick(now) {
       if (active !== e) { // ---- entering the freeze ----
         active = e;
         freezeW = Math.round(210 + 540 * intensity(e.min));
-        lastTxt = e.min + "’"; ctr.textContent = lastTxt;
+        setClockNum(e.min);
         for (const t of ticks)
           if (t.min <= e.min && !t.on) { t.on = true; t.el.classList.add("on"); }
         if (e.goal) {
@@ -378,7 +383,7 @@ function tick(now) {
       scoreA = M.home.score; scoreB = M.away.score; renderScore(false);
       if (active && active.goal) releaseGoal(active);
       active = null;
-      lastTxt = "120’"; ctr.textContent = lastTxt;
+      setClockNum(120);
       ctr.style.fontWeight = 900; ctr.style.opacity = "1";
       ctr.style.transform = "scale(1.05)";
       ctr.classList.remove("arg", "cpv");
