@@ -69,6 +69,7 @@ font-size:clamp(11.5px,2.7cqi,13.5px);line-height:1.8;letter-spacing:.01em}
 .top a{color:inherit;text-decoration:none}
 @media (hover:hover) and (pointer:fine){.top a:hover{text-decoration:underline}}
 .mid{margin:auto 0;padding:clamp(26px,7cqi,56px) 0}
+@media (min-width:821px){.mid{margin:auto 0 0}}
 h1{font-size:clamp(32px,9cqi,58px);font-weight:460;letter-spacing:-0.022em;
 line-height:1.1;margin:0;text-wrap:balance}
 .desc{font-size:clamp(13.5px,3.1cqi,16px);line-height:1.75;font-weight:430;
