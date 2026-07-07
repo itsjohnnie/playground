@@ -181,7 +181,11 @@
           ? s.file : s.file.replace(/\.html$/, "");
         a.style.setProperty("--d", Math.min(i++ * 60, 480) + "ms");
         const date = s.date.split("-").reverse().join(" · "); // 2026-07-06 → 06 · 07 · 2026
-        a.innerHTML = '<span class="t">' + (s.subject || s.title) + '</span>' +
+        // the list names only the opponent — every match is Argentina's,
+        // and one word stays on one line
+        const rival = (s.subject || s.title)
+          .replace("Argentina vs. ", "").replace(" vs. Argentina", "");
+        a.innerHTML = '<span class="t">' + rival + '</span>' +
           '<span class="d">' + date + "</span>";
         days.appendChild(a);
       });
