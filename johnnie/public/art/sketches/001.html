@@ -14,13 +14,18 @@
 // per-half xG rates, hills from all 17 shots (taller when on target),
 // summits from the three goals — all argentina, all messi (17' 60' 76',
 // his first world cup hat-trick). Argelia's side stays low ground: seven
-// shots, none on target, one goal ruled offside at 8'. The relief rises
-// once, left to right behind a plotter cursor over ~8s, its bone-white
-// contour lines emerging as the terrain climbs through the level planes —
-// then the loop stops and the plate rests. Rested, it can be turned by
-// hand: a drag yaws the plate and tilts the surveyor's view within clamps,
-// 1:1 under the finger, then coasts on damped momentum to rest — rendering
-// only while the hand or the momentum moves it (no idle loop).
+// shots, none on target, one goal ruled offside at 8'. The choreography:
+// the piece opens FLAT — a straight top-down plan, the plotter cursor
+// sweeping left to right over ~7s while the bone-white contour lines
+// emerge, so the first read is a 2D topographic map being drawn. The
+// survey done, the camera makes one continuous eased move — tilting and
+// turning down into the resting elevated-3/4 isometric — and the goal pins
+// and labels arrive with the third dimension. Then the loop stops and the
+// plate rests. Rested, it can be turned by hand: a drag yaws the plate and
+// tilts the surveyor's view within clamps, 1:1 under the finger, then
+// coasts on damped momentum to rest — rendering only while the hand or the
+// momentum moves it (no idle loop). Reduced motion jumps straight to the
+// resting isometric.
 // data: counts, goal minutes and
 // totals exact from M1 (see data-001.js for sources); per-half splits,
 // individual shot minutes and across-pitch placement seeded (no location
@@ -138,9 +143,10 @@ function textSprite(str, hex, px, hWorld) {
 /* ---------- camera: surveyor's view, fit for landscape, turnable ---------- */
 const TGT = new THREE.Vector3(0, 0.10, 0);
 const YAW0 = -0.16, EL0 = 0.38;            // the resting pose: slight diagonal, 3/4 view
+const EL_TOP = 1.535;                      // the opening pose: straight down — the plan
 const YAW_LIM = 1.05;                      // how far the hand may turn it, either way
 const EL_MIN = 0.14, EL_MAX = 0.92;        // never under the plate, never top-down
-let yaw = YAW0, el = EL0, dist = 6.6;
+let yaw = 0, el = EL_TOP, dist = 6.6;      // born in plan view; finish() sets the rest pose
 function frameCamera(aspect) {
   camera.aspect = aspect;
   camera.updateProjectionMatrix();
@@ -166,7 +172,7 @@ function build() {
   camera = new THREE.PerspectiveCamera(20, 1.6, 0.1, 80);
 
   world = new THREE.Group();
-  world.rotation.y = yaw;                    // the plate sits at a slight diagonal
+  world.rotation.y = yaw;                    // plan-aligned at birth; diagonal at rest
   scene.add(world);
 
   // --- terrain geometry: final heights baked, raised by the clock in-shader
@@ -324,13 +330,13 @@ function build() {
       const pin = new THREE.Line(pinGeo,
         new THREE.LineBasicMaterial({ color: BONE, transparent: true, opacity: 0 }));
       world.add(pin);
-      plateSprites.push({ s: pin, o: 0.3, line: true });
+      plateSprites.push({ s: pin, o: 0.3, line: true, tilt: true });
       const t = textSprite(d.min + "’ " + d.player + " · anulado", "rgba(242,236,225,.5)", 10, 0.058);
       t.center.set(1, 0);                     // extends leftward, into the empty room
       t.position.set(x, y + 0.125, z);
       t.material.opacity = 0;
       world.add(t);
-      plateSprites.push({ s: t, o: 1 });
+      plateSprites.push({ s: t, o: 1, tilt: true });
     }
     // engraved captions off the near-left corner of the plate
     const capA = textSprite(M.home.name + " · xg " + M.xg.arg.toFixed(2) + " · " + M.shots.arg + " tiros",
@@ -366,13 +372,19 @@ function render() {
   renderer.render(scene, camera);
 }
 
-/* ---------- the one performance: rise, draw, rest ---------- */
-const DRAW = 8.2, LEAD = 0.5;                 // the 94' drawn in 8.2s, after a beat
+/* ---------- the one performance: plan, draw, tilt, rest ---------- */
+// act i — the plan: straight top-down, the 94' plotted left to right in
+// ~7.4s (a 2D contour map, drawn). act ii — the tilt: one continuous eased
+// camera move down into the resting 3/4 isometric; the pins and goal labels
+// fade in as the relief gains its third dimension. act iii — rest.
+const DRAW = 7.4, LEAD = 0.5;                 // the survey sweep, after a beat
+const T_TILT = 9.0, TILT = 2.2;               // tilt start (s) and duration
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 let t0 = null;
 
 function finish() {
-  done = true;
+  if (!done) { yaw = YAW0; el = EL0; applyView(); }  // first rest only — never
+  done = true;                                       // snap a hand-turned plate
   const U = terraMat.uniforms;
   U.uClock.value = TOTAL + 80;
   U.uCursor.value = TOTAL + 80;
@@ -396,14 +408,24 @@ function loop(tms) {
   U.uSweep.value = clock < TOTAL ? 1 : clamp01(1 - (clock - TOTAL) / 5);
   const plateK = clamp01(t / 0.9);
   U.uPlate.value = plateK * plateK * (3 - 2 * plateK);
-  for (const ps of plateSprites) ps.s.material.opacity = ps.o * plateK;
+  for (const ps of plateSprites)
+    if (!ps.tilt) ps.s.material.opacity = ps.o * plateK;   // map furniture, in plan
+  // the tilt: plan → surveyor's 3/4, one confident move (strong ease-in-out)
+  const k = clamp01((t - T_TILT) / TILT);
+  const e5 = k * k * k * (k * (k * 6 - 15) + 10);
+  el = EL_TOP + (EL0 - EL_TOP) * e5;
+  yaw = YAW0 * e5;
+  applyView();
+  // pins and labels arrive with the third dimension
+  const pk = clamp01((k - 0.3) / 0.55);
+  for (const ps of plateSprites)
+    if (ps.tilt) ps.s.material.opacity = ps.o * pk;
   for (const pin of pins) {
-    const k = clamp01((clock - pin.g.min) / 4);
-    pin.mat.opacity = k * 0.55;
-    if (pin.sprite) pin.sprite.material.opacity = k * 0.95;
+    pin.mat.opacity = pk * 0.55;
+    if (pin.sprite) pin.sprite.material.opacity = pk * 0.95;
   }
   render();
-  if (clock > TOTAL + 12) { finish(); return; }  // risen, drawn, labelled — rest
+  if (k >= 1) { finish(); return; }            // plotted, tilted, labelled — rest
   requestAnimationFrame(loop);
 }
 
@@ -460,6 +482,7 @@ const cv = F.canvas;
 cv.style.touchAction = "none";    // full-screen stage on phones: the drag is ours
 cv.style.cursor = "grab";
 cv.addEventListener("pointerdown", (e) => {
+  if (!done) return;              // the hand takes the plate only from rest
   if (ptrId !== null) return;     // first pointer only — this is not a pinch
   ptrId = e.pointerId;
   dragging = true;
