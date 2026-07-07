@@ -85,8 +85,6 @@ gap:16px;padding:clamp(11px,2.8cqi,15px) 0;border-bottom:1px solid rgba(22,19,15
 text-transform:uppercase;color:rgba(22,19,15,.62)}
 .specs .v{text-align:right}
 .specs .m-date{display:none}
-.cap{margin:clamp(12px,3cqi,18px) 0 0;font-size:clamp(10.5px,2.5cqi,12px);
-color:rgba(22,19,15,.5)}
 .go{margin-top:clamp(22px,6cqi,40px);display:flex;justify-content:space-between;align-items:center}
 .go a{color:inherit;text-decoration:none;font-size:clamp(26px,7cqi,38px);
 line-height:1;padding:6px 2px;transition:transform 180ms cubic-bezier(0.23,1,0.32,1)}
@@ -109,6 +107,9 @@ body{display:block;padding:0}
 .top{grid-template-columns:1.2fr auto}
 .top .m-col{display:none}
 .specs .m-date{display:flex}
+/* phones: the specs sit close to the arrows — half the desktop air */
+.mid{padding-bottom:0}
+.go{margin-top:16px}
 .room{position:fixed;inset:0}
 .art{position:absolute;inset:0}
 .pill{display:flex;align-items:center;gap:8px;position:fixed;z-index:12;
@@ -164,7 +165,6 @@ ${thumb ? `body{display:block;padding:0}
           '<div class="row"><span class="k">Stack</span><span class="v">' + esc(o.stack) + "</span></div>" +
           '<div class="row"><span class="k">Time spent</span><span class="v">' + esc(o.time) + "</span></div>" +
         "</div>" +
-        '<p class="cap">seeded by its date</p>' +
       "</div>" +
       '<nav class="go" aria-label="pieces"></nav>';
     // the close button lives at the foot, centered between the arrows
