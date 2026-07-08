@@ -27,16 +27,24 @@
 // needle's static — every trace carries a sub-pixel low-frequency tremor,
 // phase drifting per line, the grain breathing faintly with it. Half-rate
 // idle (every other rAF tick); the still layer (stamp, annotations, pools)
-// is baked once so idle frames only re-stroke the 96 traces. At a glance
+// bakes as the record forms so live frames only re-stroke the 96 traces.
+// At a glance
 // the record is still; reduced motion settles instantly and stops.
-// And the instrument senses footsteps (johnnie: "as the mouse or your
-// finger is flowing… the lines can move"): a pointer travelling over the
-// record stirs the nearby traces — a vertical shiver swelling around it
-// with smooth falloff (a few rows, a hand's width along the line), fed into
-// the same tremor, decaying exponentially (~1 s) once it passes. A tap is
-// a sharp little jolt that rings the lines under it. Heavier pens shiver
-// less; spikes and colors tremble without deforming their story. The
-// interaction rides the same loop — full-rate ticks only while stirred.
+// And the record is an instrument (johnnie: "it almost feels like a
+// guitar"). Alive from the first stroke: during the arrival every line
+// already on the roll quivers with the same sub-pixel static, and the
+// travelling pen line runs a touch more nervous — the timing of the
+// arrival is untouched. Crossing a trace with the pointer PLUCKS it:
+// a sharp attack (<50 ms to peak) then a decaying ring (~1.2 s) at that
+// line's own frequency — strings tuned down the sheet, upper minutes
+// ringing quicker, stoppage time slow and heavy. Dragging across rows
+// strums them in sequence, each ringing independently; faster flicks
+// strike harder (velocity-scaled); neighbours take a soft sympathetic
+// strike, and brushing close along a line purrs it gently (the wider
+// pickup). Guardrails: amplitude capped so a trace never leaves its row,
+// heavier pens (events, half-marks) ring damped, the goal colors pluck
+// too but keep their shape. Full-rate ticks only while stirred or
+// ringing; reduced motion stays fully still.
 
 const seed = ART.seed("2026-06-22-002");
 const N = ART.makeNoise(seed);
@@ -72,21 +80,23 @@ const TRACK = "0.05em";
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const TOTAL = M.totalMin; // 96
 
-let W, H, DPR, S, T0, B0, X0, X1, fs, lines, grain, off, offCtx, decor;
+let W, H, DPR, S, T0, B0, X0, X1, fs, lines, grain, off, offCtx;
 let px, py, pw, ph, JQ;
 let drawn = 0, settled = false, start, tick = 0;
 const NS = 240;              // samples per trace
 const JY = new Float64Array(NS); // scratch: one line's live tremor
-// the instrument's footstep sense: per-line excitation from the pointer
-const EX = new Float64Array(TOTAL); // disturbance amplitude per line
-const EU = new Float64Array(TOTAL); // where along the line it sits (u)
-let pT = -1e9, pMax = 0, lastLive;  // last pointer time · peak excitation
+// the strings: one pluck state per line — amplitude, strike time, position
+const PA = new Float64Array(TOTAL);            // pluck amplitude
+const PS = new Float64Array(TOTAL).fill(-1e9); // pluck time (ms)
+const PU = new Float64Array(TOTAL);            // where it was struck (u)
+let pT = -1e9, TNOW = 0;          // last pointer time · current frame time
+let evT = 0, evX = 0, evY = 0, evRow, evU; // previous pointer sample
 
 const F = FRAME.mount({
   num: 2, title: "Sismógrafo", subject: "Argentina vs. Austria",
   edition: "02/31", date: "22·06·2026",
   stack: "Canvas 2D", time: "48 minutes", gesture: true,
-  desc: "A plotter’s seismogram of the match, one tremor per minute from kickoff to the sixth minute of stoppage: amplitude is intensity, ink weight is possession, and the two bookings cut below the line at 76’ and 90+2’. The record ends on its deepest spike — Messi at 90+5’, his eighteenth World Cup goal, more than anyone has ever scored. The needle never quite rests; pass a finger over the sheet and it feels the footsteps.",
+  desc: "A plotter’s seismogram of the match, one tremor per minute from kickoff to the sixth minute of stoppage: amplitude is intensity, ink weight is possession, and the two bookings cut below the line at 76’ and 90+2’. The record ends on its deepest spike — Messi at 90+5’, his eighteenth World Cup goal, more than anyone has ever scored. The needle never quite rests; brush a finger across the record and the traces pluck like strings, each minute tuned a little lower down the sheet.",
   open: true, dark: true,
   onResize(w, h, dpr) { W = w; H = h; DPR = dpr; build(); },
 });
@@ -242,35 +252,17 @@ function build() {
     lines.push({ y: y0, pts, pools, heavy, event, labs, phA, phB, phC });
   }
 
+  // the still layer — stamp, margin annotations, ink pools, endpoint dots —
+  // built progressively as each minute completes, with the record's own
+  // occlusion replayed (each line's ground erases whatever hangs into it
+  // from above). The traces themselves are always stroked live now, so
+  // every frame — arrival or idle — only re-strokes the lines + blits this.
   off = document.createElement("canvas");
   off.width = W; off.height = H;
   offCtx = off.getContext("2d");
   stamp(offCtx);
   for (let k = 0; k < Math.min(drawn, TOTAL); k++) {
-    drawLine(offCtx, k, 1); decorLine(offCtx, k);
-  }
-
-  // the still layer — stamp, margin annotations, ink pools, endpoint dots —
-  // baked once with the record's own occlusion replayed (each line's ground
-  // erases whatever hangs into it from above), so the living idle only has
-  // to re-stroke the traces themselves
-  decor = document.createElement("canvas");
-  decor.width = W; decor.height = H;
-  const dg = decor.getContext("2d");
-  stamp(dg);
-  dg.fillStyle = "#000";
-  for (let i = 0; i < TOTAL; i++) {
-    const L = lines[i], pts = L.pts;
-    dg.globalCompositeOperation = "destination-out";
-    dg.beginPath();
-    dg.moveTo(pts[0].x, L.y + 1.6 * DPR);
-    for (let j = 0; j < pts.length; j++) dg.lineTo(pts[j].x, pts[j].y);
-    dg.lineTo(pts[pts.length - 1].x, L.y + 1.6 * DPR);
-    dg.closePath();
-    dg.fill();
-    dg.globalCompositeOperation = "source-over";
-    decorLine(dg, i);
-    dg.fillStyle = "#000";
+    occlude(offCtx, k); decorLine(offCtx, k);
   }
 
   grain = document.createElement("canvas");
@@ -311,7 +303,22 @@ function build() {
     g.globalCompositeOperation = "source-over";
   }
 
-  if (settled) render(TOTAL);
+  if (settled) renderStill();
+}
+
+// erase a line's ground polygon from the decor layer — decor from the
+// lines above must not hang into the mountains this line occludes
+function occlude(g, i) {
+  const L = lines[i], pts = L.pts;
+  g.globalCompositeOperation = "destination-out";
+  g.fillStyle = "#000";
+  g.beginPath();
+  g.moveTo(pts[0].x, L.y + 1.6 * DPR);
+  for (let j = 0; j < pts.length; j++) g.lineTo(pts[j].x, pts[j].y);
+  g.lineTo(pts[pts.length - 1].x, L.y + 1.6 * DPR);
+  g.closePath();
+  g.fill();
+  g.globalCompositeOperation = "source-over";
 }
 
 // the printed header of the record form — set before the pen moves
@@ -342,71 +349,99 @@ function inkGrad(g, heavy) {
   return gr;
 }
 
+// a string's ring envelope: sharp attack (~40 ms to peak), ~1.2 s decay
+const env = (age) => age < 1.7
+  ? (1 - Math.exp(-age / 0.013)) * Math.exp(-age / 0.44) : 0;
+
 // the live tremor: a resting needle's static. Two low-frequency waves along
-// the line plus a whole-line breath — sub-pixel, phases drifting per line.
-// A stirred line adds a fast vertical shiver around the pointer's spot,
-// gaussian in u, scaled by its excitation; heavier pens shiver less.
-// Fills the JY scratch for line i at time t (seconds).
-function tremor(L, i, t) {
-  const ex = EX[i];
-  const stir = ex > 0.004
-    ? ex * S * 0.34 * (L.heavy || L.event ? 0.72 : 1) : 0;
-  const eu = EU[i];
+// the line plus a whole-line breath — sub-pixel, phases drifting per line;
+// the travelling pen (nerve) adds a finer, faster shake on top. And each
+// line is a string: a pluck rings it at its own frequency — tuned down the
+// sheet, upper minutes quicker, stoppage slow and heavy — a spatial bump
+// around the strike point over a faint whole-line fundamental. Heavier pens
+// (events, half-marks) ring damped; amplitude is capped well inside the row
+// so the drawn story never deforms. Fills JY for line i at time t (seconds).
+function tremor(L, i, t, nerve) {
+  const q = JQ * (nerve ? 1.9 : 1);
+  let pk = 0, om = 0, eu = 0;
+  if (PA[i] > 0.012) {
+    const age = (TNOW - PS[i]) / 1000;
+    pk = Math.min(0.72, PA[i] * env(age) * 0.52
+                        * (L.heavy || L.event ? 0.68 : 1)) * S;
+    om = (6.2 - 3.4 * i / (TOTAL - 1)) * 6.2832 * age + L.phB * 2;
+    eu = PU[i];
+  }
   for (let j = 0; j < NS; j++) {
     const u = j / (NS - 1);
-    let y = JQ * (0.55 * Math.sin(u * 2.6 + t * 1.05 + L.phA)
-                + 0.30 * Math.sin(u * 8.3 - t * 0.65 + L.phB)
-                + 0.15 * Math.sin(t * 0.33 + L.phC));
-    if (stir) {
-      const du = (u - eu) / 0.16;
-      y += stir * Math.exp(-du * du) * Math.sin(u * 34 + t * 43 + L.phB * 3);
+    let y = q * (0.55 * Math.sin(u * 2.6 + t * 1.05 + L.phA)
+               + 0.30 * Math.sin(u * 8.3 - t * 0.65 + L.phB)
+               + 0.15 * Math.sin(t * 0.33 + L.phC));
+    if (nerve) y += 0.5 * JQ * Math.sin(u * 46 + t * 11 + L.phC * 3);
+    if (pk) {
+      const du = (u - eu) / 0.21;
+      const shape = 0.85 * Math.exp(-du * du) + 0.15 * Math.sin(3.1416 * u);
+      y += pk * shape * Math.sin(om + (u - eu) * 2.6);
     }
     JY[j] = y;
   }
 }
 
-// a footstep on the record: the pointer stirs the lines it passes over.
-// Excitation swells with a smooth row falloff and remembers where (u);
-// a tap (jolt) hits harder and tighter, then everything decays in draw().
-function disturb(ev, jolt) {
-  if (!lines) return;
-  const r = F.canvas.getBoundingClientRect();
-  const sy = (ev.clientY - r.top) * (H / r.height);
-  const u = Math.min(1, Math.max(0,
-    ((ev.clientX - r.left) * (W / r.width) - X0) / (X1 - X0)));
-  const row = (sy - T0) / S;
-  const k = jolt ? 1.3 : 0.75, sig = jolt ? 2.4 : 3.4;
-  for (let i = 0; i < TOTAL; i++) {
-    const d = (i - row) / sig;
-    const g = k * Math.exp(-d * d);
-    if (g > EX[i]) { EX[i] = g; EU[i] = u; }
-    else if (g > 0.01) EU[i] += (u - EU[i]) * Math.min(1, g);
-  }
-  if (k > pMax) pMax = Math.min(k, 1.3);
-  pT = performance.now();
+// strike one string. A pluck already ringing harder is left to ring;
+// restriking adds a little of what remains and restarts the phase.
+function pluck(i, u, a) {
+  if (i < 0 || i >= TOTAL || !a) return;
+  const cur = PA[i] * env((performance.now() - PS[i]) / 1000);
+  if (a <= cur * 1.06) return;
+  PA[i] = Math.min(1.65, a + 0.4 * cur);
+  PS[i] = performance.now(); PU[i] = u;
 }
 
-// excitation decay — exponential, ~1 s ring-down after the pointer passes
-function relax(tms) {
-  const dt = lastLive === undefined ? 0.033 : Math.min(0.1, (tms - lastLive) / 1000);
-  lastLive = tms;
-  const f = Math.exp(-dt / 0.35);
-  pMax = 0;
-  for (let i = 0; i < TOTAL; i++) {
-    EX[i] = EX[i] > 0.002 ? EX[i] * f : 0;
-    if (EX[i] > pMax) pMax = EX[i];
+// a hand on the strings: crossing a trace plucks it — velocity-scaled
+// (a faster flick strikes harder), every row crossed since the last sample
+// strummed in sequence at its crossing point, immediate neighbours taking
+// a soft sympathetic strike. Brushing close along a line (the wider pickup)
+// purrs it gently; a tap is a hard pluck of the line under the finger.
+function disturb(ev, jolt) {
+  if (!lines) return;
+  const now = performance.now();
+  const r = F.canvas.getBoundingClientRect();
+  const u = Math.min(1, Math.max(0,
+    ((ev.clientX - r.left) * (W / r.width) - X0) / (X1 - X0)));
+  const row = ((ev.clientY - r.top) * (H / r.height) - T0) / S;
+  const dt = now - evT;
+  const v = dt > 0 && dt < 160
+    ? Math.hypot(ev.clientX - evX, ev.clientY - evY) / dt : 0;
+  const a = jolt ? 1.4 : 0.62 + 0.95 * Math.min(1, v / 2.2);
+  if (jolt) {
+    const i = Math.round(row);
+    pluck(i, u, a); pluck(i - 1, u, a * 0.4); pluck(i + 1, u, a * 0.4);
+  } else if (evRow !== undefined) {
+    const lo = Math.min(evRow, row), hi = Math.max(evRow, row);
+    let struck = false;
+    for (let i = Math.ceil(lo); i <= Math.floor(hi); i++) {
+      const s = row === evRow ? 0 : (i - evRow) / (row - evRow);
+      const uc = evU + (u - evU) * s;
+      pluck(i, uc, a); struck = true;
+      pluck(i - 1, uc, a * 0.33); pluck(i + 1, uc, a * 0.33);
+      pluck(i - 2, uc, a * 0.12); pluck(i + 2, uc, a * 0.12);
+    }
+    const nr = Math.round(row);
+    if (!struck && Math.abs(nr - row) < 0.42) pluck(nr, u, a * 0.3);
   }
+  evT = now; evX = ev.clientX; evY = ev.clientY; evRow = row; evU = u;
+  pT = now;
 }
 
 // draw one record line onto g, clipped to fraction `clip` of its width;
 // each line first fills ground under itself (occludes the mountains above).
 // Pass t (seconds) to lay the line down with the live tremor — the trace's
-// shape, tints and weights are untouched; only a sub-pixel y drift rides it.
-function drawLine(g, i, clip, t) {
+// shape, tints and weights are untouched; only the tremor's y rides it.
+// `nerve` marks the travelling pen line (a touch more nervousness).
+function drawLine(g, i, clip, t, nerve) {
   const L = lines[i], pts = L.pts;
   const n = Math.max(2, Math.min(pts.length, Math.ceil(clip * (pts.length - 1)) + 1));
   const live = t !== undefined;
-  if (live) tremor(L, i, t);
+  if (live) tremor(L, i, t, nerve);
   g.fillStyle = ROOM;
   g.beginPath();
   g.moveTo(pts[0].x, L.y + 1.6 * DPR);
@@ -465,38 +500,48 @@ function decorLine(g, i) {
   }
 }
 
-function render(pos) {
+// the finished record, fully at rest — reduced motion and scheme flips.
+// dark: transparent ground, the record sits directly on the room;
+// light: the region becomes a plain paper ground.
+function renderStill() {
   ctx.clearRect(0, 0, W, H);
-  // dark: transparent — the record sits directly on the room;
-  // light: the region becomes a plain paper ground
   if (GROUND) { ctx.fillStyle = GROUND; ctx.fillRect(0, 0, W, H); }
+  for (let i = 0; i < TOTAL; i++) drawLine(ctx, i, 1);
   ctx.drawImage(off, 0, 0);
-
-  if (pos < TOTAL) {
-    const i = Math.min(TOTAL - 1, Math.floor(pos)), frac = pos - i;
-    drawLine(ctx, i, Math.max(0.02, frac));
-    const pts = lines[i].pts;
-    const pj = Math.max(0, Math.min(pts.length - 1, Math.ceil(frac * (pts.length - 1))));
-    ctx.fillStyle = INK + "0.9)";
-    ctx.beginPath(); ctx.arc(pts[pj].x, pts[pj].y, 2.1 * DPR, 0, 7); ctx.fill();
-    // travelling minute readout (skipped next to right-margin labels)
-    const nearR = (k) => k >= 0 && k < TOTAL && lines[k].labs.some((l) => !l.left);
-    if (!nearR(i) && !nearR(i - 1) && !nearR(i + 1)) {
-      ctx.font = FONT(fs);
-      ctx.letterSpacing = TRACK;
-      ctx.fillStyle = INK + "0.4)";
-      ctx.textAlign = "left";
-      ctx.fillText(mm(i + 1), X1 + 0.018 * pw, lines[i].y + fs * 0.35);
-      ctx.letterSpacing = "0px";
-    }
-  } else {
-    // the pen rests where the record ends, one last pool of ink
-    const p = lines[TOTAL - 1].pts[lines[TOTAL - 1].pts.length - 1];
-    ctx.fillStyle = INK + "0.72)";
-    ctx.beginPath(); ctx.arc(p.x, p.y, 2.3 * DPR, 0, 7); ctx.fill();
-  }
-
+  // the pen rests where the record ends, one last pool of ink
+  const p = lines[TOTAL - 1].pts[lines[TOTAL - 1].pts.length - 1];
+  ctx.fillStyle = INK + "0.72)";
+  ctx.beginPath(); ctx.arc(p.x, p.y, 2.3 * DPR, 0, 7); ctx.fill();
   finish();
+}
+
+// the record drawing itself — every line already on the roll is laid down
+// LIVE (the needle's static runs from the first stroke, plucks ring even
+// mid-arrival), the travelling pen line a touch more nervous; decor is
+// baked into the still layer as each minute completes. Timing unchanged.
+function renderArrival(pos, t) {
+  ctx.clearRect(0, 0, W, H);
+  if (GROUND) { ctx.fillStyle = GROUND; ctx.fillRect(0, 0, W, H); }
+  const i = Math.min(TOTAL - 1, Math.floor(pos)), frac = pos - i;
+  for (let k = 0; k < i; k++) drawLine(ctx, k, 1, t);
+  drawLine(ctx, i, Math.max(0.02, frac), t, true);
+  ctx.drawImage(off, 0, 0);
+  const pts = lines[i].pts;
+  const pj = Math.max(0, Math.min(pts.length - 1, Math.ceil(frac * (pts.length - 1))));
+  ctx.fillStyle = INK + "0.9)";
+  ctx.beginPath();
+  ctx.arc(pts[pj].x, pts[pj].y + JY[pj], 2.1 * DPR, 0, 7); ctx.fill();
+  // travelling minute readout (skipped next to right-margin labels)
+  const nearR = (k) => k >= 0 && k < TOTAL && lines[k].labs.some((l) => !l.left);
+  if (!nearR(i) && !nearR(i - 1) && !nearR(i + 1)) {
+    ctx.font = FONT(fs);
+    ctx.letterSpacing = TRACK;
+    ctx.fillStyle = INK + "0.4)";
+    ctx.textAlign = "left";
+    ctx.fillText(mm(i + 1), X1 + 0.018 * pw, lines[i].y + fs * 0.35);
+    ctx.letterSpacing = "0px";
+  }
+  finish(t);
 }
 
 // finishing pass — per ground. With t the grain shimmers faintly with the
@@ -532,7 +577,7 @@ function renderLive(t) {
   ctx.clearRect(0, 0, W, H);
   if (GROUND) { ctx.fillStyle = GROUND; ctx.fillRect(0, 0, W, H); }
   for (let i = 0; i < TOTAL; i++) drawLine(ctx, i, 1, t);
-  ctx.drawImage(decor, 0, 0);
+  ctx.drawImage(off, 0, 0);
   // the pen quivers with its line — JY still holds the last trace's tremor
   const L = lines[TOTAL - 1], p = L.pts[L.pts.length - 1];
   ctx.fillStyle = INK + "0.72)";
@@ -540,25 +585,28 @@ function renderLive(t) {
   finish(t);
 }
 
-// the record draws itself once — ~11 s, top to bottom — then stays alive:
-// the loop keeps running at half rate (every other rAF tick) laying the
-// traces down with the resting needle's static; while a pointer stirs the
-// record (or its wake still rings) it ticks at full rate. Reduced motion
-// settles instantly and the loop stops — the still record is the artwork.
+// the record draws itself once — ~11 s, top to bottom, alive as it forms —
+// then keeps running at half rate (every other rAF tick) laying the traces
+// down with the resting needle's static; while a pointer is on the record
+// or any string still rings it ticks at full rate. Reduced motion settles
+// instantly and the loop stops — the still record is the artwork.
 function draw(tms) {
   if (start === undefined) start = tms;
+  TNOW = tms;
   const t = (tms - start) / 1000;
   const pos = RM ? TOTAL : Math.min(TOTAL, t * 8.4);
   while (drawn < Math.floor(pos) && drawn < TOTAL) {
-    drawLine(offCtx, drawn, 1); decorLine(offCtx, drawn); drawn++;
+    occlude(offCtx, drawn); decorLine(offCtx, drawn); drawn++;
   }
   if (pos >= TOTAL) {
     settled = true;
-    if (RM) { render(TOTAL); return; } // reduced motion: the record rests
-    const stirred = tms - pT < 160 || pMax > 0.02;
-    if (stirred || (tick & 1) === 0) { relax(tms); renderLive(t); }
+    if (RM) { renderStill(); return; } // reduced motion: the record rests
+    let ring = false;
+    for (let i = 0; i < TOTAL; i++)
+      if (tms - PS[i] < 1700 && PA[i] > 0.02) { ring = true; break; }
+    if (tms - pT < 160 || ring || (tick & 1) === 0) renderLive(t);
     tick++;
-  } else render(pos);
+  } else renderArrival(pos, t);
   requestAnimationFrame(draw);
 }
 requestAnimationFrame(draw);
@@ -572,6 +620,6 @@ if (!RM) {
 // the stamp is baked into the record at build time — if Geist lands after
 // the first bake, rebuild once so the registry type is true
 document.fonts.load(FONT(16)).then(() => {
-  if (lines) { build(); if (settled) render(TOTAL); }
+  if (lines) build(); // build re-bakes the decor layer and, settled, re-renders
 });
 </script>
