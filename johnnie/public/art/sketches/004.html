@@ -442,8 +442,10 @@ function rebuild() {
   // front screw and back washer are the same bolt
   const BANDW = PW / 2 - 0.062 * S;
   const fixX = 0.095 * S;
-  const fixPts = [[PX0 + fixX, top + 0.166 * DH], [PX0 + PW - fixX, top + 0.166 * DH],
-                  [PX0 + fixX, top + 0.858 * DH], [PX0 + PW - fixX, top + 0.858 * DH]];
+  // inset so each screw keeps the same air to the band rail above/below it
+  // as to the side rim beside it
+  const fixPts = [[PX0 + fixX, top + 0.182 * DH], [PX0 + PW - fixX, top + 0.182 * DH],
+                  [PX0 + fixX, top + 0.818 * DH], [PX0 + PW - fixX, top + 0.818 * DH]];
   // the ring yields where a goal marker sits — a boss riding on a dashed
   // tick ring reads as noise, not relief; the ring should stop and let it be
   const goalAngles = M.goals.map((g) => mAngle(g.min));
@@ -694,41 +696,45 @@ function rebuild() {
     plaquePath(c, 0.042 * S, 0.012 * S); c.stroke();
   }, 0.0022 * S, 0.20, "lighter");
 
-  /* the honor roll: heading, a diamond rule, eleven names, the colophon.
-     The guarda bands run the full width, rim to rim; the fixings step
+  /* the honor roll: a diamond crowns eleven names, the colophon signs.
+     The guarda bands run the full width, rim to rim; the screws step
      inboard — below the top band, above the bottom one — to clear them. */
-  const rowY = (i) => top + (0.292 + i * 0.0478) * DH;
+  const rowY = (i) => top + (0.285 + i * 0.0472) * DH;
   layer((c) => {
     c.fillStyle = "#fff"; c.strokeStyle = "#fff";
     guarda(c, top + 0.125 * DH, BANDW);
     guarda(c, top + 0.902 * DH, BANDW);
-    setFont(c, 0.030 * S);
-    c.fillText("LOS ONCE", cx, top + 0.204 * DH);
-    const dy = top + 0.243 * DH, dw = 0.016 * S;
+    const dy = top + 0.232 * DH, dw = 0.016 * S;
     c.beginPath();
     c.moveTo(cx - dw, dy); c.lineTo(cx, dy - dw * 0.55);
     c.lineTo(cx + dw, dy); c.lineTo(cx, dy + dw * 0.55);
     c.closePath(); c.fill();
     setFont(c, 0.0335 * S);
     M.xi.arg.forEach((nm, i) => c.fillText(nm.toUpperCase(), cx, rowY(i)));
-    // washers where the fixings come through
-    c.lineWidth = 0.004 * S;
-    for (const [px, py] of fixPts) {
-      c.beginPath(); c.arc(px, py, 0.020 * S, 0, TAU); c.stroke();
-    }
   }, 0.0016 * S, 0.26, "lighter");
+  layer((c) => {
+    // the same screws as the front — the bolts come through
+    for (const [px, py] of fixPts) dome(c, px, py, 0.015 * S, white);
+  }, 0.0016 * S, 0.34, "lighter");
   layer((c) => {
     c.fillStyle = "#fff";
     setFont(c, 0.020 * S, 500);
-    c.fillText("EJEMPLAR  4 / 8", cx, top + 0.802 * DH);
-    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.828 * DH);
+    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.848 * DH);
   }, 0.0009 * S, 0.28, "lighter");
 
-  /* struck into the back: countersunk fixings, casting pits between rows */
+  /* struck into the back: screw slots, casting pits between rows */
   layer((c) => {
-    c.fillStyle = "#000";
-    for (const [px, py] of fixPts) dome(c, px, py, 0.014 * S, black);
-    const bands = [[0.095, 0.26], [0.79, 0.93]];
+    c.fillStyle = "#000"; c.strokeStyle = "#000";
+    const Rq = ART.rng(seed + "screwB");
+    c.lineWidth = 0.004 * S;
+    for (const [px, py] of fixPts) {
+      const a = Rq() * Math.PI, r = 0.010 * S;
+      c.beginPath();
+      c.moveTo(px - Math.cos(a) * r, py - Math.sin(a) * r);
+      c.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r);
+      c.stroke();
+    }
+    const bands = [[0.10, 0.27], [0.78, 0.93]];
     for (let i = 0; i < 11; i++) {
       const fy = (rowY(i) - top) / DH;
       bands.push([fy - 0.017, fy + 0.017]);
