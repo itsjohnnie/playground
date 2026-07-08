@@ -480,7 +480,8 @@ function rebuild() {
     const bh = 0.030 * S, dwd = 0.052 * S;
     c.fillRect(cx - halfW - 0.02 * S, gy - bh / 2 - 0.013 * S, 2 * (halfW + 0.02 * S), 0.0035 * S);
     c.fillRect(cx - halfW - 0.02 * S, gy + bh / 2 + 0.0095 * S, 2 * (halfW + 0.02 * S), 0.0035 * S);
-    const n = Math.round((2 * halfW) / (dwd * 1.45));
+    // the diamonds kiss: a continuous guarda chain, tip touching tip
+    const n = Math.round((2 * halfW) / dwd);
     const sp = (2 * halfW) / n;
     for (let i = 0; i < n; i++) {
       const dx = cx + (i - (n - 1) / 2) * sp;
