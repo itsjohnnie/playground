@@ -240,8 +240,10 @@ ${og ? `.go,.desc,.specs,.cap{display:none!important}
       fetch("../sketches.json")
         .then((r) => r.json())
         .then((d) => {
-          // display order: newest date first, reading order within a date
+          // display order: newest date first, reading order within a date.
+          // upcoming matches carry no file yet — they're not a stop on the walk
           const list = d.sketches.slice()
+            .filter((s) => s.file)
             .sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n))
             .map((s) => s.file.split("/").pop());
           const i = list.map(base).indexOf(base(location.pathname));
