@@ -27,13 +27,15 @@ uniform vec3 u_cx, u_cy, u_ro, u_rd;  // world->slab: o = p.x·cx + p.y·cy + ro
 uniform vec3 u_ls, u_hv, u_lf, u_bn;  // key light, half-vector, fill, floor bounce (slab space)
 uniform vec3 u_lw;                    // key light, world space (for the wall)
 uniform vec2 u_lp;                    // lamp pool anchor on the wall (world px)
-uniform sampler2D u_map;
+uniform sampler2D u_map;              // the front: the match
+uniform sampler2D u_map2;             // the back: the eleven
 
-// u_map (slab-face space): RG = surface normal xy, B = height, A = cavity.
+// Each map (slab-face space): RG = surface normal xy, B = height, A = cavity.
 // The slab is a real extruded rounded-rect raycast orthographically: relief
-// on the face, sand-cast side walls, a bevelled arris where face meets edge,
-// a thrown shadow on the felt wall behind. Tilting the slab (u_tilt) moves
-// every highlight because lighting is done in slab space.
+// on BOTH faces, sand-cast side walls, a bevelled arris where face meets
+// edge, a thrown shadow on the felt wall behind. Whichever face meets the
+// ray is shaded in its own frame (x and z mirrored for the back), so a
+// full 180° turn shows the reverse of the same cast under the same lamp.
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
 float vnoise(vec2 p){
@@ -96,12 +98,18 @@ void main(){
   vec3 o = p.x*u_cx + p.y*u_cy + u_ro;        // ortho ray in slab space
   vec3 d = u_rd;
 
-  float tT = -o.z/d.z;                        // face plane z = 0
-  float tB = (-T - o.z)/d.z;                  // underside z = -T
+  float dz = d.z;                             // edge-on guard: mid-flip the
+  if (abs(dz) < 8e-4) dz = (dz < 0.0) ? -8e-4 : 8e-4;  // faces pass through 90°
+  float tT = -o.z/dz;                         // face plane z = 0
+  float tB = (-T - o.z)/dz;                   // underside z = -T
   vec2 q0 = o.xy + tT*d.xy;
   vec2 q1 = o.xy + tB*d.xy;
   float sd0 = sdRR(q0, b, r), sd1 = sdRR(q1, b, r);
   float cov = 1.0 - smoothstep(-0.9, 0.9, min(sd0, sd1));  // silhouette, AA'd
+  float fs = (dz < 0.0) ? 1.0 : -1.0;         // +1: the front meets the ray
+  vec2 qn = (fs > 0.0) ? q0 : q1;             // the near face's intersection
+  float sdN = (fs > 0.0) ? sd0 : sd1;
+  float faceZ = (fs > 0.0) ? 0.0 : -T;
 
   // the lamp: grazing from the lower right, arcs overhead, settles upper left
   vec3 Lw = u_lw;
@@ -125,23 +133,32 @@ void main(){
 
   if (cov > 0.001){
     vec3 sc;
-    if (sd0 < 0.0){
-      // ---- the face: relief under the lamp ----
-      vec2 uv = (q0 + hwt)/(2.0*hwt);
-      vec4 m = texture2D(u_map, uv);
+    // lights + view folded into the near face's frame (x, z mirror for the
+    // back) so both faces share one shading path, lit by the same lamp
+    vec3 Lsf = vec3(fs*Ls.x, Ls.y, fs*Ls.z);
+    vec3 Hvf = vec3(fs*Hv.x, Hv.y, fs*Hv.z);
+    vec3 Lff = vec3(fs*Lfs.x, Lfs.y, fs*Lfs.z);
+    vec3 df  = vec3(fs*d.x,  d.y,  fs*d.z);
+    if (sdN < 0.0){
+      // ---- a face: relief under the lamp ----
+      vec2 qf = vec2(fs*qn.x, qn.y);
+      vec2 uv = (qf + hwt)/(2.0*hwt);
+      vec4 m = (fs > 0.0) ? texture2D(u_map, uv) : texture2D(u_map2, uv);
       float bw = 0.026*hw;                    // arris width
-      if (sd0 < -bw - 2.0){                   // parallax: re-strike at relief depth
-        float t2 = ((m.z - 0.58)*0.05*S - o.z)/d.z;
-        uv = (o.xy + t2*d.xy + hwt)/(2.0*hwt);
-        m = texture2D(u_map, uv);
+      if (sdN < -bw - 2.0){                   // parallax: re-strike at relief depth
+        float t2 = (faceZ + fs*(m.z - 0.58)*0.05*S - o.z)/dz;
+        qf = vec2(fs*(o.x + t2*d.x), o.y + t2*d.y);
+        uv = (qf + hwt)/(2.0*hwt);
+        m = (fs > 0.0) ? texture2D(u_map, uv) : texture2D(u_map2, uv);
       }
       vec2 nxy = m.xy*2.0 - 1.0;
       vec3 N = vec3(nxy, sqrt(max(0.04, 1.0 - dot(nxy, nxy))));
       float h = m.z, cav = (m.w - 0.5)*2.0;
       float occ  = smoothstep(0.03, -0.20, cav);          // recesses -> patina
       float wear = smoothstep(0.06, 0.26, cav);           // proud edges -> polish
-      float fb = smoothstep(-bw, -0.12*bw, sd0);          // bevelled arris
-      vec2 gb = sdGrad(q0, b, r);
+      if (fs < 0.0) wear *= 0.62;             // the reverse was never dressed
+      float fb = smoothstep(-bw, -0.12*bw, sdN);          // bevelled arris
+      vec2 gb = sdGrad(qf, b, r);
       if (fb > 0.0){
         vec3 Nb = normalize(vec3(gb*0.80, 0.62));
         N = normalize(mix(N, Nb, fb));
@@ -150,16 +167,17 @@ void main(){
       }
       // cast shadow: march a few taps toward the lamp
       float D = 0.055*S;
-      float tanel = Ls.z/max(length(Ls.xy), 1e-3);
-      vec2 Lh = normalize(Ls.xy);
+      float tanel = Lsf.z/max(length(Lsf.xy), 1e-3);
+      vec2 Lh = normalize(Lsf.xy);
       float shad = 0.0;
       for (int k = 1; k <= 4; k++){
         float s = float(k)*0.0055*S;
-        float hs = texture2D(u_map, uv + Lh*s/(2.0*hwt)).z;
+        vec2 su = uv + Lh*s/(2.0*hwt);
+        float hs = (fs > 0.0) ? texture2D(u_map, su).z : texture2D(u_map2, su).z;
         shad = max(shad, smoothstep(0.0, 0.10, ((hs - h)*D - s*tanel)/D));
       }
       shad *= 0.75;
-      float mot = 0.6*vnoise(q0/(S*0.055) + 7.3) + 0.4*vnoise(q0/(S*0.012));
+      float mot = 0.6*vnoise(qf/(S*0.055) + 7.3) + 0.4*vnoise(qf/(S*0.012));
       // oxidized recesses are matte paint; everywhere else the color IS the alloy
       vec3 alb = mix(vec3(0.40, 0.27, 0.15)*(0.80 + 0.45*mot),
                      vec3(0.085, 0.082, 0.062), occ*0.88);
@@ -168,46 +186,48 @@ void main(){
       float rough = mix(mix(0.68, 0.52, mot), 0.30, wear);
       rough = mix(rough, 0.16, fb);
       rough = mix(rough, 0.82, occ);
+      if (fs < 0.0) rough = min(rough + 0.09*(1.0 - fb), 0.92);  // raw back
       float metal = mix(0.88, 0.10, occ);
       vec3 F0 = mix(vec3(0.44, 0.30, 0.15), vec3(0.92, 0.67, 0.33), wear);
       F0 = mix(F0, vec3(0.96, 0.75, 0.42), fb);
       F0 = mix(vec3(0.045), F0, metal);
       // sand grain breaks the highlight into sparkle at grazing light
       float mic = (1.0 - wear*0.55)*(1.0 - fb)*(1.0 - occ*0.7);
-      vec2 cell = floor(q0/(S*0.0017));
+      vec2 cell = floor(qf/(S*0.0017));
       N = normalize(vec3(N.xy + (vec2(hash(cell), hash(cell + 19.7)) - 0.5)*0.22*mic, N.z));
-      float ndl = max(dot(N, Ls), 0.0);
-      float ndv = max(dot(N, -d), 1e-3);
+      float ndl = max(dot(N, Lsf), 0.0);
+      float ndv = max(dot(N, -df), 1e-3);
       float a = max(rough*rough, 2e-3);
       // machined moments: the arris and the flat border rails are brushed
       // along their run — the highlight stretches with the brushing
-      float rail = (1.0 - smoothstep(0.006*S, 0.012*S, abs(sd0 + 0.042*S)))*wear;
+      float rail = (1.0 - smoothstep(0.006*S, 0.012*S, abs(sdN + 0.042*S)))*wear;
       float anis = max(fb, rail*0.8);
       float Dg;
       if (anis > 0.02){
         vec3 Tt = normalize(vec3(-gb.y, gb.x, 0.0) - N*dot(N, vec3(-gb.y, gb.x, 0.0)));
-        Dg = dAniso(Hv, N, Tt, cross(N, Tt),
+        Dg = dAniso(Hvf, N, Tt, cross(N, Tt),
                     min(a*(1.0 + 2.4*anis), 0.30), a/(1.0 + 1.2*anis));
       } else {
-        Dg = dGGX(max(dot(N, Hv), 0.0), a);
+        Dg = dGGX(max(dot(N, Hvf), 0.0), a);
       }
       float lit = 1.0 - shad;
       vec3 spec = key*(Dg*visSmith(ndl, ndv, a)*ndl*lit*fall*1.4*(1.0 - occ*0.5))
-                * fresnel(F0, max(dot(Ls, Hv), 0.0));
+                * fresnel(F0, max(dot(Lsf, Hvf), 0.0));
       float ao = 1.0 - occ*0.55;
       // the room, mirrored in the metal — flat faces come alive as they tilt
       vec3 Fe = F0 + (max(vec3(1.0 - rough), F0) - F0)*pow(1.0 - ndv, 5.0);
-      vec3 env = envRoom(toWorld(reflect(d, N)), rough, fall)*Fe*ao
+      vec3 Rf = reflect(df, N);
+      vec3 env = envRoom(toWorld(vec3(fs*Rf.x, Rf.y, fs*Rf.z)), rough, fall)*Fe*ao
                * (1.0 - occ*0.6)*mix(1.0, lit, 0.4);
       float dif = ndl*lit;
-      float fil = max(dot(N, Lfs), 0.0)*0.16;
+      float fil = max(dot(N, Lff), 0.0)*0.16;
       sc = alb*(1.0 - metal*0.58)*(key*dif*fall*2.3 + cool*fil*ao*2.0 + 0.10*ao)
          + spec + env
          + F0*a*key*dif*fall*0.65;        // multiple-scatter return off the rough cast
     } else {
       // ---- side wall: rough sand-cast edge ----
-      float ta = tT, tb = tB;
-      for (int k = 0; k < 7; k++){
+      float ta = (fs > 0.0) ? tT : tB, tb = (fs > 0.0) ? tB : tT;
+      for (int k = 0; k < 10; k++){
         float tm = 0.5*(ta + tb);
         if (sdRR(o.xy + tm*d.xy, b, r) > 0.0) ta = tm; else tb = tm;
       }
@@ -219,12 +239,15 @@ void main(){
       float sg = vnoise(vec2(u1, zh*2.0)/(S*0.004));       // sand grain
       float sb = vnoise(vec2(u1, zh*2.0)/(S*0.022) + 3.1); // slump blotches
       vec3 N = normalize(vec3(g + (sg - 0.5)*0.55*vec2(g.y, -g.x), (sb - 0.5)*0.6));
-      float fa = smoothstep(-0.20*T, 0.0, zh);             // arris from this side
-      N = normalize(mix(N, normalize(vec3(g*0.8, 0.62)), fa*0.5));
+      float fa = max(smoothstep(-0.20*T, 0.0, zh),         // arris, either face
+                     smoothstep(-0.20*T, 0.0, -zh - T));
+      float fz = (zh > -0.5*T) ? 1.0 : -1.0;               // which arris leans out
+      N = normalize(mix(N, normalize(vec3(g*0.8, fz*0.62)), fa*0.5));
       float dif = max(dot(N, Ls), 0.0);
       float fil = max(dot(N, Lfs), 0.0)*0.44;
       float bnc = max(dot(N, u_bn), 0.0)*0.32;
-      float aoz = mix(0.48, 1.0, (zh + T)/T);              // dark toward the wall
+      float zf = (zh + T)/T;                               // dark toward the wall,
+      float aoz = mix(0.48, 1.0, (dz < 0.0) ? zf : 1.0 - zf);  // whichever way it hangs
       vec3 alb = vec3(0.33, 0.225, 0.13)*(0.62 + 0.55*sb)*(0.82 + 0.36*sg);
       // raw cast wall: rough alloy; the filed arris is the polished moment
       float rough = mix(mix(0.86, 0.62, sb), 0.22, fa*0.8);
@@ -279,6 +302,11 @@ void main(){
 // raised type. One raking light crosses the plaque over ~9s and settles;
 // then the piece rests. Drag to take it in hand — the slab tilts a few
 // degrees and every highlight slides; release and it settles back.
+// The cast has a REVERSE: a second heightfield (u_map2) carries the
+// starting eleven in raised type on a rawer field — tap the slab and it
+// turns 180° in the hand (eased, with a small roll mid-turn), the side
+// walls and the wall shadow carrying the whole way because the flip is
+// just the same pose matrix swung half a turn. Tap again to turn it back.
 // Rendering is on demand: no rAF at rest.
 
 const seed = ART.seed("2026-07-03-004");
@@ -286,7 +314,7 @@ const M = window.M8;
 const TAU = Math.PI * 2;
 
 let W = 0, H = 0, DPR = 1;
-let sh = null, gl = null, tex = null;
+let sh = null, gl = null, tex = null, tex2 = null;
 let built = false, mounted = false, curP = 0, buildTimer = 0;
 let fontsOK = false;
 let GEO = null;
@@ -299,27 +327,37 @@ const MAXD = 0.19;                 // ~11° of hand each axis
 const KDRAG = 0.0014;              // rad per css px, 1:1 under the finger
 let tx = 0, ty = 0, vx = 0, vy = 0, dragging = false;
 let raf = 0, lastT = 0, arriving = false, arriveT0 = 0;
+// the turn: tap flips the slab half a revolution about its vertical axis
+const FLIPD = 1150;
+let side = 0;                      // 0 the match, 1 the eleven
+let flipA = 0, flipFrom = 0, flipT0 = 0, flipping = false, wob = 0;
 
 const F = FRAME.mount({
   num: 4, title: "Bronce", subject: "Argentina vs. Cabo Verde",
   edition: "04/8", date: "03·07·2026",
   stack: "Canvas 2D → GLSL relief", time: "131 minutes",
-  desc: "A commemorative slab, sand-cast in bronze: 120 minutes ring a sol de mayo — Argentina's three goals raised from the metal, Cabo Verde's two struck into it. One raking lamp crosses the relief; the patina keeps the score. A slow drag tilts the slab, and the light answers.",
+  desc: "A commemorative slab, sand-cast in bronze: 120 minutes ring a sol de mayo — Argentina's three goals raised from the metal, Cabo Verde's two struck into it. One raking lamp crosses the relief; the patina keeps the score. A slow drag tilts the slab; a tap turns it over — the eleven are cast on the back.",
   dark: true, gesture: true, onResize(w, h, dpr) {
     W = w; H = h; DPR = dpr;
     if (!sh) {
       sh = ART.shader(F.canvas, document.getElementById("frag").textContent,
-                      ["u_p", "u_map", "u_geo", "u_cx", "u_cy", "u_ro", "u_rd",
+                      ["u_p", "u_map", "u_map2", "u_geo", "u_cx", "u_cy", "u_ro", "u_rd",
                        "u_ls", "u_hv", "u_lf", "u_bn", "u_lw", "u_lp"]);
       gl = sh.gl;
-      tex = gl.createTexture();
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, tex);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      const mkTex = (unit) => {
+        const t = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        return t;
+      };
+      tex = mkTex(0); tex2 = mkTex(1);
       gl.uniform1i(sh.extra.u_map, 0);
+      gl.uniform1i(sh.extra.u_map2, 1);
+      gl.activeTexture(gl.TEXTURE0);
     }
     schedule();
   },
@@ -624,7 +662,97 @@ function rebuild() {
     }
   }, 0.0016 * S, 0.30);
 
-  bake(x, S, TW, TH);
+  bake(x, S, TW, TH, tex, 0);
+
+  /* ---------- the reverse: the eleven, cast into a rawer field ----------
+     Drawn unmirrored — the shader flips x when the back faces the camera,
+     so everything here is centered or corner-symmetric and reads true. */
+
+  x.fillStyle = "#000"; x.fillRect(0, 0, TW, TH);
+
+  /* body + rim: the same casting */
+  layer((c) => { c.fillStyle = "#fff"; plaquePath(c, 0, 0.02 * S); c.fill(); }, 0.0012 * S, 0.58);
+  layer((c) => {
+    const Re = ART.rng(seed + "edgeB");
+    for (let i = 0; i < 30; i++) {
+      const sideE = (Re() * 4) | 0, t = Re();
+      let px, py;
+      if (sideE === 0) { px = PX0 + t * PW; py = PY0; }
+      else if (sideE === 1) { px = PX0 + t * PW; py = PY0 + PH; }
+      else if (sideE === 2) { px = PX0; py = PY0 + t * PH; }
+      else { px = PX0 + PW; py = PY0 + t * PH; }
+      c.fillStyle = Re() < 0.5 ? "#fff" : "#000";
+      c.beginPath();
+      c.ellipse(px, py, (0.006 + 0.016 * Re()) * S, (0.004 + 0.009 * Re()) * S, Re() * Math.PI, 0, TAU);
+      c.fill();
+    }
+  }, 0.006 * S, 0.12);
+  layer((c) => {
+    c.strokeStyle = "#fff"; c.lineWidth = 0.009 * S;
+    plaquePath(c, 0.042 * S, 0.012 * S); c.stroke();
+  }, 0.0022 * S, 0.20, "lighter");
+
+  /* the honor roll: heading, a diamond rule, eleven names, the colophon */
+  const rowY = (i) => top + (0.292 + i * 0.0492) * DH;
+  layer((c) => {
+    c.fillStyle = "#fff"; c.strokeStyle = "#fff";
+    guarda(c, top + 0.125 * DH, 0.30 * S);
+    guarda(c, top + 0.902 * DH, 0.30 * S);
+    setFont(c, 0.030 * S);
+    c.fillText("LOS ONCE", cx, top + 0.192 * DH);
+    const dy = top + 0.234 * DH, dw = 0.016 * S;
+    c.beginPath();
+    c.moveTo(cx - dw, dy); c.lineTo(cx, dy - dw * 0.55);
+    c.lineTo(cx + dw, dy); c.lineTo(cx, dy + dw * 0.55);
+    c.closePath(); c.fill();
+    setFont(c, 0.0335 * S);
+    M.xi.arg.forEach((nm, i) => c.fillText(nm.toUpperCase(), cx, rowY(i)));
+    // washers where the fixings come through
+    const sc = 0.095 * S;
+    c.lineWidth = 0.004 * S;
+    for (const [px, py] of [[PX0 + sc, PY0 + sc], [PX0 + PW - sc, PY0 + sc],
+                            [PX0 + sc, PY0 + PH - sc], [PX0 + PW - sc, PY0 + PH - sc]]) {
+      c.beginPath(); c.arc(px, py, 0.020 * S, 0, TAU); c.stroke();
+    }
+  }, 0.0016 * S, 0.26, "lighter");
+  layer((c) => {
+    c.fillStyle = "#fff";
+    setFont(c, 0.020 * S, 500);
+    c.fillText("EJEMPLAR  4 / 8", cx, top + 0.842 * DH);
+    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.868 * DH);
+  }, 0.0009 * S, 0.28, "lighter");
+
+  /* struck into the back: countersunk fixings, casting pits between rows */
+  layer((c) => {
+    c.fillStyle = "#000";
+    const sc = 0.095 * S;
+    for (const [px, py] of [[PX0 + sc, PY0 + sc], [PX0 + PW - sc, PY0 + sc],
+                            [PX0 + sc, PY0 + PH - sc], [PX0 + PW - sc, PY0 + PH - sc]]) {
+      dome(c, px, py, 0.014 * S, black);
+    }
+    const bands = [[0.10, 0.145], [0.165, 0.255], [0.885, 0.92]];
+    for (let i = 0; i < 11; i++) {
+      const fy = (rowY(i) - top) / DH;
+      bands.push([fy - 0.017, fy + 0.017]);
+    }
+    bands.push([0.825, 0.885]);
+    const Rp = ART.rng(seed + "pitsB");
+    for (let i = 0; i < 10; i++) {
+      let px = 0, py = 0, ok = false;
+      for (let k = 0; k < 24 && !ok; k++) {
+        px = PX0 + 0.06 * S + Rp() * (PW - 0.12 * S);
+        py = PY0 + 0.06 * S + Rp() * (PH - 0.12 * S);
+        const fy = (py - top) / DH;
+        ok = !bands.some(([a, b]) => fy > a && fy < b);
+      }
+      if (!ok) continue;
+      c.beginPath();
+      c.arc(px, py, (0.0015 + 0.003 * Rp()) * S, 0, TAU);
+      c.fill();
+    }
+  }, 0.0016 * S, 0.30);
+
+  bake(x, S, TW, TH, tex2, 1);
   built = true;
   if (!mounted) { mounted = true; ART.whenVisible(start); } else render();
 }
@@ -655,7 +783,7 @@ function boxBlur(a, w, h, r, passes) {
   }
 }
 
-function bake(x, S, tw, th) {
+function bake(x, S, tw, th, texture, unit) {
   const img = x.getImageData(0, 0, tw, th);
   const N = tw * th;
   const hgt = new Float32Array(N);
@@ -708,15 +836,17 @@ function bake(x, S, tw, th) {
       out[o + 3] = ((hgt[i] - hb[i]) * 2.2 + 0.5) * 255;
     }
   }
-  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, new ImageData(out, tw, th));
+  gl.activeTexture(gl.TEXTURE0);
 }
 
 /* ---------- render on demand: arrival, the hand, the settle ---------- */
 
 function render() {
   if (!sh || !built || !GEO) return;
-  const rx = REST[0] + tx, ry = REST[1] + ty;
+  const rx = REST[0] + tx + wob, ry = REST[1] + ty + flipA;
   // RT = Ry(-ry)·Rx(-rx): world -> slab space (rows below)
   const ca = Math.cos(rx), sa = Math.sin(rx), cb = Math.cos(ry), sb = Math.sin(ry);
   const RT = [
@@ -776,6 +906,13 @@ function loop(t) {
     curP = Math.min(1, (t - arriveT0) / DUR);
     if (curP < 1) more = true; else arriving = false;
   }
+  if (flipping) {                          // the turn: eased, with a small
+    const u = Math.min(1, (t - flipT0) / FLIPD);   // roll at the apex
+    const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+    flipA = flipFrom + (side * Math.PI - flipFrom) * e;
+    wob = Math.sin(e * Math.PI) * 0.085;
+    if (u < 1) more = true; else { flipping = false; wob = 0; }
+  }
   if (dragging) {
     more = true;
   } else if (tx || ty || vx || vy) {       // damped ease back to rest
@@ -799,12 +936,20 @@ function start() {
 
 /* ---------- the hand: drag tilts the slab, the light answers ---------- */
 
+function turn() {
+  side = 1 - side;
+  if (RM) { flipping = false; flipA = side * Math.PI; wob = 0; render(); return; }
+  flipFrom = flipA; flipT0 = performance.now(); flipping = true;
+  wake();
+}
+
 (function hand() {
   const el = F.stage;
   el.style.touchAction = "none";
   el.style.cursor = "grab";
   const clamp = (v) => MAXD * Math.tanh(v / MAXD);
   let sx = 0, sy = 0, bx = 0, by = 0, px = 0, py = 0, pt = 0, id = -1;
+  let downT = 0, moved = 0;                      // a quick, still press is a tap
   el.addEventListener("pointerdown", (e) => {
     if (id >= 0) return;
     id = e.pointerId;
@@ -812,12 +957,14 @@ function start() {
     dragging = true;
     sx = e.clientX; sy = e.clientY; bx = tx; by = ty;
     px = tx; py = ty; pt = performance.now();
+    downT = pt; moved = 0;
     vx = vy = 0;
     el.style.cursor = "grabbing";
     wake();
   });
   el.addEventListener("pointermove", (e) => {
     if (!dragging || e.pointerId !== id) return;
+    moved = Math.max(moved, Math.hypot(e.clientX - sx, e.clientY - sy));
     tx = clamp(bx - (e.clientY - sy) * KDRAG);   // vertical drag rolls it in the hand
     ty = clamp(by - (e.clientX - sx) * KDRAG);
     const now = performance.now(), dt = Math.max(8, now - pt) / 1000;
@@ -833,6 +980,8 @@ function start() {
     vx = Math.max(-vc, Math.min(vc, vx * 0.4));
     vy = Math.max(-vc, Math.min(vc, vy * 0.4));
     el.style.cursor = "grab";
+    if (e.type === "pointerup" &&
+        performance.now() - downT < 350 && moved < 8) turn();
     wake();
   };
   el.addEventListener("pointerup", drop);
