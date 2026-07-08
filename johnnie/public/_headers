@@ -22,3 +22,8 @@
 # three.js (~750KB) and Geist aren't re-fetched per piece or per visit
 /art/lib/*
   Cache-Control: public, max-age=31536000, immutable
+
+# OG/Twitter share images — same fast-iteration policy as the rest of
+# /art while pieces are still being tuned
+/art/og/*
+  Cache-Control: max-age=60, must-revalidate

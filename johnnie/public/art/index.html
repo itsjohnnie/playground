@@ -4,6 +4,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Art — Johnnie’s atelier</title>
 <meta name="description" content="Argentina, match by match — one data-drawn illustration after every game of the Mundial 2026.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://johnnies.life/art/">
+<meta property="og:title" content="Art — Johnnie’s atelier">
+<meta property="og:description" content="Argentina, match by match — one data-drawn illustration after every game of the Mundial 2026.">
+<meta property="og:image" content="https://johnnies.life/art/og/index.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Art — Johnnie’s atelier">
+<meta name="twitter:description" content="Argentina, match by match — one data-drawn illustration after every game of the Mundial 2026.">
+<meta name="twitter:image" content="https://johnnies.life/art/og/index.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='38' cy='44' r='30' fill='%236cabd6' opacity='.88'/><circle cx='62' cy='56' r='30' fill='%23d5493c' opacity='.72'/></svg>">
 <style>
   :root {
@@ -156,9 +167,16 @@
     .day .meta { flex-direction: column; align-items: flex-end; gap: 2px; }
   }
   @media (hover: hover) and (pointer: fine) {
-    .day:hover .t { opacity: 0.5; }
+    .day:not(.upcoming):hover .t { opacity: 0.5; }
   }
-  .day:active .t { opacity: 0.5; }
+  .day:not(.upcoming):active .t { opacity: 0.5; }
+  .day.upcoming {
+    /* !important: the entrance keyframe's forwards-fill sets opacity:1
+       and otherwise outranks a plain declaration here */
+    opacity: 0.4 !important;
+    cursor: default;
+    pointer-events: none;
+  }
   .note {
     margin-top: auto;
     padding-top: 60px;
@@ -207,12 +225,19 @@
       sorted.forEach((s) => {
         if (seen.has(s.date)) return;
         seen.add(s.date);
-        const a = document.createElement("a");
-        a.className = "day";
-        // production serves extensionless URLs — link directly so the view
-        // transition isn't broken by a redirect; local dev keeps .html
-        a.href = location.pathname.endsWith(".html")
-          ? s.file : s.file.replace(/\.html$/, "");
+        // a match with no piece yet (upcoming) is a dimmed, non-interactive
+        // row — nothing to open until the piece is made
+        const upcoming = s.status === "upcoming" || !s.file;
+        const a = document.createElement(upcoming ? "div" : "a");
+        a.className = "day" + (upcoming ? " upcoming" : "");
+        if (!upcoming) {
+          // production serves extensionless URLs — link directly so the view
+          // transition isn't broken by a redirect; local dev keeps .html
+          a.href = location.pathname.endsWith(".html")
+            ? s.file : s.file.replace(/\.html$/, "");
+        } else {
+          a.setAttribute("aria-disabled", "true");
+        }
         a.style.setProperty("--d", 280 + Math.min(i++ * 60, 480) + "ms");
         const date = s.date.split("-").reverse().join(" · "); // 2026-07-06 → 06 · 07 · 2026
         // the list names only the opponent — every match is Argentina's,
