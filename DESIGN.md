@@ -100,4 +100,6 @@ newest first, one line per day linking to that day's first piece.
 Titles are one Spanish word, sentence case (`Bruma`, `Tapiz`, `Pileta`).
 The subject headline is plain and factual ("Argentina vs. Cabo Verde").
 Descriptions read like catalog wall labels: material first, data second,
-one sentence of poetry, period. Editions are `day/31`.
+one sentence of poetry, period. Editions are `match/8` — the ceiling is
+the most matches Argentina can play in this format (3 group-stage + 5
+knockout rounds: Round of 32, Round of 16, Quarterfinal, Semifinal, Final).
