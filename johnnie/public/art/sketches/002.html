@@ -41,7 +41,12 @@
 // strums them in sequence, each ringing independently; faster flicks
 // strike harder (velocity-scaled); neighbours take a soft sympathetic
 // strike, and brushing close along a line purrs it gently (the wider
-// pickup). Guardrails: amplitude capped so a trace never leaves its row,
+// pickup). Hover itself is felt (johnnie: "stronger"): first contact lands
+// as a strike, and a pointer RESTING on the record keeps a sustained
+// ripple swelling under it — a few rows wide, travelling along the line,
+// released the moment the hand comes off (or the finger lifts).
+// Guardrails: amplitude capped so a trace never leaves its row (the
+// ripple yields to a ringing pluck rather than stacking on it),
 // heavier pens (events, half-marks) ring damped, the goal colors pluck
 // too but keep their shape. Full-rate ticks only while stirred or
 // ringing; reduced motion stays fully still.
@@ -91,6 +96,7 @@ const PS = new Float64Array(TOTAL).fill(-1e9); // pluck time (ms)
 const PU = new Float64Array(TOTAL);            // where it was struck (u)
 let pT = -1e9, TNOW = 0;          // last pointer time · current frame time
 let evT = 0, evX = 0, evY = 0, evRow, evU; // previous pointer sample
+let HOV = false;                  // a pointer is resting on the record
 
 const F = FRAME.mount({
   num: 2, title: "Sismógrafo", subject: "Argentina vs. Austria",
@@ -363,13 +369,24 @@ const env = (age) => age < 1.7
 // so the drawn story never deforms. Fills JY for line i at time t (seconds).
 function tremor(L, i, t, nerve) {
   const q = JQ * (nerve ? 1.9 : 1);
+  const damp = L.heavy || L.event ? 0.68 : 1;
   let pk = 0, om = 0, eu = 0;
   if (PA[i] > 0.012) {
     const age = (TNOW - PS[i]) / 1000;
-    pk = Math.min(0.72, PA[i] * env(age) * 0.52
-                        * (L.heavy || L.event ? 0.68 : 1)) * S;
+    pk = Math.min(0.72, PA[i] * env(age) * 0.52 * damp) * S;
     om = (6.2 - 3.4 * i / (TOTAL - 1)) * 6.2832 * age + L.phB * 2;
     eu = PU[i];
+  }
+  // the hover ripple (johnnie: "stronger"): a pointer RESTING on the record
+  // is felt at once and for as long as it stays — a sustained, localized
+  // swell travelling under it, a few rows wide, yielding to the line's own
+  // pluck while that rings so the two never stack past the row
+  let hv = 0, hu = 0;
+  if (HOV && evRow !== undefined) {
+    const hd = (i - evRow) / 2.6;
+    hv = 0.42 * S * damp * Math.exp(-hd * hd)
+       * Math.max(0, 1 - pk / (0.72 * S));
+    if (hv < 0.01 * S) hv = 0; else hu = evU;
   }
   for (let j = 0; j < NS; j++) {
     const u = j / (NS - 1);
@@ -377,6 +394,10 @@ function tremor(L, i, t, nerve) {
                + 0.30 * Math.sin(u * 8.3 - t * 0.65 + L.phB)
                + 0.15 * Math.sin(t * 0.33 + L.phC));
     if (nerve) y += 0.5 * JQ * Math.sin(u * 46 + t * 11 + L.phC * 3);
+    if (hv) {
+      const du = (u - hu) / 0.24;
+      y += hv * Math.exp(-du * du) * Math.sin(u * 22 - t * 9.5 + L.phB);
+    }
     if (pk) {
       const du = (u - eu) / 0.21;
       const shape = 0.85 * Math.exp(-du * du) + 0.15 * Math.sin(3.1416 * u);
@@ -388,9 +409,14 @@ function tremor(L, i, t, nerve) {
 
 // strike one string. A pluck already ringing harder is left to ring;
 // restriking adds a little of what remains and restarts the phase.
+// NB: the comparison reads the pluck's COMMITTED strength (decay only) —
+// judging by the audible envelope would make a string struck a millisecond
+// ago (still in attack) read as silent, letting the next row's soft
+// sympathetic strike overwrite a full pluck mid-strum.
 function pluck(i, u, a) {
   if (i < 0 || i >= TOTAL || !a) return;
-  const cur = PA[i] * env((performance.now() - PS[i]) / 1000);
+  const age = (performance.now() - PS[i]) / 1000;
+  const cur = age < 1.7 ? PA[i] * Math.exp(-age / 0.44) : 0;
   if (a <= cur * 1.06) return;
   PA[i] = Math.min(1.65, a + 0.4 * cur);
   PS[i] = performance.now(); PU[i] = u;
@@ -415,7 +441,12 @@ function disturb(ev, jolt) {
   if (jolt) {
     const i = Math.round(row);
     pluck(i, u, a); pluck(i - 1, u, a * 0.4); pluck(i + 1, u, a * 0.4);
-  } else if (evRow !== undefined) {
+  } else if (evRow === undefined) {
+    // first contact — the pointer landing on the record is felt at once
+    const i = Math.round(row);
+    pluck(i, u, 1.25); pluck(i - 1, u, 0.6); pluck(i + 1, u, 0.6);
+    pluck(i - 2, u, 0.28); pluck(i + 2, u, 0.28);
+  } else {
     const lo = Math.min(evRow, row), hi = Math.max(evRow, row);
     let struck = false;
     for (let i = Math.ceil(lo); i <= Math.floor(hi); i++) {
@@ -426,8 +457,9 @@ function disturb(ev, jolt) {
       pluck(i - 2, uc, a * 0.12); pluck(i + 2, uc, a * 0.12);
     }
     const nr = Math.round(row);
-    if (!struck && Math.abs(nr - row) < 0.42) pluck(nr, u, a * 0.3);
+    if (!struck && Math.abs(nr - row) < 0.42) pluck(nr, u, a * 0.45);
   }
+  HOV = true;
   evT = now; evX = ev.clientX; evY = ev.clientY; evRow = row; evU = u;
   pT = now;
 }
@@ -616,6 +648,17 @@ if (!RM) {
   F.canvas.style.touchAction = "none"; // the drag is ours (never navigates)
   F.canvas.addEventListener("pointermove", (e) => disturb(e, false), { passive: true });
   F.canvas.addEventListener("pointerdown", (e) => disturb(e, true), { passive: true });
+  // the hand coming off the strings — the hover ripple releases, and the
+  // next contact reads as an arrival again (a finger lift counts as off)
+  const off2 = (e) => {
+    if (e.type === "pointerleave" || e.pointerType !== "mouse") {
+      HOV = false; evRow = undefined;
+    }
+    pT = performance.now();
+  };
+  F.canvas.addEventListener("pointerleave", off2, { passive: true });
+  F.canvas.addEventListener("pointerup", off2, { passive: true });
+  F.canvas.addEventListener("pointercancel", off2, { passive: true });
 }
 // the stamp is baked into the record at build time — if Geist lands after
 // the first bake, rebuild once so the registry type is true
