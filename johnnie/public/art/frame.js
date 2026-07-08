@@ -93,7 +93,7 @@ gap:16px;padding:clamp(11px,2.8cqi,15px) 0;border-bottom:1px solid rgba(22,19,15
 text-transform:uppercase;color:rgba(22,19,15,.62)}
 .specs .v{text-align:right}
 .specs .m-date{display:none}
-.go{margin-top:24px;display:flex;justify-content:space-between;align-items:center}
+.go{margin-top:0;display:flex;justify-content:space-between;align-items:center}
 .go a,.go .off{color:inherit;text-decoration:none;font-size:clamp(26px,7cqi,38px);
 line-height:1;padding:6px 2px;transition:transform 180ms cubic-bezier(0.23,1,0.32,1)}
 .go .off{opacity:.22;pointer-events:none;user-select:none}
@@ -139,6 +139,7 @@ transition:transform 460ms cubic-bezier(0.32,0.72,0,1)}
 body.open .panel{transform:none;pointer-events:auto}
 body.open .scrim{opacity:1;pointer-events:auto}
 body.open .pill{opacity:0;pointer-events:none}
+.go{margin-top:24px}   /* the sheet keeps its air above the arrows */
 .x{display:flex;align-items:center;justify-content:center;margin:0 auto;
 cursor:pointer;background:none;border:0;color:inherit;font:inherit;
 font-size:clamp(26px,7cqi,38px);line-height:1;padding:6px 2px;

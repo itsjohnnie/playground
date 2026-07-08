@@ -120,15 +120,14 @@ void main(){
   vec3 cool = vec3(0.80, 0.88, 1.02);
   float fall = clamp(1.16 - 0.28*length(p - u_lp)/S, 0.35, 1.2);
 
-  // ---- the felt wall behind, and the shadow the slab throws on it ----
+  // ---- no wall of its own: the plaque hangs on the page itself. Only the
+  // thrown shadow survives, a translucent veil composited over the room ----
   vec3 col = vec3(0.0);
-  if (cov < 0.999){                           // skip the wall under the slab
-    float felt = vnoise(p/(S*0.0035));
-    vec3 galb = vec3(0.055, 0.050, 0.043)*(0.75 + 0.55*felt);
+  float wA = 0.0;
+  if (cov < 0.999){
     float gap = 0.18*hw;                      // the plaque stands proud of the wall
     vec2 po = p + Lw.xy*((0.5*T + gap)/max(Lw.z, 0.35));
-    float wsh = (1.0 - smoothstep(0.0, 0.09*S, sdRR(po, b*1.02, r)))*0.85;
-    col = galb*(key*max(Lw.z, 0.0)*fall*1.5*(1.0 - wsh) + vec3(0.10)*(1.0 - 0.6*wsh));
+    wA = (1.0 - smoothstep(0.0, 0.09*S, sdRR(po, b*1.02, r)))*0.6*max(Lw.z, 0.25);
   }
 
   if (cov > 0.001){
@@ -273,9 +272,10 @@ void main(){
   col = col/(1.0 + 0.42*col);
   col = pow(col, vec3(0.90));
   col *= mix(0.70, 1.0, smoothstep(1.35, 0.50, length(p)/S));
-  col += (hash(fc*0.83) - 0.5)*0.028;
+  col += (hash(fc*0.83) - 0.5)*0.028*cov;     // grain only on the metal
 
-  gl_FragColor = vec4(col, 1.0);
+  // premultiplied out: metal opaque, shadow translucent, elsewhere clear
+  gl_FragColor = vec4(col, mix(wA, 1.0, cov));
 }
 </script>
 <script>
@@ -337,7 +337,7 @@ const F = FRAME.mount({
   edition: "04/8", date: "03·07·2026",
   stack: "Canvas 2D → GLSL relief", time: "131 minutes",
   desc: "A commemorative slab, sand-cast in bronze: 120 minutes ring a sol de mayo — Argentina's three goals raised from the metal, Cabo Verde's two struck into it. One raking lamp crosses the relief; the patina keeps the score. A slow drag tilts the slab; a tap turns it over — the eleven are cast on the back.",
-  dark: true, gesture: true, onResize(w, h, dpr) {
+  dark: true, open: true, gesture: true, onResize(w, h, dpr) {
     W = w; H = h; DPR = dpr;
     if (!sh) {
       sh = ART.shader(F.canvas, document.getElementById("frag").textContent,
@@ -437,6 +437,13 @@ function rebuild() {
   }
   const white = "rgba(255,255,255,", black = "rgba(0,0,0,";
   const mAngle = (min) => -Math.PI / 2 + (min / 120) * TAU;
+  // the guarda bands run rim to rim; the through-fixings sit inboard of
+  // them — below the top band, above the bottom one — on BOTH faces, so
+  // front screw and back washer are the same bolt
+  const BANDW = PW / 2 - 0.062 * S;
+  const fixX = 0.095 * S;
+  const fixPts = [[PX0 + fixX, top + 0.166 * DH], [PX0 + PW - fixX, top + 0.166 * DH],
+                  [PX0 + fixX, top + 0.858 * DH], [PX0 + PW - fixX, top + 0.858 * DH]];
   // the ring yields where a goal marker sits — a boss riding on a dashed
   // tick ring reads as noise, not relief; the ring should stop and let it be
   const goalAngles = M.goals.map((g) => mAngle(g.min));
@@ -522,8 +529,8 @@ function rebuild() {
   /* 4 — raised type, ticks, bands, rays */
   layer((c) => {
     c.fillStyle = "#fff"; c.strokeStyle = "#fff";
-    guarda(c, top + 0.125 * DH, 0.30 * S);
-    guarda(c, top + 0.902 * DH, 0.30 * S);
+    guarda(c, top + 0.125 * DH, BANDW);
+    guarda(c, top + 0.902 * DH, BANDW);
 
     setFont(c, 0.046 * S);
     c.fillText(M.home.name.toUpperCase() + "  " + M.home.score, cx, top + 0.197 * DH);
@@ -613,11 +620,7 @@ function rebuild() {
   layer((c) => {
     dome(c, RC.x, RC.y, 0.052 * S, white);
     dome(c, RC.x, RC.y, 0.022 * S, white);
-    const sc = 0.095 * S;
-    for (const [px, py] of [[PX0 + sc, PY0 + sc], [PX0 + PW - sc, PY0 + sc],
-                            [PX0 + sc, PY0 + PH - sc], [PX0 + PW - sc, PY0 + PH - sc]]) {
-      dome(c, px, py, 0.015 * S, white);
-    }
+    for (const [px, py] of fixPts) dome(c, px, py, 0.015 * S, white);
   }, 0.0016 * S, 0.34, "lighter");
 
   /* 6 — struck into the metal: bowls, engravings, pits, screw slots */
@@ -643,10 +646,8 @@ function rebuild() {
     c.textAlign = "right";                // stamped in the outer margin, foundry habit
     c.fillText("FUND. J.A. · Nº 4", PX0 + PW - 0.06 * S, PY0 + PH - 0.0205 * S);
     const Rq = ART.rng(seed + "screw");
-    const sc = 0.095 * S;
     c.lineWidth = 0.004 * S;
-    for (const [px, py] of [[PX0 + sc, PY0 + sc], [PX0 + PW - sc, PY0 + sc],
-                            [PX0 + sc, PY0 + PH - sc], [PX0 + PW - sc, PY0 + PH - sc]]) {
+    for (const [px, py] of fixPts) {
       const a = Rq() * Math.PI, r = 0.010 * S;
       c.beginPath();
       c.moveTo(px - Math.cos(a) * r, py - Math.sin(a) * r);
@@ -696,13 +697,10 @@ function rebuild() {
      The guarda bands run the full width, rim to rim; the fixings step
      inboard — below the top band, above the bottom one — to clear them. */
   const rowY = (i) => top + (0.292 + i * 0.0478) * DH;
-  const fixX = 0.095 * S;
-  const backFix = [[PX0 + fixX, top + 0.168 * DH], [PX0 + PW - fixX, top + 0.168 * DH],
-                   [PX0 + fixX, top + 0.860 * DH], [PX0 + PW - fixX, top + 0.860 * DH]];
   layer((c) => {
     c.fillStyle = "#fff"; c.strokeStyle = "#fff";
-    guarda(c, top + 0.125 * DH, PW / 2 - 0.075 * S);
-    guarda(c, top + 0.902 * DH, PW / 2 - 0.075 * S);
+    guarda(c, top + 0.125 * DH, BANDW);
+    guarda(c, top + 0.902 * DH, BANDW);
     setFont(c, 0.030 * S);
     c.fillText("LOS ONCE", cx, top + 0.204 * DH);
     const dy = top + 0.243 * DH, dw = 0.016 * S;
@@ -714,21 +712,21 @@ function rebuild() {
     M.xi.arg.forEach((nm, i) => c.fillText(nm.toUpperCase(), cx, rowY(i)));
     // washers where the fixings come through
     c.lineWidth = 0.004 * S;
-    for (const [px, py] of backFix) {
+    for (const [px, py] of fixPts) {
       c.beginPath(); c.arc(px, py, 0.020 * S, 0, TAU); c.stroke();
     }
   }, 0.0016 * S, 0.26, "lighter");
   layer((c) => {
     c.fillStyle = "#fff";
     setFont(c, 0.020 * S, 500);
-    c.fillText("EJEMPLAR  4 / 8", cx, top + 0.806 * DH);
-    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.832 * DH);
+    c.fillText("EJEMPLAR  4 / 8", cx, top + 0.802 * DH);
+    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.828 * DH);
   }, 0.0009 * S, 0.28, "lighter");
 
   /* struck into the back: countersunk fixings, casting pits between rows */
   layer((c) => {
     c.fillStyle = "#000";
-    for (const [px, py] of backFix) dome(c, px, py, 0.014 * S, black);
+    for (const [px, py] of fixPts) dome(c, px, py, 0.014 * S, black);
     const bands = [[0.095, 0.26], [0.79, 0.93]];
     for (let i = 0; i < 11; i++) {
       const fy = (rowY(i) - top) / DH;
