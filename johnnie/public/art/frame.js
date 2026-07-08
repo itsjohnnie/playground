@@ -94,8 +94,9 @@ text-transform:uppercase;color:rgba(22,19,15,.62)}
 .specs .v{text-align:right}
 .specs .m-date{display:none}
 .go{margin-top:24px;display:flex;justify-content:space-between;align-items:center}
-.go a{color:inherit;text-decoration:none;font-size:clamp(26px,7cqi,38px);
+.go a,.go .off{color:inherit;text-decoration:none;font-size:clamp(26px,7cqi,38px);
 line-height:1;padding:6px 2px;transition:transform 180ms cubic-bezier(0.23,1,0.32,1)}
+.go .off{opacity:.22;pointer-events:none;user-select:none}
 @media (hover:hover) and (pointer:fine){
 .go a.next:hover{transform:translateX(5px)}
 .go a.prev:hover{transform:translateX(-5px)}}
@@ -240,16 +241,17 @@ ${og ? `.go,.desc,.specs,.cap{display:none!important}
       fetch("../sketches.json")
         .then((r) => r.json())
         .then((d) => {
-          // display order: newest date first, reading order within a date.
+          // the walk runs in match order: ← toward #1, → toward the latest.
+          // No wrap — at either end the arrow dims and goes inert.
           // upcoming matches carry no file yet — they're not a stop on the walk
           const list = d.sketches.slice()
             .filter((s) => s.file)
-            .sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n))
+            .sort((a, b) => a.date.localeCompare(b.date) || a.n.localeCompare(b.n))
             .map((s) => s.file.split("/").pop());
           const i = list.map(base).indexOf(base(location.pathname));
           if (i < 0 || list.length < 2) return;
-          const prev = list[(i - 1 + list.length) % list.length];
-          const next = list[(i + 1) % list.length];
+          const prev = i > 0 ? list[i - 1] : null;
+          const next = i < list.length - 1 ? list[i + 1] : null;
 
           // production serves extensionless URLs — link them directly so the
           // view transition isn't broken by a redirect (and swipes skip a
@@ -258,12 +260,13 @@ ${og ? `.go,.desc,.specs,.cap{display:none!important}
             location.pathname.endsWith(".html") ? f : f.replace(/\.html$/, "");
           // navigation is a cross-document view transition (the artwork
           // cross-blends, the panel morphs) — no manual slide needed
-          const go = (file) => { location.href = href(file); };
+          const go = (file) => { if (file) location.href = href(file); };
           const nav = panel.querySelector(".go");
           const mk = (cls, file, glyph) => {
-            const a = document.createElement("a");
-            a.className = cls;
-            a.href = href(file);
+            const a = document.createElement(file ? "a" : "span");
+            a.className = file ? cls : cls + " off";
+            if (file) a.href = href(file);
+            else a.setAttribute("aria-disabled", "true");
             a.textContent = glyph;
             a.setAttribute("aria-label", cls === "prev" ? "previous piece" : "next piece");
             nav.appendChild(a);
@@ -278,7 +281,8 @@ ${og ? `.go,.desc,.specs,.cap{display:none!important}
           const spec = document.createElement("script");
           spec.type = "speculationrules";
           spec.textContent = JSON.stringify({
-            prerender: [{ urls: [href(prev), href(next), "../"], eagerness: "immediate" }],
+            prerender: [{ urls: [prev, next].filter(Boolean).map(href).concat("../"),
+                          eagerness: "immediate" }],
           });
           document.head.appendChild(spec);
 
