@@ -692,15 +692,20 @@ function rebuild() {
     plaquePath(c, 0.042 * S, 0.012 * S); c.stroke();
   }, 0.0022 * S, 0.20, "lighter");
 
-  /* the honor roll: heading, a diamond rule, eleven names, the colophon */
-  const rowY = (i) => top + (0.292 + i * 0.0492) * DH;
+  /* the honor roll: heading, a diamond rule, eleven names, the colophon.
+     The guarda bands run the full width, rim to rim; the fixings step
+     inboard — below the top band, above the bottom one — to clear them. */
+  const rowY = (i) => top + (0.292 + i * 0.0478) * DH;
+  const fixX = 0.095 * S;
+  const backFix = [[PX0 + fixX, top + 0.168 * DH], [PX0 + PW - fixX, top + 0.168 * DH],
+                   [PX0 + fixX, top + 0.860 * DH], [PX0 + PW - fixX, top + 0.860 * DH]];
   layer((c) => {
     c.fillStyle = "#fff"; c.strokeStyle = "#fff";
-    guarda(c, top + 0.125 * DH, 0.30 * S);
-    guarda(c, top + 0.902 * DH, 0.30 * S);
+    guarda(c, top + 0.125 * DH, PW / 2 - 0.075 * S);
+    guarda(c, top + 0.902 * DH, PW / 2 - 0.075 * S);
     setFont(c, 0.030 * S);
-    c.fillText("LOS ONCE", cx, top + 0.192 * DH);
-    const dy = top + 0.234 * DH, dw = 0.016 * S;
+    c.fillText("LOS ONCE", cx, top + 0.204 * DH);
+    const dy = top + 0.243 * DH, dw = 0.016 * S;
     c.beginPath();
     c.moveTo(cx - dw, dy); c.lineTo(cx, dy - dw * 0.55);
     c.lineTo(cx + dw, dy); c.lineTo(cx, dy + dw * 0.55);
@@ -708,34 +713,27 @@ function rebuild() {
     setFont(c, 0.0335 * S);
     M.xi.arg.forEach((nm, i) => c.fillText(nm.toUpperCase(), cx, rowY(i)));
     // washers where the fixings come through
-    const sc = 0.095 * S;
     c.lineWidth = 0.004 * S;
-    for (const [px, py] of [[PX0 + sc, PY0 + sc], [PX0 + PW - sc, PY0 + sc],
-                            [PX0 + sc, PY0 + PH - sc], [PX0 + PW - sc, PY0 + PH - sc]]) {
+    for (const [px, py] of backFix) {
       c.beginPath(); c.arc(px, py, 0.020 * S, 0, TAU); c.stroke();
     }
   }, 0.0016 * S, 0.26, "lighter");
   layer((c) => {
     c.fillStyle = "#fff";
     setFont(c, 0.020 * S, 500);
-    c.fillText("EJEMPLAR  4 / 8", cx, top + 0.842 * DH);
-    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.868 * DH);
+    c.fillText("EJEMPLAR  4 / 8", cx, top + 0.806 * DH);
+    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.832 * DH);
   }, 0.0009 * S, 0.28, "lighter");
 
   /* struck into the back: countersunk fixings, casting pits between rows */
   layer((c) => {
     c.fillStyle = "#000";
-    const sc = 0.095 * S;
-    for (const [px, py] of [[PX0 + sc, PY0 + sc], [PX0 + PW - sc, PY0 + sc],
-                            [PX0 + sc, PY0 + PH - sc], [PX0 + PW - sc, PY0 + PH - sc]]) {
-      dome(c, px, py, 0.014 * S, black);
-    }
-    const bands = [[0.10, 0.145], [0.165, 0.255], [0.885, 0.92]];
+    for (const [px, py] of backFix) dome(c, px, py, 0.014 * S, black);
+    const bands = [[0.095, 0.26], [0.79, 0.93]];
     for (let i = 0; i < 11; i++) {
       const fy = (rowY(i) - top) / DH;
       bands.push([fy - 0.017, fy + 0.017]);
     }
-    bands.push([0.825, 0.885]);
     const Rp = ART.rng(seed + "pitsB");
     for (let i = 0; i < 10; i++) {
       let px = 0, py = 0, ok = false;
