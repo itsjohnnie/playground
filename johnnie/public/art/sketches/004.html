@@ -584,7 +584,7 @@ function rebuild() {
 
   bake(x, S, TW, TH);
   built = true;
-  if (!mounted) { mounted = true; start(); } else render();
+  if (!mounted) { mounted = true; ART.whenVisible(start); } else render();
 }
 
 /* ---------- bake: heights -> normals + cavity, upload ---------- */
