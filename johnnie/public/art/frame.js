@@ -89,7 +89,7 @@ gap:16px;padding:clamp(11px,2.8cqi,15px) 0;border-bottom:1px solid rgba(22,19,15
 text-transform:uppercase;color:rgba(22,19,15,.62)}
 .specs .v{text-align:right}
 .specs .m-date{display:none}
-.go{margin-top:clamp(14px,3cqi,20px);display:flex;justify-content:space-between;align-items:center}
+.go{margin-top:0;display:flex;justify-content:space-between;align-items:center}
 .go a{color:inherit;text-decoration:none;font-size:clamp(26px,7cqi,38px);
 line-height:1;padding:6px 2px;transition:transform 180ms cubic-bezier(0.23,1,0.32,1)}
 @media (hover:hover) and (pointer:fine){
@@ -111,9 +111,7 @@ body{display:block;padding:0}
 .top{grid-template-columns:1.2fr auto}
 .top .m-col{display:none}
 .specs .m-date{display:flex}
-/* phones: the specs sit close to the arrows — half the desktop air */
 .mid{padding-bottom:0}
-.go{margin-top:24px}
 .room{position:fixed;inset:0}
 .art{position:absolute;inset:0}
 .pill{display:flex;align-items:center;gap:8px;position:fixed;z-index:12;

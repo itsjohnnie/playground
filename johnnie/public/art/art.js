@@ -94,6 +94,16 @@
   // the gallery's preview iframes.
   ART.isThumb = new URLSearchParams(location.search).has("thumb");
 
+  // a prerendered page (speculation rules) runs its script fully while
+  // hidden — an arrival clock started at script-load time can finish
+  // before the page is ever shown, so a piece lands "already settled."
+  // Defer any one-shot arrival trigger through this until the page is
+  // genuinely visible. Browsers without prerendering just call fn() now.
+  ART.whenVisible = function (fn) {
+    if (!document.prerendering) { fn(); return; }
+    document.addEventListener("prerenderingchange", fn, { once: true });
+  };
+
   ART.fit = function (canvas, onResize) {
     function resize(defer) {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
