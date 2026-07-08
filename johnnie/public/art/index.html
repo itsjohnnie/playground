@@ -164,6 +164,9 @@
     letter-spacing: 0.02em;
   }
   @media (max-width: 560px) {
+    /* the stacked two-line meta block reads too low against the title
+       when the row aligns on the title's baseline — center it instead */
+    .day { align-items: center; }
     .day .meta { flex-direction: column; align-items: flex-end; gap: 2px; }
   }
   @media (hover: hover) and (pointer: fine) {
