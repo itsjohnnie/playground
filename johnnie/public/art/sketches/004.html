@@ -399,6 +399,26 @@ function rebuild() {
   }
   const white = "rgba(255,255,255,", black = "rgba(0,0,0,";
   const mAngle = (min) => -Math.PI / 2 + (min / 120) * TAU;
+  // the ring yields where a goal marker sits — a boss riding on a dashed
+  // tick ring reads as noise, not relief; the ring should stop and let it be
+  const goalAngles = M.goals.map((g) => mAngle(g.min));
+  const nearGoal = (a, half) => goalAngles.some((ga) => {
+    let d = Math.abs(a - ga) % TAU;
+    if (d > Math.PI) d = TAU - d;
+    return d < half;
+  });
+  function gapArc(c, cx0, cy0, r, half) {
+    const N = 240;
+    let open = false;
+    c.beginPath();
+    for (let i = 0; i <= N; i++) {
+      const a = (i / N) * TAU;
+      if (nearGoal(a, half)) { open = false; continue; }
+      const px = cx0 + Math.cos(a) * r, py = cy0 + Math.sin(a) * r;
+      if (!open) { c.moveTo(px, py); open = true; } else c.lineTo(px, py);
+    }
+    c.stroke();
+  }
   // casting flaws must not land in the lettering
   const textBands = [[0.175, 0.335], [0.825, 0.905]];
   function flawSpot(Rn, m) {
@@ -458,16 +478,14 @@ function rebuild() {
   }, 0.0022 * S, 0.20, "lighter");
   layer((c) => {
     c.strokeStyle = "#fff"; c.lineWidth = 0.075 * S;
-    c.beginPath(); c.arc(RC.x, RC.y, RR, 0, TAU); c.stroke();
+    gapArc(c, RC.x, RC.y, RR, 0.115);
   }, 0.010 * S, 0.06, "lighter");
 
   /* 4 — raised type, ticks, bands, rays */
   layer((c) => {
     c.fillStyle = "#fff"; c.strokeStyle = "#fff";
-    // full-width guarda pampa bands, framing the plaque top and bottom,
-    // clear of the corner screws with a little air off the raised rim
-    guarda(c, PY0 + 0.052 * S, PW / 2 - 0.020 * S);
-    guarda(c, PY0 + PH - 0.052 * S, PW / 2 - 0.020 * S);
+    guarda(c, top + 0.125 * DH, 0.30 * S);
+    guarda(c, top + 0.902 * DH, 0.30 * S);
 
     setFont(c, 0.046 * S);
     c.fillText(M.home.name.toUpperCase() + "  " + M.home.score, cx, top + 0.197 * DH);
@@ -476,6 +494,7 @@ function rebuild() {
     // 120 minute ticks; kickoff + period marks longer
     for (let m = 0; m < 120; m++) {
       const a = mAngle(m);
+      if (nearGoal(a, 0.085)) continue;    // the ring yields at each goal
       const per = m === 0 || M.periods.indexOf(m) >= 0;
       const li = (per ? 0.034 : 0.016) * S;
       c.lineWidth = (per ? 0.005 : 0.0028) * S;
