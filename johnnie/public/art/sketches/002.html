@@ -347,7 +347,7 @@ function stamp(g) {
   g.letterSpacing = TRACK;
   const xL = px + 0.048 * pw, xR = px + 0.952 * pw;
   const y1 = py + 0.038 * ph + f, y2 = y1 + f * 1.6;
-  g.fillStyle = INK + "0.5)";
+  g.fillStyle = INK + (DARK ? "0.8)" : "0.5)");   // lighter on the dark room
   g.textAlign = "left";
   g.fillText("REG. Nº 002 · MUNDIAL 2026 · GRUPO J", xL, y1);
   g.fillText("ESTADIO DE DALLAS, ARLINGTON · 22·06·2026", xL, y2);
