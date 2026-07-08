@@ -22,6 +22,10 @@
   // every resize.
   FRAME.mount = function (o) {
     const thumb = window.ART && ART.isThumb;
+    // ?og=1: a static social-share capture — the panel's header and
+    // headline only, no arrows/description/spec-table, artwork alongside
+    // as on desktop. Captured offline at a fixed 1200×630 viewport.
+    const og = new URLSearchParams(location.search).get("og") === "1";
     const num = "#" + (o.num || 0);   // one digit — five matches, not a hundred
     const edition = String(o.edition || "").replace(/^0+/, "");
     document.title = num + " · " + (o.title || "") + " — johnnie’s atelier";
@@ -144,7 +148,9 @@ transition:transform 160ms cubic-bezier(0.23,1,0.32,1)}
 ${thumb ? `body{display:block;padding:0}
 .panel,.pill,.scrim{display:none!important}
 .room{position:fixed;inset:0}
-.art{position:absolute;inset:0;margin:0}` : ""}`;
+.art{position:absolute;inset:0;margin:0}` : ""}
+${og ? `.go,.desc,.specs,.cap{display:none!important}
+.panel{animation:none}` : ""}`;
     document.head.appendChild(css);
 
     const esc = (s) => String(s == null ? "" : s);
