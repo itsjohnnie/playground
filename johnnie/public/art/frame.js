@@ -113,7 +113,7 @@ body{display:block;padding:0}
 .specs .m-date{display:flex}
 /* phones: the specs sit close to the arrows — half the desktop air */
 .mid{padding-bottom:0}
-.go{margin-top:16px}
+.go{margin-top:24px}
 .room{position:fixed;inset:0}
 .art{position:absolute;inset:0}
 .pill{display:flex;align-items:center;gap:8px;position:fixed;z-index:12;
