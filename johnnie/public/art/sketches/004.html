@@ -530,7 +530,11 @@ function rebuild() {
     }
   }, 0.0009 * S, 0.28, "lighter");
 
-  /* 5 — tall relief: goal domes, sol disc, mounting screws */
+  /* 5a — the goal markers sit exactly on the chapter ring; additive blending
+     there summed with the ring's own height and read as a smudge rather
+     than a boss riding on top. "lighten" takes the taller of the two
+     (per-channel max) instead, so the marker cleanly dominates the ring
+     underneath it instead of blending into it. */
   layer((c) => {
     c.strokeStyle = "#fff";
     for (const g of M.goals) {
@@ -544,6 +548,10 @@ function rebuild() {
         c.beginPath(); c.arc(bx, by, 0.025 * S, 0, TAU); c.stroke();
       }
     }
+  }, 0.0016 * S, 0.34, "lighten");
+
+  /* 5b — sol disc, mounting screws: no ring beneath them, additive is fine */
+  layer((c) => {
     dome(c, RC.x, RC.y, 0.052 * S, white);
     dome(c, RC.x, RC.y, 0.022 * S, white);
     const sc = 0.095 * S;
