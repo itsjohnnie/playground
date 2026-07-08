@@ -11,6 +11,7 @@
     --sheet: #f2f1ee;
     --ink: #16130f;
     --ink-dim: rgba(22, 19, 15, 0.62);
+    --ink-faint: rgba(22, 19, 15, 0.38);
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   }
   @font-face { font-family: 'Geist'; src: url('lib/fonts/Geist-Variable.woff2') format('woff2');
@@ -133,11 +134,26 @@
     line-height: 1.14;
     transition: opacity 180ms var(--ease-out);
   }
+  .day .meta {
+    display: flex;
+    align-items: baseline;
+    gap: clamp(8px, 1.4vw, 14px);
+  }
+  .day .stg {
+    font-size: clamp(10px, 1.15vw, 11.5px);
+    color: var(--ink-faint);
+    white-space: nowrap;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
   .day .d {
     font-size: clamp(11px, 1.3vw, 12.5px);
     color: var(--ink-dim);
     white-space: nowrap;
     letter-spacing: 0.02em;
+  }
+  @media (max-width: 560px) {
+    .day .meta { flex-direction: column; align-items: flex-end; gap: 2px; }
   }
   @media (hover: hover) and (pointer: fine) {
     .day:hover .t { opacity: 0.5; }
@@ -204,7 +220,10 @@
         const rival = (s.subject || s.title)
           .replace("Argentina vs. ", "").replace(" vs. Argentina", "");
         a.innerHTML = '<span class="t">' + rival + '</span>' +
-          '<span class="d">' + date + "</span>";
+          '<span class="meta">' +
+            (s.stage ? '<span class="stg">' + s.stage + "</span>" : "") +
+            '<span class="d">' + date + "</span>" +
+          "</span>";
         days.appendChild(a);
       });
       // prerender a day the moment it's hovered or touched — activation is

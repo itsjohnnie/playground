@@ -113,7 +113,7 @@ body{display:block;padding:0}
 .specs .m-date{display:flex}
 /* phones: the specs sit close to the arrows — half the desktop air */
 .mid{padding-bottom:0}
-.go{margin-top:16px}
+.go{margin-top:24px}
 .room{position:fixed;inset:0}
 .art{position:absolute;inset:0}
 .pill{display:flex;align-items:center;gap:8px;position:fixed;z-index:12;
@@ -194,6 +194,14 @@ ${thumb ? `body{display:block;padding:0}
     document.body.appendChild(panel);
     document.body.appendChild(room);
     if (!thumb) { document.body.appendChild(scrim); document.body.appendChild(pill); }
+
+    // the index has no "artwork" element to morph into — leaving the name
+    // on lets the browser animate it as an orphaned floating group (it once
+    // shipped that way and the return trip read as broken). Neutralize it
+    // right before that specific navigation starts, so going back to the
+    // index falls back to a clean, unnamed cross-fade instead.
+    const crumb = panel.querySelector('.top a[href="../"]');
+    if (crumb) crumb.addEventListener("click", () => { room.style.viewTransitionName = "none"; });
 
     let canvas = null;
     if (!o.noCanvas) {
