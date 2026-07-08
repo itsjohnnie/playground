@@ -464,8 +464,10 @@ function rebuild() {
   /* 4 — raised type, ticks, bands, rays */
   layer((c) => {
     c.fillStyle = "#fff"; c.strokeStyle = "#fff";
-    guarda(c, top + 0.125 * DH, 0.30 * S);
-    guarda(c, top + 0.902 * DH, 0.30 * S);
+    // full-width guarda pampa bands, framing the plaque top and bottom,
+    // clear of the corner screws with a little air off the raised rim
+    guarda(c, PY0 + 0.052 * S, PW / 2 - 0.020 * S);
+    guarda(c, PY0 + PH - 0.052 * S, PW / 2 - 0.020 * S);
 
     setFont(c, 0.046 * S);
     c.fillText(M.home.name.toUpperCase() + "  " + M.home.score, cx, top + 0.197 * DH);
