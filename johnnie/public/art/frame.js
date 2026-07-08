@@ -195,6 +195,14 @@ ${thumb ? `body{display:block;padding:0}
     document.body.appendChild(room);
     if (!thumb) { document.body.appendChild(scrim); document.body.appendChild(pill); }
 
+    // the index has no "artwork" element to morph into — leaving the name
+    // on lets the browser animate it as an orphaned floating group (it once
+    // shipped that way and the return trip read as broken). Neutralize it
+    // right before that specific navigation starts, so going back to the
+    // index falls back to a clean, unnamed cross-fade instead.
+    const crumb = panel.querySelector('.top a[href="../"]');
+    if (crumb) crumb.addEventListener("click", () => { room.style.viewTransitionName = "none"; });
+
     let canvas = null;
     if (!o.noCanvas) {
       canvas = document.createElement("canvas");
