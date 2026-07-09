@@ -77,8 +77,8 @@
     animation: day-in 380ms var(--ease-out) forwards;
   }
   header.top { animation-delay: 0ms; }
-  .intro h1 { animation-delay: 90ms; }
-  .intro p { animation-delay: 180ms; }
+  .intro h1 { animation-delay: 60ms; }
+  .intro p { animation-delay: 120ms; }
   /* arriving via a view transition, the morph IS the entrance */
   .vt header.top, .vt .intro h1, .vt .intro p, .vt .day {
     animation-duration: 0ms;
@@ -247,7 +247,7 @@
         } else {
           a.setAttribute("aria-disabled", "true");
         }
-        a.style.setProperty("--d", 280 + Math.min(i++ * 60, 480) + "ms");
+        a.style.setProperty("--d", 220 + Math.min(i++ * 55, 440) + "ms");
         const date = s.date.split("-").reverse().join(" · "); // 2026-07-06 → 06 · 07 · 2026
         // the list names only the opponent — every match is Argentina's,
         // and one word stays on one line
