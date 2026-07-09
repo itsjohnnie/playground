@@ -95,11 +95,14 @@ text-transform:uppercase;color:rgba(22,19,15,.62)}
 .specs .m-date{display:none}
 .go{margin-top:0;display:flex;justify-content:space-between;align-items:center}
 .go a,.go .off{color:inherit;text-decoration:none;font-size:clamp(26px,7cqi,38px);
-line-height:1;padding:6px 2px;transition:transform 180ms cubic-bezier(0.23,1,0.32,1)}
+line-height:1;padding:6px 2px;transition:transform 160ms cubic-bezier(0.23,1,0.32,1)}
 .go .off{opacity:.22;pointer-events:none;user-select:none}
+.go a:active{transform:scale(0.94)}
 @media (hover:hover) and (pointer:fine){
 .go a.next:hover{transform:translateX(5px)}
-.go a.prev:hover{transform:translateX(-5px)}}
+.go a.prev:hover{transform:translateX(-5px)}
+.go a.next:active{transform:translateX(5px) scale(0.94)}
+.go a.prev:active{transform:translateX(-5px) scale(0.94)}}
 html{-webkit-tap-highlight-color:transparent}
 .room{position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
 /* the artwork is a surface, not a document: no text selection, no
@@ -131,16 +134,19 @@ backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
 border-radius:999px;padding:10px 18px;font:inherit;font-size:13px;cursor:pointer;
 transition:transform 200ms cubic-bezier(0.23,1,0.32,1),opacity 200ms}
 .pill:active{transform:translateX(-50%) scale(0.96)}
+/* asymmetric: the scrim (and sheet) leave faster than they arrive —
+   slow where the user is settling in, fast where the system answers */
 .scrim{display:block;position:fixed;inset:0;z-index:14;background:rgba(5,3,2,.45);
-opacity:0;pointer-events:none;transition:opacity 320ms ease}
+opacity:0;pointer-events:none;transition:opacity 200ms ease}
+body.open .scrim{transition-duration:320ms}
 .panel{position:fixed;z-index:15;left:10px;right:10px;
 top:max(10px,env(safe-area-inset-top));
 bottom:max(10px,env(safe-area-inset-bottom));
 margin:0;border-radius:20px;animation:none;
 box-shadow:0 30px 80px rgba(0,0,0,.6);
 transform:translateY(103%);pointer-events:none;
-transition:transform 460ms cubic-bezier(0.32,0.72,0,1)}
-body.open .panel{transform:none;pointer-events:auto}
+transition:transform 360ms cubic-bezier(0.32,0.72,0,1)}
+body.open .panel{transform:none;pointer-events:auto;transition-duration:460ms}
 body.open .scrim{opacity:1;pointer-events:auto}
 body.open .pill{opacity:0;pointer-events:none}
 /* the pill IS the sheet: same view-transition-name on whichever of the
@@ -178,7 +184,7 @@ cursor:pointer;background:none;border:0;color:inherit;font:inherit;
    step up so the three read as one family */
 font-size:clamp(30px,8.2cqi,44px);line-height:1;padding:6px 2px;
 transition:transform 160ms cubic-bezier(0.23,1,0.32,1)}
-.x:active{transform:scale(0.9)}
+.x:active{transform:scale(0.94)}
 @media (prefers-reduced-motion:reduce){.panel{transition:none}}
 }
 ${thumb ? `body{display:block;padding:0}
