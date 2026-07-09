@@ -285,8 +285,35 @@ void main(){
   gl_FragColor = vec4(min(d, vec2(1.6)), 0., 1.);
 }`;
 
+// a real ripple field (the wave equation on a height grid, à la Evan
+// Wallace's webgl-water): ripples PROPAGATE — they expand, reflect and
+// interfere. RG = height, previous height. Forced by the fluid itself
+// (converging flow lifts the surface) and by the match: every event
+// impulse drops a stone and its ring runs across the water.
+const FS_WAVE = `precision highp float;varying vec2 vUv;
+uniform sampler2D u_wav, u_div;
+uniform vec2 u_px, u_pw;
+uniform float u_dt, u_asp;
+uniform vec4 u_pa, u_pb;
+void main(){
+  vec2 w0 = texture2D(u_wav, vUv).rg;
+  float l = texture2D(u_wav, vUv - vec2(u_px.x,0.)).r
+          + texture2D(u_wav, vUv + vec2(u_px.x,0.)).r
+          + texture2D(u_wav, vUv - vec2(0.,u_px.y)).r
+          + texture2D(u_wav, vUv + vec2(0.,u_px.y)).r;
+  float lap = l - 4.0*w0.r;
+  float h = (2.0*w0.r - w0.g + 0.30*lap) * 0.986;
+  h += texture2D(u_div, vUv).x * (-0.5) * u_dt;
+  vec2 qa = (vUv - u_pa.xy)*vec2(u_asp,1.0), qb = (vUv - u_pb.xy)*vec2(u_asp,1.0);
+  h += abs(u_pa.w)*exp(-dot(qa,qa)/(u_pw.x*u_pw.x))*u_dt*2.4;
+  h += abs(u_pb.w)*exp(-dot(qb,qb)/(u_pw.y*u_pw.y))*u_dt*2.4;
+  float em = smoothstep(0.0,0.02,vUv.x)*smoothstep(1.0,0.98,vUv.x)
+           * smoothstep(0.0,0.02,vUv.y)*smoothstep(1.0,0.98,vUv.y);
+  gl_FragColor = vec4(clamp(h*em, -2.0, 2.0), w0.r, 0., 1.);
+}`;
+
 const FS_SHOW = `precision highp float;varying vec2 vUv;
-uniform sampler2D u_dye, u_det, u_vel;
+uniform sampler2D u_dye, u_det, u_vel, u_wav;
 uniform vec2 u_dpx, u_res;
 uniform float u_seed, u_gold, u_gx, u_expo, u_dwA, u_time;
 ${NOISE}
@@ -301,8 +328,11 @@ float height(vec2 p, float asp){
   float sp = length(texture2D(u_vel, p).xy);
   float h = fbm(s*6.5 + u_seed)
           + 0.45*fbm(s*17.0 - u_seed*2.0 + u_time*0.11)
-          + 0.26*fbm(s*39.0 + u_seed*5.0 + u_time*0.23);
-  return h*(0.62 + min(sp*0.14, 0.85)) + dens(p)*0.30;
+          + 0.26*fbm(s*39.0 + u_seed*5.0 + u_time*0.23)
+          // directed ripple, crest-sharpened — waves, not swell
+          + 0.17*(1.0 - abs(sin(s.y*34.0 + u_time*0.7 + 2.6*fbm(s*5.0 + u_seed*3.0))) - 0.5);
+  return h*(0.62 + min(sp*0.14, 0.85)) + dens(p)*0.30
+       + texture2D(u_wav, p).r*1.5;      // the propagating rings ride on top
 }
 
 void main(){
@@ -312,8 +342,10 @@ void main(){
   // the surface normal, from the height field — the render hangs off this
   vec2 e = u_dpx * 0.75;
   float hC = height(uv, asp);
-  float hx = height(uv + vec2(e.x, 0.), asp) - height(uv - vec2(e.x, 0.), asp);
-  float hy = height(uv + vec2(0., e.y), asp) - height(uv - vec2(0., e.y), asp);
+  float hR = height(uv + vec2(e.x, 0.), asp), hL = height(uv - vec2(e.x, 0.), asp);
+  float hT = height(uv + vec2(0., e.y), asp), hB = height(uv - vec2(0., e.y), asp);
+  float hx = hR - hL, hy = hT - hB;
+  float lap = hR + hL + hT + hB - 4.0*hC;
   vec3 n = normalize(vec3(-hx*3.1, -hy*3.1, 1.0));
 
   // the ink is read THROUGH the surface — ripples displace the view of it
@@ -349,6 +381,9 @@ void main(){
   vec3 deep = vec3(0.014, 0.024, 0.029);
   vec3 body = mix(deep, pig*(0.60 + 0.52*ndl), min(aI*1.12, 1.0));
   body *= (0.90 + 0.20*min(hC, 1.4)) * (0.88 + 0.24*lu);
+  // caustics: where the surface converges it focuses the lamp onto the
+  // pigment below — thin bright lines dancing on the ink
+  body += pig * clamp(-lap*34.0, 0.0, 1.0) * 0.34 * min(aI*1.2, 1.0);
 
   // the room, mirrored: fresnel keeps the flat surface glass-dark while
   // every ripple slope catches the lamp — the glint track breaks on chop
@@ -360,6 +395,13 @@ void main(){
   float fr = 0.04 + 0.96*pow(1.0 - max(n.z, 0.0), 2.4);
   fr = min(fr*2.2, 0.90);
   vec3 water = body*(1.0 - fr*0.72) + env*(fr*(0.55 + 0.75*hi) + 0.012);
+
+  // light rising from the bottom of the water — the celeste carries its
+  // own glow, and the shine catches the down-facing slopes of the chop
+  vec3 L2 = normalize(vec3(0.10, 0.72, 0.68));
+  float g2 = pow(max(dot(R, L2), 0.0), 24.0);
+  float up = smoothstep(0.85, 0.12, uv.y);
+  water += vec3(0.45, 0.72, 0.95) * g2 * up * (0.30 + 0.9*cD) * 0.5;
 
   // the breath of gold where the celeste breaks through
   float g = u_gold * cD * smoothstep(0.60, 0.84, uv.y)
@@ -400,10 +442,41 @@ const F = FRAME.mount({
 });
 const sfN = ART.rng(seed)() * 37;               // seed float for the shaders
 
+// the match clock: a hairline dial at the water's top right — it fills
+// 0' → 90+' as the siege builds, breathes out with the whistle, and
+// returns at kickoff, so the moment on the water can be read as a minute
+let dial = null, dialArc = null;
+const DIAL_R = 9, DIAL_C = 2 * Math.PI * DIAL_R;
+if (!RM) (function clock() {
+  const NS = "http://www.w3.org/2000/svg";
+  const box = document.createElement("div");
+  box.style.cssText =
+    "position:absolute;top:calc(18px + env(safe-area-inset-top));right:20px;" +
+    "width:22px;height:22px;pointer-events:none;opacity:0;z-index:2";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 22 22");
+  const ring = (w, col) => {
+    const c = document.createElementNS(NS, "circle");
+    c.setAttribute("cx", "11"); c.setAttribute("cy", "11");
+    c.setAttribute("r", String(DIAL_R));
+    c.setAttribute("fill", "none");
+    c.setAttribute("stroke", col); c.setAttribute("stroke-width", w);
+    return c;
+  };
+  svg.appendChild(ring("1", "rgba(242,236,225,0.16)"));
+  dialArc = ring("1.5", "rgba(242,236,225,0.52)");
+  dialArc.setAttribute("stroke-linecap", "round");
+  dialArc.setAttribute("transform", "rotate(-90 11 11)");
+  svg.appendChild(dialArc);
+  box.appendChild(svg);
+  F.stage.appendChild(box);
+  dial = box;
+})();
+
 /* ---------------- gl plumbing ---------------- */
 
 let progs = {}, quad = null, halfType = 0, innerFmt = 0;
-let vel, prs, div, dye, det;
+let vel, prs, div, dye, det, wav;
 const DETP = 7.0;                               // flow-map re-seed period (s)
 
 function boot() {
@@ -445,7 +518,7 @@ function boot() {
   };
   progs = { init: mk(FS_INIT), adv: mk(FS_ADVECT), frc: mk(FS_FORCE), div: mk(FS_DIV),
             jac: mk(FS_JAC), grd: mk(FS_GRAD), dye: mk(FS_DYE), show: mk(FS_SHOW),
-            dinit: mk(FS_DINIT), det: mk(FS_DET) };
+            dinit: mk(FS_DINIT), det: mk(FS_DET), wav: mk(FS_WAVE) };
 }
 
 function target(w, h) {
@@ -485,7 +558,8 @@ function alloc(w, h) {
   simW = Math.max(128, Math.min(480, Math.round(simH * (w / h))));
   vel = pair(simW, simH); prs = pair(simW, simH);
   div = target(simW, simH); dye = pair(simW, simH); det = pair(simW, simH);
-  for (const tg of [vel.r, vel.w, prs.r, prs.w, div]) {
+  wav = pair(simW, simH);
+  for (const tg of [vel.r, vel.w, prs.r, prs.w, div, wav.r, wav.w]) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, tg.f);
     gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
   }
@@ -538,6 +612,16 @@ function tick(dt, t) {
     gl.uniform2f(U.u_px, px[0], px[1]);
   }); vel.swap();
 
+  // the ripple field propagates — stirred by the flow, struck by events
+  run(progs.wav, wav.w, (U) => {
+    gl.uniform1i(U.u_wav, bindT(0, wav.r)); gl.uniform1i(U.u_div, bindT(1, div));
+    gl.uniform2f(U.u_px, px[0], px[1]);
+    gl.uniform1f(U.u_dt, dt); gl.uniform1f(U.u_asp, asp);
+    gl.uniform4f(U.u_pa, pa.x, pa.y, pa.fy, pa.ink);
+    gl.uniform4f(U.u_pb, pb.x, pb.y, pb.fy, pb.ink);
+    gl.uniform2f(U.u_pw, Math.max(pa.w, 0.02), Math.max(pb.w, 0.02));
+  }); wav.swap();
+
   // carry the flow map; re-seed each layer on its own beat
   const rA = Math.floor((lifeT + dt) / DETP) > Math.floor(lifeT / DETP) ? 1 : 0;
   const rB = Math.floor((lifeT + dt) / DETP + 0.5) > Math.floor(lifeT / DETP + 0.5) ? 1 : 0;
@@ -568,6 +652,7 @@ function draw(t, expo) {
     gl.uniform1i(U.u_dye, bindT(0, dye.r));
     gl.uniform1i(U.u_det, bindT(1, det.r));
     gl.uniform1i(U.u_vel, bindT(2, vel.r));
+    gl.uniform1i(U.u_wav, bindT(3, wav.r));
     gl.uniform2f(U.u_dpx, 1 / simW, 1 / simH);
     gl.uniform2f(U.u_res, F.canvas.width, F.canvas.height);
     gl.uniform1f(U.u_seed, sfN); gl.uniform1f(U.u_dwA, dwA);
@@ -592,6 +677,13 @@ function frame(now) {
   // runs forever, so every frame is on a budget
   if (frameN & 1) { tick(Math.min(accDt, 0.075), tau); accDt = 0; }
   draw(tau, Math.min(1, lifeT / 2.2));           // the light comes up once
+  if (dial) {
+    const p = Math.min(tau / PLAY, 1);
+    dialArc.setAttribute("stroke-dasharray",
+      (DIAL_C * p).toFixed(2) + " " + DIAL_C.toFixed(2));
+    dial.style.opacity = (Math.min(1, Math.max(0, lifeT - 2) / 1.6)
+      * (1 - relOf(tau)) * 0.9).toFixed(3);
+  }
 }
 
 // reduced motion: settle straight into the breakthrough and hold it —
