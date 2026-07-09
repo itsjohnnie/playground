@@ -146,15 +146,31 @@ body.open .pill{opacity:0;pointer-events:none}
 /* the pill IS the sheet: same view-transition-name on whichever of the
    two is live, so opening morphs the button into the card (and closing
    collapses the card back into it). The slide transition is disabled
-   for the flip itself (body.vt) — the browser animates the snapshots. */
+   for the flip itself (body.vt) — the browser animates the snapshots.
+   Text NEVER scales: the pill's label and the card's three sections
+   carry their own names, which lifts them out of the surface snapshot —
+   they fade in place at natural size while only the flat surface morphs. */
 .pill{view-transition-name:pill-sheet}
-body.open .pill{view-transition-name:none}
+.pill .plbl{view-transition-name:pill-label;display:inline-block}
+body.open .pill,body.open .pill .plbl{view-transition-name:none}
 body.open .panel{view-transition-name:pill-sheet}
+body.open .panel .top{view-transition-name:sheet-top}
+body.open .panel .mid{view-transition-name:sheet-mid}
+body.open .panel .go{view-transition-name:sheet-go}
 body.vt .panel,body.vt .pill,body.vt .scrim{transition:none}
 ::view-transition-group(pill-sheet){animation-duration:440ms;
 animation-timing-function:cubic-bezier(0.32,0.72,0,1)}
 ::view-transition-old(pill-sheet),::view-transition-new(pill-sheet){
-height:100%;width:100%;object-fit:cover;animation-duration:440ms}
+height:100%;width:100%;object-fit:fill;animation-duration:440ms}
+/* content: pure fades, staged after the surface has mostly landed */
+::view-transition-old(pill-label),::view-transition-old(sheet-top),
+::view-transition-old(sheet-mid),::view-transition-old(sheet-go){
+animation-duration:140ms;animation-fill-mode:both}
+::view-transition-new(sheet-top),::view-transition-new(sheet-mid),
+::view-transition-new(sheet-go){animation-duration:240ms;
+animation-delay:150ms;animation-fill-mode:both}
+::view-transition-new(pill-label){animation-duration:200ms;
+animation-delay:120ms;animation-fill-mode:both}
 .go{margin-top:24px}   /* the sheet keeps its air above the arrows */
 .x{display:flex;align-items:center;justify-content:center;margin:0 auto;
 cursor:pointer;background:none;border:0;color:inherit;font:inherit;
@@ -212,7 +228,7 @@ ${og ? `.go,.desc,.specs,.cap{display:none!important}
     scrim.className = "scrim";
     const pill = document.createElement("button");
     pill.className = "pill";
-    pill.innerHTML = num + dot + esc(o.title);
+    pill.innerHTML = '<span class="plbl">' + num + dot + esc(o.title) + "</span>";
     pill.setAttribute("aria-label", "about this piece");
 
     document.body.appendChild(panel);
