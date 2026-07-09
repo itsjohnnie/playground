@@ -69,14 +69,28 @@ float sdPl(vec2 q, vec2 b, float r, float S){
   float ang = atan(q.y, q.x);
   sd += (vnoise(vec2(ang*2.6 + u_seed, 7.3)) - 0.5)*0.006*S;
   float h1 = hash(vec2(3.7, 9.1)), h2 = hash(vec2(8.2, 1.3)), h3 = hash(vec2(5.5, 4.4));
+  // the chips fracture, they don't scoop: the bite's radius is jittered
+  // around its own angle — straightish facets, not a circle's lick
+  vec2 qc = q - vec2(b.x, mix(-0.6, 0.2, h1)*b.y);
+  float a1 = atan(qc.y, qc.x);
+  float cr1 = (0.014 + 0.011*h2)*S
+            * (0.62 + 0.30*vnoise(vec2(a1*2.6 + u_seed, 3.7))
+                    + 0.26*vnoise(vec2(a1*8.5, 9.1 + u_seed)));
+  sd = max(sd, -(length(qc) - cr1));
+  vec2 qd = q - vec2(mix(-0.7, -0.1, h2)*b.x, -b.y);
+  float a2 = atan(qd.y, qd.x);
+  float cr2 = (0.011 + 0.008*h3)*S
+            * (0.62 + 0.30*vnoise(vec2(a2*3.1 - u_seed, 5.2))
+                    + 0.26*vnoise(vec2(a2*9.5, 2.4 - u_seed)));
+  sd = max(sd, -(length(qd) - cr2));
+  // the crack kinks once and tapers as it dies into the metal
   vec2 c1 = vec2(b.x, mix(-0.6, 0.2, h1)*b.y);
-  float cr1 = (0.013 + 0.011*h2)*S * (0.80 + 0.45*vnoise(q*44.0/S + u_seed));
-  sd = max(sd, -(length(q - c1) - cr1));
-  vec2 c2 = vec2(mix(-0.7, -0.1, h2)*b.x, -b.y);
-  float cr2 = (0.010 + 0.008*h3)*S * (0.80 + 0.45*vnoise(q*56.0/S - u_seed));
-  sd = max(sd, -(length(q - c2) - cr2));
   vec2 cd = normalize(vec2(-(0.6 + 0.5*h3), h1 - 0.5));
-  sd = max(sd, -sdCap(q, c1, c1 + cd*(0.05 + 0.04*h1)*S, 0.0016*S));
+  float cl = (0.05 + 0.04*h1)*S;
+  vec2 k1 = c1 + cd*cl*0.45;
+  vec2 cd2 = normalize(cd + vec2(0.0, 0.5*(h2 - 0.5)));
+  sd = max(sd, -sdCap(q, c1, k1, 0.0019*S));
+  sd = max(sd, -sdCap(q, k1, k1 + cd2*cl*0.6, 0.0011*S));
   return sd;
 }
 
@@ -130,7 +144,21 @@ void main(){
   vec2 q0 = o.xy + tT*d.xy;
   vec2 q1 = o.xy + tB*d.xy;
   float sd0 = sdPl(q0, b, r, S), sd1 = sdPl(q1, b, r, S);
-  float cov = 1.0 - smoothstep(-0.9, 0.9, min(sd0, sd1));  // silhouette, AA'd
+  // silhouette: turned steeply, a ray can pass through the slab's body
+  // while BOTH face-plane crossings land outside the outline — pure side
+  // wall. March the covered z-span for the true minimum so the walls
+  // stay solid all the way through a flip, never two floating faces.
+  float sdm = min(sd0, sd1);
+  float tmn = (sd0 < sd1) ? tT : tB;
+  if (abs(dz) < 0.85){
+    float t0 = min(tT, tB), t1 = max(tT, tB);
+    for (int i = 1; i <= 8; i++){
+      float t = mix(t0, t1, float(i)/9.0);
+      float sdt = sdPl(o.xy + t*d.xy, b, r, S);
+      if (sdt < sdm){ sdm = sdt; tmn = t; }
+    }
+  }
+  float cov = 1.0 - smoothstep(-0.9, 0.9, sdm);  // AA'd
   float fs = (dz < 0.0) ? 1.0 : -1.0;         // +1: the front meets the ray
   vec2 qn = (fs > 0.0) ? q0 : q1;             // the near face's intersection
   float sdN = (fs > 0.0) ? sd0 : sd1;
@@ -249,8 +277,11 @@ void main(){
          + spec + env
          + F0*a*key*dif*fall*0.65;        // multiple-scatter return off the rough cast
     } else {
-      // ---- side wall: rough sand-cast edge ----
-      float ta = (fs > 0.0) ? tT : tB, tb = (fs > 0.0) ? tB : tT;
+      // ---- side wall: rough sand-cast edge. Bracket the entry between
+      // the near face plane (outside) and the marched interior minimum
+      // (inside) — the far plane hit can be outside too when edge-on ----
+      float ta = (fs > 0.0) ? tT : tB;
+      float tb = (sdm < 0.0) ? tmn : ((fs > 0.0) ? tB : tT);
       for (int k = 0; k < 10; k++){
         float tm = 0.5*(ta + tb);
         if (sdPl(o.xy + tm*d.xy, b, r, S) > 0.0) ta = tm; else tb = tm;
