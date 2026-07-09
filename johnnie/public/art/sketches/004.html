@@ -761,7 +761,7 @@ function rebuild() {
   /* the honor roll: a diamond crowns eleven names, the colophon signs.
      The guarda bands run the full width, rim to rim; the screws step
      inboard — below the top band, above the bottom one — to clear them. */
-  const rowY = (i) => top + (0.285 + i * 0.0472) * DH;
+  const rowY = (i) => top + (0.272 + i * 0.0472) * DH;
   layer((c) => {
     c.fillStyle = "#fff"; c.strokeStyle = "#fff";
     guarda(c, top + 0.125 * DH, BANDW);
@@ -781,7 +781,8 @@ function rebuild() {
   layer((c) => {
     c.fillStyle = "#fff";
     setFont(c, 0.020 * S, 500);
-    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.800 * DH);
+    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA", cx, top + 0.796 * DH);
+    c.fillText("COLADA 07·26", cx, top + 0.822 * DH);
   }, 0.0009 * S, 0.28, "lighter");
 
   /* struck into the back: screw slots, guarda eyes, casting pits */
