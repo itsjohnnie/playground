@@ -32,6 +32,13 @@
 // begins again. One match per 40-second cycle; the simulation never cuts, so
 // there is no seam — each remontada rises out of the residue of the last.
 // All event minutes and the score-state line come from data-005.js (M5).
+//
+// The render is a WATER SURFACE, not a dye plot: a height field of swell
+// and chop rides the flow map (waves carried by the currents, livelier
+// where the water runs fast), its normals refract the view of the inks
+// below, and fresnel mirrors an analytic room — the flat surface stays
+// glass-dark while every ripple slope catches the one warm lamp, so the
+// glint track breaks and scatters on the chop.
 
 const seed = ART.seed("2026-07-07-005");
 const M = window.M5;
@@ -279,15 +286,39 @@ void main(){
 }`;
 
 const FS_SHOW = `precision highp float;varying vec2 vUv;
-uniform sampler2D u_dye, u_det;
+uniform sampler2D u_dye, u_det, u_vel;
 uniform vec2 u_dpx, u_res;
-uniform float u_seed, u_gold, u_gx, u_expo, u_dwA;
+uniform float u_seed, u_gold, u_gx, u_expo, u_dwA, u_time;
 ${NOISE}
 float dens(vec2 p){ vec2 d = texture2D(u_dye, p).rg; return d.r + d.g; }
+
+// the skin of the water: swell carried by the flow map (waves RIDE the
+// currents), chop keyed to how fast the water moves underneath, and the
+// ink fronts themselves lifting the surface a touch
+float height(vec2 p, float asp){
+  vec4 cw = texture2D(u_det, p);
+  vec2 s = mix(cw.ba, cw.rg, u_dwA) * vec2(asp, 1.0);
+  float sp = length(texture2D(u_vel, p).xy);
+  float h = fbm(s*6.5 + u_seed)
+          + 0.45*fbm(s*17.0 - u_seed*2.0 + u_time*0.11)
+          + 0.26*fbm(s*39.0 + u_seed*5.0 + u_time*0.23);
+  return h*(0.62 + min(sp*0.14, 0.85)) + dens(p)*0.30;
+}
+
 void main(){
   float asp = u_res.x / u_res.y;
   vec2 uv = vUv;
-  vec4 d0 = texture2D(u_dye, uv);
+
+  // the surface normal, from the height field — the render hangs off this
+  vec2 e = u_dpx * 0.75;
+  float hC = height(uv, asp);
+  float hx = height(uv + vec2(e.x, 0.), asp) - height(uv - vec2(e.x, 0.), asp);
+  float hy = height(uv + vec2(0., e.y), asp) - height(uv - vec2(0., e.y), asp);
+  vec3 n = normalize(vec3(-hx*3.1, -hy*3.1, 1.0));
+
+  // the ink is read THROUGH the surface — ripples displace the view of it
+  vec2 uvR = uv + n.xy * 0.022;
+  vec4 d0 = texture2D(u_dye, uvR);
   // the mottle rides the flow map — pigment carried, stretched and folded
   // by the currents themselves; only the film grain is allowed to sit still
   vec4 cw = texture2D(u_det, uv);
@@ -301,40 +332,48 @@ void main(){
   float cd = d0.g * mc;
   float oD = 1.0 - exp(-od*1.25);
   float cD = 1.0 - exp(-cd*1.25);
-
-  // one soft raking light on the density field — fronts, not plastic
-  vec2 e = u_dpx;
-  float gxd = dens(uv + vec2(e.x,0.)) - dens(uv - vec2(e.x,0.));
-  float gyd = dens(uv + vec2(0.,e.y)) - dens(uv - vec2(0.,e.y));
-  vec3 n = normalize(vec3(-gxd*3.2, -gyd*3.2, 1.0));
-  vec3 L = normalize(vec3(-0.42, 0.58, 0.70));
-  float diff = max(dot(n, L), 0.0);
-  float spec = pow(max(2.0*n.z*dot(n,L) - L.z, 0.0), 34.0);
-
-  // the room
-  vec2 rc = (uv - vec2(0.5, 0.62)) * vec2(asp, 1.0);
-  vec3 room = vec3(0.051, 0.040, 0.028) * (0.72 + 0.50*vnoise(uv*vec2(asp,1.0)*46.0));
-  room *= 0.82 + 0.34*smoothstep(1.15, 0.2, length(rc));
+  float aI = 1.0 - (1.0-oD)*(1.0-cD);
 
   // the inks — desaturated pharaonic ochre, gray-blue celeste; churn muddies
   vec3 oc = mix(vec3(0.165,0.080,0.048), vec3(0.548,0.270,0.152), pow(oD, 1.5));
   vec3 cc = mix(vec3(0.058,0.118,0.176), vec3(0.442,0.630,0.768), pow(cD, 1.5));
-  float aI = 1.0 - (1.0-oD)*(1.0-cD);
   vec3 pig = (oc*oD + cc*cD) / max(oD + cD, 1e-4);
   pig = mix(pig, vec3(0.148,0.098,0.080), smoothstep(0.06, 0.42, oD*cD)*0.55);
-  vec3 lit = pig * (0.74 + 0.38*diff) + vec3(1.0,0.96,0.88)*spec*0.05*aI;
-  lit *= 0.88 + 0.24*lu;
+
+  // one warm lamp over the water
+  vec3 L = normalize(vec3(-0.42, 0.58, 0.70));
+  float ndl = max(dot(n, L), 0.0);
+
+  // the body: near-black deep where the ink hasn't reached, pigment
+  // suspended below the surface where it has; crests carry a little light
+  vec3 deep = vec3(0.014, 0.024, 0.029);
+  vec3 body = mix(deep, pig*(0.60 + 0.52*ndl), min(aI*1.12, 1.0));
+  body *= (0.90 + 0.20*min(hC, 1.4)) * (0.88 + 0.24*lu);
+
+  // the room, mirrored: fresnel keeps the flat surface glass-dark while
+  // every ripple slope catches the lamp — the glint track breaks on chop
+  vec3 R = reflect(vec3(0.0, 0.0, -1.0), n);
+  float lm = max(dot(R, L), 0.0);
+  vec3 env = vec3(0.010, 0.014, 0.018)
+           + vec3(1.05, 0.95, 0.78)*(pow(lm, 70.0)*2.3 + pow(lm, 8.0)*0.22)
+           + vec3(0.09, 0.12, 0.16)*pow(max(R.z, 0.0), 4.0)*0.30;
+  float fr = 0.04 + 0.96*pow(1.0 - max(n.z, 0.0), 2.4);
+  fr = min(fr*2.2, 0.90);
+  vec3 water = body*(1.0 - fr*0.72) + env*(fr*(0.55 + 0.75*hi) + 0.012);
 
   // the breath of gold where the celeste breaks through
   float g = u_gold * cD * smoothstep(0.60, 0.84, uv.y)
           * exp(-pow((uv.x - u_gx)*asp/0.22, 2.0));
-  lit += vec3(0.86,0.63,0.21) * min(g, 0.4) * (0.5 + 0.8*diff);
+  water += vec3(0.86,0.63,0.21) * min(g, 0.4) * (0.45 + 0.7*ndl + 0.9*fr);
 
-  // the currents float in the room — darkness owns the edges, no box
+  // the water floats in the room — darkness owns the edges, no box
+  vec2 rc = (uv - vec2(0.5, 0.62)) * vec2(asp, 1.0);
+  vec3 room = vec3(0.051, 0.040, 0.028) * (0.72 + 0.50*vnoise(uv*vec2(asp,1.0)*46.0));
+  room *= 0.82 + 0.34*smoothstep(1.15, 0.2, length(rc));
   float em = smoothstep(0.0, 0.17, uv.x) * smoothstep(1.0, 0.83, uv.x)
            * smoothstep(0.0, 0.10, uv.y) * smoothstep(1.0, 0.90, uv.y);
   em = pow(em, 1.2);
-  vec3 col = mix(room, lit, min(aI * 1.1, 1.0) * 0.95 * em);
+  vec3 col = mix(room, water, em);
 
   col *= u_expo;
   col += (hash(gl_FragCoord.xy*0.77 + u_seed) - 0.5) * 0.022;
@@ -528,11 +567,12 @@ function draw(t, expo) {
   run(progs.show, null, (U) => {
     gl.uniform1i(U.u_dye, bindT(0, dye.r));
     gl.uniform1i(U.u_det, bindT(1, det.r));
+    gl.uniform1i(U.u_vel, bindT(2, vel.r));
     gl.uniform2f(U.u_dpx, 1 / simW, 1 / simH);
     gl.uniform2f(U.u_res, F.canvas.width, F.canvas.height);
     gl.uniform1f(U.u_seed, sfN); gl.uniform1f(U.u_dwA, dwA);
     gl.uniform1f(U.u_gold, C.gold); gl.uniform1f(U.u_gx, gxBreak);
-    gl.uniform1f(U.u_expo, expo);
+    gl.uniform1f(U.u_expo, expo); gl.uniform1f(U.u_time, lifeT);
   });
 }
 
