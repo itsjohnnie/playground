@@ -54,6 +54,31 @@ vec2 sdGrad(vec2 q, vec2 b, float r){
          : (w.x > w.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
   return g * sign(q + vec2(1e-4));
 }
+float sdCap(vec2 q, vec2 a, vec2 e, float w){
+  vec2 pa = q - a, ea = e - a;
+  float h = clamp(dot(pa, ea)/dot(ea, ea), 0.0, 1.0);
+  return length(pa - ea*h) - w;
+}
+// the cast's TRUE outline: the rounded rect, a breath of waver along the
+// whole edge (sand gives, metal shrinks), two ragged chips where the pour
+// ran short, and a hairline crack running inward from the larger one —
+// seeded, so every casting is its own. The arris bevel and the side walls
+// key off this same field, so the flaws are fully three-dimensional.
+float sdPl(vec2 q, vec2 b, float r, float S){
+  float sd = sdRR(q, b, r);
+  float ang = atan(q.y, q.x);
+  sd += (vnoise(vec2(ang*2.6 + u_seed, 7.3)) - 0.5)*0.006*S;
+  float h1 = hash(vec2(3.7, 9.1)), h2 = hash(vec2(8.2, 1.3)), h3 = hash(vec2(5.5, 4.4));
+  vec2 c1 = vec2(b.x, mix(-0.6, 0.2, h1)*b.y);
+  float cr1 = (0.013 + 0.011*h2)*S * (0.80 + 0.45*vnoise(q*44.0/S + u_seed));
+  sd = max(sd, -(length(q - c1) - cr1));
+  vec2 c2 = vec2(mix(-0.7, -0.1, h2)*b.x, -b.y);
+  float cr2 = (0.010 + 0.008*h3)*S * (0.80 + 0.45*vnoise(q*56.0/S - u_seed));
+  sd = max(sd, -(length(q - c2) - cr2));
+  vec2 cd = normalize(vec2(-(0.6 + 0.5*h3), h1 - 0.5));
+  sd = max(sd, -sdCap(q, c1, c1 + cd*(0.05 + 0.04*h1)*S, 0.0016*S));
+  return sd;
+}
 
 /* ---- bronze: a microfacet metal (GGX + Schlick, F0 = the alloy) ---- */
 float dGGX(float ndh, float a){
@@ -104,7 +129,7 @@ void main(){
   float tB = (-T - o.z)/dz;                   // underside z = -T
   vec2 q0 = o.xy + tT*d.xy;
   vec2 q1 = o.xy + tB*d.xy;
-  float sd0 = sdRR(q0, b, r), sd1 = sdRR(q1, b, r);
+  float sd0 = sdPl(q0, b, r, S), sd1 = sdPl(q1, b, r, S);
   float cov = 1.0 - smoothstep(-0.9, 0.9, min(sd0, sd1));  // silhouette, AA'd
   float fs = (dz < 0.0) ? 1.0 : -1.0;         // +1: the front meets the ray
   vec2 qn = (fs > 0.0) ? q0 : q1;             // the near face's intersection
@@ -228,7 +253,7 @@ void main(){
       float ta = (fs > 0.0) ? tT : tB, tb = (fs > 0.0) ? tB : tT;
       for (int k = 0; k < 10; k++){
         float tm = 0.5*(ta + tb);
-        if (sdRR(o.xy + tm*d.xy, b, r) > 0.0) ta = tm; else tb = tm;
+        if (sdPl(o.xy + tm*d.xy, b, r, S) > 0.0) ta = tm; else tb = tm;
       }
       float th = 0.5*(ta + tb);
       vec2 qh = o.xy + th*d.xy;
@@ -437,6 +462,14 @@ function rebuild() {
   }
   const white = "rgba(255,255,255,", black = "rgba(0,0,0,";
   const mAngle = (min) => -Math.PI / 2 + (min / 120) * TAU;
+  // a goal's boss is cast OVER the minute ticks — they don't run through
+  // it; the smooth plateau band does, and the dome swells out of that
+  const goalAngles = M.goals.map((g) => mAngle(g.min));
+  const underGoal = (a) => goalAngles.some((ga) => {
+    let d = Math.abs(a - ga) % TAU;
+    if (d > Math.PI) d = TAU - d;
+    return d < 0.115;
+  });
   // the guarda bands run rim to rim; the through-fixings sit inboard of
   // them — below the top band, above the bottom one — on BOTH faces, so
   // front screw and back washer are the same bolt
@@ -457,20 +490,32 @@ function rebuild() {
     return [PX0 + m, PY0 + PH / 2];
   }
 
+  // the chain's centers — shared by the raised weave and the struck eyes
+  function gpts(halfW) {
+    const dwd = 0.052 * S, railHalf = halfW + 0.02 * S;
+    const n = Math.round((2 * railHalf) / dwd);
+    const sp = (2 * railHalf) / n;
+    const xs = [];
+    for (let i = 0; i < n; i++) xs.push(cx + (i - (n - 1) / 2) * sp);
+    return xs;
+  }
   function guarda(c, gy, halfW) {
     c.fillStyle = "#fff";
-    const bh = 0.030 * S, dwd = 0.052 * S;
-    c.fillRect(cx - halfW - 0.02 * S, gy - bh / 2 - 0.013 * S, 2 * (halfW + 0.02 * S), 0.0035 * S);
-    c.fillRect(cx - halfW - 0.02 * S, gy + bh / 2 + 0.0095 * S, 2 * (halfW + 0.02 * S), 0.0035 * S);
-    // the diamonds kiss: a continuous guarda chain, tip touching tip
-    const n = Math.round((2 * halfW) / dwd);
-    const sp = (2 * halfW) / n;
-    for (let i = 0; i < n; i++) {
-      const dx = cx + (i - (n - 1) / 2) * sp;
+    const bh = 0.030 * S, dwd = 0.052 * S, railHalf = halfW + 0.02 * S;
+    // the rails kiss the diamonds' tips; the chain runs rail-end to
+    // rail-end, tip touching tip — one woven ribbon, edge to edge
+    c.fillRect(cx - railHalf, gy - bh / 2 - 0.0035 * S, 2 * railHalf, 0.0035 * S);
+    c.fillRect(cx - railHalf, gy + bh / 2, 2 * railHalf, 0.0035 * S);
+    for (const dx of gpts(halfW)) {
       for (let j = -3; j <= 3; j++) {
         const bw = dwd * (1 - Math.abs(j) * 0.26);
         c.fillRect(dx - bw / 2, gy + j * (bh / 7) - bh / 14, bw, bh / 7);
       }
+    }
+  }
+  function guardaEyes(c, gy, halfW) {    // a dark eye struck into each diamond
+    for (const dx of gpts(halfW)) {
+      c.beginPath(); c.arc(dx, gy, 0.0052 * S, 0, TAU); c.fill();
     }
   }
 
@@ -522,6 +567,7 @@ function rebuild() {
     // 120 minute ticks; kickoff + period marks longer
     for (let m = 0; m < 120; m++) {
       const a = mAngle(m);
+      if (underGoal(a)) continue;         // covered by the goal's boss
       const per = m === 0 || M.periods.indexOf(m) >= 0;
       const li = (per ? 0.034 : 0.016) * S;
       c.lineWidth = (per ? 0.005 : 0.0028) * S;
@@ -623,6 +669,8 @@ function rebuild() {
             0.0045 * S, 0, TAU);
       c.fill();
     }
+    guardaEyes(c, top + 0.125 * DH, BANDW);
+    guardaEyes(c, top + 0.902 * DH, BANDW);
     setFont(c, 0.013 * S, 500);
     c.textAlign = "right";                // stamped in the outer margin, foundry habit
     c.fillText("FUND. J.A. · Nº 4", PX0 + PW - 0.06 * S, PY0 + PH - 0.0205 * S);
@@ -700,9 +748,11 @@ function rebuild() {
     c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.800 * DH);
   }, 0.0009 * S, 0.28, "lighter");
 
-  /* struck into the back: screw slots, casting pits between rows */
+  /* struck into the back: screw slots, guarda eyes, casting pits */
   layer((c) => {
     c.fillStyle = "#000"; c.strokeStyle = "#000";
+    guardaEyes(c, top + 0.125 * DH, BANDW);
+    guardaEyes(c, top + 0.902 * DH, BANDW);
     const Rq = ART.rng(seed + "screwB");
     c.lineWidth = 0.004 * S;
     for (const [px, py] of fixPts) {
