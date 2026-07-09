@@ -110,7 +110,7 @@ void main(){
   // a fingertip damps the drive locally: grains under it lose their nodal
   // hold, scatter aside, and are pulled back by the tone as the press lifts
   float td = distance(pcc, u_tp);
-  float tAg = u_ts * smoothstep(0.34, 0.06, td);
+  float tAg = u_ts * smoothstep(0.55, 0.05, td);
   float ag2 = max(agit, tAg);
 
   float shake = step(0.05, ag2);
@@ -122,8 +122,8 @@ void main(){
   // per-grain positional jitter while the plate is being retuned or pressed;
   // the press also flicks grains radially from under the finger (the push
   // is a plate-space direction, rotated into the turning field's frame)
-  vec2 pj = pcr + (vec2(h1, h2) - 0.5) * (0.055*agit + 0.10*tAg);
-  pj += R * ((pcc - u_tp)/max(td, 1e-3) * tAg*tAg * 0.06);
+  vec2 pj = pcr + (vec2(h1, h2) - 0.5) * (0.055*agit + 0.24*tAg);
+  pj += R * ((pcc - u_tp)/max(td, 1e-3) * tAg*tAg * 0.15);
 
   // the symmetric pairs are amplified — (1,4) ×1.6, (3,5) ×2.1: their fields
   // are shallow, and unscaled they flood the plate instead of drawing thin
@@ -132,9 +132,9 @@ void main(){
           + w2*chl(pj,3.,4.,-1.) + w3*2.1*chl(pj,3.,5., 1.);
 
   float sandIn = u_arr;                      // sand pours in once, at mount
-  float th = 0.30 + 0.26*agit + 0.20*tAg;    // sand spreads while agitated
+  float th = 0.30 + 0.26*agit + 0.38*tAg;    // sand spreads while agitated
   float dens = pow(smoothstep(th, 0.0, abs(A)), 1.35);
-  dens *= 1.0 - 0.60*tAg*tAg;                // cleared right under the press
+  dens *= 1.0 - 0.88*tAg*tAg;                // cleared right under the press
 
   // sand drifts a touch denser toward the borders, like a real plate's rim
   float bord = max(abs(pcc.x), abs(pcc.y));
@@ -161,7 +161,7 @@ void main(){
   float r1 = smoothstep(1.80, 2.05, ms);
   float r2 = smoothstep(2.80, 3.00, ms);
   float rfade = 1.0 - clamp(ms - 3.0, 0.0, 1.0);
-  float resDens = rfade * (1.0 - 0.8*tAg) * (
+  float resDens = rfade * (1.0 - tAg) * (
       r0*smoothstep(0.16, 0.0, abs(chl(pcr,2.,3.,-1.)))
     + r1*smoothstep(0.16, 0.0, abs(1.6*chl(pcr,1.,4., 1.)))
     + r2*smoothstep(0.16, 0.0, abs(chl(pcr,3.,4.,-1.))));
@@ -270,7 +270,7 @@ function loop(tms) {
            : 3 + (t - 14000) / 2000;
   // the press envelope: a fast attack under the finger, a slow settle
   // after it lifts — the tone pulling the figure back together
-  ts += ((down ? 1 : 0) - ts) * (down ? 0.32 : 0.075);
+  ts += ((down ? 1 : 0) - ts) * (down ? 0.55 : 0.075);
   if (ts < 0.003 && !down) ts = 0;
   sh.gl.uniform1f(sh.extra.u_p, m4);
   sh.gl.uniform1f(sh.extra.u_arr, Math.min(1, total / 600));
