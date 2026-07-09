@@ -132,7 +132,7 @@ opacity:0;pointer-events:none;transition:opacity 320ms ease}
 .panel{position:fixed;z-index:15;left:10px;right:10px;
 top:max(10px,env(safe-area-inset-top));
 bottom:max(10px,env(safe-area-inset-bottom));
-margin:0;border-radius:26px;animation:none;
+margin:0;border-radius:20px;animation:none;
 box-shadow:0 30px 80px rgba(0,0,0,.6);
 transform:translateY(103%);pointer-events:none;
 transition:transform 460ms cubic-bezier(0.32,0.72,0,1)}
