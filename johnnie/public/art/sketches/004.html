@@ -445,27 +445,7 @@ function rebuild() {
   // inset so each screw keeps the same air to the band rail above/below it
   // as to the side rim beside it
   const fixPts = [[PX0 + fixX, top + 0.182 * DH], [PX0 + PW - fixX, top + 0.182 * DH],
-                  [PX0 + fixX, top + 0.818 * DH], [PX0 + PW - fixX, top + 0.818 * DH]];
-  // the ring yields where a goal marker sits — a boss riding on a dashed
-  // tick ring reads as noise, not relief; the ring should stop and let it be
-  const goalAngles = M.goals.map((g) => mAngle(g.min));
-  const nearGoal = (a, half) => goalAngles.some((ga) => {
-    let d = Math.abs(a - ga) % TAU;
-    if (d > Math.PI) d = TAU - d;
-    return d < half;
-  });
-  function gapArc(c, cx0, cy0, r, half) {
-    const N = 240;
-    let open = false;
-    c.beginPath();
-    for (let i = 0; i <= N; i++) {
-      const a = (i / N) * TAU;
-      if (nearGoal(a, half)) { open = false; continue; }
-      const px = cx0 + Math.cos(a) * r, py = cy0 + Math.sin(a) * r;
-      if (!open) { c.moveTo(px, py); open = true; } else c.lineTo(px, py);
-    }
-    c.stroke();
-  }
+                  [PX0 + fixX, top + 0.845 * DH], [PX0 + PW - fixX, top + 0.845 * DH]];
   // casting flaws must not land in the lettering
   const textBands = [[0.175, 0.335], [0.825, 0.905]];
   function flawSpot(Rn, m) {
@@ -526,7 +506,7 @@ function rebuild() {
   }, 0.0022 * S, 0.20, "lighter");
   layer((c) => {
     c.strokeStyle = "#fff"; c.lineWidth = 0.075 * S;
-    gapArc(c, RC.x, RC.y, RR, 0.115);
+    c.beginPath(); c.arc(RC.x, RC.y, RR, 0, TAU); c.stroke();
   }, 0.010 * S, 0.06, "lighter");
 
   /* 4 — raised type, ticks, bands, rays */
@@ -542,7 +522,6 @@ function rebuild() {
     // 120 minute ticks; kickoff + period marks longer
     for (let m = 0; m < 120; m++) {
       const a = mAngle(m);
-      if (nearGoal(a, 0.085)) continue;    // the ring yields at each goal
       const per = m === 0 || M.periods.indexOf(m) >= 0;
       const li = (per ? 0.034 : 0.016) * S;
       c.lineWidth = (per ? 0.005 : 0.0028) * S;
@@ -599,11 +578,10 @@ function rebuild() {
     }
   }, 0.0009 * S, 0.28, "lighter");
 
-  /* 5a — the goal markers sit exactly on the chapter ring; additive blending
-     there summed with the ring's own height and read as a smudge rather
-     than a boss riding on top. "lighten" takes the taller of the two
-     (per-channel max) instead, so the marker cleanly dominates the ring
-     underneath it instead of blending into it. */
+  /* 5a — the goal markers sit on the unbroken ring and SUM with it
+     (additive): the dome's radial falloff rides the ring's height, so
+     each goal reads as a soft bulge swelling out of the ring — a faded
+     shine on the lamp side, a faded shade behind — not a hard boss. */
   layer((c) => {
     c.strokeStyle = "#fff";
     for (const g of M.goals) {
@@ -617,7 +595,7 @@ function rebuild() {
         c.beginPath(); c.arc(bx, by, 0.025 * S, 0, TAU); c.stroke();
       }
     }
-  }, 0.0016 * S, 0.34, "lighten");
+  }, 0.0016 * S, 0.34, "lighter");
 
   /* 5b — sol disc, mounting screws: no ring beneath them, additive is fine */
   layer((c) => {
@@ -719,7 +697,7 @@ function rebuild() {
   layer((c) => {
     c.fillStyle = "#fff";
     setFont(c, 0.020 * S, 500);
-    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.848 * DH);
+    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA  ·  COLADA 07·26", cx, top + 0.800 * DH);
   }, 0.0009 * S, 0.28, "lighter");
 
   /* struck into the back: screw slots, casting pits between rows */
