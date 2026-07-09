@@ -423,7 +423,7 @@ function rebuild() {
   const cx = TW / 2, top = pad - mg;
   const PX0 = pad, PY0 = pad, PW = slabW, PH = faceH;
   const RC = { x: cx, y: top + 0.565 * DH };
-  const RR = 0.27 * S;
+  const RR = 0.245 * S;
 
   hc.width = TW; hc.height = TH;
   const x = hc.getContext("2d", { willReadFrequently: true });
@@ -641,7 +641,7 @@ function rebuild() {
         c.beginPath(); c.arc(bx, by, 0.025 * S, 0, TAU); c.stroke();
       }
     }
-  }, 0.0016 * S, 0.34, "lighter");
+  }, 0.0050 * S, 0.36, "lighter");
 
   /* 5b — sol disc, mounting screws: no ring beneath them, additive is fine */
   layer((c) => {
@@ -650,7 +650,7 @@ function rebuild() {
     for (const [px, py] of fixPts) dome(c, px, py, 0.015 * S, white);
   }, 0.0016 * S, 0.34, "lighter");
 
-  /* 6 — struck into the metal: bowls, engravings, pits, screw slots */
+  /* 5c — struck goal marks share the swells' softness: a blurred dark */
   layer((c) => {
     c.fillStyle = "#000"; c.strokeStyle = "#000";
     for (const g of M.goals) {
@@ -662,6 +662,11 @@ function rebuild() {
         c.beginPath(); c.arc(bx, by, 0.038 * S, 0, TAU); c.stroke();
       }
     }
+  }, 0.0050 * S, 0.32);
+
+  /* 6 — struck into the metal: engravings, pits, screw slots */
+  layer((c) => {
+    c.fillStyle = "#000"; c.strokeStyle = "#000";
     for (const bm of M.breaks) {        // hydration notches
       const a = mAngle(bm);
       c.beginPath();
