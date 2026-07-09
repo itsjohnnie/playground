@@ -146,7 +146,9 @@ body.open .pill{opacity:0;pointer-events:none}
 .go{margin-top:24px}   /* the sheet keeps its air above the arrows */
 .x{display:flex;align-items:center;justify-content:center;margin:0 auto;
 cursor:pointer;background:none;border:0;color:inherit;font:inherit;
-font-size:clamp(26px,7cqi,38px);line-height:1;padding:6px 2px;
+/* the ✕ glyph draws smaller than the arrows at equal size — set it a
+   step up so the three read as one family */
+font-size:clamp(30px,8.2cqi,44px);line-height:1;padding:6px 2px;
 transition:transform 160ms cubic-bezier(0.23,1,0.32,1)}
 .x:active{transform:scale(0.9)}
 @media (prefers-reduced-motion:reduce){.panel{transition:none}}
