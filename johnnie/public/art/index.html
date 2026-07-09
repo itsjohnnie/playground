@@ -217,63 +217,84 @@
   addEventListener("pagereveal", (e) => {
     if (e.viewTransition) document.documentElement.classList.add("vt");
   });
+  // returning within the session, the entrance has already played once —
+  // don't make the visitor wait through the choreography again (this also
+  // covers browsers without cross-document view transitions)
+  try {
+    if (sessionStorage.getItem("atelier-seen")) document.documentElement.classList.add("vt");
+    sessionStorage.setItem("atelier-seen", "1");
+  } catch (_) {}
+
   const days = document.getElementById("days");
-  fetch("sketches.json")
-    .then((r) => r.json())
-    .then((data) => {
-      // one line per day: the subject, newest first; a line opens the first
-      // piece of that day and the walk continues with the arrows
-      const sorted = data.sketches.slice()
-        .sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n));
-      if (!sorted.length) {
-        days.innerHTML = '<p class="note">the atelier is empty — the first piece is on its way.</p>';
-        return;
+  function render(data) {
+    days.textContent = "";
+    // one line per day: the subject, newest first; a line opens the first
+    // piece of that day and the walk continues with the arrows
+    const sorted = data.sketches.slice()
+      .sort((a, b) => b.date.localeCompare(a.date) || a.n.localeCompare(b.n));
+    if (!sorted.length) {
+      days.innerHTML = '<p class="note">the atelier is empty — the first piece is on its way.</p>';
+      return;
+    }
+    const seen = new Set();
+    let i = 0;
+    sorted.forEach((s) => {
+      if (seen.has(s.date)) return;
+      seen.add(s.date);
+      // a match with no piece yet (upcoming) is a dimmed, non-interactive
+      // row — nothing to open until the piece is made
+      const upcoming = s.status === "upcoming" || !s.file;
+      const a = document.createElement(upcoming ? "div" : "a");
+      a.className = "day" + (upcoming ? " upcoming" : "");
+      if (!upcoming) {
+        // production serves extensionless URLs — link directly so the view
+        // transition isn't broken by a redirect; local dev keeps .html
+        a.href = location.pathname.endsWith(".html")
+          ? s.file : s.file.replace(/\.html$/, "");
+      } else {
+        a.setAttribute("aria-disabled", "true");
       }
-      const seen = new Set();
-      let i = 0;
-      sorted.forEach((s) => {
-        if (seen.has(s.date)) return;
-        seen.add(s.date);
-        // a match with no piece yet (upcoming) is a dimmed, non-interactive
-        // row — nothing to open until the piece is made
-        const upcoming = s.status === "upcoming" || !s.file;
-        const a = document.createElement(upcoming ? "div" : "a");
-        a.className = "day" + (upcoming ? " upcoming" : "");
-        if (!upcoming) {
-          // production serves extensionless URLs — link directly so the view
-          // transition isn't broken by a redirect; local dev keeps .html
-          a.href = location.pathname.endsWith(".html")
-            ? s.file : s.file.replace(/\.html$/, "");
-        } else {
-          a.setAttribute("aria-disabled", "true");
-        }
-        a.style.setProperty("--d", 220 + Math.min(i++ * 55, 440) + "ms");
-        const date = s.date.split("-").reverse().join(" · "); // 2026-07-06 → 06 · 07 · 2026
-        // the list names only the opponent — every match is Argentina's,
-        // and one word stays on one line
-        const rival = (s.subject || s.title)
-          .replace("Argentina vs. ", "").replace(" vs. Argentina", "");
-        a.innerHTML = '<span class="t">' + rival + '</span>' +
-          '<span class="meta">' +
-            (s.stage ? '<span class="stg">' + s.stage + "</span>" : "") +
-            '<span class="d">' + date + "</span>" +
-          "</span>";
-        days.appendChild(a);
-      });
-      // prerender a day the moment it's hovered or touched — activation is
-      // instant, no load flicker; unsupporting browsers ignore this
-      const spec = document.createElement("script");
-      spec.type = "speculationrules";
-      spec.textContent = JSON.stringify({
-        prerender: [{
-          urls: Array.from(days.querySelectorAll("a.day"), (el) => el.getAttribute("href")),
-          eagerness: "moderate",
-        }],
-      });
-      document.head.appendChild(spec);
+      a.style.setProperty("--d", 220 + Math.min(i++ * 55, 440) + "ms");
+      const date = s.date.split("-").reverse().join(" · "); // 2026-07-06 → 06 · 07 · 2026
+      // the list names only the opponent — every match is Argentina's,
+      // and one word stays on one line
+      const rival = (s.subject || s.title)
+        .replace("Argentina vs. ", "").replace(" vs. Argentina", "");
+      a.innerHTML = '<span class="t">' + rival + '</span>' +
+        '<span class="meta">' +
+          (s.stage ? '<span class="stg">' + s.stage + "</span>" : "") +
+          '<span class="d">' + date + "</span>" +
+        "</span>";
+      days.appendChild(a);
+    });
+    // prerender a day the moment it's hovered or touched — activation is
+    // instant, no load flicker; unsupporting browsers ignore this
+    const spec = document.createElement("script");
+    spec.type = "speculationrules";
+    spec.textContent = JSON.stringify({
+      prerender: [{
+        urls: Array.from(days.querySelectorAll("a.day"), (el) => el.getAttribute("href")),
+        eagerness: "moderate",
+      }],
+    });
+    document.head.appendChild(spec);
+  }
+
+  // the manifest is cached by whichever page fetched it last (the piece
+  // pages seed it too), so a return trip renders the list synchronously —
+  // before first paint, inside the view-transition snapshot: no blank gap
+  let cachedRaw = null;
+  try { cachedRaw = sessionStorage.getItem("atelier-manifest"); } catch (_) {}
+  if (cachedRaw) { try { render(JSON.parse(cachedRaw)); } catch (_) { cachedRaw = null; } }
+  fetch("sketches.json")
+    .then((r) => r.text())
+    .then((raw) => {
+      try { sessionStorage.setItem("atelier-manifest", raw); } catch (_) {}
+      if (raw !== cachedRaw) render(JSON.parse(raw));   // fresh, or changed
     })
     .catch(() => {
-      days.innerHTML = '<p class="note">the atelier didn’t load — reload to try again.</p>';
+      if (!cachedRaw)
+        days.innerHTML = '<p class="note">the atelier didn’t load — reload to try again.</p>';
     });
 </script>
 </html>
