@@ -143,6 +143,18 @@ transition:transform 460ms cubic-bezier(0.32,0.72,0,1)}
 body.open .panel{transform:none;pointer-events:auto}
 body.open .scrim{opacity:1;pointer-events:auto}
 body.open .pill{opacity:0;pointer-events:none}
+/* the pill IS the sheet: same view-transition-name on whichever of the
+   two is live, so opening morphs the button into the card (and closing
+   collapses the card back into it). The slide transition is disabled
+   for the flip itself (body.vt) — the browser animates the snapshots. */
+.pill{view-transition-name:pill-sheet}
+body.open .pill{view-transition-name:none}
+body.open .panel{view-transition-name:pill-sheet}
+body.vt .panel,body.vt .pill,body.vt .scrim{transition:none}
+::view-transition-group(pill-sheet){animation-duration:440ms;
+animation-timing-function:cubic-bezier(0.32,0.72,0,1)}
+::view-transition-old(pill-sheet),::view-transition-new(pill-sheet){
+height:100%;width:100%;object-fit:cover;animation-duration:440ms}
 .go{margin-top:24px}   /* the sheet keeps its air above the arrows */
 .x{display:flex;align-items:center;justify-content:center;margin:0 auto;
 cursor:pointer;background:none;border:0;color:inherit;font:inherit;
@@ -230,8 +242,19 @@ ${og ? `.go,.desc,.specs,.cap{display:none!important}
       if (e.viewTransition) panel.style.animation = "none";
     });
 
-    // the sheet-modal (phones)
-    const setOpen = (v) => document.body.classList.toggle("open", v);
+    // the sheet-modal (phones): where the browser can, the pill MORPHS
+    // into the card (same-document view transition) instead of the card
+    // sliding up; elsewhere — and under reduced motion — the slide stays
+    const setOpen = (v) => {
+      if (v === document.body.classList.contains("open")) return;
+      const flip = () => document.body.classList.toggle("open", v);
+      if (!document.startViewTransition ||
+          !matchMedia("(max-width: 820px)").matches ||
+          matchMedia("(prefers-reduced-motion: reduce)").matches) { flip(); return; }
+      document.body.classList.add("vt");
+      document.startViewTransition(flip).finished
+        .finally(() => document.body.classList.remove("vt"));
+    };
     pill.addEventListener("click", () => setOpen(true));
     panel.querySelector(".x").addEventListener("click", () => setOpen(false));
     scrim.addEventListener("click", () => setOpen(false));
