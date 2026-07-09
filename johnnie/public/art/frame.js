@@ -100,7 +100,11 @@ line-height:1;padding:6px 2px;transition:transform 180ms cubic-bezier(0.23,1,0.3
 @media (hover:hover) and (pointer:fine){
 .go a.next:hover{transform:translateX(5px)}
 .go a.prev:hover{transform:translateX(-5px)}}
+html{-webkit-tap-highlight-color:transparent}
 .room{position:relative;display:flex;align-items:center;justify-content:center;min-width:0}
+/* the artwork is a surface, not a document: no text selection, no
+   long-press callout — gestures belong to the piece */
+.room,.room *,.pill{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .art{position:relative;background:${artBg};overflow:hidden}
 .art canvas.art-c{position:absolute;inset:0;width:100%;height:100%;display:block}
 .scrim,.pill,.x{display:none}
