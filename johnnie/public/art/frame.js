@@ -291,7 +291,13 @@ ${og ? `.go,.desc,.specs,.cap{display:none!important}
       // basenames with the extension stripped.
       const base = (p) => p.split("/").pop().replace(/\.html$/, "");
       fetch("../sketches.json")
-        .then((r) => r.json())
+        .then((r) => r.text())
+        .then((raw) => {
+          // seed the index's manifest cache so ← Art renders the day list
+          // synchronously, with no fetch gap inside the view transition
+          try { sessionStorage.setItem("atelier-manifest", raw); } catch (_) {}
+          return JSON.parse(raw);
+        })
         .then((d) => {
           // the walk runs in match order: ← toward #1, → toward the latest.
           // No wrap — at either end the arrow dims and goes inert.
