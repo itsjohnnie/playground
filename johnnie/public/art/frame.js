@@ -91,7 +91,7 @@ gap:16px;padding:clamp(11px,2.8cqi,15px) 0;border-bottom:1px solid rgba(22,19,15
 .specs .row:last-child{border-bottom:0}
 .specs .k{font-weight:520;font-size:clamp(10.5px,2.5cqi,12px);letter-spacing:.06em;
 text-transform:uppercase;color:rgba(22,19,15,.62)}
-.specs .v{text-align:right}
+.specs .v{text-align:right;font-variant-numeric:tabular-nums}
 .specs .m-date{display:none}
 .go{margin-top:0;display:flex;justify-content:space-between;align-items:center}
 .go a,.go .off{color:inherit;text-decoration:none;font-size:clamp(26px,7cqi,38px);
@@ -142,6 +142,7 @@ body.open .scrim{transition-duration:320ms}
 .panel{position:fixed;z-index:15;left:10px;right:10px;
 top:max(10px,env(safe-area-inset-top));
 bottom:max(10px,env(safe-area-inset-bottom));
+touch-action:pan-y;overscroll-behavior:contain;
 margin:0;border-radius:20px;animation:none;
 box-shadow:0 30px 80px rgba(0,0,0,.6);
 transform:translateY(103%);pointer-events:none;
@@ -281,6 +282,65 @@ ${og ? `.go,.desc,.specs,.cap{display:none!important}
     panel.querySelector(".x").addEventListener("click", () => setOpen(false));
     scrim.addEventListener("click", () => setOpen(false));
     addEventListener("keydown", (e) => { if (e.key === "Escape") setOpen(false); });
+
+    // drag the sheet down to dismiss — momentum counts (a flick is enough,
+    // no threshold march); dragging up meets damped resistance, like a
+    // sheet on a hinge. Engages only when pulling DOWN from the top of
+    // the sheet's own scroll, so scrolling stays scrolling.
+    (function sheetDrag() {
+      let id = -1, y0 = 0, dy = 0, t0 = 0, engaged = false;
+      panel.addEventListener("pointerdown", (e) => {
+        if (id >= 0 || !document.body.classList.contains("open")) return;
+        if (!matchMedia("(max-width: 820px)").matches) return;
+        if (e.target.closest("a,button")) return;   // taps on controls stay taps
+        id = e.pointerId; y0 = e.clientY; dy = 0; t0 = performance.now();
+        engaged = false;
+      });
+      panel.addEventListener("pointermove", (e) => {
+        if (e.pointerId !== id) return;
+        const d = e.clientY - y0;
+        if (!engaged) {
+          if (d > 6 && panel.scrollTop <= 0) {
+            engaged = true;
+            try { panel.setPointerCapture(id); } catch (_) {}
+            panel.style.willChange = "transform";
+            panel.style.transition = "none";
+            scrim.style.transition = "none";
+          } else if (d < -6 || panel.scrollTop > 0) { id = -1; return; }
+          else return;
+        }
+        dy = d;
+        // transform set directly on the element — a CSS variable here would
+        // recalc style for every child on every frame
+        const y = d >= 0 ? d : -24 * Math.tanh(-d / 24);
+        panel.style.transform = "translateY(" + y + "px)";
+        scrim.style.opacity = String(Math.max(0, 1 - Math.max(d, 0) / panel.offsetHeight));
+      });
+      const end = (e) => {
+        if (e.pointerId !== id) return;
+        id = -1;
+        if (!engaged) return;
+        engaged = false;
+        const vel = dy / Math.max(1, performance.now() - t0);   // px per ms
+        panel.style.willChange = "";
+        panel.style.transition = "";
+        scrim.style.transition = "";
+        scrim.style.opacity = "";
+        if (dy > panel.offsetHeight * 0.32 || (vel > 0.11 && dy > 24)) {
+          // dismiss along the slide from where the finger left it — the
+          // pill morph would fight a half-dragged sheet
+          document.body.classList.remove("open");
+          requestAnimationFrame(() => { panel.style.transform = ""; });
+        } else {
+          // let go: the transition retargets from the dragged position
+          // back to rest — transitions, not keyframes, so it's
+          // interruptible if the finger comes straight back
+          panel.style.transform = "";
+        }
+      };
+      panel.addEventListener("pointerup", end);
+      panel.addEventListener("pointercancel", end);
+    })();
 
     if (!thumb) {
       // clicks never restart the piece; reseed is the r key only
