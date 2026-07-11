@@ -758,19 +758,17 @@ function rebuild() {
     plaquePath(c, 0.042 * S, 0.012 * S); c.stroke();
   }, 0.0022 * S, 0.20, "lighter");
 
-  /* the honor roll: a diamond crowns eleven names, the colophon signs.
-     The guarda bands run the full width, rim to rim; the screws step
-     inboard — below the top band, above the bottom one — to clear them. */
-  const rowY = (i) => top + (0.272 + i * 0.0472) * DH;
+  /* the honor roll: the three stars crown eleven names, the colophon
+     signs. The guarda bands run the full width, rim to rim; the screws
+     step inboard — below the top band, above the bottom one. */
+  const rowY = (i) => top + (0.262 + i * 0.0472) * DH;
   layer((c) => {
     c.fillStyle = "#fff"; c.strokeStyle = "#fff";
     guarda(c, top + 0.125 * DH, BANDW);
     guarda(c, top + 0.902 * DH, BANDW);
-    const dy = top + 0.232 * DH, dw = 0.016 * S;
-    c.beginPath();
-    c.moveTo(cx - dw, dy); c.lineTo(cx, dy - dw * 0.55);
-    c.lineTo(cx + dw, dy); c.lineTo(cx, dy + dw * 0.55);
-    c.closePath(); c.fill();
+    // the tricampeón's stars, cast above the eleven
+    setFont(c, 0.021 * S, 600);
+    c.fillText("★  ★  ★", cx, top + 0.216 * DH);
     setFont(c, 0.0335 * S);
     M.xi.arg.forEach((nm, i) => c.fillText(nm.toUpperCase(), cx, rowY(i)));
   }, 0.0016 * S, 0.26, "lighter");
