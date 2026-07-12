@@ -128,8 +128,8 @@ function build() {
     // every measure to the Laws of the Game, 68 m across × 105 m long:
     // boxes 40.32 × 16.5, goal areas 18.32 × 5.5, spots at 11, circle and
     // arcs r 9.15, corners r 1 — fractions of the pitch's own axes
-    const rC = (9.15 / 68) * pit.w;
-    g.beginPath(); g.arc(pit.x + pit.w / 2, pit.y + pit.h / 2, rC, 0, TAU); g.stroke();
+    const rCx = (9.15 / 68) * pit.w, rCy = (9.15 / 105) * pit.h;
+    g.beginPath(); g.ellipse(pit.x + pit.w / 2, pit.y + pit.h / 2, rCx, rCy, 0, 0, TAU); g.stroke();
     const box = (yTop) => {
       const bw = (40.32 / 68) * pit.w, bh = (16.5 / 105) * pit.h;
       const gw = (18.32 / 68) * pit.w, gh = (5.5 / 105) * pit.h;
@@ -144,20 +144,21 @@ function build() {
         g.stroke();
       };
       sides(bw, bh); sides(gw, gh);
-      // the penalty arc: only the part that lives outside the box
+      // the penalty arc: only the part outside the box — in metres the
+      // cut angle is exact: acos(5.5 / 9.15)
       const sy = y0 + dir * (11 / 105) * pit.h;
-      const dth = Math.acos(Math.min(0.95, ((16.5 - 11) / 105) * pit.h / rC));
+      const dth = Math.acos(5.5 / 9.15);
       const ca = yTop ? Math.PI / 2 : -Math.PI / 2;
       g.beginPath();
-      g.arc(pit.x + pit.w / 2, sy, rC, ca - dth, ca + dth);
+      g.ellipse(pit.x + pit.w / 2, sy, rCx, rCy, 0, ca - dth, ca + dth);
       g.stroke();
     };
     box(true); box(false);
-    // corner arcs, r 1 m
-    const rK = (1 / 68) * pit.w * 2.2;      // held legible at sheet scale
+    // corner arcs, r 1 m (held legible at sheet scale, per-axis true)
+    const rKx = (1 / 68) * pit.w * 2.2, rKy = (1 / 105) * pit.h * 2.2;
     for (const [cx2, cy2, a0] of [[pit.x, pit.y, 0], [pit.x + pit.w, pit.y, Math.PI / 2],
                                   [pit.x + pit.w, pit.y + pit.h, Math.PI], [pit.x, pit.y + pit.h, -Math.PI / 2]]) {
-      g.beginPath(); g.arc(cx2, cy2, rK, a0, a0 + Math.PI / 2); g.stroke();
+      g.beginPath(); g.ellipse(cx2, cy2, rKx, rKy, 0, a0, a0 + Math.PI / 2); g.stroke();
     }
     // spots: penalties and the centre
     g.globalAlpha = 0.4; g.fillStyle = "#5c564a";
@@ -323,9 +324,10 @@ function press(g, k, drift) {
       // each dot is its own kiss of the press: top-to-bottom, a beat apart
       const ds = plates.dots.slice().sort((a, b) => a.y1 - b.y1);
       ds.forEach((d, j) => {
-        const s0 = (j / ds.length) * 0.72;
-        const a = Math.min(1, Math.max(0, (u - s0) / 0.26));
+        const s0 = (j / ds.length) * 0.68;
+        let a = Math.min(1, Math.max(0, (u - s0) / 0.32));
         if (a <= 0) return;
+        a = 1 - (1 - a) * (1 - a);           // ease-out: no hard pop at birth
         const dj = plates.dots.indexOf(d);
         const e = easeIO(Math.min(1, Math.max(0, drift * 1.9 - (dj / plates.dots.length) * 0.9)));
         const x = d.x1 + (d.x2 - d.x1) * e, y = d.y1 + (d.y2 - d.y1) * e;
@@ -359,7 +361,8 @@ function press(g, k, drift) {
 const comp = document.createElement("canvas");
 function drawAt(k, drift) {
   const { pw, ph, px, py } = geom();
-  comp.width = Math.ceil(pw * DPR); comp.height = Math.ceil(ph * DPR);
+  const cw = Math.ceil(pw * DPR), ch = Math.ceil(ph * DPR);
+  if (comp.width !== cw || comp.height !== ch) { comp.width = cw; comp.height = ch; }
   press(comp.getContext("2d"), k, drift || 0);
 
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -370,8 +373,9 @@ function drawAt(k, drift) {
   ctx.shadowOffsetY = 0.018 * pw;
   ctx.drawImage(comp, px, py, pw, ph);
   ctx.restore();
-  // film grain over the photograph of the print
-  const Rg = ART.rng(seed + "-g" + ((k * 7) | 0));
+  // film grain over the photograph of the print — one seed per pull, so
+  // the sheet never shimmers while the press or the drift is moving
+  const Rg = ART.rng(seed + "-g" + pull);
   ctx.globalAlpha = 0.05;
   for (let i = 0; i < 340; i++) {
     ctx.fillStyle = Rg() < 0.5 ? "#000" : "#fff";
