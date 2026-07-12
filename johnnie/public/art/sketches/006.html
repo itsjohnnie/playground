@@ -2,17 +2,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>#6 · Afiche — Argentina vs. Switzerland · Johnnie&#x27;s atelier</title>
-<meta name="description" content="A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
+<meta name="description" content="A matchday poster off an offset press, mailed folded to eighths: it arrives as a small packet wearing both federations' shields and opens fold by fold. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://johnnies.life/art/sketches/006">
 <meta property="og:title" content="#6 · Afiche — Argentina vs. Switzerland · Johnnie&#x27;s atelier">
-<meta property="og:description" content="A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
+<meta property="og:description" content="A matchday poster off an offset press, mailed folded to eighths: it arrives as a small packet wearing both federations' shields and opens fold by fold. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
 <meta property="og:image" content="https://johnnies.life/art/og/006.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="#6 · Afiche — Argentina vs. Switzerland · Johnnie&#x27;s atelier">
-<meta name="twitter:description" content="A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
+<meta name="twitter:description" content="A matchday poster off an offset press, mailed folded to eighths: it arrives as a small packet wearing both federations' shields and opens fold by fold. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
 <meta name="twitter:image" content="https://johnnies.life/art/og/006.png">
 <body>
 <style>
@@ -28,6 +28,17 @@ font-weight:100 900;font-style:normal;font-display:swap}
    chrome (panel, pill, nav) speaks Inter too — html body outranks the
    frame's own body rule, which lands later in document order */
 html body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif}
+/* the unfold: the poster arrives folded to eighths, as mailed — a DOM of
+   hinged panels textured with the pressed sheet, opened by the Web
+   Animations API, then handed to the live canvas */
+.uf{position:absolute;z-index:2;pointer-events:none;perspective:1300px}
+.uf,.uf div{transform-style:preserve-3d}
+.uf .g3{position:absolute;inset:0}
+.uf .pn{position:absolute}
+.uf .fc,.uf .bk{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.uf .bk{transform:rotateY(180deg);background-color:#ece6d9}
+.uf .gz{position:absolute;inset:0}
+.uf .shd{position:absolute;border-radius:2px}
 </style>
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
@@ -43,12 +54,16 @@ html body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif}
 // average positions as spot-color dots, three goal mouths ringed with
 // their minutes, the score in giant grotesk, the fixture's own facts in
 // the margins, crop marks and a three-ink color bar in the trim.
-// Arrival IS the press run: the plates roller in one after another,
-// every player stamps in at his first-half post and drifts to his
-// second-half mean; then the piece rests (no rAF). A quick tap walks the
-// eleven BACK to their first-half posts — another sends them on again —
-// the drift is a dial retargeted smoothly, even mid-flight. Drag does
-// nothing here; paper is not bronze. Reduced motion: instant states.
+// Arrival is the mail: the poster lands as a packet folded to eighths,
+// cover wearing both federations' shields, and opens fold by fold — real
+// 3D hinges over a snapshot of the pressed sheet, each panel keeping a
+// few degrees of crease memory before a palm smooths it flat. Then the
+// live canvas takes over: every player stamps in at his first-half post
+// and drifts to his second-half mean; the piece rests (no rAF). A quick
+// tap walks the eleven BACK to their first-half posts — another sends
+// them on again — the drift is a dial retargeted smoothly, even
+// mid-flight. Drag does nothing here; paper is not bronze. Reduced
+// motion: instant states, no unfold.
 
 const seed = ART.seed("2026-07-11-006");
 const M = window.M6;
@@ -66,7 +81,7 @@ const F = FRAME.mount({
   num: 6, title: "Afiche", subject: "Argentina vs. Switzerland",
   edition: "06/8", date: "11·07·2026",
   stack: "Canvas 2D — offset press", time: "117 minutes",
-  desc: "A matchday poster off an offset press, mailed folded to eighths — opened flat, the creases stay and the ink cracks thin along them. The plates land one by one, each a breath out of register; every player stamps in at his first-half post, then drifts to where the match pulled him. Ninety scoreless minutes; la prórroga gives it 3–1. Tap, and the eleven walk back to kickoff.",
+  desc: "A matchday poster off an offset press, each plate a breath out of register — mailed folded to eighths, it arrives as a small packet wearing both federations' shields and opens fold by fold; the creases stay, and the ink cracks thin along them. Every player stamps in at his first-half post, then drifts to where the match pulled him. Ninety scoreless minutes; la prórroga gives it 3–1. Tap, and the eleven walk back to kickoff.",
   dark: true, open: true, gesture: true,
   onResize(w, h, dpr) {
     W = w / dpr; H = h / dpr; DPR = dpr;   // design in css px, draw at dpr
@@ -122,6 +137,9 @@ function font(g, px, wgt, track) {
 }
 
 function build() {
+  // a resize mid-unfold: the overlay's geometry is stale — drop it and
+  // let the finished sheet carry on
+  if (ufEl) { ufEl.remove(); ufEl = null; }
   const { pw, ph } = geom();
   const S = pw;                        // design unit: the sheet's width
   const m = 0.075 * S;                 // trim margin (live area inside)
@@ -324,7 +342,9 @@ function bakeSheet(R) {
       });
     }
   }
-  plates.order = ["under", "dots", "black", "bar"];
+  // dots pressed last: multiply is commutative, and k = 3 is then the
+  // finished sheet sans players — the face the unfold reveals
+  plates.order = ["under", "black", "bar", "dots"];
   plates.reg = plates.order.map(() => ({
     dx: (R() - 0.5) * 0.0035 * pw, dy: (R() - 0.5) * 0.0035 * pw,
     rot: (R() - 0.5) * 0.0016,
@@ -443,32 +463,260 @@ function drawAt(k, drift) {
 
 function drawFinal() { drawAt(plates.order.length, driftCur); }
 
-/* ---------------- the run: five plates, then rest ---------------- */
+/* ---------------- the unfold: mailed folded to eighths ---------------- */
 
-const PLATE_MS = 300, GAP_MS = 90, DOT_MS = 900, PAUSE_MS = 340, DRIFT_MS = 1300;
+// fold order on the mailing table: top half back, bottom quarter back,
+// left half over the front. The DOM opens them in reverse — vertical
+// first (the cover swings toward you like a card), then the bottom
+// quarter drops, then the top half rises. Rigid-subtree model: each
+// column carries its own row hinges, animated in sync.
+let ufEl = null;
+const UF_SLOW = +new URLSearchParams(location.search).get("ufslow") || 1;
+
+function paperURL() {
+  // the back of the stock — unprinted, a shade lighter, same fibre
+  const Rp = ART.rng(seed + "-back");
+  return mkPlate(180, 180, (g) => {
+    g.fillStyle = "#ece6d9"; g.fillRect(0, 0, 180, 180);
+    g.globalAlpha = 0.06;
+    for (let i = 0; i < 220; i++) {
+      g.fillStyle = Rp() < 0.5 ? "#fff" : "#8a8272";
+      g.fillRect(Rp() * 180, Rp() * 180, 1 + Rp() * 2.4, 0.7);
+    }
+  }).toDataURL();
+}
+
+function shieldPath(g, cx, cy, w, h) {
+  const x0 = cx - w / 2, y0 = cy - h / 2;
+  g.beginPath();
+  g.moveTo(x0, y0); g.lineTo(x0 + w, y0); g.lineTo(x0 + w, y0 + 0.52 * h);
+  g.quadraticCurveTo(x0 + w, y0 + 0.84 * h, cx, y0 + h);
+  g.quadraticCurveTo(x0, y0 + 0.84 * h, x0, y0 + 0.52 * h);
+  g.closePath();
+}
+
+function coverURL(w, h) {
+  // the packet's face: what the mailer printed on the outside — the two
+  // federations' marks, reference not copy, in the poster's own inks
+  const Rv = ART.rng(seed + "-cover");
+  return mkPlate(w, h, (g) => {
+    g.fillStyle = "#ece6d9"; g.fillRect(0, 0, w, h);
+    g.globalAlpha = 0.06;
+    for (let i = 0; i < 260; i++) {
+      g.fillStyle = Rv() < 0.5 ? "#fff" : "#8a8272";
+      g.fillRect(Rv() * w, Rv() * h, 1 + Rv() * 2.4, 0.7);
+    }
+    g.globalAlpha = 1;
+    // handled edges: every side of this panel is a fold
+    for (const [x0, y0, x1, y1] of [[0, 0, 0, h], [w, 0, w, h], [0, 0, w, 0], [0, h, w, h]]) {
+      const gr = g.createLinearGradient(x0, y0, x0 === x1 ? x0 + (x0 ? -10 : 10) : x0, x0 === x1 ? y0 : y0 + (y0 ? -10 : 10));
+      gr.addColorStop(0, "rgba(74,60,42,0.10)"); gr.addColorStop(1, "rgba(74,60,42,0)");
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    }
+    const hs = 0.40 * h, ws = 0.82 * hs, gap = 0.30 * ws;
+    const cy = 0.42 * h;
+    // AFA — celeste and white stripes, the letters across
+    const cxA = w / 2 - ws / 2 - gap / 2;
+    g.save();
+    shieldPath(g, cxA, cy, ws, hs); g.clip();
+    for (let i = 0; i < 5; i++) {
+      g.fillStyle = i % 2 ? "#f4efe2" : M.ink.celeste;
+      g.fillRect(cxA - ws / 2 + (i * ws) / 5, cy - hs / 2, ws / 5 + 0.5, hs);
+    }
+    g.fillStyle = M.ink.negro; g.textAlign = "center"; g.textBaseline = "alphabetic";
+    font(g, 0.30 * hs, 700, 0.02);
+    g.fillText("AFA", cxA, cy + 0.09 * hs);
+    g.restore();
+    shieldPath(g, cxA, cy, ws, hs);
+    g.strokeStyle = M.ink.negro; g.lineWidth = Math.max(1, 0.02 * ws); g.stroke();
+    // Switzerland — the red field, the white cross
+    const cxS = w / 2 + ws / 2 + gap / 2;
+    shieldPath(g, cxS, cy, ws, hs);
+    g.fillStyle = M.ink.rojo; g.fill(); g.stroke();
+    const t = 0.20 * ws, L = 0.54 * ws, cyc = cy - 0.04 * hs;
+    g.fillStyle = "#f4efe2";
+    g.fillRect(cxS - t / 2, cyc - L / 2, t, L);
+    g.fillRect(cxS - L / 2, cyc - t / 2, L, t);
+    // the address line
+    g.fillStyle = M.ink.negro; g.textAlign = "center";
+    font(g, 0.105 * h, 560, 0.05);
+    g.fillText("ARGENTINA — SUIZA", w / 2, 0.78 * h);
+    font(g, 0.085 * h, 430, 0);
+    g.globalAlpha = 0.72;
+    g.fillText("World Cup 2026 · M61", w / 2, 0.90 * h);
+  }).toDataURL();
+}
+
+function ufDiv(cls, parent, st) {
+  const d = document.createElement("div");
+  d.className = cls;
+  if (st) Object.assign(d.style, st);
+  parent.appendChild(d);
+  return d;
+}
+
+function unfold() {
+  return new Promise((resolve) => {
+    const { pw, ph, px, py } = geom();
+    const cw = pw / 2, qh = ph / 4;
+    const cwp = Math.ceil(pw * DPR), chp = Math.ceil(ph * DPR);
+    if (comp.width !== cwp || comp.height !== chp) { comp.width = cwp; comp.height = chp; }
+    press(comp.getContext("2d"), 3, 0);
+    const art = "url(" + comp.toDataURL("image/png") + ")";
+    const paper = "url(" + paperURL() + ")";
+    const cover = "url(" + coverURL(cw, qh) + ")";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);           // the overlay carries the scene
+
+    const uf = ufEl = ufDiv("uf", F.stage, {
+      left: px + "px", top: py + "px", width: pw + "px", height: ph + "px",
+    });
+    const ufg = ufDiv("g3", uf);
+    const shd = ufDiv("shd", ufg, {
+      boxShadow: "0 " + (0.018 * pw).toFixed(1) + "px " + (0.055 * pw).toFixed(1) + "px rgba(0,0,0,0.55)",
+      transform: "translateZ(-30px)",
+    });
+
+    const panel = (parent, x, y, ax, ay, bk) => {
+      const pn = ufDiv("pn", parent, { left: x + "px", top: y + "px", width: cw + "px", height: qh + "px" });
+      const fc = ufDiv("fc", pn, {
+        backgroundImage: art, backgroundSize: pw + "px " + ph + "px",
+        backgroundPosition: -ax + "px " + -ay + "px",
+      });
+      const gz = ufDiv("gz", fc);
+      ufDiv("bk", pn, bk === "cover"
+        ? { backgroundImage: cover, backgroundSize: "100% 100%" }
+        : { backgroundImage: paper, backgroundSize: "90px 90px" });
+      return { pn, gz };
+    };
+    const col = (left, ax, coverA) => {
+      const c = ufDiv("pn", ufg, { left: left + "px", top: "0px", width: cw + "px", height: ph + "px" });
+      const C = panel(c, 0, 0.5 * ph, ax, 0.5 * ph);
+      const D = panel(c, 0, 0.75 * ph, ax, 0.75 * ph);
+      D.pn.style.transformOrigin = "50% 0%";
+      const AB = ufDiv("pn", c, { left: "0px", top: "0px", width: cw + "px", height: 0.5 * ph + "px", transformOrigin: "50% 100%" });
+      const B = panel(AB, 0, 0.25 * ph, ax, 0.25 * ph);
+      const A = panel(AB, 0, 0, ax, 0, coverA ? "cover" : 0);
+      A.pn.style.transformOrigin = "50% 100%";
+      return { c, C, D, AB, B, A };
+    };
+    const R2 = col(cw, cw, false);
+    const L2 = col(0, 0, true);          // the cover rides A-left's back
+    L2.c.style.transformOrigin = "100% 50%";
+
+    // the score: entrance beat, three openings (each with a paper wobble
+    // past flat), a rest at crease-memory angles, then the palm
+    const T_U1 = 420 * UF_SLOW, D_U1 = 700 * UF_SLOW;
+    const T_U2 = 1030 * UF_SLOW, D_U2 = 620 * UF_SLOW;
+    const T_U3 = 1560 * UF_SLOW, D_U3 = 700 * UF_SLOW;
+    const T_FLAT = 2700 * UF_SLOW, D_FLAT = 520 * UF_SLOW;
+    const T_FADE = 3300 * UF_SLOW;
+    const EASE1 = "cubic-bezier(.55,.05,.28,1)", EASE2 = "cubic-bezier(.34,.45,.4,1)";
+    const EFLAT = "cubic-bezier(.3,.65,.25,1)";
+    const anim = (el, kf, opt) => el.animate(kf, Object.assign({ fill: "both" }, opt));
+
+    // the hand: packet arrives a touch off-true, settles as it opens
+    anim(ufg, [
+      { transform: "translate(" + -0.25 * pw + "px," + -0.125 * ph + "px) rotate(-6.5deg) scale(.97)", opacity: 0, easing: "cubic-bezier(.2,.7,.3,1)", offset: 0 },
+      { transform: "translate(" + -0.25 * pw + "px," + -0.12 * ph + "px) rotate(-6deg) scale(1)", opacity: 1, easing: "cubic-bezier(.45,.05,.35,1)", offset: 0.11 },
+      // the sideways offset is spent with the vertical fold; the vertical
+      // one with the top half — the sheet is never parked off-true
+      { transform: "translate(" + -0.005 * pw + "px," + -0.115 * ph + "px) rotate(-3.2deg) scale(1)", opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.50 },
+      { transform: "translate(0px," + -0.075 * ph + "px) rotate(-1.6deg) scale(1)", opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.73 },
+      { transform: "translate(0px,0px) rotate(0deg) scale(1)", opacity: 1, offset: 1 },
+    ], { duration: 2260 * UF_SLOW });
+
+    // U1 — the cover swings open toward you
+    anim(L2.c, [
+      { transform: "translateZ(4px) rotateY(180deg)", easing: EASE1, offset: 0 },
+      { transform: "translateZ(.6px) rotateY(-5deg)", easing: EASE2, offset: 0.72 },
+      { transform: "translateZ(0px) rotateY(2.6deg)", offset: 1 },
+    ], { delay: T_U1, duration: D_U1 });
+    // U2 — the bottom quarter drops
+    for (const s of [L2, R2]) {
+      anim(s.D.pn, [
+        { transform: "translateZ(-1.2px) rotateX(-180deg)", easing: EASE1, offset: 0 },
+        { transform: "translateZ(-.2px) rotateX(4deg)", easing: EASE2, offset: 0.74 },
+        { transform: "translateZ(0px) rotateX(-2.4deg)", offset: 1 },
+      ], { delay: T_U2, duration: D_U2 });
+      // U3 — the top half rises; A opens against it with the same curve,
+      // so its absolute angle stays near flat: the top quarter dangles
+      // plumb behind the sheet and lands with the rest
+      anim(s.A.pn, [
+        { transform: "translateZ(.6px) rotateX(180deg)", easing: EASE1, offset: 0 },
+        { transform: "translateZ(.1px) rotateX(-3.4deg)", easing: EASE2, offset: 0.75 },
+        { transform: "translateZ(0px) rotateX(-1.6deg)", offset: 1 },
+      ], { delay: T_U3, duration: D_U3 });
+      anim(s.AB, [
+        { transform: "translateZ(-2.4px) rotateX(-180deg)", easing: EASE1, offset: 0 },
+        { transform: "translateZ(-.4px) rotateX(3.4deg)", easing: EASE2, offset: 0.75 },
+        { transform: "translateZ(0px) rotateX(-2.8deg)", offset: 1 },
+      ], { delay: T_U3, duration: D_U3 });
+    }
+    // the palm: crease memory smoothed flat, all at once
+    const flat = (el, from, fn) => anim(el, [
+      { transform: fn + "(" + from + "deg)" }, { transform: fn + "(0deg)" },
+    ], { delay: T_FLAT, duration: D_FLAT, easing: EFLAT, fill: "forwards" });
+    flat(L2.c, 2.6, "rotateY");
+    for (const s of [L2, R2]) {
+      flat(s.D.pn, -2.4, "rotateX"); flat(s.A.pn, -1.6, "rotateX"); flat(s.AB, -2.8, "rotateX");
+    }
+
+    // light: each face sheds its fold shadow as it opens; the base sheds
+    // the packet's shade as the cover lifts
+    const shade = (gz, bg, t2, d2) => {
+      gz.style.background = bg;
+      anim(gz, [{ opacity: 0.8 }, { opacity: 0 }], { delay: t2, duration: d2 * 1.15, easing: "cubic-bezier(.3,.5,.4,1)" });
+    };
+    shade(L2.C.gz, "linear-gradient(to left, rgba(46,34,18,.30), rgba(46,34,18,.04))", T_U1, D_U1);
+    shade(R2.C.gz, "rgba(46,34,18,.16)", T_U1, D_U1);
+    for (const s of [L2, R2]) {
+      shade(s.D.gz, "linear-gradient(to bottom, rgba(46,34,18,.28), rgba(46,34,18,.03))", T_U2, D_U2);
+      shade(s.A.gz, "linear-gradient(to top, rgba(46,34,18,.26), rgba(46,34,18,.03))", T_U3, D_U3);
+      shade(s.B.gz, "linear-gradient(to top, rgba(46,34,18,.26), rgba(46,34,18,.03))", T_U3, D_U3);
+    }
+
+    // the shadow grows with what the paper covers
+    anim(shd, [
+      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 0, offset: 0 },
+      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.13 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.39 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, easing: EASE1, offset: 0.57 },
+      { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 0.79 },
+      { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 1 },
+    ], { duration: 2860 * UF_SLOW });
+
+    // flat: hand the sheet to the live canvas, stamp the eleven in
+    setTimeout(() => {
+      if (ufEl !== uf) { resolve(); return; }   // a resize already took over
+      drawAt(3, 0);
+      resolve();
+      const fade = uf.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260 * UF_SLOW, easing: "linear", fill: "forwards" });
+      fade.finished.then(() => { uf.remove(); if (ufEl === uf) ufEl = null; })
+        .catch(() => { uf.remove(); if (ufEl === uf) ufEl = null; });
+    }, T_FADE);
+  });
+}
+
+/* ---------------- the run: unfold, then the eleven ---------------- */
+
+const DOT_MS = 900, PAUSE_MS = 340, DRIFT_MS = 1300;
 function start() {
   if (RM) { driftCur = driftTarget = 1; drawFinal(); return; }
-  printing = true; t0 = performance.now();
-  if (!raf) raf = requestAnimationFrame(loop);
+  printing = true;
+  unfold().then(() => {
+    t0 = performance.now();
+    if (!raf) raf = requestAnimationFrame(loop);
+  });
 }
 function loop(t) {
   raf = 0;
   const e = t - t0;
-  // slots: under (roller) · dots (stamping, slower) · black · bar
-  const durs = [PLATE_MS + GAP_MS, DOT_MS + GAP_MS, PLATE_MS + GAP_MS, PLATE_MS + GAP_MS];
-  let k = 0, rem = e;
-  for (let i = 0; i < durs.length; i++) {
-    const inner = durs[i] - GAP_MS;
-    if (rem >= durs[i]) { k = i + 1; rem -= durs[i]; continue; }
-    k = i + Math.min(1, rem / inner);
-    rem = -1;
-    break;
-  }
-  const pressDone = rem >= 0;
-  const drift = pressDone ? Math.min(1, Math.max(0, (rem - PAUSE_MS) / DRIFT_MS)) : 0;
+  const u = Math.min(1, e / DOT_MS);
+  const drift = Math.min(1, Math.max(0, (e - DOT_MS - PAUSE_MS) / DRIFT_MS));
   driftCur = drift;
-  drawAt(pressDone ? plates.order.length : k, drift);
-  if (!pressDone || drift < 1) raf = requestAnimationFrame(loop);
+  drawAt(3 + u, drift);
+  if (u < 1 || drift < 1) raf = requestAnimationFrame(loop);
   else printing = false;
 }
 
