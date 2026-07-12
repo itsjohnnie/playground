@@ -29,10 +29,12 @@
 // average positions as spot-color dots, three goal mouths ringed with
 // their minutes, the score in giant grotesk, the fixture's own facts in
 // the margins, crop marks and a three-ink color bar in the trim.
-// Arrival IS the press run: the plates roller in one after another over
-// ~2.4s, then the piece rests (no rAF). A quick tap pulls another print —
-// new registration errors, new wear, same match. Drag does nothing here;
-// paper is not bronze. Reduced motion: the finished print, instantly.
+// Arrival IS the press run: the plates roller in one after another,
+// every player stamps in at his first-half post and drifts to his
+// second-half mean; then the piece rests (no rAF). A quick tap walks the
+// eleven BACK to their first-half posts — another sends them on again —
+// the drift is a dial retargeted smoothly, even mid-flight. Drag does
+// nothing here; paper is not bronze. Reduced motion: instant states.
 
 const seed = ART.seed("2026-07-11-006");
 const M = window.M6;
@@ -42,12 +44,15 @@ const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let W = 0, H = 0, DPR = 1, ctx = null;
 let plates = null, sheet = null, pull = 0;      // pull = print serial
 let raf = 0, t0 = 0, printing = false, buildTimer = 0, fontsOK = false, mounted = false;
+// the drift is a dial, not a replay: 0 = first-half posts, 1 = where the
+// match pulled them; a tap retargets it smoothly, even mid-flight
+let driftCur = 0, driftTarget = 1, drifting = false, dLast = 0;
 
 const F = FRAME.mount({
   num: 6, title: "Afiche", subject: "Argentina vs. Switzerland",
   edition: "06/8", date: "11·07·2026",
   stack: "Canvas 2D — offset press", time: "117 minutes",
-  desc: "A matchday poster off an offset press: the plates land one by one, each a breath out of register, and every player stamps in at his first-half post — then drifts to where the match pulled him, a ghost of the first impression left behind. Ninety minutes scoreless; la prórroga gives it 3–1. Tap, and the press pulls another print — no two sheets alike.",
+  desc: "A matchday poster off an offset press: the plates land one by one, each a breath out of register, and every player stamps in at his first-half post — then drifts to where the match pulled him, a ghost of the first impression left behind. Ninety minutes scoreless; la prórroga gives it 3–1. Tap, and the eleven walk back to kickoff — tap again, and the match plays its drift once more.",
   dark: true, open: true, gesture: true,
   onResize(w, h, dpr) {
     W = w / dpr; H = h / dpr; DPR = dpr;   // design in css px, draw at dpr
@@ -361,13 +366,13 @@ function drawAt(k, drift) {
   ctx.globalAlpha = 1;
 }
 
-function drawFinal() { drawAt(plates.order.length, 1); }
+function drawFinal() { drawAt(plates.order.length, driftCur); }
 
 /* ---------------- the run: five plates, then rest ---------------- */
 
 const PLATE_MS = 300, GAP_MS = 90, DOT_MS = 900, PAUSE_MS = 340, DRIFT_MS = 1300;
 function start() {
-  if (RM) { drawFinal(); return; }
+  if (RM) { driftCur = driftTarget = 1; drawFinal(); return; }
   printing = true; t0 = performance.now();
   if (!raf) raf = requestAnimationFrame(loop);
 }
@@ -386,9 +391,23 @@ function loop(t) {
   }
   const pressDone = rem >= 0;
   const drift = pressDone ? Math.min(1, Math.max(0, (rem - PAUSE_MS) / DRIFT_MS)) : 0;
+  driftCur = drift;
   drawAt(pressDone ? plates.order.length : k, drift);
   if (!pressDone || drift < 1) raf = requestAnimationFrame(loop);
   else printing = false;
+}
+
+// the toggle: driftCur walks linearly toward the target (each dot's own
+// easing supplies the softness), so a mid-flight tap simply turns it around
+function driftLoop(t) {
+  raf = 0;
+  const dt = Math.min(50, t - dLast); dLast = t;
+  const dir = driftTarget > driftCur ? 1 : -1;
+  driftCur += (dir * dt) / DRIFT_MS;
+  if ((dir > 0 && driftCur >= driftTarget) || (dir < 0 && driftCur <= driftTarget)) {
+    driftCur = driftTarget; drifting = false;
+  } else raf = requestAnimationFrame(driftLoop);
+  drawAt(plates.order.length, driftCur);
 }
 
 /* ---------------- another pull: a quick, still tap ---------------- */
@@ -410,10 +429,13 @@ function loop(t) {
     id = -1;
     if (e.type !== "pointerup" || moved >= 8 || performance.now() - t1 >= 350) return;
     if (printing) return;
-    pull++;                          // a new pull: new registration, new wear
-    build();
-    if (RM) { drawFinal(); return; }
-    start();
+    // walk the eleven back to their first-half posts — or on again
+    driftTarget = driftTarget > 0.5 ? 0 : 1;
+    if (RM) { driftCur = driftTarget; drawFinal(); return; }
+    if (!drifting) {
+      drifting = true; dLast = performance.now();
+      if (!raf) raf = requestAnimationFrame(driftLoop);
+    }
   };
   el.addEventListener("pointerup", up);
   el.addEventListener("pointercancel", up);
