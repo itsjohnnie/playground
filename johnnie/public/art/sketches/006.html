@@ -305,6 +305,7 @@ function build() {
   });
 
   plates = { under, black, bar, dots, pw, ph };
+  plates.coverC = mkCover(pw / 2, ph / 4);
   bakeSheet(R);
 }
 
@@ -367,6 +368,19 @@ function press(g, k, drift) {
   g.putImageData(sheet._paper, 0, 0);
   g.save();
   g.scale(DPR, DPR);
+  // show-through: the cover printed on the sheet's other side ghosts
+  // through the stock where it physically sits (the back of the
+  // top-left quarter) — mirrored, faint, softened by the paper's body
+  if (plates.coverC) {
+    g.save();
+    g.globalCompositeOperation = "multiply";
+    g.globalAlpha = 0.055;
+    if ("filter" in g) g.filter = "blur(0.8px)";
+    g.translate(pw / 2, 0);
+    g.scale(-1, 1);
+    g.drawImage(plates.coverC, 0, 0, pw / 2, ph / 4);
+    g.restore();
+  }
   for (let i = 0; i < plates.order.length; i++) {
     const u = Math.min(1, Math.max(0, k - i));
     if (u <= 0) break;
@@ -531,7 +545,22 @@ const loadImg = (src, ms) => new Promise((res) => {
   i.src = src;
 });
 
-function coverURL(w, h, afaImg, sfvImg) {
+// the federations' marks load once, for the cover AND its show-through;
+// when they land, the ghost on the front is repainted with the real thing
+let crests = null;
+const crestsP = Promise.all([
+  loadImg("../lib/crests/afa.svg"),
+  loadImg("../lib/crests/sfv.png"),
+]).then(([a, s]) => {
+  crests = [a, s];
+  if (plates) {
+    plates.coverC = mkCover(plates.pw / 2, plates.ph / 4);
+    if (mounted && !printing) drawFinal();
+  }
+});
+
+function mkCover(w, h) {
+  const afaImg = crests && crests[0], sfvImg = crests && crests[1];
   // the packet's face: what the mailer printed on the outside — the two
   // federations' own marks (AFA's gold monogram, still three stars in
   // July '26; the SFV·ASF red line footballer); hand-drawn shields only
@@ -597,7 +626,7 @@ function coverURL(w, h, afaImg, sfvImg) {
     font(g, 0.046 * h, 430, 0.07);
     g.globalAlpha = 0.72;
     g.fillText("WORLD CUP 2026", w / 2, 0.85 * h);
-  }).toDataURL();
+  });
 }
 
 function ufDiv(cls, parent, st) {
@@ -609,12 +638,9 @@ function ufDiv(cls, parent, st) {
 }
 
 async function unfold() {
-  // the federations' marks for the cover — the entrance never waits
-  // long on a missing file: shields get drawn by hand instead
-  const [afaImg, sfvImg] = await Promise.all([
-    loadImg("../lib/crests/afa.svg"),
-    loadImg("../lib/crests/sfv.png"),
-  ]);
+  // the marks for the cover — the entrance never waits long on a
+  // missing file: shields get drawn by hand instead
+  await crestsP;
   return new Promise((resolve) => {
     const { pw, ph, px, py } = geom();
     const cw = pw / 2, qh = ph / 4;
@@ -623,7 +649,7 @@ async function unfold() {
     press(comp.getContext("2d"), 3, 0);
     const art = "url(" + comp.toDataURL("image/png") + ")";
     const paper = "url(" + paperURL(cw, qh) + ")";
-    const cover = "url(" + coverURL(cw, qh, afaImg, sfvImg) + ")";
+    const cover = "url(" + (plates.coverC || mkCover(cw, qh)).toDataURL() + ")";
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.clearRect(0, 0, W, H);           // the overlay carries the scene
 
