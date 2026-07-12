@@ -534,12 +534,21 @@ function coverURL(w, h, afaImg, sfvImg) {
     }
     const cy = 0.40 * h;
     if (afaImg && sfvImg) {
+      // the SFV mark re-inked flat in the poster's own rojo — one press
+      // color, no stray tints — and held smaller than the AFA monogram
+      const sfvC = document.createElement("canvas");
+      sfvC.width = sfvImg.naturalWidth; sfvC.height = sfvImg.naturalHeight;
+      const gg = sfvC.getContext("2d");
+      gg.drawImage(sfvImg, 0, 0);
+      gg.globalCompositeOperation = "source-in";
+      gg.fillStyle = M.ink.rojo;
+      gg.fillRect(0, 0, sfvC.width, sfvC.height);
       const ha = 0.46 * h, wa = ha * (afaImg.naturalWidth / afaImg.naturalHeight);
-      const hf = 0.40 * h, wf = hf * (sfvImg.naturalWidth / sfvImg.naturalHeight);
-      const gap = 0.11 * h;
+      const hf = 0.29 * h, wf = hf * (sfvImg.naturalWidth / sfvImg.naturalHeight);
+      const gap = 0.10 * h;
       const x0 = w / 2 - (wa + gap + wf) / 2;
       g.drawImage(afaImg, x0, cy - ha / 2, wa, ha);
-      g.drawImage(sfvImg, x0 + wa + gap, cy - hf / 2, wf, hf);
+      g.drawImage(sfvC, x0 + wa + gap, cy - hf / 2, wf, hf);
     } else {
       const hs = 0.40 * h, ws = 0.82 * hs, gap = 0.30 * ws;
       const cxA = w / 2 - ws / 2 - gap / 2;
