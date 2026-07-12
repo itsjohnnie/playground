@@ -696,11 +696,14 @@ async function unfold() {
     // quick paper openings (the burst), a breath over blank stock, then
     // the one flourish that shows the whole design — a rest at
     // crease-memory angles, then the palm
-    const T_U1 = 700 * UF_SLOW, D_U1 = 560 * UF_SLOW;
-    const T_U2 = 1110 * UF_SLOW, D_U2 = 540 * UF_SLOW;
-    const T_U3 = 2030 * UF_SLOW, D_U3 = 950 * UF_SLOW;
-    const T_FLAT = 3400 * UF_SLOW, D_FLAT = 520 * UF_SLOW;
-    const T_FADE = 4020 * UF_SLOW;
+    // an even cadence: half a beat of stillness, the packet handed in,
+    // then each fold ~300ms after the last lands — only the finale
+    // stretches. No rush, no dead air.
+    const T_U1 = 1400 * UF_SLOW, D_U1 = 600 * UF_SLOW;
+    const T_U2 = 2260 * UF_SLOW, D_U2 = 580 * UF_SLOW;
+    const T_U3 = 3140 * UF_SLOW, D_U3 = 880 * UF_SLOW;
+    const T_FLAT = 4400 * UF_SLOW, D_FLAT = 500 * UF_SLOW;
+    const T_FADE = 5000 * UF_SLOW;
     const EASE1 = "cubic-bezier(.55,.05,.28,1)", EASE2 = "cubic-bezier(.34,.45,.4,1)";
     const EFLAT = "cubic-bezier(.3,.65,.25,1)";
     const anim = (el, kf, opt) => el.animate(kf, Object.assign({ fill: "both" }, opt));
@@ -712,14 +715,18 @@ async function unfold() {
     const enterX = (W - px - cw + 32) / pw;   // packet fully offstage right
     const G = (x, y, r, s) => "translate(" + x * pw + "px," + y * ph + "px) rotate(" + r + "deg) scale(" + s + ")";
     anim(ufg, [
-      { transform: G(enterX, -0.115, -10, 1), opacity: 1, easing: "cubic-bezier(.22,.62,.24,1)", offset: 0 },
-      { transform: G(-0.25, -0.122, -7, 1), opacity: 1, easing: "cubic-bezier(.5,.05,.3,1)", offset: 0.19 },
-      { transform: G(-0.06, -0.118, -2.4, 1), opacity: 1, easing: "cubic-bezier(.4,.12,.32,1)", offset: 0.42 },
-      { transform: G(0.012, -0.19, 2.8, 1), opacity: 1, easing: "cubic-bezier(.42,.1,.35,1)", offset: 0.555 },
-      { transform: G(0.005, -0.185, 2.3, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.68 },
-      { transform: G(0, 0.004, -0.5, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.93 },
+      // half a second of stillness before the mail arrives
+      { transform: G(enterX, -0.115, -10, 1), opacity: 1, offset: 0 },
+      { transform: G(enterX, -0.115, -10, 1), opacity: 1, easing: "cubic-bezier(.22,.62,.24,1)", offset: 0.112 },
+      { transform: G(-0.25, -0.122, -7, 1), opacity: 1, offset: 0.261 },
+      // rest in hand until the first fold opens
+      { transform: G(-0.25, -0.122, -7, 1), opacity: 1, easing: "cubic-bezier(.5,.05,.3,1)", offset: 0.348 },
+      { transform: G(-0.06, -0.118, -2.4, 1), opacity: 1, easing: "cubic-bezier(.4,.12,.32,1)", offset: 0.497 },
+      { transform: G(0.012, -0.19, 2.8, 1), opacity: 1, easing: "cubic-bezier(.42,.1,.35,1)", offset: 0.706 },
+      { transform: G(0.005, -0.185, 2.3, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.781 },
+      { transform: G(0, 0.004, -0.5, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.95 },
       { transform: G(0, 0, 0, 1), opacity: 1, offset: 1 },
-    ], { duration: 2980 * UF_SLOW });
+    ], { duration: 4020 * UF_SLOW });
 
     // U1 — the cover swings open toward you: blank stock inside, the
     // whole design still kissing itself in the middle
@@ -778,13 +785,14 @@ async function unfold() {
     anim(shd, [
       { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, offset: 0 },
       // hold the packet's footprint until each fold actually opens
-      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.206 },
-      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.326 },
-      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, offset: 0.485 },
-      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, easing: EASE1, offset: 0.597 },
-      { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 0.876 },
+      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.318 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: qh + "px", opacity: 1, offset: 0.455 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.514 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, offset: 0.645 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, easing: EASE1, offset: 0.714 },
+      { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 0.914 },
       { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 1 },
-    ], { duration: 3400 * UF_SLOW });
+    ], { duration: 4400 * UF_SLOW });
 
     // flat: hand the sheet to the live canvas, stamp the eleven in
     setTimeout(() => {
