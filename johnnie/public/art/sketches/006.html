@@ -15,6 +15,12 @@
 <meta name="twitter:description" content="A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
 <meta name="twitter:image" content="https://johnnies.life/art/og/006.png">
 <body>
+<style>
+/* the poster's own face: Inter (rsms) — the grotesk the Swiss style
+   speaks today; the frame's chrome stays Geist */
+@font-face{font-family:'Inter';src:url('../lib/fonts/InterVariable.woff2') format('woff2');
+font-weight:100 900;font-style:normal;font-display:swap}
+</style>
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
 <script src="data-006.js"></script>
@@ -72,7 +78,7 @@ function schedule() {
 }
 
 Promise.race([
-  document.fonts.load('700 60px "Geist"').then(() => document.fonts.load('430 20px "Geist"')),
+  document.fonts.load('700 60px "Inter"').then(() => document.fonts.load('430 20px "Inter"')),
   new Promise((r) => setTimeout(r, 1600)),
 ]).then(() => { fontsOK = true; schedule(); });
 
@@ -100,7 +106,7 @@ function mkPlate(pw, ph, fn) {
 
 function font(g, px, wgt, track) {
   if ("letterSpacing" in g) g.letterSpacing = ((track == null ? 0.01 : track) * px).toFixed(2) + "px";
-  g.font = (wgt || 430) + " " + px.toFixed(1) + "px 'Geist', ui-sans-serif, sans-serif";
+  g.font = (wgt || 430) + " " + px.toFixed(1) + "px 'Inter', ui-sans-serif, sans-serif";
 }
 
 function build() {
@@ -128,8 +134,16 @@ function build() {
       const bw = (40.32 / 68) * pit.w, bh = (16.5 / 105) * pit.h;
       const gw = (18.32 / 68) * pit.w, gh = (5.5 / 105) * pit.h;
       const y0 = yTop ? pit.y : pit.y + pit.h, dir = yTop ? 1 : -1;
-      g.strokeRect(pit.x + (pit.w - bw) / 2, yTop ? y0 : y0 - bh, bw, bh);
-      g.strokeRect(pit.x + (pit.w - gw) / 2, yTop ? y0 : y0 - gh, gw, gh);
+      // three sides only — the goal line already exists; a second stroke
+      // on top of it reads as a doubled, heavier line
+      const sides = (w2, h2) => {
+        const xl = pit.x + (pit.w - w2) / 2;
+        g.beginPath();
+        g.moveTo(xl, y0); g.lineTo(xl, y0 + dir * h2);
+        g.lineTo(xl + w2, y0 + dir * h2); g.lineTo(xl + w2, y0);
+        g.stroke();
+      };
+      sides(bw, bh); sides(gw, gh);
       // the penalty arc: only the part that lives outside the box
       const sy = y0 + dir * (11 / 105) * pit.h;
       const dth = Math.acos(Math.min(0.95, ((16.5 - 11) / 105) * pit.h / rC));
@@ -173,9 +187,9 @@ function build() {
     g.textBaseline = "alphabetic";
 
     // masthead — sentence case, the Swiss way: quiet, exact
-    font(g, 0.0245 * S, 560, 0.012);
+    font(g, 0.0235 * S, 560, 0.05);
     g.textAlign = "left";
-    g.fillText("Argentina — Suiza", m, m + 0.016 * S);
+    g.fillText("ARGENTINA — SUIZA", m, m + 0.016 * S);
     g.textAlign = "right";
     g.fillText("M61 · Cuartos de final · Prórroga", S - m, m + 0.016 * S);
     font(g, 0.019 * S, 430, 0.008);
@@ -194,17 +208,17 @@ function build() {
 
     // each numeral's caption: argentina reads below its 2, suiza sits
     // clear ABOVE its 1 — nothing hides behind the numerals
-    font(g, 0.023 * S, 560, 0.012);
+    font(g, 0.022 * S, 560, 0.05);
     g.textAlign = "left";
-    g.fillText("Argentina", m, 0.565 * ph + 0.047 * S);
+    g.fillText("ARGENTINA", m, 0.565 * ph + 0.047 * S);
     font(g, 0.019 * S, 430, 0.008);
     g.globalAlpha = 0.72;
     g.fillText("Messi 97’ · Álvarez 106’ · Lautaro 119’", m, 0.565 * ph + 0.075 * S);
     g.globalAlpha = 1;
     const capTop = 0.895 * ph - 0.32 * S;
-    font(g, 0.023 * S, 560, 0.012);
+    font(g, 0.022 * S, 560, 0.05);
     g.textAlign = "right";
-    g.fillText("Suiza", S - m, capTop - 0.046 * S);
+    g.fillText("SUIZA", S - m, capTop - 0.046 * S);
     font(g, 0.019 * S, 430, 0.008);
     g.globalAlpha = 0.72;
     g.fillText("Embolo 113’", S - m, capTop - 0.018 * S);
@@ -226,7 +240,7 @@ function build() {
     g.fillText("Asistencia — 76.416", m, ph - m - 0.028 * S);
     g.fillText("39.0997° N", m, ph - m);
     g.textAlign = "right";
-    g.fillText("Historial · Argentina 6 — empates 2 — Suiza 0", S - m, ph - m - 0.028 * S);
+    g.fillText("Historial · ARGENTINA 6 — empates 2 — SUIZA 0", S - m, ph - m - 0.028 * S);
     g.fillText("94.5786° O", S - m, ph - m);
     g.globalAlpha = 1;
 
