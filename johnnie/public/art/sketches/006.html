@@ -112,9 +112,10 @@ Promise.race([
 /* ---------------- the sheet: geometry ---------------- */
 
 function geom() {
-  // an ISO-portrait sheet floating on the room
-  const ph = Math.min(0.88 * H, 1.28 * W);
-  const pw = ph / 1.414;
+  // a tall portrait sheet floating on the room — a touch taller than
+  // ISO, so the plan and the margins both get air
+  const ph = Math.min(0.88 * H, 1.35 * W);
+  const pw = ph / 1.5;
   return { pw, ph, px: (W - pw) / 2, py: (H - ph) / 2 };
 }
 
@@ -148,7 +149,7 @@ function build() {
   // pitch rect (portrait, argentina attacking downward) — tall in the
   // sheet AND proportional: a real plan keeps 68:105, else the centre
   // circle squashes into an ellipse
-  const pitH = ph - 0.142 * ph - 0.088 * ph;
+  const pitH = ph - 0.142 * ph - 0.132 * ph;   // the foot breathes clear of the goal line
   const pitW = Math.min(S - 2 * m, pitH * (68 / 105));
   const pit = { x: (S - pitW) / 2, y: 0.142 * ph, w: pitW, h: pitH };
   const PX = (p) => pit.x + p[0] * pit.w;
