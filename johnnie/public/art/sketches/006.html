@@ -24,6 +24,10 @@ font-weight:100 900;font-style:normal;font-display:swap}
    cmap — no feature-settings support required anywhere */
 @font-face{font-family:'InterAlt';src:url('../lib/fonts/InterVariable-alt1.woff2') format('woff2');
 font-weight:100 900;font-style:normal;font-display:swap}
+/* on this page the poster's voice takes the whole room: the frame's
+   chrome (panel, pill, nav) speaks Inter too — html body outranks the
+   frame's own body rule, which lands later in document order */
+html body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif}
 </style>
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
