@@ -2,25 +2,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>#6 · Afiche — Argentina vs. Switzerland · Johnnie&#x27;s atelier</title>
-<meta name="description" content="A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. The Swiss block holds until the 61&#x27;; the score arrives in type.">
+<meta name="description" content="A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://johnnies.life/art/sketches/006">
 <meta property="og:title" content="#6 · Afiche — Argentina vs. Switzerland · Johnnie&#x27;s atelier">
-<meta property="og:description" content="A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. The Swiss block holds until the 61&#x27;; the score arrives in type.">
+<meta property="og:description" content="A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
 <meta property="og:image" content="https://johnnies.life/art/og/006.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="#6 · Afiche — Argentina vs. Switzerland · Johnnie&#x27;s atelier">
-<meta name="twitter:description" content="A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. The Swiss block holds until the 61&#x27;; the score arrives in type.">
+<meta name="twitter:description" content="A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
 <meta name="twitter:image" content="https://johnnies.life/art/og/006.png">
 <body>
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
 <script src="data-006.js"></script>
 <script>
-// 006 · afiche — Argentina 3–1 Switzerland as the thing Switzerland gave
-// graphic design: the International Typographic Style matchday poster,
+// 006 · afiche — Argentina 3–1 Switzerland (a.e.t.) as the thing Switzerland
+// gave graphic design: the International Typographic Style matchday poster,
 // pulled from an offset press. The sheet is built the way a press builds
 // it — five plates in sequence (paper, the pitch-plan underprint, the
 // celeste plate, the red plate, the black type plate), each laid with its
@@ -47,7 +47,7 @@ const F = FRAME.mount({
   num: 6, title: "Afiche", subject: "Argentina vs. Switzerland",
   edition: "06/8", date: "11·07·2026",
   stack: "Canvas 2D — offset press", time: "117 minutes",
-  desc: "A matchday poster off an offset press: the plates land one by one, each a breath out of register, and every player stamps in at his first-half post — then drifts to where the second half pulled him, a ghost of the first impression left behind. The Swiss block bends at 61'. Tap, and the press pulls another print — no two sheets alike.",
+  desc: "A matchday poster off an offset press: the plates land one by one, each a breath out of register, and every player stamps in at his first-half post — then drifts to where the match pulled him, a ghost of the first impression left behind. Ninety minutes scoreless; la prórroga gives it 3–1. Tap, and the press pulls another print — no two sheets alike.",
   dark: true, open: true, gesture: true,
   onResize(w, h, dpr) {
     W = w / dpr; H = h / dpr; DPR = dpr;   // design in css px, draw at dpr
@@ -114,26 +114,35 @@ function build() {
     g.strokeStyle = "#5c564a"; g.lineWidth = 1.1; g.globalAlpha = 0.34;
     g.strokeRect(pit.x, pit.y, pit.w, pit.h);
     g.beginPath(); g.moveTo(pit.x, pit.y + pit.h / 2); g.lineTo(pit.x + pit.w, pit.y + pit.h / 2); g.stroke();
-    g.beginPath(); g.arc(pit.x + pit.w / 2, pit.y + pit.h / 2, 0.128 * pit.w, 0, TAU); g.stroke();
+    // every measure to the Laws of the Game, 68 m across × 105 m long:
+    // boxes 40.32 × 16.5, goal areas 18.32 × 5.5, spots at 11, circle and
+    // arcs r 9.15, corners r 1 — fractions of the pitch's own axes
+    const rC = (9.15 / 68) * pit.w;
+    g.beginPath(); g.arc(pit.x + pit.w / 2, pit.y + pit.h / 2, rC, 0, TAU); g.stroke();
     const box = (yTop) => {
-      const bw = 0.58 * pit.w, bh = 0.115 * pit.h;
-      const gw = 0.28 * pit.w, gh = 0.045 * pit.h;
+      const bw = (40.32 / 68) * pit.w, bh = (16.5 / 105) * pit.h;
+      const gw = (18.32 / 68) * pit.w, gh = (5.5 / 105) * pit.h;
       const y0 = yTop ? pit.y : pit.y + pit.h, dir = yTop ? 1 : -1;
       g.strokeRect(pit.x + (pit.w - bw) / 2, yTop ? y0 : y0 - bh, bw, bh);
       g.strokeRect(pit.x + (pit.w - gw) / 2, yTop ? y0 : y0 - gh, gw, gh);
+      // the penalty arc: only the part that lives outside the box
+      const sy = y0 + dir * (11 / 105) * pit.h;
+      const dth = Math.acos(Math.min(0.95, ((16.5 - 11) / 105) * pit.h / rC));
+      const ca = yTop ? Math.PI / 2 : -Math.PI / 2;
       g.beginPath();
-      g.arc(pit.x + pit.w / 2, y0 + dir * 0.078 * pit.h, 0.06 * pit.w, yTop ? 0.15 * Math.PI : 1.15 * Math.PI, yTop ? 0.85 * Math.PI : 1.85 * Math.PI);
+      g.arc(pit.x + pit.w / 2, sy, rC, ca - dth, ca + dth);
       g.stroke();
     };
     box(true); box(false);
-    // corner arcs
+    // corner arcs, r 1 m
+    const rK = (1 / 68) * pit.w * 2.2;      // held legible at sheet scale
     for (const [cx2, cy2, a0] of [[pit.x, pit.y, 0], [pit.x + pit.w, pit.y, Math.PI / 2],
                                   [pit.x + pit.w, pit.y + pit.h, Math.PI], [pit.x, pit.y + pit.h, -Math.PI / 2]]) {
-      g.beginPath(); g.arc(cx2, cy2, 0.022 * pit.w, a0, a0 + Math.PI / 2); g.stroke();
+      g.beginPath(); g.arc(cx2, cy2, rK, a0, a0 + Math.PI / 2); g.stroke();
     }
     // spots: penalties and the centre
     g.globalAlpha = 0.4; g.fillStyle = "#5c564a";
-    for (const y of [pit.y + 0.078 * pit.h, pit.y + pit.h - 0.078 * pit.h, pit.y + pit.h / 2]) {
+    for (const y of [pit.y + (11 / 105) * pit.h, pit.y + pit.h - (11 / 105) * pit.h, pit.y + pit.h / 2]) {
       g.beginPath(); g.arc(pit.x + pit.w / 2, y, 1.4, 0, TAU); g.fill();
     }
   });
@@ -163,7 +172,7 @@ function build() {
     g.textAlign = "left";
     g.fillText("Argentina — Suiza", m, m + 0.016 * S);
     g.textAlign = "right";
-    g.fillText("M61 · Cuartos de final", S - m, m + 0.016 * S);
+    g.fillText("M61 · Cuartos de final · Prórroga", S - m, m + 0.016 * S);
     font(g, 0.019 * S, 430, 0.008);
     g.textAlign = "left"; g.globalAlpha = 0.72;
     g.fillText("Estadio Arrowhead · Kansas City", m, m + 0.048 * S);
@@ -185,7 +194,7 @@ function build() {
     g.fillText("Argentina", m, 0.565 * ph + 0.047 * S);
     font(g, 0.019 * S, 430, 0.008);
     g.globalAlpha = 0.72;
-    g.fillText("Messi 61’ · Álvarez 78’ · Lautaro 88’", m, 0.565 * ph + 0.075 * S);
+    g.fillText("Messi 97’ · Álvarez 106’ · Lautaro 119’", m, 0.565 * ph + 0.075 * S);
     g.globalAlpha = 1;
     const capTop = 0.895 * ph - 0.32 * S;
     font(g, 0.023 * S, 560, 0.012);
@@ -193,7 +202,7 @@ function build() {
     g.fillText("Suiza", S - m, capTop - 0.046 * S);
     font(g, 0.019 * S, 430, 0.008);
     g.globalAlpha = 0.72;
-    g.fillText("Embolo 85’", S - m, capTop - 0.018 * S);
+    g.fillText("Embolo 113’", S - m, capTop - 0.018 * S);
     g.globalAlpha = 1;
 
     // goal mouths, ringed with their minutes

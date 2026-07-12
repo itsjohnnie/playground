@@ -1,13 +1,14 @@
-/* data-006.js — Argentina 3–1 Switzerland
+/* data-006.js — Argentina 3–1 Switzerland (a.e.t.)
    FIFA World Cup 2026, Quarterfinal (M61) · Arrowhead Stadium, Kansas City
-   Saturday 11 July 2026, 21:00 EDT. Sources: FotMob, Sofascore, Opta
-   (retrieved 2026-07-12). Counts are exact; average positions are each
-   player's per-half mean touch location, attack running downward for
-   Argentina (toward y = 1) in normalized pitch fractions. */
+   Saturday 11 July 2026, 21:00 EDT. Ninety minutes scoreless — the Swiss
+   block held the whole regulation — and la prórroga gave it 3–1.
+   Sources: FotMob, Sofascore, Opta (retrieved 2026-07-12). Counts are
+   exact; average positions are each player's per-half mean touch
+   location, attack running downward for Argentina (toward y = 1). */
 window.M6 = {
   home: { id: "arg", name: "argentina", score: 3 },
   away: { id: "sui", name: "suiza", score: 1 },
-  aet: false, htScore: [0, 0], ftScore: [3, 1],
+  aet: true, htScore: [0, 0], ftScore: [0, 0],
   date: "11·07·2026", kickoff: "21:00 edt",
   venue: "estadio arrowhead, kansas city",
   attendance: 76416, matchId: "M61",
@@ -15,13 +16,13 @@ window.M6 = {
   coords: ["39.0997° n", "94.5786° o"],
 
   goals: [
-    { min: 61, team: "arg", player: "messi",  assist: "mac allister", x: 0.46, y: 0.83 },
-    { min: 78, team: "arg", player: "álvarez", assist: "messi",       x: 0.63, y: 0.87 },  // sub 63' for almada
-    { min: 85, team: "sui", player: "embolo", assist: "vargas",       x: 0.45, y: 0.12 },
-    { min: 88, team: "arg", player: "lautaro", assist: "de paul",      x: 0.53, y: 0.885 },
+    { min: 97,  team: "arg", player: "messi",   assist: "mac allister", x: 0.46, y: 0.83 },
+    { min: 106, team: "arg", player: "álvarez", assist: "messi",        x: 0.63, y: 0.87 },  // sub 63' for almada
+    { min: 113, team: "sui", player: "embolo",  assist: "vargas",       x: 0.45, y: 0.12 },
+    { min: 119, team: "arg", player: "lautaro", assist: "de paul",      x: 0.53, y: 0.885 },
   ],
   cards: [{ min: 44, team: "sui", player: "freuler" }, { min: 71, team: "arg", player: "romero" }],
-  breaks: [], periods: [45, 90], totalMin: 90,
+  breaks: [], periods: [45, 90, 105], totalMin: 120,
 
   possession: { arg: 58, sui: 42 },
   xg: { arg: 2.61, sui: 0.74 },
@@ -70,5 +71,5 @@ window.M6 = {
     negro: "#221f1a", papel: "#e9e3d5",
   },
 
-  frameData: "argentina 3–1 suiza<br>world cup 2026 · kansas city · 11·07",
+  frameData: "argentina 3–1 suiza · prórroga<br>world cup 2026 · kansas city · 11·07",
 };
