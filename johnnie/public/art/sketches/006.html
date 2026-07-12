@@ -35,7 +35,9 @@ html body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif}
 .uf,.uf div{transform-style:preserve-3d}
 .uf .g3{position:absolute;inset:0}
 .uf .pn{position:absolute}
-.uf .fc,.uf .bk{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+/* faces bleed half a pixel past their panel so adjacent tiles overlap —
+   no sub-pixel seams reading as dashed lines across blank stock */
+.uf .fc,.uf .bk{position:absolute;inset:-0.51px;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .uf .bk{transform:rotateY(180deg);background-color:#f4f2ec}
 .uf .gz{position:absolute;inset:0}
 .uf .shd{position:absolute;border-radius:2px}
@@ -530,7 +532,7 @@ function coverURL(w, h, afaImg, sfvImg) {
     // handled edges: every side of this panel is a fold
     for (const [x0, y0, x1, y1] of [[0, 0, 0, h], [w, 0, w, h], [0, 0, w, 0], [0, h, w, h]]) {
       const gr = g.createLinearGradient(x0, y0, x0 === x1 ? x0 + (x0 ? -10 : 10) : x0, x0 === x1 ? y0 : y0 + (y0 ? -10 : 10));
-      gr.addColorStop(0, "rgba(74,60,42,0.10)"); gr.addColorStop(1, "rgba(74,60,42,0)");
+      gr.addColorStop(0, "rgba(74,60,42,0.04)"); gr.addColorStop(1, "rgba(74,60,42,0)");
       g.fillStyle = gr; g.fillRect(0, 0, w, h);
     }
     const cy = 0.40 * h;
@@ -627,7 +629,9 @@ async function unfold() {
       const pn = ufDiv("pn", parent, { left: x + "px", top: y + "px", width: cw + "px", height: qh + "px" });
       const fc = ufDiv("fc", pn, {
         backgroundImage: art, backgroundSize: pw + "px " + ph + "px",
-        backgroundPosition: -ax + "px " + -ay + "px",
+        // the face sits 0.51px outside its panel — keep the artwork
+        // registered to the sheet, not to the bled box
+        backgroundPosition: (0.51 - ax) + "px " + (0.51 - ay) + "px",
       });
       const gz = ufDiv("gz", fc);
       ufDiv("bk", pn, bk === "cover"
