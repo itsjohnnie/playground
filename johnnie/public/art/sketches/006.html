@@ -66,7 +66,7 @@ const F = FRAME.mount({
   num: 6, title: "Afiche", subject: "Argentina vs. Switzerland",
   edition: "06/8", date: "11·07·2026",
   stack: "Canvas 2D — offset press", time: "117 minutes",
-  desc: "A matchday poster off an offset press: the plates land one by one, each a breath out of register, and every player stamps in at his first-half post — then drifts to where the match pulled him, a ghost of the first impression left behind. Ninety minutes scoreless; la prórroga gives it 3–1. Tap, and the eleven walk back to kickoff — tap again, and the match plays its drift once more.",
+  desc: "A matchday poster off an offset press, mailed folded to eighths — opened flat, the creases stay and the ink cracks thin along them. The plates land one by one, each a breath out of register; every player stamps in at his first-half post, then drifts to where the match pulled him. Ninety scoreless minutes; la prórroga gives it 3–1. Tap, and the eleven walk back to kickoff.",
   dark: true, open: true, gesture: true,
   onResize(w, h, dpr) {
     W = w / dpr; H = h / dpr; DPR = dpr;   // design in css px, draw at dpr
@@ -309,6 +309,21 @@ function bakeSheet(R) {
   }
   g.globalAlpha = 1;
   sheet._paper = g.getImageData(0, 0, sheet.width, sheet.height);
+  // the sheet traveled folded to eighths: one vertical fold, three
+  // horizontal — the crack specks along each crease are seeded per pull
+  const Rc = ART.rng(seed + "-crease" + pull);
+  plates.creases = [[true, 0.5], [false, 0.25], [false, 0.5], [false, 0.75]];
+  plates.specks = [];
+  for (const [v, pf] of plates.creases) {
+    for (let i = 0; i < 54; i++) {
+      const t = Rc() * (v ? ph : pw);
+      const off = (Rc() - 0.5) * 3.6;
+      plates.specks.push({
+        x: v ? pf * pw + off : t, y: v ? t : pf * ph + off,
+        r: 0.3 + Rc() * 0.8, a: 0.08 + 0.24 * Rc(),
+      });
+    }
+  }
   plates.order = ["under", "dots", "black", "bar"];
   plates.reg = plates.order.map(() => ({
     dx: (R() - 0.5) * 0.0035 * pw, dy: (R() - 0.5) * 0.0035 * pw,
@@ -367,6 +382,33 @@ function press(g, k, drift) {
       g.drawImage(plates[name], 0, 0, pw, ph);
     }
     g.restore();
+  }
+  // the folds: printed flat, folded after — so the creases ride OVER the
+  // ink. Each fold shades one side, catches light on the other, and the
+  // ink cracks thin along the line (paper-colored specks that only read
+  // where ink sits — bare paper hides them by itself)
+  for (const [v, pf] of plates.creases) {
+    const w = 7;
+    let gr;
+    if (v) {
+      const x = pf * pw;
+      gr = g.createLinearGradient(x - w, 0, x + w, 0);
+    } else {
+      const y = pf * ph;
+      gr = g.createLinearGradient(0, y - w, 0, y + w);
+    }
+    gr.addColorStop(0, "rgba(74,60,42,0)");
+    gr.addColorStop(0.44, "rgba(74,60,42,0.13)");
+    gr.addColorStop(0.5, "rgba(74,60,42,0.03)");
+    gr.addColorStop(0.56, "rgba(255,251,240,0.26)");
+    gr.addColorStop(1, "rgba(255,251,240,0)");
+    g.fillStyle = gr;
+    if (v) g.fillRect(pf * pw - w, 0, 2 * w, ph);
+    else g.fillRect(0, pf * ph - w, pw, 2 * w);
+  }
+  for (const sp of plates.specks) {
+    g.fillStyle = "rgba(233,227,213," + sp.a.toFixed(2) + ")";
+    g.beginPath(); g.arc(sp.x, sp.y, sp.r, 0, TAU); g.fill();
   }
   g.restore();
 }
