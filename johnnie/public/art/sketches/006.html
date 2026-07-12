@@ -20,6 +20,10 @@
    speaks today; the frame's chrome stays Geist */
 @font-face{font-family:'Inter';src:url('../lib/fonts/InterVariable.woff2') format('woff2');
 font-weight:100 900;font-style:normal;font-display:swap}
+/* the numerals' face: Inter with its alternate one (cv01) baked into the
+   cmap — no feature-settings support required anywhere */
+@font-face{font-family:'InterAlt';src:url('../lib/fonts/InterVariable-alt1.woff2') format('woff2');
+font-weight:100 900;font-style:normal;font-display:swap}
 </style>
 <script src="../art.js"></script>
 <script src="../frame.js"></script>
@@ -78,7 +82,11 @@ function schedule() {
 }
 
 Promise.race([
-  document.fonts.load('700 60px "Inter"').then(() => document.fonts.load('430 20px "Inter"')),
+  Promise.all([
+    document.fonts.load('700 60px "Inter"'),
+    document.fonts.load('430 20px "Inter"'),
+    document.fonts.load('700 60px "InterAlt"'),
+  ]),
   new Promise((r) => setTimeout(r, 1600)),
 ]).then(() => { fontsOK = true; schedule(); });
 
@@ -180,6 +188,9 @@ function build() {
     ...mkDots(M.xi.arg, M.ink.celeste, 0.0135 * S),
     ...mkDots(M.xi.sui, M.ink.rojo, 0.0125 * S),
   ];
+  // a seeded order shared by stamp and drift — scattered, not a sweep
+  dots.forEach((d) => { d.o = R(); });
+  dots.slice().sort((a, b) => a.o - b.o).forEach((d, i) => { d.k = i; });
 
   /* -- plate 4: the black — type, goal rings, print furniture -- */
   const black = mkPlate(pw, ph, (g) => {
@@ -202,6 +213,7 @@ function build() {
 
     // the score, giant — the diagonal the whole sheet hangs on
     font(g, 0.44 * S, 640, -0.02);
+    g.font = "640 " + (0.44 * S).toFixed(1) + "px 'InterAlt','Inter',ui-sans-serif,sans-serif";
     g.textAlign = "left";
     g.fillText("3", m - 0.01 * S, 0.565 * ph);
     g.textAlign = "right";
@@ -321,15 +333,14 @@ function press(g, k, drift) {
     g.rotate(rg.rot);
     g.translate(-pw / 2, -ph / 2);
     if (name === "dots") {
-      // each dot is its own kiss of the press: top-to-bottom, a beat apart
-      const ds = plates.dots.slice().sort((a, b) => a.y1 - b.y1);
-      ds.forEach((d, j) => {
-        const s0 = (j / ds.length) * 0.68;
+      // each dot is its own kiss of the press, landing in seeded scatter
+      const n = plates.dots.length;
+      plates.dots.forEach((d) => {
+        const s0 = (d.k / n) * 0.68;
         let a = Math.min(1, Math.max(0, (u - s0) / 0.32));
         if (a <= 0) return;
         a = 1 - (1 - a) * (1 - a);           // ease-out: no hard pop at birth
-        const dj = plates.dots.indexOf(d);
-        const e = easeIO(Math.min(1, Math.max(0, drift * 1.9 - (dj / plates.dots.length) * 0.9)));
+        const e = easeIO(Math.min(1, Math.max(0, drift * 1.9 - (d.k / n) * 0.9)));
         const x = d.x1 + (d.x2 - d.x1) * e, y = d.y1 + (d.y2 - d.y1) * e;
         g.globalAlpha = a;
         if (e > 0.01) {
