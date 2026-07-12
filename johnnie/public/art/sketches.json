@@ -93,11 +93,20 @@
     {
       "n": "006",
       "num": 6,
-      "title": null,
+      "title": "Afiche",
       "subject": "Argentina vs. Switzerland",
       "date": "2026-07-11",
       "stage": "Quarterfinal",
-      "status": "upcoming"
+      "status": "candidate",
+      "file": "sketches/006.html",
+      "medium": "canvas · offset press",
+      "tags": [
+        "poster",
+        "swiss style",
+        "print",
+        "typography"
+      ],
+      "note": "The matchday poster Switzerland's own typographic tradition would print: five offset plates land in sequence, each a breath out of register, and the Swiss block bends at 61'. Tap and the press pulls another print — no two sheets alike."
     }
   ]
 }
