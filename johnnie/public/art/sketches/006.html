@@ -193,7 +193,7 @@ function build() {
     g.fillText("ARGENTINA — SUIZA", m, m + 0.016 * S);
     g.textAlign = "right";
     g.fillText("M61 · Cuartos de final · Prórroga", S - m, m + 0.016 * S);
-    font(g, 0.019 * S, 430, 0.008);
+    font(g, 0.019 * S, 430, 0);
     g.textAlign = "left"; g.globalAlpha = 0.72;
     g.fillText("Estadio Arrowhead · Kansas City", m, m + 0.048 * S);
     g.textAlign = "right";
@@ -212,7 +212,7 @@ function build() {
     font(g, 0.022 * S, 560, 0.05);
     g.textAlign = "left";
     g.fillText("ARGENTINA", m, 0.565 * ph + 0.047 * S);
-    font(g, 0.019 * S, 430, 0.008);
+    font(g, 0.019 * S, 430, 0);
     g.globalAlpha = 0.72;
     g.fillText("Messi 97’ · Álvarez 106’ · Lautaro 119’", m, 0.565 * ph + 0.075 * S);
     g.globalAlpha = 1;
@@ -220,13 +220,13 @@ function build() {
     font(g, 0.022 * S, 560, 0.05);
     g.textAlign = "right";
     g.fillText("SUIZA", S - m, capTop - 0.046 * S);
-    font(g, 0.019 * S, 430, 0.008);
+    font(g, 0.019 * S, 430, 0);
     g.globalAlpha = 0.72;
     g.fillText("Embolo 113’", S - m, capTop - 0.018 * S);
     g.globalAlpha = 1;
 
     // goal mouths, ringed with their minutes
-    font(g, 0.0165 * S, 520, 0.03);
+    font(g, 0.0165 * S, 520, 0.008);
     for (const gl of M.goals) {
       const x = pit.x + gl.x * pit.w, y = pit.y + gl.y * pit.h;
       g.lineWidth = 0.0035 * S;
@@ -236,7 +236,7 @@ function build() {
     }
 
     // foot: the record and the fixture's coordinates
-    font(g, 0.019 * S, 430, 0.008);
+    font(g, 0.019 * S, 430, 0);
     g.textAlign = "left"; g.globalAlpha = 0.72;
     g.fillText("Asistencia — 76.416", m, ph - m - 0.028 * S);
     g.fillText("39.0997° N", m, ph - m);
