@@ -485,16 +485,32 @@ function drawFinal() { drawAt(plates.order.length, driftCur); }
 let ufEl = null;
 const UF_SLOW = +new URLSearchParams(location.search).get("ufslow") || 1;
 
-function paperURL() {
-  // the back of the stock — unprinted, a shade lighter, same fibre
+// soft fold wear along every edge of a pane's back — each interior
+// pane edge IS a fold line, so the creases read while the paper is
+// still closed, not only on the finished front
+function foldWear(g, w, h) {
+  for (const [x0, y0, dx, dy] of [[0, 0, 1, 0], [w, 0, -1, 0], [0, 0, 0, 1], [0, h, 0, -1]]) {
+    const gr = dx
+      ? g.createLinearGradient(x0, 0, x0 + dx * 8, 0)
+      : g.createLinearGradient(0, y0, 0, y0 + dy * 8);
+    gr.addColorStop(0, "rgba(74,60,42,0.09)");
+    gr.addColorStop(1, "rgba(74,60,42,0)");
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  }
+}
+
+function paperURL(w, h) {
+  // the back of one pane of stock — unprinted, same fibre, worn folds
   const Rp = ART.rng(seed + "-back");
-  return mkPlate(180, 180, (g) => {
-    g.fillStyle = "#f4f2ec"; g.fillRect(0, 0, 180, 180);
+  return mkPlate(w, h, (g) => {
+    g.fillStyle = "#f4f2ec"; g.fillRect(0, 0, w, h);
     g.globalAlpha = 0.06;
-    for (let i = 0; i < 220; i++) {
+    for (let i = 0; i < 240; i++) {
       g.fillStyle = Rp() < 0.5 ? "#fff" : "#8a8272";
-      g.fillRect(Rp() * 180, Rp() * 180, 1 + Rp() * 2.4, 0.7);
+      g.fillRect(Rp() * w, Rp() * h, 1 + Rp() * 2.4, 0.7);
     }
+    g.globalAlpha = 1;
+    foldWear(g, w, h);
   }).toDataURL();
 }
 
@@ -529,8 +545,7 @@ function coverURL(w, h, afaImg, sfvImg) {
       g.fillRect(Rv() * w, Rv() * h, 1 + Rv() * 2.4, 0.7);
     }
     g.globalAlpha = 1;
-    // no edge vignettes: the cover must read as the same stock as every
-    // other pane — fold shading is the hinges' job, not the panel's
+    foldWear(g, w, h);   // same worn folds as every other pane's back
     const cy = 0.40 * h;
     if (afaImg && sfvImg) {
       // both marks re-inked flat in the same negro as the address line —
@@ -607,7 +622,7 @@ async function unfold() {
     if (comp.width !== cwp || comp.height !== chp) { comp.width = cwp; comp.height = chp; }
     press(comp.getContext("2d"), 3, 0);
     const art = "url(" + comp.toDataURL("image/png") + ")";
-    const paper = "url(" + paperURL() + ")";
+    const paper = "url(" + paperURL(cw, qh) + ")";
     const cover = "url(" + coverURL(cw, qh, afaImg, sfvImg) + ")";
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.clearRect(0, 0, W, H);           // the overlay carries the scene
@@ -630,9 +645,10 @@ async function unfold() {
         backgroundPosition: (0.51 - ax) + "px " + (0.51 - ay) + "px",
       });
       const gz = ufDiv("gz", fc);
-      ufDiv("bk", pn, bk === "cover"
-        ? { backgroundImage: cover, backgroundSize: "100% 100%" }
-        : { backgroundImage: paper, backgroundSize: "90px 90px" });
+      ufDiv("bk", pn, {
+        backgroundImage: bk === "cover" ? cover : paper,
+        backgroundSize: "100% 100%",
+      });
       return { pn, gz };
     };
     const col = (left, ax, coverA) => {
@@ -670,12 +686,12 @@ async function unfold() {
     const enterX = (W - px - cw + 32) / pw;   // packet fully offstage right
     const G = (x, y, r, s) => "translate(" + x * pw + "px," + y * ph + "px) rotate(" + r + "deg) scale(" + s + ")";
     anim(ufg, [
-      { transform: G(enterX, -0.115, -17, 1), opacity: 1, easing: "cubic-bezier(.22,.62,.24,1)", offset: 0 },
-      { transform: G(-0.25, -0.122, -12.5, 1), opacity: 1, easing: "cubic-bezier(.5,.05,.3,1)", offset: 0.19 },
-      { transform: G(-0.06, -0.118, -4, 1), opacity: 1, easing: "cubic-bezier(.4,.12,.32,1)", offset: 0.42 },
-      { transform: G(0.012, -0.19, 4.5, 1), opacity: 1, easing: "cubic-bezier(.42,.1,.35,1)", offset: 0.555 },
-      { transform: G(0.005, -0.185, 3.8, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.68 },
-      { transform: G(0, 0.004, -0.7, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.93 },
+      { transform: G(enterX, -0.115, -10, 1), opacity: 1, easing: "cubic-bezier(.22,.62,.24,1)", offset: 0 },
+      { transform: G(-0.25, -0.122, -7, 1), opacity: 1, easing: "cubic-bezier(.5,.05,.3,1)", offset: 0.19 },
+      { transform: G(-0.06, -0.118, -2.4, 1), opacity: 1, easing: "cubic-bezier(.4,.12,.32,1)", offset: 0.42 },
+      { transform: G(0.012, -0.19, 2.8, 1), opacity: 1, easing: "cubic-bezier(.42,.1,.35,1)", offset: 0.555 },
+      { transform: G(0.005, -0.185, 2.3, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.68 },
+      { transform: G(0, 0.004, -0.5, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.93 },
       { transform: G(0, 0, 0, 1), opacity: 1, offset: 1 },
     ], { duration: 2980 * UF_SLOW });
 
