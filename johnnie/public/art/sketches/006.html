@@ -47,7 +47,7 @@ const F = FRAME.mount({
   num: 6, title: "Afiche", subject: "Argentina vs. Switzerland",
   edition: "06/8", date: "11·07·2026",
   stack: "Canvas 2D — offset press", time: "117 minutes",
-  desc: "A matchday poster off an offset press: the pitch, the celeste, the red and the ink land plate by plate, each a breath out of register. Twenty-two average positions hold the shape of the match; the Swiss block bends at 61' and the score arrives in type. Tap, and the press pulls another print — no two sheets alike.",
+  desc: "A matchday poster off an offset press: the plates land one by one, each a breath out of register, and every player stamps in at his first-half post — then drifts to where the second half pulled him, a ghost of the first impression left behind. The Swiss block bends at 61'. Tap, and the press pulls another print — no two sheets alike.",
   dark: true, open: true, gesture: true,
   onResize(w, h, dpr) {
     W = w / dpr; H = h / dpr; DPR = dpr;   // design in css px, draw at dpr
@@ -104,8 +104,8 @@ function build() {
   const m = 0.075 * S;                 // trim margin (live area inside)
   const R = ART.rng(seed + "-pull" + pull);
 
-  // pitch rect (portrait, argentina attacking downward)
-  const pit = { x: m, y: 0.16 * ph, w: S - 2 * m, h: ph - 0.16 * ph - 0.105 * ph };
+  // pitch rect (portrait, argentina attacking downward) — tall in the sheet
+  const pit = { x: m, y: 0.142 * ph, w: S - 2 * m, h: ph - 0.142 * ph - 0.088 * ph };
   const PX = (p) => pit.x + p[0] * pit.w;
   const PY = (p) => pit.y + p[1] * pit.h;
 
@@ -126,32 +126,31 @@ function build() {
       g.stroke();
     };
     box(true); box(false);
-    // penalty spots
+    // corner arcs
+    for (const [cx2, cy2, a0] of [[pit.x, pit.y, 0], [pit.x + pit.w, pit.y, Math.PI / 2],
+                                  [pit.x + pit.w, pit.y + pit.h, Math.PI], [pit.x, pit.y + pit.h, -Math.PI / 2]]) {
+      g.beginPath(); g.arc(cx2, cy2, 0.022 * pit.w, a0, a0 + Math.PI / 2); g.stroke();
+    }
+    // spots: penalties and the centre
     g.globalAlpha = 0.4; g.fillStyle = "#5c564a";
-    for (const y of [pit.y + 0.078 * pit.h, pit.y + pit.h - 0.078 * pit.h]) {
+    for (const y of [pit.y + 0.078 * pit.h, pit.y + pit.h - 0.078 * pit.h, pit.y + pit.h / 2]) {
       g.beginPath(); g.arc(pit.x + pit.w / 2, y, 1.4, 0, TAU); g.fill();
     }
   });
 
-  /* -- plate 2: the celeste — argentina's average positions -- */
-  const celeste = mkPlate(pw, ph, (g) => {
-    g.fillStyle = M.ink.celeste;
-    for (const p of M.xi.arg) {
-      const jx = (R() - 0.5) * 0.006 * S, jy = (R() - 0.5) * 0.006 * S;
-      g.beginPath(); g.arc(PX(p.h2) + jx, PY(p.h2) + jy, 0.0135 * S, 0, TAU); g.fill();
-    }
-    // a hairline of celeste under the giant 2 — the winner's ink signs once
-    g.fillRect(m, 0.565 * ph + 0.013 * S, 0.16 * S, 0.004 * S);
-  });
-
-  /* -- plate 3: the red — switzerland's block -- */
-  const red = mkPlate(pw, ph, (g) => {
-    g.fillStyle = M.ink.rojo;
-    for (const p of M.xi.sui) {
-      const jx = (R() - 0.5) * 0.006 * S, jy = (R() - 0.5) * 0.006 * S;
-      g.beginPath(); g.arc(PX(p.h2) + jx, PY(p.h2) + jy, 0.0125 * S, 0, TAU); g.fill();
-    }
-  });
+  /* -- the spot-color passes are ALIVE: each player stamps in at his
+     first-half position, then, once the ink is down, drifts to his
+     second-half mean — a ghost of the first impression stays behind
+     with a hairline trail, the match's whole story on one sheet -- */
+  const mkDots = (team, ink, r0) => team.map((p) => ({
+    x1: PX(p.h1) + (R() - 0.5) * 0.005 * S, y1: PY(p.h1) + (R() - 0.5) * 0.005 * S,
+    x2: PX(p.h2) + (R() - 0.5) * 0.006 * S, y2: PY(p.h2) + (R() - 0.5) * 0.006 * S,
+    ink, r: r0,
+  }));
+  const dots = [
+    ...mkDots(M.xi.arg, M.ink.celeste, 0.0135 * S),
+    ...mkDots(M.xi.sui, M.ink.rojo, 0.0125 * S),
+  ];
 
   /* -- plate 4: the black — type, goal rings, print furniture -- */
   const black = mkPlate(pw, ph, (g) => {
@@ -186,7 +185,7 @@ function build() {
     g.fillText("Argentina", m, 0.565 * ph + 0.047 * S);
     font(g, 0.019 * S, 430, 0.008);
     g.globalAlpha = 0.72;
-    g.fillText("Messi 61’ · Almada 78’ · Lautaro 88’", m, 0.565 * ph + 0.075 * S);
+    g.fillText("Messi 61’ · Álvarez 78’ · Lautaro 88’", m, 0.565 * ph + 0.075 * S);
     g.globalAlpha = 1;
     const capTop = 0.895 * ph - 0.32 * S;
     font(g, 0.023 * S, 560, 0.012);
@@ -235,7 +234,7 @@ function build() {
       { g.fillStyle = c; g.fillRect(bx + i * bw2, by, bw2 - 0.004 * S, bh2); }
   });
 
-  plates = { under, celeste, red, black, bar, pw, ph };
+  plates = { under, black, bar, dots, pw, ph };
   bakeSheet(R);
 }
 
@@ -265,15 +264,18 @@ function bakeSheet(R) {
   }
   g.globalAlpha = 1;
   sheet._paper = g.getImageData(0, 0, sheet.width, sheet.height);
-  plates.order = ["under", "celeste", "red", "black", "bar"];
+  plates.order = ["under", "dots", "black", "bar"];
   plates.reg = plates.order.map(() => ({
     dx: (R() - 0.5) * 0.0035 * pw, dy: (R() - 0.5) * 0.0035 * pw,
     rot: (R() - 0.5) * 0.0016,
   }));
 }
 
-// press the first k plates (k may be fractional: the roller mid-sweep)
-function press(g, k) {
+const easeIO = (u) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2);
+
+// press the first k passes (k may be fractional: mid-sweep / mid-stamp);
+// drift is the after-moment — each player slides to his second-half mean
+function press(g, k, drift) {
   const { pw, ph } = plates;
   g.putImageData(sheet._paper, 0, 0);
   g.save();
@@ -281,17 +283,44 @@ function press(g, k) {
   for (let i = 0; i < plates.order.length; i++) {
     const u = Math.min(1, Math.max(0, k - i));
     if (u <= 0) break;
-    const pl = plates[plates.order[i]];
+    const name = plates.order[i];
     const rg = plates.reg[i];
     g.save();
     g.globalCompositeOperation = "multiply";
     if ("filter" in g) g.filter = "blur(0.4px)";        // dot gain
     g.translate(pw / 2 + rg.dx, ph / 2 + rg.dy);
     g.rotate(rg.rot);
-    const hcl = ph * u;                                  // roller sweep
-    g.beginPath(); g.rect(-pw / 2 - 6, -ph / 2 - 6, pw + 12, hcl + 6);
-    g.clip();
-    g.drawImage(pl, -pw / 2, -ph / 2, pw, ph);
+    g.translate(-pw / 2, -ph / 2);
+    if (name === "dots") {
+      // each dot is its own kiss of the press: top-to-bottom, a beat apart
+      const ds = plates.dots.slice().sort((a, b) => a.y1 - b.y1);
+      ds.forEach((d, j) => {
+        const s0 = (j / ds.length) * 0.72;
+        const a = Math.min(1, Math.max(0, (u - s0) / 0.26));
+        if (a <= 0) return;
+        const dj = plates.dots.indexOf(d);
+        const e = easeIO(Math.min(1, Math.max(0, drift * 1.9 - (dj / plates.dots.length) * 0.9)));
+        const x = d.x1 + (d.x2 - d.x1) * e, y = d.y1 + (d.y2 - d.y1) * e;
+        g.globalAlpha = a;
+        if (e > 0.01) {
+          // the first impression stays: a ghost, and a hairline of travel
+          g.strokeStyle = d.ink; g.lineWidth = 1.1; g.globalAlpha = a * 0.30 * Math.min(1, e * 2);
+          g.beginPath(); g.moveTo(d.x1, d.y1); g.lineTo(x, y); g.stroke();
+          g.fillStyle = d.ink; g.globalAlpha = a * 0.22 * Math.min(1, e * 2);
+          g.beginPath(); g.arc(d.x1, d.y1, d.r * 0.82, 0, TAU); g.fill();
+          g.globalAlpha = a;
+        }
+        g.fillStyle = d.ink;
+        const rr = d.r * (1.22 - 0.22 * easeIO(a));      // the stamp settles
+        g.beginPath(); g.arc(x, y, rr, 0, TAU); g.fill();
+      });
+      g.globalAlpha = 1;
+    } else {
+      const hcl = ph * u;                                // roller sweep
+      g.beginPath(); g.rect(-6, -6, pw + 12, hcl + 6);
+      g.clip();
+      g.drawImage(plates[name], 0, 0, pw, ph);
+    }
     g.restore();
   }
   g.restore();
@@ -300,10 +329,10 @@ function press(g, k) {
 /* ---------------- compose onto the room ---------------- */
 
 const comp = document.createElement("canvas");
-function drawAt(k) {
+function drawAt(k, drift) {
   const { pw, ph, px, py } = geom();
   comp.width = Math.ceil(pw * DPR); comp.height = Math.ceil(ph * DPR);
-  press(comp.getContext("2d"), k);
+  press(comp.getContext("2d"), k, drift || 0);
 
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.clearRect(0, 0, W, H);
@@ -323,11 +352,11 @@ function drawAt(k) {
   ctx.globalAlpha = 1;
 }
 
-function drawFinal() { drawAt(plates.order.length); }
+function drawFinal() { drawAt(plates.order.length, 1); }
 
 /* ---------------- the run: five plates, then rest ---------------- */
 
-const PLATE_MS = 300, GAP_MS = 90;
+const PLATE_MS = 300, GAP_MS = 90, DOT_MS = 900, PAUSE_MS = 340, DRIFT_MS = 1300;
 function start() {
   if (RM) { drawFinal(); return; }
   printing = true; t0 = performance.now();
@@ -336,12 +365,20 @@ function start() {
 function loop(t) {
   raf = 0;
   const e = t - t0;
-  const k = Math.min(plates.order.length, e / (PLATE_MS + GAP_MS));
-  const ki = Math.floor(k), kf = k - ki;
-  // within each slot the roller sweeps fast, then the press dwells
-  const u = ki + Math.min(1, kf * (PLATE_MS + GAP_MS) / PLATE_MS);
-  drawAt(u);
-  if (k < plates.order.length) raf = requestAnimationFrame(loop);
+  // slots: under (roller) · dots (stamping, slower) · black · bar
+  const durs = [PLATE_MS + GAP_MS, DOT_MS + GAP_MS, PLATE_MS + GAP_MS, PLATE_MS + GAP_MS];
+  let k = 0, rem = e;
+  for (let i = 0; i < durs.length; i++) {
+    const inner = durs[i] - GAP_MS;
+    if (rem >= durs[i]) { k = i + 1; rem -= durs[i]; continue; }
+    k = i + Math.min(1, rem / inner);
+    rem = -1;
+    break;
+  }
+  const pressDone = rem >= 0;
+  const drift = pressDone ? Math.min(1, Math.max(0, (rem - PAUSE_MS) / DRIFT_MS)) : 0;
+  drawAt(pressDone ? plates.order.length : k, drift);
+  if (!pressDone || drift < 1) raf = requestAnimationFrame(loop);
   else printing = false;
 }
 
