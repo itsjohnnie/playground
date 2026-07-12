@@ -11,7 +11,7 @@ window.M6 = {
   date: "11·07·2026", kickoff: "21:00 edt",
   venue: "estadio arrowhead, kansas city",
   attendance: 76416, matchId: "M61",
-  competition: "mundial 2026 · cuartos de final",
+  competition: "world cup 2026 · cuartos de final",
   coords: ["39.0997° n", "94.5786° o"],
 
   goals: [
@@ -64,10 +64,10 @@ window.M6 = {
 
   // shared palette — press inks, not screen colors
   ink: {
-    celeste: "#4f93c4", celesteDeep: "#2b6a99",
-    rojo: "#c0392b", rojoDeep: "#96271c",
+    celeste: "#75aadb", celesteDeep: "#4a86b8",
+    rojo: "#d52b1e", rojoDeep: "#a81f15",
     negro: "#221f1a", papel: "#e9e3d5",
   },
 
-  frameData: "argentina 2–1 suiza<br>mundial 2026 · kansas city · 11·07",
+  frameData: "argentina 2–1 suiza<br>world cup 2026 · kansas city · 11·07",
 };

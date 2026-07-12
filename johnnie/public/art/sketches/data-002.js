@@ -22,7 +22,7 @@ window.M2 = {
   htScore: [1, 0],
   date: "22·06·2026", venue: "estadio de dallas, arlington",
   attendance: 70649, referee: "amin omar",
-  competition: "mundial 2026 · grupo j",
+  competition: "world cup 2026 · grupo j",
 
   goals: [
     { min: 38, team: "arg", player: "messi", assist: "medina", nth: 17 },
@@ -73,5 +73,5 @@ window.M2 = {
     paper: "#e9e3d5", night: "#0a0a0c",
   },
 
-  frameData: "argentina 2–0 austria · grupo j<br>mundial 2026 · arlington · 22·06",
+  frameData: "argentina 2–0 austria · grupo j<br>world cup 2026 · arlington · 22·06",
 };

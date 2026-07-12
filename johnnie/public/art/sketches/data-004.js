@@ -1,14 +1,14 @@
-/* data-008.js — Argentina 3–2 Cabo Verde (a.e.t.)
+/* data-004.js — Argentina 3–2 Cabo Verde (a.e.t.)
    FIFA World Cup 2026, Round of 32 · Hard Rock Stadium, Miami · 3 July 2026.
    Sources: FotMob, Sofascore, Opta, xGscore (retrieved 2026-07-06).
-   Shared by all ten studies of piece 008. Counts are exact; where sources
+   Drives piece 004 · bronce. Counts are exact; where sources
    disagree on a minute, the consensus value is used (see art-lab log). */
 window.M8 = {
   home: { id: "arg", name: "argentina", score: 3 },
   away: { id: "cpv", name: "cabo verde", score: 2 },
   aet: true, htScore: [1, 0], ftScore: [1, 1],
   date: "03·07·2026", venue: "hard rock stadium, miami",
-  attendance: 64478, competition: "mundial 2026 · dieciseisavos",
+  attendance: 64478, competition: "world cup 2026 · dieciseisavos",
 
   goals: [
     { min: 29,  team: "arg", player: "messi",         assist: "l. martínez" },
@@ -54,5 +54,5 @@ window.M8 = {
   },
 
   // the frame line every study uses
-  frameData: "argentina 3–2 cabo verde · prórroga<br>mundial 2026 · miami · 03·07",
+  frameData: "argentina 3–2 cabo verde · prórroga<br>world cup 2026 · miami · 03·07",
 };
