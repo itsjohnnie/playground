@@ -16,7 +16,7 @@ window.M6 = {
 
   goals: [
     { min: 61, team: "arg", player: "messi",  assist: "mac allister", x: 0.46, y: 0.83 },
-    { min: 78, team: "arg", player: "almada", assist: "messi",        x: 0.63, y: 0.87 },
+    { min: 78, team: "arg", player: "álvarez", assist: "messi",       x: 0.63, y: 0.87 },  // sub 63' for almada
     { min: 85, team: "sui", player: "embolo", assist: "vargas",       x: 0.45, y: 0.12 },
     { min: 88, team: "arg", player: "lautaro", assist: "de paul",      x: 0.53, y: 0.885 },
   ],
