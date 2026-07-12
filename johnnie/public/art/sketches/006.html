@@ -573,13 +573,13 @@ function coverURL(w, h, afaImg, sfvImg) {
       g.fillRect(cxS - t / 2, cyc - L / 2, t, L);
       g.fillRect(cxS - L / 2, cyc - t / 2, L, t);
     }
-    // the address line
+    // the address line — quiet, under the marks
     g.fillStyle = M.ink.negro; g.textAlign = "center"; g.textBaseline = "alphabetic";
-    font(g, 0.105 * h, 560, 0.05);
-    g.fillText("ARGENTINA — SUIZA", w / 2, 0.78 * h);
-    font(g, 0.085 * h, 430, 0);
+    font(g, 0.078 * h, 560, 0.05);
+    g.fillText("ARGENTINA — SUIZA", w / 2, 0.775 * h);
+    font(g, 0.068 * h, 430, 0);
     g.globalAlpha = 0.72;
-    g.fillText("World Cup 2026 · M61", w / 2, 0.90 * h);
+    g.fillText("World Cup 2026", w / 2, 0.875 * h);
   }).toDataURL();
 }
 
