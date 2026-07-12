@@ -529,12 +529,8 @@ function coverURL(w, h, afaImg, sfvImg) {
       g.fillRect(Rv() * w, Rv() * h, 1 + Rv() * 2.4, 0.7);
     }
     g.globalAlpha = 1;
-    // handled edges: every side of this panel is a fold
-    for (const [x0, y0, x1, y1] of [[0, 0, 0, h], [w, 0, w, h], [0, 0, w, 0], [0, h, w, h]]) {
-      const gr = g.createLinearGradient(x0, y0, x0 === x1 ? x0 + (x0 ? -10 : 10) : x0, x0 === x1 ? y0 : y0 + (y0 ? -10 : 10));
-      gr.addColorStop(0, "rgba(74,60,42,0.04)"); gr.addColorStop(1, "rgba(74,60,42,0)");
-      g.fillStyle = gr; g.fillRect(0, 0, w, h);
-    }
+    // no edge vignettes: the cover must read as the same stock as every
+    // other pane — fold shading is the hinges' job, not the panel's
     const cy = 0.40 * h;
     if (afaImg && sfvImg) {
       // both marks re-inked flat in the same negro as the address line —
@@ -582,10 +578,10 @@ function coverURL(w, h, afaImg, sfvImg) {
     // the address line — quiet, under the marks
     g.fillStyle = M.ink.negro; g.textAlign = "center"; g.textBaseline = "alphabetic";
     font(g, 0.078 * h, 560, 0.05);
-    g.fillText("ARGENTINA — SUIZA", w / 2, 0.775 * h);
-    font(g, 0.068 * h, 430, 0);
+    g.fillText("ARGENTINA vs. SUIZA", w / 2, 0.775 * h);
+    font(g, 0.058 * h, 430, 0.05);
     g.globalAlpha = 0.72;
-    g.fillText("World Cup 2026", w / 2, 0.875 * h);
+    g.fillText("WORLD CUP 2026", w / 2, 0.87 * h);
   }).toDataURL();
 }
 
@@ -654,31 +650,34 @@ async function unfold() {
     const L2 = col(0, 0, true);          // the cover rides A-left's back
     L2.c.style.transformOrigin = "100% 50%";
 
-    // the score: entrance beat, two quick paper openings (the burst),
-    // a breath over blank stock, then the one flourish that shows the
-    // whole design — a rest at crease-memory angles, then the palm
-    const T_U1 = 420 * UF_SLOW, D_U1 = 560 * UF_SLOW;
-    const T_U2 = 830 * UF_SLOW, D_U2 = 540 * UF_SLOW;
-    const T_U3 = 1750 * UF_SLOW, D_U3 = 950 * UF_SLOW;
-    const T_FLAT = 3120 * UF_SLOW, D_FLAT = 520 * UF_SLOW;
-    const T_FADE = 3740 * UF_SLOW;
+    // the score: the packet slides in from the right (handed over), two
+    // quick paper openings (the burst), a breath over blank stock, then
+    // the one flourish that shows the whole design — a rest at
+    // crease-memory angles, then the palm
+    const T_U1 = 700 * UF_SLOW, D_U1 = 560 * UF_SLOW;
+    const T_U2 = 1110 * UF_SLOW, D_U2 = 540 * UF_SLOW;
+    const T_U3 = 2030 * UF_SLOW, D_U3 = 950 * UF_SLOW;
+    const T_FLAT = 3400 * UF_SLOW, D_FLAT = 520 * UF_SLOW;
+    const T_FADE = 4020 * UF_SLOW;
     const EASE1 = "cubic-bezier(.55,.05,.28,1)", EASE2 = "cubic-bezier(.34,.45,.4,1)";
     const EFLAT = "cubic-bezier(.3,.65,.25,1)";
     const anim = (el, kf, opt) => el.animate(kf, Object.assign({ fill: "both" }, opt));
 
-    // the hand: the packet arrives off-true and is turned as it opens —
-    // the rotation swings through zero and back, the sheet rides down
-    // while it grows, then lifts as the top half doubles it
+    // the hand: the packet is handed in from beyond the right edge —
+    // works at any viewport width — settles off-true, and is turned as
+    // it opens: rotation swings through zero and back, the sheet rides
+    // down while it grows, then lifts as the top half doubles it
+    const enterX = (W - px - cw + 32) / pw;   // packet fully offstage right
     const G = (x, y, r, s) => "translate(" + x * pw + "px," + y * ph + "px) rotate(" + r + "deg) scale(" + s + ")";
     anim(ufg, [
-      { transform: G(-0.25, -0.125, -13, 0.97), opacity: 0, easing: "cubic-bezier(.2,.7,.3,1)", offset: 0 },
-      { transform: G(-0.25, -0.122, -12.5, 1), opacity: 1, easing: "cubic-bezier(.5,.05,.3,1)", offset: 0.10 },
-      { transform: G(-0.06, -0.118, -4, 1), opacity: 1, easing: "cubic-bezier(.4,.12,.32,1)", offset: 0.31 },
-      { transform: G(0.012, -0.19, 4.5, 1), opacity: 1, easing: "cubic-bezier(.42,.1,.35,1)", offset: 0.51 },
-      { transform: G(0.005, -0.185, 3.8, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.65 },
+      { transform: G(enterX, -0.115, -17, 1), opacity: 1, easing: "cubic-bezier(.22,.62,.24,1)", offset: 0 },
+      { transform: G(-0.25, -0.122, -12.5, 1), opacity: 1, easing: "cubic-bezier(.5,.05,.3,1)", offset: 0.19 },
+      { transform: G(-0.06, -0.118, -4, 1), opacity: 1, easing: "cubic-bezier(.4,.12,.32,1)", offset: 0.42 },
+      { transform: G(0.012, -0.19, 4.5, 1), opacity: 1, easing: "cubic-bezier(.42,.1,.35,1)", offset: 0.555 },
+      { transform: G(0.005, -0.185, 3.8, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.68 },
       { transform: G(0, 0.004, -0.7, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.93 },
       { transform: G(0, 0, 0, 1), opacity: 1, offset: 1 },
-    ], { duration: 2700 * UF_SLOW });
+    ], { duration: 2980 * UF_SLOW });
 
     // U1 — the cover swings open toward you: blank stock inside, the
     // whole design still kissing itself in the middle
@@ -724,26 +723,26 @@ async function unfold() {
       gz.style.background = bg;
       anim(gz, [{ opacity: 0.8 }, { opacity: 0 }], { delay: t2, duration: d2 * 1.15, easing: "cubic-bezier(.3,.5,.4,1)" });
     };
+    // one continuous shadow across each half, strongest at the hinge —
+    // C+D read as one gradient, A+B as another; no pane stands alone
     for (const s of [L2, R2]) {
-      shade(s.C.gz, "linear-gradient(to top, rgba(46,34,18,.05), rgba(46,34,18,.24))", T_U3, D_U3 * 0.8);
-      shade(s.D.gz, "rgba(46,34,18,.16)", T_U3, D_U3 * 0.8);
-      shade(s.A.gz, "linear-gradient(to top, rgba(46,34,18,.26), rgba(46,34,18,.03))", T_U3, D_U3);
-      shade(s.B.gz, "linear-gradient(to top, rgba(46,34,18,.26), rgba(46,34,18,.03))", T_U3, D_U3);
+      shade(s.C.gz, "linear-gradient(to bottom, rgba(46,34,18,.22), rgba(46,34,18,.10))", T_U3, D_U3);
+      shade(s.D.gz, "linear-gradient(to bottom, rgba(46,34,18,.10), rgba(46,34,18,.02))", T_U3, D_U3);
+      shade(s.B.gz, "linear-gradient(to top, rgba(46,34,18,.22), rgba(46,34,18,.10))", T_U3, D_U3);
+      shade(s.A.gz, "linear-gradient(to top, rgba(46,34,18,.10), rgba(46,34,18,.02))", T_U3, D_U3);
     }
 
     // the shadow grows with what the paper covers
     anim(shd, [
-      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 0, offset: 0 },
-      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, offset: 0.085 },
+      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, offset: 0 },
       // hold the packet's footprint until each fold actually opens
-      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.155 },
-      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: qh + "px", opacity: 1, offset: 0.314 },
-      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.34 },
-      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, offset: 0.44 },
-      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, easing: EASE1, offset: 0.60 },
-      { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 0.865 },
+      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.206 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.326 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, offset: 0.485 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, easing: EASE1, offset: 0.597 },
+      { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 0.876 },
       { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 1 },
-    ], { duration: 3120 * UF_SLOW });
+    ], { duration: 3400 * UF_SLOW });
 
     // flat: hand the sheet to the live canvas, stamp the eleven in
     setTimeout(() => {
