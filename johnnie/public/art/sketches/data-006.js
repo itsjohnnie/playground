@@ -1,13 +1,13 @@
-/* data-006.js — Argentina 2–1 Switzerland
+/* data-006.js — Argentina 3–1 Switzerland
    FIFA World Cup 2026, Quarterfinal (M61) · Arrowhead Stadium, Kansas City
    Saturday 11 July 2026, 21:00 EDT. Sources: FotMob, Sofascore, Opta
    (retrieved 2026-07-12). Counts are exact; average positions are each
    player's per-half mean touch location, attack running downward for
    Argentina (toward y = 1) in normalized pitch fractions. */
 window.M6 = {
-  home: { id: "arg", name: "argentina", score: 2 },
+  home: { id: "arg", name: "argentina", score: 3 },
   away: { id: "sui", name: "suiza", score: 1 },
-  aet: false, htScore: [0, 0], ftScore: [2, 1],
+  aet: false, htScore: [0, 0], ftScore: [3, 1],
   date: "11·07·2026", kickoff: "21:00 edt",
   venue: "estadio arrowhead, kansas city",
   attendance: 76416, matchId: "M61",
@@ -18,14 +18,15 @@ window.M6 = {
     { min: 61, team: "arg", player: "messi",  assist: "mac allister", x: 0.46, y: 0.83 },
     { min: 78, team: "arg", player: "almada", assist: "messi",        x: 0.63, y: 0.87 },
     { min: 85, team: "sui", player: "embolo", assist: "vargas",       x: 0.45, y: 0.12 },
+    { min: 88, team: "arg", player: "lautaro", assist: "de paul",      x: 0.53, y: 0.885 },
   ],
   cards: [{ min: 44, team: "sui", player: "freuler" }, { min: 71, team: "arg", player: "romero" }],
   breaks: [], periods: [45, 90], totalMin: 90,
 
   possession: { arg: 58, sui: 42 },
-  xg: { arg: 2.05, sui: 0.74 },
-  shots: { arg: 17, sui: 8 },
-  onTarget: { arg: 7, sui: 3 },
+  xg: { arg: 2.61, sui: 0.74 },
+  shots: { arg: 19, sui: 8 },
+  onTarget: { arg: 9, sui: 3 },
   passes: { arg: 641, sui: 462 },
   corners: { arg: 7, sui: 3 },
   fouls: { arg: 10, sui: 14 },
@@ -69,5 +70,5 @@ window.M6 = {
     negro: "#221f1a", papel: "#e9e3d5",
   },
 
-  frameData: "argentina 2–1 suiza<br>world cup 2026 · kansas city · 11·07",
+  frameData: "argentina 3–1 suiza<br>world cup 2026 · kansas city · 11·07",
 };
