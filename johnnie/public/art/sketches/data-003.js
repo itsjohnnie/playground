@@ -13,7 +13,7 @@ window.M3 = {
   htScore: [0, 2],
   date: "27·06·2026", venue: "at&t stadium, arlington (dallas)",
   kickoff: "21:00 ct", attendance: 70649, referee: "istván kovács",
-  competition: "mundial 2026 · grupo j · partido 70",
+  competition: "world cup 2026 · grupo j · partido 70",
 
   goals: [
     { min: 19, team: "arg", player: "lo celso",    how: "free kick" },
@@ -46,5 +46,5 @@ window.M3 = {
     gold: "#e9b32a", paper: "#e9e3d5", night: "#0a0a0c",
   },
 
-  frameData: "jordan 1–3 argentina<br>mundial 2026 · grupo j · dallas · 27·06",
+  frameData: "jordan 1–3 argentina<br>world cup 2026 · grupo j · dallas · 27·06",
 };

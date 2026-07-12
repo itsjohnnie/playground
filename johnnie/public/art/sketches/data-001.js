@@ -18,7 +18,7 @@ window.M1 = {
   away: { id: "alg", name: "argelia", score: 0 },
   aet: false, htScore: [1, 0], ftScore: [3, 0],
   date: "16·06·2026", venue: "arrowhead stadium, kansas city",
-  attendance: 69045, competition: "mundial 2026 · grupo j",
+  attendance: 69045, competition: "world cup 2026 · grupo j",
   kickoff: "8pm ct", referee: "szymon marciniak",
 
   goals: [
@@ -65,5 +65,5 @@ window.M1 = {
   },
 
   // the frame line
-  frameData: "argentina 3–0 argelia<br>mundial 2026 · kansas city · 16·06",
+  frameData: "argentina 3–0 argelia<br>world cup 2026 · kansas city · 16·06",
 };

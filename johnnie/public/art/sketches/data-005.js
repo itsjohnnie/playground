@@ -34,7 +34,7 @@ window.M5 = {
   aet: false, htScore: [0, 1],
   date: "07·07·2026", venue: "atlanta stadium, atlanta",
   kickoff: "12:00 et", attendance: 68239, referee: "françois letexier",
-  competition: "mundial 2026 · octavos de final",
+  competition: "world cup 2026 · octavos de final",
 
   goals: [
     { min: 15, team: "egy", player: "y. ibrahim",   assist: "m. attia",    how: "header, off a corner" },
