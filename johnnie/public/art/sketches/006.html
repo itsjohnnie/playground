@@ -145,8 +145,12 @@ function build() {
   const m = 0.075 * S;                 // trim margin (live area inside)
   const R = ART.rng(seed + "-pull" + pull);
 
-  // pitch rect (portrait, argentina attacking downward) — tall in the sheet
-  const pit = { x: m, y: 0.142 * ph, w: S - 2 * m, h: ph - 0.142 * ph - 0.088 * ph };
+  // pitch rect (portrait, argentina attacking downward) — tall in the
+  // sheet AND proportional: a real plan keeps 68:105, else the centre
+  // circle squashes into an ellipse
+  const pitH = ph - 0.142 * ph - 0.088 * ph;
+  const pitW = Math.min(S - 2 * m, pitH * (68 / 105));
+  const pit = { x: (S - pitW) / 2, y: 0.142 * ph, w: pitW, h: pitH };
   const PX = (p) => pit.x + p[0] * pit.w;
   const PY = (p) => pit.y + p[1] * pit.h;
 
@@ -465,11 +469,16 @@ function drawFinal() { drawAt(plates.order.length, driftCur); }
 
 /* ---------------- the unfold: mailed folded to eighths ---------------- */
 
-// fold order on the mailing table: top half back, bottom quarter back,
-// left half over the front. The DOM opens them in reverse — vertical
-// first (the cover swings toward you like a card), then the bottom
-// quarter drops, then the top half rises. Rigid-subtree model: each
-// column carries its own row hinges, animated in sync.
+// fold order on the mailing table — the only sequence that leaves the
+// sheet's BACK outward for an address side: top half folded FORWARD
+// onto the front (faces kissing), the doubled bottom quarter folded
+// back, the left half folded over the front. The DOM opens them in
+// exact reverse, and shows what real paper would show: the cover, then
+// blank stock (the art is all kissing itself inside), the cover again
+// upside-down as the quarter drops — and then one flourish: the top
+// half lifts OFF the front, the bottom half of the design bursts out
+// beneath it, and the rest lands as the flap swings down. Rigid-subtree
+// model: each column carries its own row hinges, animated in sync.
 let ufEl = null;
 const UF_SLOW = +new URLSearchParams(location.search).get("ufslow") || 1;
 
@@ -495,9 +504,19 @@ function shieldPath(g, cx, cy, w, h) {
   g.closePath();
 }
 
-function coverURL(w, h) {
+const loadImg = (src, ms) => new Promise((res) => {
+  const i = new Image();
+  const t = setTimeout(() => res(null), ms || 900);
+  i.onload = () => { clearTimeout(t); res(i); };
+  i.onerror = () => { clearTimeout(t); res(null); };
+  i.src = src;
+});
+
+function coverURL(w, h, afaImg, sfvImg) {
   // the packet's face: what the mailer printed on the outside — the two
-  // federations' marks, reference not copy, in the poster's own inks
+  // federations' own marks (AFA's gold monogram, still three stars in
+  // July '26; the SFV·ASF red line footballer); hand-drawn shields only
+  // if the files never arrive
   const Rv = ART.rng(seed + "-cover");
   return mkPlate(w, h, (g) => {
     g.fillStyle = "#ece6d9"; g.fillRect(0, 0, w, h);
@@ -513,32 +532,39 @@ function coverURL(w, h) {
       gr.addColorStop(0, "rgba(74,60,42,0.10)"); gr.addColorStop(1, "rgba(74,60,42,0)");
       g.fillStyle = gr; g.fillRect(0, 0, w, h);
     }
-    const hs = 0.40 * h, ws = 0.82 * hs, gap = 0.30 * ws;
-    const cy = 0.42 * h;
-    // AFA — celeste and white stripes, the letters across
-    const cxA = w / 2 - ws / 2 - gap / 2;
-    g.save();
-    shieldPath(g, cxA, cy, ws, hs); g.clip();
-    for (let i = 0; i < 5; i++) {
-      g.fillStyle = i % 2 ? "#f4efe2" : M.ink.celeste;
-      g.fillRect(cxA - ws / 2 + (i * ws) / 5, cy - hs / 2, ws / 5 + 0.5, hs);
+    const cy = 0.40 * h;
+    if (afaImg && sfvImg) {
+      const ha = 0.46 * h, wa = ha * (afaImg.naturalWidth / afaImg.naturalHeight);
+      const hf = 0.40 * h, wf = hf * (sfvImg.naturalWidth / sfvImg.naturalHeight);
+      const gap = 0.11 * h;
+      const x0 = w / 2 - (wa + gap + wf) / 2;
+      g.drawImage(afaImg, x0, cy - ha / 2, wa, ha);
+      g.drawImage(sfvImg, x0 + wa + gap, cy - hf / 2, wf, hf);
+    } else {
+      const hs = 0.40 * h, ws = 0.82 * hs, gap = 0.30 * ws;
+      const cxA = w / 2 - ws / 2 - gap / 2;
+      g.save();
+      shieldPath(g, cxA, cy, ws, hs); g.clip();
+      for (let i = 0; i < 5; i++) {
+        g.fillStyle = i % 2 ? "#f4efe2" : M.ink.celeste;
+        g.fillRect(cxA - ws / 2 + (i * ws) / 5, cy - hs / 2, ws / 5 + 0.5, hs);
+      }
+      g.fillStyle = M.ink.negro; g.textAlign = "center"; g.textBaseline = "alphabetic";
+      font(g, 0.30 * hs, 700, 0.02);
+      g.fillText("AFA", cxA, cy + 0.09 * hs);
+      g.restore();
+      shieldPath(g, cxA, cy, ws, hs);
+      g.strokeStyle = M.ink.negro; g.lineWidth = Math.max(1, 0.02 * ws); g.stroke();
+      const cxS = w / 2 + ws / 2 + gap / 2;
+      shieldPath(g, cxS, cy, ws, hs);
+      g.fillStyle = M.ink.rojo; g.fill(); g.stroke();
+      const t = 0.20 * ws, L = 0.54 * ws, cyc = cy - 0.04 * hs;
+      g.fillStyle = "#f4efe2";
+      g.fillRect(cxS - t / 2, cyc - L / 2, t, L);
+      g.fillRect(cxS - L / 2, cyc - t / 2, L, t);
     }
-    g.fillStyle = M.ink.negro; g.textAlign = "center"; g.textBaseline = "alphabetic";
-    font(g, 0.30 * hs, 700, 0.02);
-    g.fillText("AFA", cxA, cy + 0.09 * hs);
-    g.restore();
-    shieldPath(g, cxA, cy, ws, hs);
-    g.strokeStyle = M.ink.negro; g.lineWidth = Math.max(1, 0.02 * ws); g.stroke();
-    // Switzerland — the red field, the white cross
-    const cxS = w / 2 + ws / 2 + gap / 2;
-    shieldPath(g, cxS, cy, ws, hs);
-    g.fillStyle = M.ink.rojo; g.fill(); g.stroke();
-    const t = 0.20 * ws, L = 0.54 * ws, cyc = cy - 0.04 * hs;
-    g.fillStyle = "#f4efe2";
-    g.fillRect(cxS - t / 2, cyc - L / 2, t, L);
-    g.fillRect(cxS - L / 2, cyc - t / 2, L, t);
     // the address line
-    g.fillStyle = M.ink.negro; g.textAlign = "center";
+    g.fillStyle = M.ink.negro; g.textAlign = "center"; g.textBaseline = "alphabetic";
     font(g, 0.105 * h, 560, 0.05);
     g.fillText("ARGENTINA — SUIZA", w / 2, 0.78 * h);
     font(g, 0.085 * h, 430, 0);
@@ -555,7 +581,13 @@ function ufDiv(cls, parent, st) {
   return d;
 }
 
-function unfold() {
+async function unfold() {
+  // the federations' marks for the cover — the entrance never waits
+  // long on a missing file: shields get drawn by hand instead
+  const [afaImg, sfvImg] = await Promise.all([
+    loadImg("../lib/crests/afa.svg"),
+    loadImg("../lib/crests/sfv.png"),
+  ]);
   return new Promise((resolve) => {
     const { pw, ph, px, py } = geom();
     const cw = pw / 2, qh = ph / 4;
@@ -564,7 +596,7 @@ function unfold() {
     press(comp.getContext("2d"), 3, 0);
     const art = "url(" + comp.toDataURL("image/png") + ")";
     const paper = "url(" + paperURL() + ")";
-    const cover = "url(" + coverURL(cw, qh) + ")";
+    const cover = "url(" + coverURL(cw, qh, afaImg, sfvImg) + ")";
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     ctx.clearRect(0, 0, W, H);           // the overlay carries the scene
 
@@ -604,52 +636,58 @@ function unfold() {
     const L2 = col(0, 0, true);          // the cover rides A-left's back
     L2.c.style.transformOrigin = "100% 50%";
 
-    // the score: entrance beat, three openings (each with a paper wobble
-    // past flat), a rest at crease-memory angles, then the palm
-    const T_U1 = 420 * UF_SLOW, D_U1 = 700 * UF_SLOW;
-    const T_U2 = 1030 * UF_SLOW, D_U2 = 620 * UF_SLOW;
-    const T_U3 = 1560 * UF_SLOW, D_U3 = 700 * UF_SLOW;
-    const T_FLAT = 2700 * UF_SLOW, D_FLAT = 520 * UF_SLOW;
-    const T_FADE = 3300 * UF_SLOW;
+    // the score: entrance beat, two quick paper openings (the burst),
+    // a breath over blank stock, then the one flourish that shows the
+    // whole design — a rest at crease-memory angles, then the palm
+    const T_U1 = 420 * UF_SLOW, D_U1 = 560 * UF_SLOW;
+    const T_U2 = 830 * UF_SLOW, D_U2 = 540 * UF_SLOW;
+    const T_U3 = 1750 * UF_SLOW, D_U3 = 950 * UF_SLOW;
+    const T_FLAT = 3120 * UF_SLOW, D_FLAT = 520 * UF_SLOW;
+    const T_FADE = 3740 * UF_SLOW;
     const EASE1 = "cubic-bezier(.55,.05,.28,1)", EASE2 = "cubic-bezier(.34,.45,.4,1)";
     const EFLAT = "cubic-bezier(.3,.65,.25,1)";
     const anim = (el, kf, opt) => el.animate(kf, Object.assign({ fill: "both" }, opt));
 
-    // the hand: packet arrives a touch off-true, settles as it opens
+    // the hand: the packet arrives off-true and is turned as it opens —
+    // the rotation swings through zero and back, the sheet rides down
+    // while it grows, then lifts as the top half doubles it
+    const G = (x, y, r, s) => "translate(" + x * pw + "px," + y * ph + "px) rotate(" + r + "deg) scale(" + s + ")";
     anim(ufg, [
-      { transform: "translate(" + -0.25 * pw + "px," + -0.125 * ph + "px) rotate(-6.5deg) scale(.97)", opacity: 0, easing: "cubic-bezier(.2,.7,.3,1)", offset: 0 },
-      { transform: "translate(" + -0.25 * pw + "px," + -0.12 * ph + "px) rotate(-6deg) scale(1)", opacity: 1, easing: "cubic-bezier(.45,.05,.35,1)", offset: 0.11 },
-      // the sideways offset is spent with the vertical fold; the vertical
-      // one with the top half — the sheet is never parked off-true
-      { transform: "translate(" + -0.005 * pw + "px," + -0.115 * ph + "px) rotate(-3.2deg) scale(1)", opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.50 },
-      { transform: "translate(0px," + -0.075 * ph + "px) rotate(-1.6deg) scale(1)", opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.73 },
-      { transform: "translate(0px,0px) rotate(0deg) scale(1)", opacity: 1, offset: 1 },
-    ], { duration: 2260 * UF_SLOW });
+      { transform: G(-0.25, -0.125, -13, 0.97), opacity: 0, easing: "cubic-bezier(.2,.7,.3,1)", offset: 0 },
+      { transform: G(-0.25, -0.122, -12.5, 1), opacity: 1, easing: "cubic-bezier(.5,.05,.3,1)", offset: 0.10 },
+      { transform: G(-0.06, -0.118, -4, 1), opacity: 1, easing: "cubic-bezier(.4,.12,.32,1)", offset: 0.31 },
+      { transform: G(0.012, -0.19, 4.5, 1), opacity: 1, easing: "cubic-bezier(.42,.1,.35,1)", offset: 0.51 },
+      { transform: G(0.005, -0.185, 3.8, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.65 },
+      { transform: G(0, 0.004, -0.7, 1), opacity: 1, easing: "cubic-bezier(.4,.1,.3,1)", offset: 0.93 },
+      { transform: G(0, 0, 0, 1), opacity: 1, offset: 1 },
+    ], { duration: 2700 * UF_SLOW });
 
-    // U1 — the cover swings open toward you
+    // U1 — the cover swings open toward you: blank stock inside, the
+    // whole design still kissing itself in the middle
     anim(L2.c, [
       { transform: "translateZ(4px) rotateY(180deg)", easing: EASE1, offset: 0 },
       { transform: "translateZ(.6px) rotateY(-5deg)", easing: EASE2, offset: 0.72 },
       { transform: "translateZ(0px) rotateY(2.6deg)", offset: 1 },
     ], { delay: T_U1, duration: D_U1 });
-    // U2 — the bottom quarter drops
     for (const s of [L2, R2]) {
+      // U2 — the doubled quarter swings down from behind: D underneath,
+      // A landing on top with the address side up again, inverted
       anim(s.D.pn, [
         { transform: "translateZ(-1.2px) rotateX(-180deg)", easing: EASE1, offset: 0 },
         { transform: "translateZ(-.2px) rotateX(4deg)", easing: EASE2, offset: 0.74 },
         { transform: "translateZ(0px) rotateX(-2.4deg)", offset: 1 },
       ], { delay: T_U2, duration: D_U2 });
-      // U3 — the top half rises; A opens against it with the same curve,
-      // so its absolute angle stays near flat: the top quarter dangles
-      // plumb behind the sheet and lands with the rest
       anim(s.A.pn, [
-        { transform: "translateZ(.6px) rotateX(180deg)", easing: EASE1, offset: 0 },
-        { transform: "translateZ(.1px) rotateX(-3.4deg)", easing: EASE2, offset: 0.75 },
+        { transform: "translateZ(4px) rotateX(-180deg)", easing: EASE1, offset: 0 },
+        { transform: "translateZ(.4px) rotateX(4deg)", easing: EASE2, offset: 0.74 },
         { transform: "translateZ(0px) rotateX(-1.6deg)", offset: 1 },
-      ], { delay: T_U3, duration: D_U3 });
+      ], { delay: T_U2, duration: D_U2 });
+      // U3 — the flourish: the top half lifts OFF the front (it was
+      // folded faces-kissing), the bottom of the design bursts out
+      // beneath it, and the rest swings down into place
       anim(s.AB, [
-        { transform: "translateZ(-2.4px) rotateX(-180deg)", easing: EASE1, offset: 0 },
-        { transform: "translateZ(-.4px) rotateX(3.4deg)", easing: EASE2, offset: 0.75 },
+        { transform: "translateZ(2.4px) rotateX(-180deg)", easing: EASE1, offset: 0 },
+        { transform: "translateZ(.4px) rotateX(3.4deg)", easing: EASE2, offset: 0.78 },
         { transform: "translateZ(0px) rotateX(-2.8deg)", offset: 1 },
       ], { delay: T_U3, duration: D_U3 });
     }
@@ -662,16 +700,15 @@ function unfold() {
       flat(s.D.pn, -2.4, "rotateX"); flat(s.A.pn, -1.6, "rotateX"); flat(s.AB, -2.8, "rotateX");
     }
 
-    // light: each face sheds its fold shadow as it opens; the base sheds
-    // the packet's shade as the cover lifts
+    // light: the uncovered design sheds the flap's shadow as it lifts;
+    // the landing faces shed their fold shade as they flatten
     const shade = (gz, bg, t2, d2) => {
       gz.style.background = bg;
       anim(gz, [{ opacity: 0.8 }, { opacity: 0 }], { delay: t2, duration: d2 * 1.15, easing: "cubic-bezier(.3,.5,.4,1)" });
     };
-    shade(L2.C.gz, "linear-gradient(to left, rgba(46,34,18,.30), rgba(46,34,18,.04))", T_U1, D_U1);
-    shade(R2.C.gz, "rgba(46,34,18,.16)", T_U1, D_U1);
     for (const s of [L2, R2]) {
-      shade(s.D.gz, "linear-gradient(to bottom, rgba(46,34,18,.28), rgba(46,34,18,.03))", T_U2, D_U2);
+      shade(s.C.gz, "linear-gradient(to top, rgba(46,34,18,.05), rgba(46,34,18,.24))", T_U3, D_U3 * 0.8);
+      shade(s.D.gz, "rgba(46,34,18,.16)", T_U3, D_U3 * 0.8);
       shade(s.A.gz, "linear-gradient(to top, rgba(46,34,18,.26), rgba(46,34,18,.03))", T_U3, D_U3);
       shade(s.B.gz, "linear-gradient(to top, rgba(46,34,18,.26), rgba(46,34,18,.03))", T_U3, D_U3);
     }
@@ -679,12 +716,16 @@ function unfold() {
     // the shadow grows with what the paper covers
     anim(shd, [
       { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 0, offset: 0 },
-      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.13 },
-      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.39 },
-      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, easing: EASE1, offset: 0.57 },
-      { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 0.79 },
+      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, offset: 0.085 },
+      // hold the packet's footprint until each fold actually opens
+      { left: cw + "px", top: 0.5 * ph + "px", width: cw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.155 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: qh + "px", opacity: 1, offset: 0.314 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: qh + "px", opacity: 1, easing: EASE1, offset: 0.34 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, offset: 0.44 },
+      { left: "0px", top: 0.5 * ph + "px", width: pw + "px", height: 0.5 * ph + "px", opacity: 1, easing: EASE1, offset: 0.60 },
+      { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 0.865 },
       { left: "0px", top: "0px", width: pw + "px", height: ph + "px", opacity: 1, offset: 1 },
-    ], { duration: 2860 * UF_SLOW });
+    ], { duration: 3120 * UF_SLOW });
 
     // flat: hand the sheet to the live canvas, stamp the eleven in
     setTimeout(() => {
