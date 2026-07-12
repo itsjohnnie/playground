@@ -36,7 +36,7 @@ html body{font-family:'Inter',ui-sans-serif,system-ui,sans-serif}
 .uf .g3{position:absolute;inset:0}
 .uf .pn{position:absolute}
 .uf .fc,.uf .bk{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
-.uf .bk{transform:rotateY(180deg);background-color:#ece6d9}
+.uf .bk{transform:rotateY(180deg);background-color:#f4f2ec}
 .uf .gz{position:absolute;inset:0}
 .uf .shd{position:absolute;border-radius:2px}
 </style>
@@ -432,7 +432,7 @@ function press(g, k, drift) {
     else g.fillRect(0, pf * ph - w, pw, 2 * w);
   }
   for (const sp of plates.specks) {
-    g.fillStyle = "rgba(233,227,213," + sp.a.toFixed(2) + ")";
+    g.fillStyle = "rgba(243,240,233," + sp.a.toFixed(2) + ")";
     g.beginPath(); g.arc(sp.x, sp.y, sp.r, 0, TAU); g.fill();
   }
   g.restore();
@@ -487,7 +487,7 @@ function paperURL() {
   // the back of the stock — unprinted, a shade lighter, same fibre
   const Rp = ART.rng(seed + "-back");
   return mkPlate(180, 180, (g) => {
-    g.fillStyle = "#ece6d9"; g.fillRect(0, 0, 180, 180);
+    g.fillStyle = "#f4f2ec"; g.fillRect(0, 0, 180, 180);
     g.globalAlpha = 0.06;
     for (let i = 0; i < 220; i++) {
       g.fillStyle = Rp() < 0.5 ? "#fff" : "#8a8272";
@@ -520,7 +520,7 @@ function coverURL(w, h, afaImg, sfvImg) {
   // if the files never arrive
   const Rv = ART.rng(seed + "-cover");
   return mkPlate(w, h, (g) => {
-    g.fillStyle = "#ece6d9"; g.fillRect(0, 0, w, h);
+    g.fillStyle = "#f4f2ec"; g.fillRect(0, 0, w, h);
     g.globalAlpha = 0.06;
     for (let i = 0; i < 260; i++) {
       g.fillStyle = Rv() < 0.5 ? "#fff" : "#8a8272";
@@ -535,28 +535,32 @@ function coverURL(w, h, afaImg, sfvImg) {
     }
     const cy = 0.40 * h;
     if (afaImg && sfvImg) {
-      // the SFV mark re-inked flat in the poster's own rojo — one press
-      // color, no stray tints — and held smaller than the AFA monogram
-      const sfvC = document.createElement("canvas");
-      sfvC.width = sfvImg.naturalWidth; sfvC.height = sfvImg.naturalHeight;
-      const gg = sfvC.getContext("2d");
-      gg.drawImage(sfvImg, 0, 0);
-      gg.globalCompositeOperation = "source-in";
-      gg.fillStyle = M.ink.rojo;
-      gg.fillRect(0, 0, sfvC.width, sfvC.height);
+      // both marks re-inked flat in the same negro as the address line —
+      // the whole cover one press color, no stray tints — the SFV held
+      // smaller than the AFA monogram
+      const inked = (img) => {
+        const c = document.createElement("canvas");
+        c.width = img.naturalWidth; c.height = img.naturalHeight;
+        const gg = c.getContext("2d");
+        gg.drawImage(img, 0, 0);
+        gg.globalCompositeOperation = "source-in";
+        gg.fillStyle = M.ink.negro;
+        gg.fillRect(0, 0, c.width, c.height);
+        return c;
+      };
       const ha = 0.46 * h, wa = ha * (afaImg.naturalWidth / afaImg.naturalHeight);
       const hf = 0.29 * h, wf = hf * (sfvImg.naturalWidth / sfvImg.naturalHeight);
       const gap = 0.10 * h;
       const x0 = w / 2 - (wa + gap + wf) / 2;
-      g.drawImage(afaImg, x0, cy - ha / 2, wa, ha);
-      g.drawImage(sfvC, x0 + wa + gap, cy - hf / 2, wf, hf);
+      g.drawImage(inked(afaImg), x0, cy - ha / 2, wa, ha);
+      g.drawImage(inked(sfvImg), x0 + wa + gap, cy - hf / 2, wf, hf);
     } else {
       const hs = 0.40 * h, ws = 0.82 * hs, gap = 0.30 * ws;
       const cxA = w / 2 - ws / 2 - gap / 2;
       g.save();
       shieldPath(g, cxA, cy, ws, hs); g.clip();
       for (let i = 0; i < 5; i++) {
-        g.fillStyle = i % 2 ? "#f4efe2" : M.ink.celeste;
+        g.fillStyle = i % 2 ? "#f8f6f0" : M.ink.celeste;
         g.fillRect(cxA - ws / 2 + (i * ws) / 5, cy - hs / 2, ws / 5 + 0.5, hs);
       }
       g.fillStyle = M.ink.negro; g.textAlign = "center"; g.textBaseline = "alphabetic";
@@ -569,7 +573,7 @@ function coverURL(w, h, afaImg, sfvImg) {
       shieldPath(g, cxS, cy, ws, hs);
       g.fillStyle = M.ink.rojo; g.fill(); g.stroke();
       const t = 0.20 * ws, L = 0.54 * ws, cyc = cy - 0.04 * hs;
-      g.fillStyle = "#f4efe2";
+      g.fillStyle = "#f8f6f0";
       g.fillRect(cxS - t / 2, cyc - L / 2, t, L);
       g.fillRect(cxS - L / 2, cyc - t / 2, L, t);
     }

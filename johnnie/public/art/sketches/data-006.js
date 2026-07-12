@@ -68,7 +68,7 @@ window.M6 = {
   ink: {
     celeste: "#75aadb", celesteDeep: "#4a86b8",
     rojo: "#d52b1e", rojoDeep: "#a81f15",
-    negro: "#221f1a", papel: "#e9e3d5",
+    negro: "#221f1a", papel: "#f2efe8",
   },
 
   frameData: "argentina 3–1 suiza · prórroga<br>world cup 2026 · kansas city · 11·07",
