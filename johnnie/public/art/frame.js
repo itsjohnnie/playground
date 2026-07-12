@@ -192,8 +192,13 @@ ${thumb ? `body{display:block;padding:0}
 .panel,.pill,.scrim{display:none!important}
 .room{position:fixed;inset:0}
 .art{position:absolute;inset:0;margin:0}` : ""}
-${og ? `.go,.desc,.specs,.cap{display:none!important}
-.panel{animation:none}` : ""}`;
+${og ? `body{display:block;padding:48px}
+.room,.pill,.scrim,.go,.cap,.specs{display:none!important}
+.panel{animation:none;box-sizing:border-box;height:100%;width:100%;
+border-radius:40px;padding:44px 56px 50px}
+.top{font-size:14px}
+h1{white-space:nowrap;font-size:62px}
+.desc{font-size:17px;line-height:1.65;max-width:64ch;margin:18px 0 0}` : ""}`;
     document.head.appendChild(css);
 
     const esc = (s) => String(s == null ? "" : s);
