@@ -12,7 +12,12 @@ import type { DiscoverItem } from "@/lib/content";
 // depth sorting, and hiding the far hemisphere (backface-visibility) — instead
 // of the previous flat "billboard" hack (translate + manual scale + z-index),
 // which never actually turned the images to face their point on the sphere.
-const TILE_COUNT = 72;
+// A wide grid — far more longitude columns than latitude rows — so the
+// sphere reads as an actual gridded globe (rows/columns of images wrapping
+// around it) rather than an evenly-scattered cloud of points.
+const ROWS = 9;
+const COLS = 16;
+const TILE_COUNT = ROWS * COLS;
 const PERSPECTIVE_RATIO = 3.1; // camera distance as a multiple of the sphere radius
 
 function sampleItems(items: DiscoverItem[], count: number): DiscoverItem[] {
@@ -27,22 +32,29 @@ function sampleItems(items: DiscoverItem[], count: number): DiscoverItem[] {
 
 type SpherePoint = { x: number; y: number; z: number; latDeg: number; lonDeg: number };
 
-// Golden-angle spiral: distributes `count` points evenly over a unit sphere
-// (no pinching at the poles the way a naive latitude/longitude grid gets),
-// then converts each to the lat/lon a CSS rotateX/rotateY pair needs to place
-// a point pushed out along +Z onto that exact spot on the sphere.
-function fibonacciSphere(count: number): SpherePoint[] {
+// Latitude/longitude grid: `rows` evenly-spaced bands between the poles (left
+// open rather than pinched to a single point at +/-90, which would bunch every
+// column into one spot), each carrying `cols` evenly-spaced tiles around the
+// full 360°. x/y/z are the point CSS's rotateY(lon) rotateX(lat) translateZ(r)
+// chain actually lands on (see the derivation note in animate()) — kept
+// alongside the angles since the per-frame depth/opacity fade needs them.
+function sphereGrid(rows: number, cols: number): SpherePoint[] {
   const pts: SpherePoint[] = [];
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  for (let i = 0; i < count; i++) {
-    const y = count > 1 ? 1 - (i / (count - 1)) * 2 : 0;
-    const r = Math.sqrt(Math.max(0, 1 - y * y));
-    const theta = golden * i;
-    const x = Math.cos(theta) * r;
-    const z = Math.sin(theta) * r;
-    const latDeg = (Math.asin(y) * 180) / Math.PI;
-    const lonDeg = (Math.atan2(x, z) * 180) / Math.PI;
-    pts.push({ x, y, z, latDeg, lonDeg });
+  const latSpan = 150; // degrees between the top and bottom row, centred on the equator
+  for (let r = 0; r < rows; r++) {
+    const latDeg = rows > 1 ? -latSpan / 2 + (r * latSpan) / (rows - 1) : 0;
+    const lat = (latDeg * Math.PI) / 180;
+    for (let c = 0; c < cols; c++) {
+      const lonDeg = (c * 360) / cols;
+      const lon = (lonDeg * Math.PI) / 180;
+      pts.push({
+        x: Math.cos(lat) * Math.sin(lon),
+        y: -Math.sin(lat),
+        z: Math.cos(lat) * Math.cos(lon),
+        latDeg,
+        lonDeg,
+      });
+    }
   }
   return pts;
 }
@@ -76,7 +88,7 @@ class Globe {
     this.el = el;
     this.stage = stage;
     this.tiles = tiles;
-    this.points = fibonacciSphere(tiles.length);
+    this.points = sphereGrid(ROWS, COLS);
 
     this.animate = this.animate.bind(this);
     this.onDown = this.onDown.bind(this);
@@ -96,11 +108,13 @@ class Globe {
   }
 
   calcRadius() {
-    const w = this.el.clientWidth || window.innerWidth;
     const h = this.el.clientHeight || window.innerHeight;
-    // Bounded by the smaller axis so portrait phones get a fully centred
-    // globe (never clipped) while wide screens still get a generous sphere.
-    this.targetRadius = Math.min(w, h) * 0.36;
+    // Sized off height ALONE, not the smaller of width/height — the grid is
+    // deliberately much wider than it is tall, so a narrow phone is meant to
+    // crop its left/right edges (matching the brief: "you wouldn't be able to
+    // see the whole globe on mobile, but much more on desktop"), rather than
+    // shrinking the whole sphere down to avoid ever cropping it.
+    this.targetRadius = h * 0.34;
     this.el.style.perspective = `${this.targetRadius * PERSPECTIVE_RATIO}px`;
   }
 

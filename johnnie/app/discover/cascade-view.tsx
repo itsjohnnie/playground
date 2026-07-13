@@ -4,13 +4,39 @@ import { useEffect, useRef } from "react";
 import { asset } from "@/lib/asset";
 import type { DiscoverItem } from "@/lib/content";
 
-// View 3 — "cascade": independent columns of tiles drifting upward at
-// different speeds, overlapping and lightly rotated so the underlying grid
-// barely reads as one. Each column is a 1D version of the endless grid's
-// torus wrap (discover-grid.tsx): tiles cycle past the top and reappear at
-// the bottom with fresh content, forever. Driven by wheel/drag (matching the
-// other two views' full-bleed, no-native-scroll canvas) plus a slow constant
-// autoplay drift so it's always gently alive, even untouched.
+// View 3 — "cascade": a handful of lanes drifting upward at different speeds
+// — one dominant centred lane (what you see first), one overlapping in FRONT
+// of it, and one off to the right — rather than a dense wall of small
+// columns. Each lane is a 1D version of the endless grid's torus wrap
+// (discover-grid.tsx): tiles cycle past the top and reappear at the bottom
+// with fresh content, forever. Driven by wheel/drag (matching the other two
+// views' full-bleed, no-native-scroll canvas) plus a slow constant autoplay
+// drift so it's always gently alive, even untouched. Tiles are sized so only
+// a handful are ever on screen at once — big and legible, not a wallpaper.
+
+type LaneConfig = {
+  centerFrac: number; // horizontal centre, as a fraction of viewport width
+  widthFrac: number; // tile width, as a fraction of viewport width
+  heightFrac: number; // tile height, as a fraction of viewport height
+  speed: number;
+  z: number; // stacking order — higher reads as "in front"
+};
+
+// Desktop: one dominant centred lane, with a smaller lane overlapping its
+// left edge from IN FRONT and another smaller one to the right — accents
+// around a clear centre, not three equal columns filling the screen.
+const DESKTOP_LANES: LaneConfig[] = [
+  { centerFrac: 0.38, widthFrac: 0.16, heightFrac: 0.36, speed: 0.7, z: 3 },
+  { centerFrac: 0.5, widthFrac: 0.3, heightFrac: 0.48, speed: 1, z: 2 },
+  { centerFrac: 0.64, widthFrac: 0.17, heightFrac: 0.34, speed: 1.3, z: 1 },
+];
+// Mobile: just the centre lane (prominent) and a peek of the right lane —
+// three side-by-side lanes don't fit legibly on a narrow phone.
+const MOBILE_LANES: LaneConfig[] = [
+  { centerFrac: 0.44, widthFrac: 0.5, heightFrac: 0.38, speed: 1, z: 2 },
+  { centerFrac: 0.9, widthFrac: 0.28, heightFrac: 0.32, speed: 1.3, z: 1 },
+];
+const MOBILE_BREAKPOINT = 720;
 
 type Tile = {
   el: HTMLElement;
@@ -21,8 +47,11 @@ type Tile = {
   scale: number;
 };
 
-type Column = {
+type Lane = {
+  el: HTMLElement;
   tiles: Tile[];
+  itemW: number;
+  itemH: number;
   cellH: number;
   length: number;
   speed: number;
@@ -33,14 +62,11 @@ type Column = {
 
 class CascadeGrid {
   wrapper: HTMLElement;
-  columnsEl: HTMLElement;
+  lanesEl: HTMLElement;
   sourceItems: HTMLElement[];
-  columns: Column[] = [];
+  lanes: Lane[] = [];
 
-  itemWidth = 0;
-  itemHeight = 0;
-  gap = 0;
-  mobileBreakpoint = 640;
+  mobileBreakpoint = MOBILE_BREAKPOINT;
 
   scrollPos = 0;
   velocity = 0;
@@ -50,14 +76,13 @@ class CascadeGrid {
 
   isDragging = false;
   lastY = 0;
-  tapCancelled = false;
 
   rafId = 0;
   resizeTimeout = 0;
 
-  constructor(wrapper: HTMLElement, columnsEl: HTMLElement, sourcePool: HTMLElement) {
+  constructor(wrapper: HTMLElement, lanesEl: HTMLElement, sourcePool: HTMLElement) {
     this.wrapper = wrapper;
-    this.columnsEl = columnsEl;
+    this.lanesEl = lanesEl;
     this.sourceItems = Array.from(sourcePool.children) as HTMLElement[];
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       // Keep wheel/drag scrolling, but drop the constant idle drift.
@@ -88,74 +113,71 @@ class CascadeGrid {
     if (img && (img as HTMLImageElement).complete) img.classList.add("is-loaded");
   }
 
-  calcLayout() {
-    const vw = this.wrapper.clientWidth || window.innerWidth;
-    const mobile = vw < this.mobileBreakpoint;
-    const targetColWidth = mobile ? 108 : 190;
-    const colCount = Math.max(3, Math.min(8, Math.round(vw / targetColWidth)));
-    this.itemWidth = vw / colCount - (mobile ? 10 : 18);
-    this.itemHeight = this.itemWidth * (560 / 996);
-    this.gap = -Math.round(this.itemHeight * 0.08); // slight built-in overlap
-    return colCount;
-  }
-
   init() {
-    const colCount = this.calcLayout();
-    const viewH = this.wrapper.clientHeight || window.innerHeight;
-    const cellH = this.itemHeight + this.gap;
-    const tilesPerCol = Math.ceil(viewH / cellH) + 6;
+    const vw = this.wrapper.clientWidth || window.innerWidth;
+    const vh = this.wrapper.clientHeight || window.innerHeight;
+    const configs = vw < this.mobileBreakpoint ? MOBILE_LANES : DESKTOP_LANES;
 
-    this.columnsEl.innerHTML = "";
-    this.columns = [];
+    this.lanesEl.innerHTML = "";
+    this.lanes = [];
 
-    for (let c = 0; c < colCount; c++) {
-      const colEl = document.createElement("div");
-      colEl.className = "cascade-column";
-      colEl.style.width = `${this.itemWidth}px`;
+    configs.forEach((cfg, laneIndex) => {
+      const itemW = cfg.widthFrac * vw;
+      const itemH = cfg.heightFrac * vh;
+      const gap = -Math.round(itemH * 0.08); // slight built-in overlap
+      const cellH = itemH + gap;
+      const tilesPerLane = Math.ceil(vh / cellH) + 4;
+
+      const laneEl = document.createElement("div");
+      laneEl.className = "cascade-lane";
+      laneEl.style.width = `${itemW}px`;
+      laneEl.style.left = `${cfg.centerFrac * vw - itemW / 2}px`;
+      laneEl.style.zIndex = String(cfg.z);
 
       const pool = this.shuffle(this.sourceItems);
-      const column: Column = {
+      const lane: Lane = {
+        el: laneEl,
         tiles: [],
+        itemW,
+        itemH,
         cellH,
-        length: cellH * tilesPerCol,
-        // Pseudo-random spread across ~0.7x–1.9x, deterministic per column so
-        // layout is stable across a resize-triggered rebuild.
-        speed: 0.7 + ((c * 47) % 100) / 100 * 1.2,
-        phase: ((c * 0.37) % 1) * cellH * tilesPerCol,
+        length: cellH * tilesPerLane,
+        speed: cfg.speed,
+        phase: ((laneIndex * 0.37) % 1) * cellH * tilesPerLane,
         pool,
         poolIndex: 0,
       };
 
-      for (let i = 0; i < tilesPerCol; i++) {
-        const source = this.nextFrom(column);
+      for (let i = 0; i < tilesPerLane; i++) {
+        const source = this.nextFrom(lane);
         const clone = source.cloneNode(true) as HTMLElement;
         clone.classList.remove("cascade-source");
         clone.classList.add("cascade-tile");
-        clone.style.width = `${this.itemWidth}px`;
-        clone.style.height = `${this.itemHeight}px`;
+        clone.style.width = `${itemW}px`;
+        clone.style.height = `${itemH}px`;
         this.markLoaded(clone);
-        colEl.appendChild(clone);
+        laneEl.appendChild(clone);
 
-        const rot = (((i * 53 + c * 17) % 7) - 3) * 1.1;
-        const scale = 1 + (((i * 31 + c * 13) % 10) - 5) / 100;
-        column.tiles.push({ el: clone, baseY: i * cellH, lastY: -99999, lastWrap: null, rot, scale });
+        const rot = (((i * 53 + laneIndex * 17) % 7) - 3) * 0.8;
+        const scale = 1 + (((i * 31 + laneIndex * 13) % 10) - 5) / 140;
+        lane.tiles.push({ el: clone, baseY: i * cellH, lastY: -99999, lastWrap: null, rot, scale });
       }
 
-      this.columnsEl.appendChild(colEl);
-      this.columns.push(column);
-    }
+      this.lanesEl.appendChild(laneEl);
+      this.lanes.push(lane);
+    });
   }
 
-  nextFrom(column: Column): HTMLElement {
-    if (column.poolIndex >= column.pool.length) {
-      column.pool = this.shuffle(this.sourceItems);
-      column.poolIndex = 0;
+  nextFrom(lane: Lane): HTMLElement {
+    if (lane.poolIndex >= lane.pool.length) {
+      lane.pool = this.shuffle(this.sourceItems);
+      lane.poolIndex = 0;
     }
-    return column.pool[column.poolIndex++];
+    return lane.pool[lane.poolIndex++];
   }
 
-  swapContent(column: Column, tile: Tile) {
-    const source = this.nextFrom(column);
+  swapContent(lane: Lane, tile: Tile) {
+    const source = this.nextFrom(lane);
     tile.el.innerHTML = source.innerHTML;
     this.markLoaded(tile.el);
   }
@@ -215,17 +237,16 @@ class CascadeGrid {
     }
 
     const viewH = this.wrapper.clientHeight || window.innerHeight;
-    const itemH = this.itemHeight;
 
-    for (const col of this.columns) {
-      const colScroll = this.scrollPos * col.speed + col.phase;
-      for (const tile of col.tiles) {
-        let y = (((tile.baseY - colScroll) % col.length) + col.length) % col.length;
-        y = y - col.length / 2 + viewH / 2 - itemH / 2;
+    for (const lane of this.lanes) {
+      const laneScroll = this.scrollPos * lane.speed + lane.phase;
+      for (const tile of lane.tiles) {
+        let y = (((tile.baseY - laneScroll) % lane.length) + lane.length) % lane.length;
+        y = y - lane.length / 2 + viewH / 2 - lane.itemH / 2;
 
-        const wrapIndex = Math.floor((tile.baseY - colScroll) / col.length);
+        const wrapIndex = Math.floor((tile.baseY - laneScroll) / lane.length);
         if (tile.lastWrap !== null && wrapIndex !== tile.lastWrap) {
-          this.swapContent(col, tile);
+          this.swapContent(lane, tile);
         }
         tile.lastWrap = wrapIndex;
 
@@ -263,21 +284,21 @@ class CascadeGrid {
 export default function CascadeView({ items }: { items: DiscoverItem[] }) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const poolRef = useRef<HTMLDivElement>(null);
-  const columnsRef = useRef<HTMLDivElement>(null);
+  const lanesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
     const pool = poolRef.current;
-    const columns = columnsRef.current;
-    if (!wrapper || !pool || !columns) return;
-    const grid = new CascadeGrid(wrapper, columns, pool);
+    const lanes = lanesRef.current;
+    if (!wrapper || !pool || !lanes) return;
+    const grid = new CascadeGrid(wrapper, lanes, pool);
     grid.start();
     return () => grid.destroy();
   }, []);
 
   return (
     <div className="cascade-viewport" ref={wrapperRef}>
-      {/* Hidden source pool: cloned into each column by the engine above. */}
+      {/* Hidden source pool: cloned into each lane by the engine above. */}
       <div className="cascade-pool" ref={poolRef} aria-hidden="true">
         {items.map((it) => (
           <div className="cascade-source" key={it.image}>
@@ -285,7 +306,7 @@ export default function CascadeView({ items }: { items: DiscoverItem[] }) {
           </div>
         ))}
       </div>
-      <div className="cascade-columns" ref={columnsRef} role="list" aria-label="Discover cascade" />
+      <div className="cascade-columns" ref={lanesRef} role="list" aria-label="Discover cascade" />
     </div>
   );
 }

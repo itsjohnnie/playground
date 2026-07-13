@@ -560,7 +560,7 @@ html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opa
 }
 .globe-tile {
   position: absolute; top: 50%; left: 50%;
-  width: 132px; height: 74px;
+  width: 150px; height: 84px;
   backface-visibility: hidden;
   will-change: transform, opacity;
   pointer-events: none; user-select: none;
@@ -576,11 +576,14 @@ html.is-dark .globe-tile { background-color: rgba(255, 255, 255, .06); }
 }
 .globe-image.is-loaded { opacity: 1; filter: blur(0); }
 @media (max-width: 767px) {
-  .globe-tile { width: 82px; height: 46px; }
+  .globe-tile { width: 92px; height: 52px; }
 }
 
-/* View 3 — cascade (cascade-view.tsx): independent columns drifting upward
-   at different speeds, overlapping and lightly rotated. */
+/* View 3 — cascade (cascade-view.tsx): a few big lanes (centre, an
+   overlapping front lane, a right lane — not a dense wall of small columns)
+   drifting upward at different speeds. Lanes are positioned explicitly
+   (left, in px, set by the engine) rather than flowed by flexbox, so the
+   front lane can genuinely sit in front of (z-index above) the centre one. */
 .cascade-viewport {
   position: absolute; inset: 0; overflow: hidden;
   cursor: grab; touch-action: none;
@@ -589,22 +592,16 @@ html.is-dark .globe-tile { background-color: rgba(255, 255, 255, .06); }
 .cascade-viewport.ready { opacity: 1; }
 .cascade-viewport.dragging { cursor: grabbing; }
 .cascade-pool { display: none; }
-.cascade-columns {
-  position: relative; width: 100%; height: 100%;
-  display: flex; justify-content: center;
-}
-.cascade-column {
-  position: relative; height: 100%;
-  margin: 0 -14px; /* horizontal overlap between columns */
-}
+.cascade-columns { position: relative; width: 100%; height: 100%; }
+.cascade-lane { position: absolute; top: 0; height: 100%; }
 .cascade-tile {
   position: absolute; top: 0; left: 0;
   will-change: transform;
   pointer-events: none; user-select: none;
-  background-color: rgba(0, 0, 0, .05); border-radius: 3px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, .12);
+  background-color: rgba(0, 0, 0, .05); border-radius: 4px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .16);
 }
-html.is-dark .cascade-tile { background-color: rgba(255, 255, 255, .06); box-shadow: 0 8px 20px rgba(0, 0, 0, .4); }
+html.is-dark .cascade-tile { background-color: rgba(255, 255, 255, .06); box-shadow: 0 12px 28px rgba(0, 0, 0, .45); }
 .cascade-image {
   width: 100%; height: 100%; object-fit: cover; border-radius: 3px; display: block;
   pointer-events: none; user-select: none; -webkit-user-drag: none;
