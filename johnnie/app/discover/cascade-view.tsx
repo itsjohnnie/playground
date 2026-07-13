@@ -38,16 +38,16 @@ type LaneConfig = {
 // shows a couple in full plus edges/corners of a few more as they scroll
 // past or slide behind a neighbouring lane, not a neat set of exactly six.
 const DESKTOP_LANES: LaneConfig[] = [
-  { centerFrac: 0.25, widthFrac: 0.56, speed: 0.7, z: 3 },
-  { centerFrac: 0.52, widthFrac: 1.1, speed: 1, z: 2 },
-  { centerFrac: 0.82, widthFrac: 0.58, speed: 1.3, z: 1 },
+  { centerFrac: 0.2, widthFrac: 0.36, speed: 0.7, z: 3 },
+  { centerFrac: 0.52, widthFrac: 0.7, speed: 1, z: 2 },
+  { centerFrac: 0.86, widthFrac: 0.38, speed: 1.3, z: 1 },
 ];
 // Mobile: just the centre lane (prominent, itself bleeding past both edges)
 // and a peek of the right lane — three side-by-side lanes don't fit legibly
 // on a narrow phone.
 const MOBILE_LANES: LaneConfig[] = [
-  { centerFrac: 0.5, widthFrac: 1.05, speed: 1, z: 2 },
-  { centerFrac: 0.85, widthFrac: 0.55, speed: 1.3, z: 1 },
+  { centerFrac: 0.46, widthFrac: 0.7, speed: 1, z: 2 },
+  { centerFrac: 0.92, widthFrac: 0.36, speed: 1.3, z: 1 },
 ];
 const MOBILE_BREAKPOINT = 720;
 
@@ -137,7 +137,7 @@ class CascadeGrid {
     configs.forEach((cfg, laneIndex) => {
       const itemW = cfg.widthFrac * vw;
       const itemH = itemW * IMAGE_RATIO;
-      const gap = -Math.round(itemH * 0.08); // slight built-in overlap
+      const gap = Math.round(itemH * 0.32); // real breathing room between stacked tiles
       const cellH = itemH + gap;
       const tilesPerLane = Math.ceil(vh / cellH) + 4;
 
