@@ -493,8 +493,10 @@ function drawFinal() { drawAt(plates.order.length, driftCur); }
 // terrace confetti, celeste and white: each piece falls to a terminal
 // velocity, sways on its own sine, tumbles in depth (its apparent width
 // the cosine of the tumble) — all analytic in t, so no state to step
+const CONF_MAX = 650;             // the party has a fire code
 function fireConfetti() {
   if (RM) return;
+  if (conf && conf.pieces.length >= CONF_MAX) return;
   const { pw } = geom();          // piece sizes keep the sheet's scale
   const R = Math.random;
   // each paper catches the light on one face and shades on the other —
@@ -543,7 +545,17 @@ function fireConfetti() {
       a: 0.9,
     });
   }
-  conf = { t0: performance.now(), pieces };
+  // volleys stack: while paper is still falling, another tap throws
+  // more on top — delays rebased onto the running clock, the total
+  // held under the cap (pieces free their slots as they land)
+  const now = performance.now();
+  if (!conf) conf = { t0: now, pieces: [] };
+  const off = (now - conf.t0) / 1000;
+  const room = CONF_MAX - conf.pieces.length;
+  for (const p of pieces.slice(0, Math.max(0, room))) {
+    p.delay += off;
+    conf.pieces.push(p);
+  }
   if (!confRaf) confRaf = requestAnimationFrame(confLoop);
 }
 
@@ -558,16 +570,16 @@ function confLoop() {
 function drawConfetti(now) {
   const T = (now - conf.t0) / 1000;
   const yEnd = H + 0.03 * H;      // the whole room, floor to ceiling
-  let alive = 0;
+  const live = [];
   for (const p of conf.pieces) {
     const t = T - p.delay;
-    if (t < 0) { alive++; continue; }
+    if (t < 0) { live.push(p); continue; }
     const tu = p.tu0 + p.tuS * t;
     // the fall hesitates as the paper turns edge-on (yw rides the tumble)
     const y = p.y0 + p.vT * t + ((p.v0 - p.vT) * (1 - Math.exp(-p.k * t))) / p.k
       + p.yw * Math.cos(tu);
-    if (y > yEnd || t > 8) continue;
-    alive++;
+    if (y > yEnd || t > 8) continue;   // landed: its slot frees for more
+    live.push(p);
     if (y < -0.02 * H) continue;   // still above the room
     const sway = Math.sin(p.wf * t + p.phi);
     const x = p.x0 + p.A * sway;
@@ -605,7 +617,8 @@ function drawConfetti(now) {
     ctx.restore();
   }
   ctx.globalAlpha = 1;
-  if (!alive) conf = null;
+  conf.pieces = live;
+  if (!live.length) conf = null;
 }
 
 /* ---------------- the unfold: mailed folded to eighths ---------------- */
@@ -673,8 +686,8 @@ const loadImg = (src, ms) => new Promise((res) => {
 // when they land, the ghost on the front is repainted with the real thing
 let crests = null;
 const crestsP = Promise.all([
-  loadImg("../lib/crests/afa.svg"),
-  loadImg("../lib/crests/sfv.png"),
+  loadImg("../lib/crests/afa.svg", 2500),
+  loadImg("../lib/crests/sfv.png", 2500),
 ]).then(([a, s]) => {
   crests = [a, s];
   if (plates) {
@@ -987,7 +1000,9 @@ function driftLoop(t) {
     // walk the eleven back to their first-half posts — or on again
     driftTarget = driftTarget > 0.5 ? 0 : 1;
     taps++;
-    if (taps % 4 === 0) fireConfetti();   // por la cuarta estrella
+    // por la cuarta estrella the party starts — and every tap after
+    // throws more paper while the last is still falling
+    if (taps >= 4) fireConfetti();
     if (RM) { driftCur = driftTarget; drawFinal(); return; }
     if (!drifting) {
       drifting = true; dLast = performance.now();
