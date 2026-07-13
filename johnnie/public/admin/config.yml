@@ -89,6 +89,7 @@ collections:
       - { name: name, label: "Product name", widget: string }
       - { name: category, label: "Category (Watch, Perfume, Clothing, Shoe…)", widget: string }
       - { name: owned, label: "Owned? (off = wishlist, shown dimmed)", widget: boolean, default: false }
+      - { name: status, label: "Status override (e.g. \"Sold\" — leave blank for automatic Owned/Wishlist)", widget: string, required: false, default: "" }
       - { name: brand, label: "Brand", widget: string, required: false, default: "" }
       - { name: price, label: "Price (e.g. $5,000)", widget: string, required: false, default: "" }
       - { name: description, label: "Description (keep to 3–4 lines on mobile)", widget: text, required: false, default: "" }

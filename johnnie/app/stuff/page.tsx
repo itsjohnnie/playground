@@ -73,6 +73,10 @@ export default function StuffPage() {
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* iOS-like sheet curve */
   color: var(--s-fg);
   font-family: "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Inter's alternate capital G (cv10, "Capital G with spur") throughout —
+     an inherited property, so this one declaration covers the whole page
+     and modal without repeating it per element. */
+  font-feature-settings: "cv10" 1;
   overflow-x: clip;
 }
 @media (prefers-color-scheme: dark) {
@@ -122,6 +126,7 @@ export default function StuffPage() {
 .stuff-titlerow {
   position: relative; z-index: 3;
   display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem;
+  padding-bottom: .5rem;
 }
 .stuff-titlerow h1 {
   font-family: "Inter var", -apple-system, Helvetica, Arial, sans-serif;
@@ -137,10 +142,14 @@ export default function StuffPage() {
   vertical-align: top; position: relative; top: .14em; left: .14em;
 }
 
-/* Sort control (bottom-aligned with the title). */
+/* Sort control, pulled down to sit on the title's text baseline (not just
+   its box edge — the h1's tight line-height and this row's own centered
+   layout mean flex's align-items: baseline doesn't land here, so it's a
+   measured offset instead). titlerow's padding-bottom below gives it room
+   to drop that far without colliding with .stuff-desc underneath. */
 .stuff-sort {
   flex: none; display: inline-flex; align-items: center; gap: .5rem;
-  margin-bottom: .35rem;
+  margin-bottom: -1.335rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; opacity: .6;
 }
@@ -148,7 +157,7 @@ export default function StuffPage() {
   font: inherit; text-transform: uppercase; letter-spacing: .06em;
   color: var(--s-fg); background: transparent;
   border: none; border-bottom: 1px solid var(--s-line);
-  padding: .15rem 1.15rem .15rem .1rem; cursor: pointer;
+  padding: .15rem 1.15rem .03rem .1rem; cursor: pointer;
   appearance: none; -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%231b1b1b' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right .05rem center; background-size: .62rem;
@@ -293,10 +302,26 @@ export default function StuffPage() {
 .stuff-facts-dl dd { flex: 1; margin: 0; font-size: .92rem; }
 .stuff-descr { margin: 1.25rem 0 0; font-size: .92rem; line-height: 1.55; opacity: .75; }
 .stuff-descr--empty { opacity: .4; font-style: italic; }
+
+/* Pinned footer: sits outside the scroller (a flex sibling, not fixed/sticky
+   positioning) so the CTA is always reachable regardless of scroll position.
+   The ::before gradient fades the scroller's last content into the footer,
+   signalling there's more above it even when the fade is all you can see. */
+.stuff-modal-footer {
+  position: relative; z-index: 2; flex: none;
+  padding: 1.1rem 1.6rem calc(env(safe-area-inset-bottom) + 1.1rem);
+}
+.stuff-modal-footer::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -32px;
+  height: 32px; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--s-bg));
+}
+.stuff-modal-footer-inner { max-width: 560px; margin: 0 auto; }
+
 /* Full-width call-to-action button that takes you to where you can buy it. */
 .stuff-get {
   display: flex; align-items: center; justify-content: center; gap: .4rem;
-  width: 100%; margin-top: 1.5rem;
+  width: 100%;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .82rem; letter-spacing: .02em;
   color: var(--s-btn-fg); background: var(--s-btn-bg); text-decoration: none;
