@@ -210,7 +210,7 @@
     document.body.appendChild(cap);
     const back = document.createElement("a");
     back.className = "art-back";
-    back.href = "../";
+    back.href = "./";
     back.textContent = "← art";
     document.body.appendChild(back);
     addEventListener("click", (e) => {

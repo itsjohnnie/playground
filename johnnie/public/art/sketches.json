@@ -8,7 +8,7 @@
       "title": "Terreno",
       "subject": "Argentina vs. Algeria",
       "date": "2026-06-16",
-      "file": "sketches/001.html",
+      "file": "1.html",
       "medium": "three.js · relief",
       "tags": [
         "data",
@@ -26,7 +26,7 @@
       "title": "Sismógrafo",
       "subject": "Argentina vs. Austria",
       "date": "2026-06-22",
-      "file": "sketches/002.html",
+      "file": "2.html",
       "medium": "canvas · plotter",
       "tags": [
         "data",
@@ -43,7 +43,7 @@
       "title": "Resonancia",
       "subject": "Jordan vs. Argentina",
       "date": "2026-06-27",
-      "file": "sketches/003.html",
+      "file": "3.html",
       "medium": "glsl · chladni",
       "tags": [
         "chladni",
@@ -60,7 +60,7 @@
       "title": "Bronce",
       "subject": "Argentina vs. Cabo Verde",
       "date": "2026-07-03",
-      "file": "sketches/004.html",
+      "file": "4.html",
       "medium": "canvas heightfield · glsl relief",
       "tags": [
         "bronze",
@@ -78,7 +78,7 @@
       "title": "Embate",
       "subject": "Argentina vs. Egypt",
       "date": "2026-07-07",
-      "file": "sketches/005.html",
+      "file": "5.html",
       "medium": "two-dye fluid collision · gpu stable fluids",
       "tags": [
         "fluid",
@@ -98,7 +98,7 @@
       "date": "2026-07-11",
       "stage": "Quarterfinal",
       "status": "candidate",
-      "file": "sketches/006.html",
+      "file": "6.html",
       "medium": "canvas · offset press",
       "tags": [
         "poster",
