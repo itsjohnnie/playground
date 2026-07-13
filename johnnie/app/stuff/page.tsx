@@ -126,6 +126,7 @@ export default function StuffPage() {
 .stuff-titlerow {
   position: relative; z-index: 3;
   display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem;
+  padding-bottom: .5rem;
 }
 .stuff-titlerow h1 {
   font-family: "Inter var", -apple-system, Helvetica, Arial, sans-serif;
@@ -141,10 +142,14 @@ export default function StuffPage() {
   vertical-align: top; position: relative; top: .14em; left: .14em;
 }
 
-/* Sort control (bottom-aligned with the title). */
+/* Sort control, pulled down to sit on the title's text baseline (not just
+   its box edge — the h1's tight line-height and this row's own centered
+   layout mean flex's align-items: baseline doesn't land here, so it's a
+   measured offset instead). titlerow's padding-bottom below gives it room
+   to drop that far without colliding with .stuff-desc underneath. */
 .stuff-sort {
   flex: none; display: inline-flex; align-items: center; gap: .5rem;
-  margin-bottom: .35rem;
+  margin-bottom: -1.335rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; opacity: .6;
 }
@@ -152,7 +157,7 @@ export default function StuffPage() {
   font: inherit; text-transform: uppercase; letter-spacing: .06em;
   color: var(--s-fg); background: transparent;
   border: none; border-bottom: 1px solid var(--s-line);
-  padding: .15rem 1.15rem .15rem .1rem; cursor: pointer;
+  padding: .15rem 1.15rem .03rem .1rem; cursor: pointer;
   appearance: none; -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%231b1b1b' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right .05rem center; background-size: .62rem;
