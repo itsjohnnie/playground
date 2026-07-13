@@ -293,10 +293,26 @@ export default function StuffPage() {
 .stuff-facts-dl dd { flex: 1; margin: 0; font-size: .92rem; }
 .stuff-descr { margin: 1.25rem 0 0; font-size: .92rem; line-height: 1.55; opacity: .75; }
 .stuff-descr--empty { opacity: .4; font-style: italic; }
+
+/* Pinned footer: sits outside the scroller (a flex sibling, not fixed/sticky
+   positioning) so the CTA is always reachable regardless of scroll position.
+   The ::before gradient fades the scroller's last content into the footer,
+   signalling there's more above it even when the fade is all you can see. */
+.stuff-modal-footer {
+  position: relative; z-index: 2; flex: none;
+  padding: 1.1rem 1.6rem calc(env(safe-area-inset-bottom) + 1.1rem);
+}
+.stuff-modal-footer::before {
+  content: ""; position: absolute; left: 0; right: 0; top: -32px;
+  height: 32px; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--s-bg));
+}
+.stuff-modal-footer-inner { max-width: 560px; margin: 0 auto; }
+
 /* Full-width call-to-action button that takes you to where you can buy it. */
 .stuff-get {
   display: flex; align-items: center; justify-content: center; gap: .4rem;
-  width: 100%; margin-top: 1.5rem;
+  width: 100%;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .82rem; letter-spacing: .02em;
   color: var(--s-btn-fg); background: var(--s-btn-bg); text-decoration: none;

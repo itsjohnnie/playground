@@ -229,19 +229,28 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
                   ) : (
                     <p className="stuff-descr stuff-descr--empty">More on this soon.</p>
                   )}
-                  {shown.link ? (
-                    <a
-                      className="stuff-get"
-                      href={shown.link}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {shown.cta || "Buy it"} →
-                    </a>
-                  ) : null}
                 </div>
               </div>
             </div>
+
+            {/* Outside the scroller so it stays pinned to the bottom no matter
+                where you've scrolled to; the gradient hints at the content
+                still hiding underneath it. Not keyed to idx, so it doesn't
+                replay the slide-in — it's chrome, not per-item content. */}
+            {shown.link ? (
+              <div className="stuff-modal-footer">
+                <div className="stuff-modal-footer-inner">
+                  <a
+                    className="stuff-get"
+                    href={shown.link}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {shown.cta || "Buy it"} →
+                  </a>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
