@@ -67,7 +67,7 @@ padding:clamp(0px,2.4vw,34px);display:grid;column-gap:clamp(14px,2.4vw,34px);
 grid-template-columns:clamp(380px,42vw,600px) 1fr}
 .panel{position:relative;background:#f2f1ee;color:#16130f;overflow:auto;
 border-radius:clamp(0px,3vw,40px);container-type:inline-size;
-padding:clamp(24px,4vw,52px) clamp(22px,4.5vw,60px) clamp(28px,4.5vw,56px);
+padding:clamp(24px,4vw,52px) clamp(22px,4.5vw,60px) clamp(20px,4vw,48px);
 box-shadow:0 30px 90px rgba(0,0,0,.38);
 display:flex;flex-direction:column;scrollbar-width:thin}
 .top{display:grid;grid-template-columns:1.15fr 1fr auto;gap:12px;
@@ -128,7 +128,7 @@ body{display:block;padding:0}
 .art{position:absolute;inset:0}
 .pill{display:flex;align-items:center;gap:8px;position:fixed;z-index:12;
 left:50%;transform:translateX(-50%);
-bottom:calc(14px + env(safe-area-inset-bottom));
+bottom:calc(22px + env(safe-area-inset-bottom));
 background:rgba(13,10,7,.55);color:#f2ece1;border:1px solid rgba(242,236,225,.16);
 backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
 border-radius:999px;padding:10px 18px;font:inherit;font-size:13px;cursor:pointer;
