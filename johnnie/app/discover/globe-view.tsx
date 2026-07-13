@@ -12,17 +12,23 @@ import type { DiscoverItem } from "@/lib/content";
 // depth sorting, and hiding the far hemisphere (backface-visibility) — instead
 // of the previous flat "billboard" hack (translate + manual scale + z-index),
 // which never actually turned the images to face their point on the sphere.
-// A wide, CLEAN, evenly-aligned grid — far more longitude columns than
-// latitude rows — so the sphere reads as an actual gridded globe (rows/
-// columns of images wrapping around it) rather than an evenly-scattered
-// cloud of points. Rows/cols are deliberately high and tiles (sized in CSS)
-// small: small flat tiles hug a curved surface far better than a few big
-// ones, which read as flat panels bent around a shape rather than a smoothly
-// curved globe.
+// A wide, CLEAN, evenly-aligned grid — every row shares the SAME column
+// count, so columns run as straight lines pole to pole, like meridians on a
+// real globe — rather than an evenly-scattered cloud of points. ROWS/COLS/
+// LAT_SPAN are tuned together so row-to-row spacing (always exactly equal —
+// equal angle steps on a sphere always cover equal arc length) MATCHES
+// column-to-column spacing at the equator (see the ratio note below); tiles
+// are small so that natural, expected pole convergence (exactly like
+// longitude lines on a schoolroom globe) stays subtle rather than pinching
+// tiles together up top and down bottom.
 const ROWS = 13;
-const BASE_COLS = 24; // column count AT THE EQUATOR — other rows scale down from this
-const MIN_COLS = 6; // never fewer than this, even in the row nearest a pole
+const COLS = 28;
+const LAT_SPAN = 150; // degrees between the top and bottom row, centred on the equator
+// Row spacing = LAT_SPAN/(ROWS-1) = 12.5°; column spacing at the equator =
+// 360/COLS = 12.857° — a 2.9% difference, close enough to read as one
+// consistent grid rather than two different spacings stitched together.
 const PERSPECTIVE_RATIO = 3.1; // camera distance as a multiple of the sphere radius
+const TILE_COUNT = ROWS * COLS;
 
 function sampleItems(items: DiscoverItem[], count: number): DiscoverItem[] {
   if (items.length === 0) return [];
@@ -37,26 +43,18 @@ function sampleItems(items: DiscoverItem[], count: number): DiscoverItem[] {
 type SpherePoint = { x: number; y: number; z: number; latDeg: number; lonDeg: number };
 
 // Latitude/longitude grid: `rows` evenly-spaced bands between the poles (left
-// open rather than pinched to a single point at +/-90, which would bunch every
-// column into one spot). Row-to-row (meridian) spacing is automatically equal
-// at every latitude — equal angle steps on a sphere always cover equal arc
-// length. Column spacing is NOT automatic, though: the circumference of a
-// latitude circle shrinks by cos(latitude) toward the poles, so a fixed
-// column count would bunch tiles together up top and down bottom. Each row
-// therefore gets its own column count, scaled by cos(latitude), so every
-// tile — at any row — sits roughly the same real distance from its
-// neighbours. Every row uses lon = c * 360/cols with no offset — a clean,
-// dead-aligned grid, not a brick/staggered one. x/y/z are the point CSS's
-// rotateY(lon) rotateX(lat) translateZ(r) chain actually lands on (see the
-// derivation note in animate()) — kept alongside the angles since the
-// per-frame depth/opacity fade needs them.
-function sphereGrid(rows: number, baseCols: number, minCols: number): SpherePoint[] {
+// open rather than pinched to a single point at +/-90, which would bunch
+// every column into one spot), each carrying the SAME `cols` evenly-spaced
+// tiles around the full 360° — so columns line up into straight vertical
+// lines across every row. x/y/z are the point CSS's rotateY(lon) rotateX(lat)
+// translateZ(r) chain actually lands on (see the derivation note in
+// animate()) — kept alongside the angles since the per-frame depth/opacity
+// fade needs them.
+function sphereGrid(rows: number, cols: number): SpherePoint[] {
   const pts: SpherePoint[] = [];
-  const latSpan = 150; // degrees between the top and bottom row, centred on the equator
   for (let r = 0; r < rows; r++) {
-    const latDeg = rows > 1 ? -latSpan / 2 + (r * latSpan) / (rows - 1) : 0;
+    const latDeg = rows > 1 ? -LAT_SPAN / 2 + (r * LAT_SPAN) / (rows - 1) : 0;
     const lat = (latDeg * Math.PI) / 180;
-    const cols = Math.max(minCols, Math.round(baseCols * Math.cos(lat)));
     for (let c = 0; c < cols; c++) {
       const lonDeg = (c * 360) / cols;
       const lon = (lonDeg * Math.PI) / 180;
@@ -74,8 +72,7 @@ function sphereGrid(rows: number, baseCols: number, minCols: number): SpherePoin
 
 // Computed once — both the sampled item count and the Globe engine need the
 // exact same deterministic point set.
-const GRID_POINTS = sphereGrid(ROWS, BASE_COLS, MIN_COLS);
-const TILE_COUNT = GRID_POINTS.length;
+const GRID_POINTS = sphereGrid(ROWS, COLS);
 
 class Globe {
   el: HTMLElement;
