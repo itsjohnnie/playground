@@ -125,8 +125,7 @@ export default function StuffPage() {
    relative, so without this it would paint over the title). */
 .stuff-titlerow {
   position: relative; z-index: 3;
-  display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem;
-  padding-bottom: .5rem;
+  display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
 }
 .stuff-titlerow h1 {
   font-family: "Inter var", -apple-system, Helvetica, Arial, sans-serif;
@@ -142,14 +141,15 @@ export default function StuffPage() {
   vertical-align: top; position: relative; top: .14em; left: .14em;
 }
 
-/* Sort control, pulled down to sit on the title's text baseline (not just
-   its box edge — the h1's tight line-height and this row's own centered
-   layout mean flex's align-items: baseline doesn't land here, so it's a
-   measured offset instead). titlerow's padding-bottom below gives it room
-   to drop that far without colliding with .stuff-desc underneath. */
+/* Sort control, sat on the title's text baseline via titlerow's
+   align-items: baseline. That only works because align-items here is
+   baseline too (not center) — a flex container's own baseline is its
+   first in-flow child's baseline ONLY if that child aligns to baseline;
+   center would give this box no baseline of its own, and the outer flex
+   would silently fall back to aligning box edges instead (which doesn't
+   track the h1's font-size — it's set with a vw-based clamp()). */
 .stuff-sort {
-  flex: none; display: inline-flex; align-items: center; gap: .5rem;
-  margin-bottom: -1.335rem;
+  flex: none; display: inline-flex; align-items: baseline; gap: .5rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; opacity: .6;
 }
