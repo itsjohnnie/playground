@@ -209,10 +209,10 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
 .discover-comp {
   bottom: calc(2rem + env(safe-area-inset-bottom));
 }
-/* View switcher: replaces the old static "Discovery Area" label with the
-   Grid / Globe / Cascade tabs. Same segment treatment as the logo/toggle
-   (translucent tint over the bar's single shared frost sheet, no border —
-   dividers are the etched hairlines below). */
+/* View switcher: three small icon buttons — right next to the sun/moon
+   toggle — replacing the old static "Discovery Area" label. Same segment
+   treatment as the logo/toggle (translucent tint over the bar's single
+   shared frost sheet, no border — dividers are the etched hairlines below). */
 .discover-views {
   z-index: 4;
   color: #080808;
@@ -225,12 +225,12 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
 .discover-view-btn {
   appearance: none; border: none; background: transparent; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  color: inherit; font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-  font-size: .8125rem; letter-spacing: -.01em; font-weight: 400;
-  padding: .4rem .7rem;
-  opacity: .55;
+  color: inherit;
+  padding: .55rem .55rem;
+  opacity: .5;
   transition: opacity .2s ease, background-color .2s ease;
 }
+.view-icon { width: 17px; height: 17px; display: block; }
 @media (hover: hover) and (pointer: fine) {
   .discover-view-btn:hover { opacity: .85; }
 }
@@ -242,7 +242,8 @@ html.is-dark .discover-view-btn.is-active {
   background-color: rgba(255, 255, 255, .1);
 }
 @media (max-width: 479px) {
-  .discover-view-btn { font-size: .8rem; padding: .35rem .55rem; }
+  .discover-view-btn { padding: .45rem .45rem; }
+  .view-icon { width: 15px; height: 15px; }
 }
 
 /* Phones: one consistent gutter around the control bar — the same 1rem gap on
@@ -517,6 +518,19 @@ html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opa
     transform: translate(-50%, 0) !important;
     transition: opacity .25s ease !important;
   }
+}
+
+/* View switching: the outgoing view fades out (this wrapper), then the
+   incoming one mounts and fades itself in via its own existing .ready
+   transition (see the grid/globe/cascade rules) — a full crossfade without
+   ever needing two views mounted and animating at once. */
+.discover-view-pane {
+  position: absolute; inset: 0;
+  transition: opacity .32s ease;
+}
+.discover-view-pane.is-leaving { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .discover-view-pane { transition: opacity .15s ease; }
 }
 
 /* View 2 — globe (globe-view.tsx): an orthographic "photo globe" projection

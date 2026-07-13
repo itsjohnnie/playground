@@ -1,18 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { asset } from "@/lib/asset";
 import type { DiscoverItem } from "@/lib/content";
 import GridView from "./grid-view";
 import GlobeView from "./globe-view";
 import CascadeView from "./cascade-view";
+import { GridIcon, GlobeIcon, CascadeIcon } from "./view-icons";
 
 type ViewId = "grid" | "globe" | "cascade";
-const VIEWS: { id: ViewId; label: string }[] = [
-  { id: "grid", label: "Grid" },
-  { id: "globe", label: "Globe" },
-  { id: "cascade", label: "Cascade" },
+const VIEWS: { id: ViewId; label: string; Icon: () => React.ReactElement }[] = [
+  { id: "grid", label: "Grid", Icon: GridIcon },
+  { id: "globe", label: "Globe", Icon: GlobeIcon },
+  { id: "cascade", label: "Cascade", Icon: CascadeIcon },
 ];
+
+// How long the outgoing view fades out before the incoming one mounts (which
+// then fades itself in via its own existing .ready transition) — see
+// .discover-view-pane in page.tsx.
+const VIEW_CROSSFADE_MS = 320;
+
+function renderView(id: ViewId, items: DiscoverItem[]) {
+  if (id === "grid") return <GridView items={items} />;
+  if (id === "globe") return <GlobeView items={items} />;
+  return <CascadeView items={items} />;
+}
 
 const LIGHT = "#ffffff";
 const DARK = "#080808";
@@ -37,7 +49,31 @@ function setThemeColor(color: string) {
 }
 
 export default function DiscoverExperience({ items }: { items: DiscoverItem[] }) {
+  // `view` is the tab the user asked for (highlights immediately); `displayed`
+  // is what's actually mounted — it only catches up once the outgoing view
+  // has faded out, so switching views crossfades instead of cutting instantly.
   const [view, setView] = useState<ViewId>("grid");
+  const [displayed, setDisplayed] = useState<ViewId>("grid");
+  const [leaving, setLeaving] = useState(false);
+  const crossfadeTimeout = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (crossfadeTimeout.current) window.clearTimeout(crossfadeTimeout.current);
+    };
+  }, []);
+
+  function selectView(next: ViewId) {
+    if (next === view) return;
+    setView(next);
+    setLeaving(true);
+    if (crossfadeTimeout.current) window.clearTimeout(crossfadeTimeout.current);
+    crossfadeTimeout.current = window.setTimeout(() => {
+      setDisplayed(next);
+      setLeaving(false);
+    }, VIEW_CROSSFADE_MS);
+  }
+
   // Bottom bar arrives ~half a second after mount, then slides up + fades in.
   // A three-phase state (rather than a single boolean) so the entrance can use
   // its own transition timing without touching the bar's normal, unrelated
@@ -125,11 +161,13 @@ export default function DiscoverExperience({ items }: { items: DiscoverItem[] })
               key={v.id}
               type="button"
               role="tab"
+              title={v.label}
+              aria-label={v.label}
               aria-selected={view === v.id}
               className={`discover-view-btn${view === v.id ? " is-active" : ""}`}
-              onClick={() => setView(v.id)}
+              onClick={() => selectView(v.id)}
             >
-              {v.label}
+              <v.Icon />
             </button>
           ))}
         </div>
@@ -150,9 +188,9 @@ export default function DiscoverExperience({ items }: { items: DiscoverItem[] })
         </a>
       </div>
 
-      {view === "grid" && <GridView items={items} />}
-      {view === "globe" && <GlobeView items={items} />}
-      {view === "cascade" && <CascadeView items={items} />}
+      <div className={`discover-view-pane${leaving ? " is-leaving" : ""}`}>
+        {renderView(displayed, items)}
+      </div>
 
       <div className="hero-gradient cc-white"></div>
     </>
