@@ -560,7 +560,7 @@ html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opa
 }
 .globe-tile {
   position: absolute; top: 50%; left: 50%;
-  width: 64px; height: 36px;
+  width: 50px; height: 28px;
   backface-visibility: hidden;
   will-change: transform, opacity;
   pointer-events: none; user-select: none;
@@ -576,7 +576,7 @@ html.is-dark .globe-tile { background-color: rgba(255, 255, 255, .06); }
 }
 .globe-image.is-loaded { opacity: 1; filter: blur(0); }
 @media (max-width: 767px) {
-  .globe-tile { width: 42px; height: 24px; }
+  .globe-tile { width: 34px; height: 19px; }
 }
 
 /* View 3 — cascade (cascade-view.tsx): a few big lanes (centre, an
