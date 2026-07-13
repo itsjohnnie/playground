@@ -167,8 +167,18 @@ body.open .panel .go{view-transition-name:sheet-go}
 body.vt .panel,body.vt .pill,body.vt .scrim{transition:none}
 ::view-transition-group(pill-sheet){animation-duration:440ms;
 animation-timing-function:cubic-bezier(0.32,0.72,0,1)}
+/* the surface flies as ONE clipped box: the pair carries the sheet's
+   color and its own animated radius (pill-round to card-round), so no
+   snapshot's baked-in corners ever stretch across the screen. The old
+   pill face bows out fast; the sheet color carries the rest. */
+::view-transition-image-pair(pill-sheet){overflow:hidden;
+background:#f2f1ee;
+animation:atelier-pr 440ms cubic-bezier(0.32,0.72,0,1) both}
+@keyframes atelier-pr{from{border-radius:24px}to{border-radius:20px}}
 ::view-transition-old(pill-sheet),::view-transition-new(pill-sheet){
-height:100%;width:100%;object-fit:fill;animation-duration:440ms}
+height:100%;width:100%;object-fit:fill;animation-fill-mode:both}
+::view-transition-old(pill-sheet){animation-duration:160ms}
+::view-transition-new(pill-sheet){animation-duration:300ms}
 /* content: pure fades, staged after the surface has mostly landed */
 ::view-transition-old(pill-label),::view-transition-old(sheet-top),
 ::view-transition-old(sheet-mid),::view-transition-old(sheet-go){
