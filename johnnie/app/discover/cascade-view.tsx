@@ -7,12 +7,15 @@ import type { DiscoverItem } from "@/lib/content";
 // View 3 — "cascade": a handful of lanes drifting upward at different speeds
 // — one dominant centred lane (what you see first), one overlapping in FRONT
 // of it, and one off to the right — rather than a dense wall of small
-// columns. Each lane is a 1D version of the endless grid's torus wrap
-// (discover-grid.tsx): tiles cycle past the top and reappear at the bottom
-// with fresh content, forever. Driven by wheel/drag (matching the other two
-// views' full-bleed, no-native-scroll canvas) plus a slow constant autoplay
-// drift so it's always gently alive, even untouched. Tiles are sized so only
-// a handful are ever on screen at once — big and legible, not a wallpaper.
+// columns. Each lane's tiles alternate into two offset sub-columns (a
+// shifted, brick-like stack) rather than one straight column, and stay
+// axis-aligned — no rotation. Each lane is a 1D version of the endless grid's
+// torus wrap (discover-grid.tsx): tiles cycle past the top and reappear at
+// the bottom with fresh content, forever. Driven by wheel/drag (matching the
+// other two views' full-bleed, no-native-scroll canvas) plus a slow constant
+// autoplay drift so it's always gently alive, even untouched. Tiles are sized
+// so only a handful are ever on screen at once — big and legible, not a
+// wallpaper.
 
 // Every image is the same 996x560 shape as the grid/globe views — tile
 // height is always DERIVED from width via this ratio, never picked
@@ -51,7 +54,7 @@ type Tile = {
   baseY: number;
   lastY: number;
   lastWrap: number | null;
-  rot: number;
+  xShift: number;
   scale: number;
 };
 
@@ -166,9 +169,12 @@ class CascadeGrid {
         this.markLoaded(clone);
         laneEl.appendChild(clone);
 
-        const rot = (((i * 53 + laneIndex * 17) % 7) - 3) * 0.8;
+        // Alternate left/right so tiles fall into two offset sub-columns
+        // within the lane (a shifted, brick-like stack) instead of one
+        // straight column — no rotation, so every tile stays axis-aligned.
+        const xShift = (i % 2 === 0 ? -1 : 1) * itemW * 0.16;
         const scale = 1 + (((i * 31 + laneIndex * 13) % 10) - 5) / 140;
-        lane.tiles.push({ el: clone, baseY: i * cellH, lastY: -99999, lastWrap: null, rot, scale });
+        lane.tiles.push({ el: clone, baseY: i * cellH, lastY: -99999, lastWrap: null, xShift, scale });
       }
 
       this.lanesEl.appendChild(laneEl);
@@ -260,7 +266,7 @@ class CascadeGrid {
 
         const yi = y | 0;
         if (yi !== tile.lastY) {
-          tile.el.style.transform = `translate3d(0, ${yi}px, 0) rotate(${tile.rot}deg) scale(${tile.scale})`;
+          tile.el.style.transform = `translate3d(${tile.xShift}px, ${yi}px, 0) scale(${tile.scale})`;
           tile.lastY = yi;
         }
       }

@@ -38,17 +38,21 @@ type SpherePoint = { x: number; y: number; z: number; latDeg: number; lonDeg: nu
 // Latitude/longitude grid: `rows` evenly-spaced bands between the poles (left
 // open rather than pinched to a single point at +/-90, which would bunch every
 // column into one spot), each carrying `cols` evenly-spaced tiles around the
-// full 360°. x/y/z are the point CSS's rotateY(lon) rotateX(lat) translateZ(r)
-// chain actually lands on (see the derivation note in animate()) — kept
-// alongside the angles since the per-frame depth/opacity fade needs them.
+// full 360°. Alternate rows are offset by half a column's width — a brick
+// course, not a rigid checkerboard, so columns don't run in dead-straight
+// lines from pole to pole. x/y/z are the point CSS's rotateY(lon) rotateX(lat)
+// translateZ(r) chain actually lands on (see the derivation note in
+// animate()) — kept alongside the angles since the per-frame depth/opacity
+// fade needs them.
 function sphereGrid(rows: number, cols: number): SpherePoint[] {
   const pts: SpherePoint[] = [];
   const latSpan = 150; // degrees between the top and bottom row, centred on the equator
   for (let r = 0; r < rows; r++) {
     const latDeg = rows > 1 ? -latSpan / 2 + (r * latSpan) / (rows - 1) : 0;
     const lat = (latDeg * Math.PI) / 180;
+    const rowShift = (r % 2) * (0.5 / cols) * 360;
     for (let c = 0; c < cols; c++) {
-      const lonDeg = (c * 360) / cols;
+      const lonDeg = (c * 360) / cols + rowShift;
       const lon = (lonDeg * Math.PI) / 180;
       pts.push({
         x: Math.cos(lat) * Math.sin(lon),
