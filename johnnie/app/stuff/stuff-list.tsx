@@ -110,7 +110,7 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
         ["Brand", it.brand],
         ...it.specs.map((s) => [s.label, s.value] as [string, string]),
         ["Price", it.price],
-        ["Status", it.owned ? "Owned" : "On the wishlist"],
+        ["Status", it.status || (it.owned ? "Owned" : "On the wishlist")],
       ] as [string, string][]
     ).filter(([, v]) => v);
 

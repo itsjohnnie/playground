@@ -37,6 +37,9 @@ export type StuffItem = {
   category: string;
   // Owned = full opacity; not owned (wishlist / someday) = dimmed.
   owned: boolean;
+  // Overrides the auto "Owned" / "On the wishlist" status text (e.g. "Sold")
+  // for items that don't fit the owned/wishlist binary. Empty = automatic.
+  status: string;
   // Expanded detail card (all optional — fill in over time via the CMS):
   brand: string;
   price: string;
@@ -79,5 +82,6 @@ export function getStuff(): StuffItem[] {
     specs: Array.isArray(it.specs) ? it.specs : [],
     cta: typeof it.cta === "string" ? it.cta : "",
     image_dark: typeof it.image_dark === "string" ? it.image_dark : "",
+    status: typeof it.status === "string" ? it.status : "",
   }));
 }
