@@ -495,16 +495,17 @@ function drawFinal() { drawAt(plates.order.length, driftCur); }
 // the cosine of the tumble) — all analytic in t, so no state to step
 function fireConfetti() {
   if (RM) return;
-  const { pw, ph, px, py } = geom();
+  const { pw } = geom();          // piece sizes keep the sheet's scale
   const R = Math.random;
   const cols = ["#fbfaf7", "#75aadb", "#fbfaf7", "#75aadb", "#4a86b8"];
   const pieces = [];
-  for (let i = 0; i < 150; i++) {
+  const n = Math.min(260, Math.round(150 * (W / pw)));   // fill the room
+  for (let i = 0; i < n; i++) {
     const len = (0.010 + 0.008 * R()) * pw;
     pieces.push({
-      x0: px + R() * pw, y0: py - (0.03 + 0.10 * R()) * ph,
+      x0: R() * W, y0: -(0.02 + 0.10 * R()) * H,
       delay: R() * 0.9,
-      vT: (0.16 + 0.11 * R()) * ph, v0: 0.02 * ph * R(), k: 2 + 2 * R(),
+      vT: (0.16 + 0.11 * R()) * H, v0: 0.02 * H * R(), k: 2 + 2 * R(),
       A: (0.012 + 0.03 * R()) * pw, wf: 2 + 3 * R(), phi: R() * TAU,
       rz0: R() * TAU, rzS: (R() - 0.5) * 5,
       tu0: R() * TAU, tuS: 3 + 6 * R(),
@@ -512,11 +513,11 @@ function fireConfetti() {
     });
   }
   // a few serpentinas — long strips, slow, swaying wide
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < 9; i++) {
     pieces.push({
-      x0: px + R() * pw, y0: py - (0.05 + 0.12 * R()) * ph,
+      x0: R() * W, y0: -(0.04 + 0.12 * R()) * H,
       delay: R() * 1.1,
-      vT: (0.09 + 0.05 * R()) * ph, v0: 0.01 * ph * R(), k: 1.6,
+      vT: (0.09 + 0.05 * R()) * H, v0: 0.01 * H * R(), k: 1.6,
       A: (0.04 + 0.04 * R()) * pw, wf: 1.4 + 1.6 * R(), phi: R() * TAU,
       rz0: R() * TAU, rzS: (R() - 0.5) * 2.4,
       tu0: R() * TAU, tuS: 1.6 + 2.4 * R(),
@@ -524,7 +525,7 @@ function fireConfetti() {
       col: R() < 0.5 ? "#75aadb" : "#fbfaf7",
     });
   }
-  conf = { t0: performance.now(), pieces, py, ph };
+  conf = { t0: performance.now(), pieces };
   if (!confRaf) confRaf = requestAnimationFrame(confLoop);
 }
 
@@ -538,22 +539,22 @@ function confLoop() {
 
 function drawConfetti(now) {
   const T = (now - conf.t0) / 1000;
-  const yEnd = conf.py + conf.ph + 0.03 * conf.ph;
+  const yEnd = H + 0.03 * H;      // the whole room, floor to ceiling
   let alive = 0;
   for (const p of conf.pieces) {
     const t = T - p.delay;
     if (t < 0) { alive++; continue; }
     const y = p.y0 + p.vT * t + ((p.v0 - p.vT) * (1 - Math.exp(-p.k * t))) / p.k;
-    if (y > yEnd || t > 7) continue;
+    if (y > yEnd || t > 8) continue;
     alive++;
-    if (y < conf.py - 0.02 * conf.ph) continue;   // still above the sheet
+    if (y < -0.02 * H) continue;   // still above the room
     const x = p.x0 + p.A * Math.sin(p.wf * t + p.phi);
     const wS = 0.15 + 0.85 * Math.abs(Math.cos(p.tu0 + p.tuS * t));
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(p.rz0 + p.rzS * t);
-    // past the sheet's foot the piece leaves the stage light
-    ctx.globalAlpha = y > conf.py + conf.ph ? 1 - (y - conf.py - conf.ph) / (0.03 * conf.ph) : 1;
+    // near the floor the piece leaves the stage light
+    ctx.globalAlpha = y > H ? Math.max(0, 1 - (y - H) / (0.03 * H)) : 1;
     ctx.fillStyle = p.col;
     ctx.fillRect(-p.len / 2, (-p.wid * wS) / 2, p.len, p.wid * wS);
     ctx.restore();
