@@ -4,13 +4,16 @@ import { useEffect, useMemo, useRef } from "react";
 import { asset } from "@/lib/asset";
 import type { DiscoverItem } from "@/lib/content";
 
-// View 2 — a rotating globe of tiles. This is a classic "3D tag cloud"
-// projection (orthographic: rotate unit-sphere points in JS, use depth only
-// for scale/opacity/z-index) rather than real CSS 3D transforms — it stays
-// crisp on raster photos at any angle and needs no perspective/backface
-// wrangling, at the cost of the images never actually turning to face edge-on.
-// That trade reads as "photos floating on a globe" which is exactly the brief.
+// View 2 — a rotating globe of tiles, using REAL CSS 3D: each tile gets a
+// fixed rotateY(lon) rotateX(lat) translateZ(radius) transform that plants it
+// tangent to the sphere's surface at that point (like a decal), and the whole
+// sphere spins as one rigid body via a single rotateX/rotateY on the parent
+// stage. That lets the browser's own 3D engine handle perspective foreshortening,
+// depth sorting, and hiding the far hemisphere (backface-visibility) — instead
+// of the previous flat "billboard" hack (translate + manual scale + z-index),
+// which never actually turned the images to face their point on the sphere.
 const TILE_COUNT = 72;
+const PERSPECTIVE_RATIO = 3.1; // camera distance as a multiple of the sphere radius
 
 function sampleItems(items: DiscoverItem[], count: number): DiscoverItem[] {
   if (items.length === 0) return [];
@@ -22,26 +25,33 @@ function sampleItems(items: DiscoverItem[], count: number): DiscoverItem[] {
   return out;
 }
 
-type Point = { x: number; y: number; z: number };
+type SpherePoint = { x: number; y: number; z: number; latDeg: number; lonDeg: number };
 
 // Golden-angle spiral: distributes `count` points evenly over a unit sphere
-// without the pinching a naive latitude/longitude grid gets at the poles.
-function fibonacciSphere(count: number): Point[] {
-  const pts: Point[] = [];
+// (no pinching at the poles the way a naive latitude/longitude grid gets),
+// then converts each to the lat/lon a CSS rotateX/rotateY pair needs to place
+// a point pushed out along +Z onto that exact spot on the sphere.
+function fibonacciSphere(count: number): SpherePoint[] {
+  const pts: SpherePoint[] = [];
   const golden = Math.PI * (3 - Math.sqrt(5));
   for (let i = 0; i < count; i++) {
     const y = count > 1 ? 1 - (i / (count - 1)) * 2 : 0;
     const r = Math.sqrt(Math.max(0, 1 - y * y));
     const theta = golden * i;
-    pts.push({ x: Math.cos(theta) * r, y, z: Math.sin(theta) * r });
+    const x = Math.cos(theta) * r;
+    const z = Math.sin(theta) * r;
+    const latDeg = (Math.asin(y) * 180) / Math.PI;
+    const lonDeg = (Math.atan2(x, z) * 180) / Math.PI;
+    pts.push({ x, y, z, latDeg, lonDeg });
   }
   return pts;
 }
 
 class Globe {
   el: HTMLElement;
+  stage: HTMLElement;
   tiles: HTMLElement[];
-  points: Point[];
+  points: SpherePoint[];
 
   yaw = 0.5;
   pitch = -0.18;
@@ -62,8 +72,9 @@ class Globe {
   rafId = 0;
   resizeTimeout = 0;
 
-  constructor(el: HTMLElement, tiles: HTMLElement[]) {
+  constructor(el: HTMLElement, stage: HTMLElement, tiles: HTMLElement[]) {
     this.el = el;
+    this.stage = stage;
     this.tiles = tiles;
     this.points = fibonacciSphere(tiles.length);
 
@@ -90,6 +101,7 @@ class Globe {
     // Bounded by the smaller axis so portrait phones get a fully centred
     // globe (never clipped) while wide screens still get a generous sphere.
     this.targetRadius = Math.min(w, h) * 0.36;
+    this.el.style.perspective = `${this.targetRadius * PERSPECTIVE_RATIO}px`;
   }
 
   setup() {
@@ -153,28 +165,33 @@ class Globe {
     const eased = 1 - Math.pow(1 - t, 3);
     this.radius = 22 + (this.targetRadius - 22) * eased;
 
+    // Spin the whole sphere as one rigid body — every tile's fixed
+    // rotateY(lon) rotateX(lat) translateZ(r) rides along with it, so this is
+    // the ONLY place yaw/pitch touch the DOM.
+    const pitchDeg = (this.pitch * 180) / Math.PI;
+    const yawDeg = (this.yaw * 180) / Math.PI;
+    this.stage.style.transform = `rotateX(${pitchDeg.toFixed(2)}deg) rotateY(${yawDeg.toFixed(2)}deg)`;
+
+    // Per-tile: only translateZ (the intro zoom) and a soft opacity fade near
+    // the terminator — real position/orientation now comes for free from the
+    // stage's own rotation above, and backface-visibility hides the far side.
     const cosYaw = Math.cos(this.yaw);
     const sinYaw = Math.sin(this.yaw);
     const cosPitch = Math.cos(this.pitch);
     const sinPitch = Math.sin(this.pitch);
+    const introFade = Math.min(1, t * 1.6);
 
     for (let i = 0; i < this.tiles.length; i++) {
       const p = this.points[i];
-      // Rotate the base sphere point by yaw (around Y), then pitch (around X).
       const x1 = p.x * cosYaw - p.z * sinYaw;
       const z1 = p.x * sinYaw + p.z * cosYaw;
-      const y1 = p.y * cosPitch - z1 * sinPitch;
       const z2 = p.y * sinPitch + z1 * cosPitch;
-
       const depth = (z2 + 1) / 2; // 0 far .. 1 near
-      const scale = 0.55 + depth * 0.55;
-      const x = x1 * this.radius;
-      const y = y1 * this.radius;
 
       const tile = this.tiles[i];
-      tile.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${scale.toFixed(3)})`;
-      tile.style.opacity = String((0.35 + depth * 0.65) * Math.min(1, t * 1.6));
-      tile.style.zIndex = String(Math.round((z2 + 1) * 500));
+      tile.style.transform =
+        `translate(-50%, -50%) rotateY(${p.lonDeg.toFixed(2)}deg) rotateX(${p.latDeg.toFixed(2)}deg) translateZ(${this.radius.toFixed(1)}px)`;
+      tile.style.opacity = String((0.5 + depth * 0.5) * introFade);
     }
 
     this.rafId = requestAnimationFrame(this.animate);
@@ -193,11 +210,13 @@ class Globe {
 
 export default function GlobeView({ items }: { items: DiscoverItem[] }) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const tiles = useMemo(() => sampleItems(items, TILE_COUNT), [items]);
 
   useEffect(() => {
     const el = viewportRef.current;
-    if (!el) return;
+    const stage = stageRef.current;
+    if (!el || !stage) return;
     const tileEls = Array.from(el.querySelectorAll<HTMLElement>(".globe-tile"));
     if (tileEls.length === 0) return;
     // Cached images are already complete and won't fire onLoad — mark now.
@@ -205,13 +224,13 @@ export default function GlobeView({ items }: { items: DiscoverItem[] }) {
       const img = t.querySelector("img");
       if (img && (img as HTMLImageElement).complete) img.classList.add("is-loaded");
     }
-    const globe = new Globe(el, tileEls);
+    const globe = new Globe(el, stage, tileEls);
     return () => globe.destroy();
   }, [tiles]);
 
   return (
     <div className="globe-viewport" ref={viewportRef}>
-      <div className="globe-stage" role="list" aria-label="Discover globe">
+      <div className="globe-stage" role="list" aria-label="Discover globe" ref={stageRef}>
         {tiles.map((it, i) => (
           <div role="listitem" className="globe-tile" key={`${it.image}-${i}`}>
             <img

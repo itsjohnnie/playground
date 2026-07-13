@@ -533,23 +533,35 @@ html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opa
   .discover-view-pane { transition: opacity .15s ease; }
 }
 
-/* View 2 — globe (globe-view.tsx): an orthographic "photo globe" projection
-   (rotate unit-sphere points in JS; depth only drives scale/opacity/z-index,
-   no real CSS 3D). Full-bleed like the grid; the sphere is sized off the
-   SMALLER viewport axis, so on a narrow phone it's always fully centred and
-   never edge-clipped — a "central view" by construction, not a fallback. */
+/* View 2 — globe (globe-view.tsx): a REAL CSS 3D sphere. Each tile gets a
+   fixed rotateY(lon) rotateX(lat) translateZ(radius) transform planting it
+   tangent to the sphere's surface (a decal, not a billboard); the whole
+   sphere spins as one rigid body via rotateX/rotateY on .globe-stage, so the
+   browser's own 3D engine drives perspective foreshortening, depth sorting,
+   and hiding the far hemisphere (backface-visibility) — properly "mapped"
+   onto the sphere rather than a flat cloud of always-facing-camera cards.
+   Full-bleed like the grid; the sphere is sized off the SMALLER viewport
+   axis, so on a narrow phone it's always fully centred, never edge-clipped —
+   a "central view" by construction, not a fallback. */
 .globe-viewport {
   position: absolute; inset: 0; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
   cursor: grab; touch-action: none;
   opacity: 0; transition: opacity .6s ease-out;
+  /* Overridden per-frame in JS (calcRadius) once mounted; this is just the
+     pre-mount fallback so nothing renders flattened before that runs. */
+  perspective: 1000px;
 }
 .globe-viewport.ready { opacity: 1; }
 .globe-viewport.dragging { cursor: grabbing; }
-.globe-stage { position: relative; width: 0; height: 0; }
+.globe-stage {
+  position: relative; width: 0; height: 0;
+  transform-style: preserve-3d;
+}
 .globe-tile {
   position: absolute; top: 50%; left: 50%;
-  width: 132px; height: 74px; margin: -37px 0 0 -66px;
+  width: 132px; height: 74px;
+  backface-visibility: hidden;
   will-change: transform, opacity;
   pointer-events: none; user-select: none;
   background-color: rgba(0, 0, 0, .05); border-radius: 3px;
@@ -564,7 +576,7 @@ html.is-dark .globe-tile { background-color: rgba(255, 255, 255, .06); }
 }
 .globe-image.is-loaded { opacity: 1; filter: blur(0); }
 @media (max-width: 767px) {
-  .globe-tile { width: 82px; height: 46px; margin: -23px 0 0 -41px; }
+  .globe-tile { width: 82px; height: 46px; }
 }
 
 /* View 3 — cascade (cascade-view.tsx): independent columns drifting upward
