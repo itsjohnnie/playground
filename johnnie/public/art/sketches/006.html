@@ -497,32 +497,50 @@ function fireConfetti() {
   if (RM) return;
   const { pw } = geom();          // piece sizes keep the sheet's scale
   const R = Math.random;
-  const cols = ["#fbfaf7", "#75aadb", "#fbfaf7", "#75aadb", "#4a86b8"];
+  // each paper catches the light on one face and shades on the other —
+  // the flicker of real confetti is the two alternating as it tumbles
+  const COLS = [
+    ["#fdfcf9", "#cfc9bb"], ["#7fb2e0", "#5687b8"],
+    ["#fdfcf9", "#cfc9bb"], ["#75aadb", "#4d7dad"],
+    ["#4a86b8", "#33628c"],
+  ];
   const pieces = [];
   const n = Math.min(260, Math.round(150 * (W / pw)));   // fill the room
   for (let i = 0; i < n; i++) {
-    const len = (0.010 + 0.008 * R()) * pw;
+    const depth = 0.55 + 0.65 * R();       // far pieces small and slow
+    const len = (0.011 + 0.009 * R()) * pw * depth;
+    const tuS = 2.6 + 5 * R();
+    const A = (0.014 + 0.03 * R()) * pw * depth;
     pieces.push({
       x0: R() * W, y0: -(0.02 + 0.10 * R()) * H,
       delay: R() * 0.9,
-      vT: (0.16 + 0.11 * R()) * H, v0: 0.02 * H * R(), k: 2 + 2 * R(),
-      A: (0.012 + 0.03 * R()) * pw, wf: 2 + 3 * R(), phi: R() * TAU,
-      rz0: R() * TAU, rzS: (R() - 0.5) * 5,
-      tu0: R() * TAU, tuS: 3 + 6 * R(),
-      len, wid: 0.55 * len, col: cols[(R() * cols.length) | 0],
+      vT: (0.13 + 0.10 * R()) * H * depth, v0: 0.02 * H * R(), k: 2 + 2 * R(),
+      // the sway rides the tumble: a piece slides while it shows its
+      // face and hesitates edge-on — the falling-leaf gait
+      A, wf: tuS * 0.5, phi: R() * TAU,
+      yw: (0.5 + 0.5 * R()) * 0.3 * A,
+      rz0: R() * TAU, rzS: (R() - 0.5) * 3.4, bank: 0.25 + 0.3 * R(),
+      tu0: R() * TAU, tuS, bend: 0.5 + 0.7 * R(),
+      len, wid: (0.5 + 0.18 * R()) * len,
+      col: COLS[(R() * COLS.length) | 0],
+      a: 0.75 + 0.25 * depth,
     });
   }
-  // a few serpentinas — long strips, slow, swaying wide
+  // serpentinas — long ribbons, slow, swaying wide, drawn as waves
   for (let i = 0; i < 9; i++) {
+    const depth = 0.7 + 0.5 * R();
     pieces.push({
+      strip: true,
       x0: R() * W, y0: -(0.04 + 0.12 * R()) * H,
       delay: R() * 1.1,
-      vT: (0.09 + 0.05 * R()) * H, v0: 0.01 * H * R(), k: 1.6,
-      A: (0.04 + 0.04 * R()) * pw, wf: 1.4 + 1.6 * R(), phi: R() * TAU,
-      rz0: R() * TAU, rzS: (R() - 0.5) * 2.4,
-      tu0: R() * TAU, tuS: 1.6 + 2.4 * R(),
-      len: (0.05 + 0.03 * R()) * pw, wid: 0.006 * pw,
-      col: R() < 0.5 ? "#75aadb" : "#fbfaf7",
+      vT: (0.08 + 0.045 * R()) * H * depth, v0: 0.01 * H * R(), k: 1.6,
+      A: (0.04 + 0.04 * R()) * pw, wf: 1.1 + 1.2 * R(), phi: R() * TAU,
+      yw: 0,
+      rz0: (R() - 0.5) * 0.9, rzS: (R() - 0.5) * 1.2, bank: 0,
+      tu0: R() * TAU, tuS: 2.2 + 2.6 * R(), bend: 0,
+      len: (0.055 + 0.035 * R()) * pw * depth, wid: 0.0055 * pw,
+      col: R() < 0.5 ? ["#75aadb", "#5687b8"] : ["#fdfcf9", "#cfc9bb"],
+      a: 0.9,
     });
   }
   conf = { t0: performance.now(), pieces };
@@ -544,19 +562,46 @@ function drawConfetti(now) {
   for (const p of conf.pieces) {
     const t = T - p.delay;
     if (t < 0) { alive++; continue; }
-    const y = p.y0 + p.vT * t + ((p.v0 - p.vT) * (1 - Math.exp(-p.k * t))) / p.k;
+    const tu = p.tu0 + p.tuS * t;
+    // the fall hesitates as the paper turns edge-on (yw rides the tumble)
+    const y = p.y0 + p.vT * t + ((p.v0 - p.vT) * (1 - Math.exp(-p.k * t))) / p.k
+      + p.yw * Math.cos(tu);
     if (y > yEnd || t > 8) continue;
     alive++;
     if (y < -0.02 * H) continue;   // still above the room
-    const x = p.x0 + p.A * Math.sin(p.wf * t + p.phi);
-    const wS = 0.15 + 0.85 * Math.abs(Math.cos(p.tu0 + p.tuS * t));
+    const sway = Math.sin(p.wf * t + p.phi);
+    const x = p.x0 + p.A * sway;
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(p.rz0 + p.rzS * t);
     // near the floor the piece leaves the stage light
-    ctx.globalAlpha = y > H ? Math.max(0, 1 - (y - H) / (0.03 * H)) : 1;
-    ctx.fillStyle = p.col;
-    ctx.fillRect(-p.len / 2, (-p.wid * wS) / 2, p.len, p.wid * wS);
+    ctx.globalAlpha = (y > H ? Math.max(0, 1 - (y - H) / (0.03 * H)) : 1) * p.a;
+    if (p.strip) {
+      // a ribbon: a waving stroke, its curve traveling as it falls
+      ctx.rotate(p.rz0 + p.rzS * t);
+      ctx.strokeStyle = p.col[Math.cos(tu) > 0 ? 0 : 1];
+      ctx.lineWidth = p.wid;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      const seg = 5, L = p.len;
+      for (let s = 0; s <= seg; s++) {
+        const u = s / seg;
+        const px2 = (u - 0.5) * L;
+        const py2 = Math.sin(u * 4.2 + tu) * L * 0.10;
+        s ? ctx.lineTo(px2, py2) : ctx.moveTo(px2, py2);
+      }
+      ctx.stroke();
+    } else {
+      // banked into its slide, creased down the middle: the two halves
+      // catch the tumble a half-phase apart, so the silhouette kinks
+      ctx.rotate(p.rz0 + p.rzS * t + p.bank * sway);
+      const c1 = Math.cos(tu), c2 = Math.cos(tu + p.bend);
+      const h1 = p.wid * (0.08 + 0.92 * Math.abs(c1));
+      const h2 = p.wid * (0.08 + 0.92 * Math.abs(c2));
+      ctx.fillStyle = p.col[c1 > 0 ? 0 : 1];
+      ctx.fillRect(-p.len / 2, -h1 / 2, p.len / 2, h1);
+      ctx.fillStyle = p.col[c2 > 0 ? 0 : 1];
+      ctx.fillRect(0, -h2 / 2, p.len / 2, h2);
+    }
     ctx.restore();
   }
   ctx.globalAlpha = 1;
