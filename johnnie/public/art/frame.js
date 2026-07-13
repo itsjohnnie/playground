@@ -263,7 +263,19 @@ h1{white-space:nowrap;font-size:62px}
     // right before that specific navigation starts, so going back to the
     // index falls back to a clean, unnamed cross-fade instead.
     const crumb = panel.querySelector('.top a[href="./"]');
-    if (crumb) crumb.addEventListener("click", () => { room.style.viewTransitionName = "none"; });
+    if (crumb) crumb.addEventListener("click", (e) => {
+      room.style.viewTransitionName = "none";
+      // go home THROUGH history when the index is back there: the
+      // back/forward cache restores it already rendered and settled —
+      // the only truly flicker-free return. atelier-depth counts the
+      // piece-to-piece steps taken since the index handed off.
+      let d = NaN;
+      try { d = parseInt(sessionStorage.getItem("atelier-depth"), 10); } catch (_) {}
+      if (Number.isFinite(d) && d >= 0 && history.length > d + 1) {
+        e.preventDefault();
+        history.go(-(d + 1));
+      }
+    });
 
     let canvas = null;
     if (!o.noCanvas) {
@@ -392,13 +404,21 @@ h1{white-space:nowrap;font-size:62px}
           const href = (f) =>
             location.pathname.endsWith(".html") ? f : f.replace(/\.html$/, "");
           // navigation is a cross-document view transition (the artwork
-          // cross-blends, the panel morphs) — no manual slide needed
-          const go = (file) => { if (file) location.href = href(file); };
+          // cross-blends, the panel morphs) — no manual slide needed.
+          // Every step away from the index bumps atelier-depth, so the
+          // crumb can jump home through history in one move.
+          const bump = () => {
+            try {
+              const d = parseInt(sessionStorage.getItem("atelier-depth"), 10);
+              if (Number.isFinite(d) && d >= 0) sessionStorage.setItem("atelier-depth", String(d + 1));
+            } catch (_) {}
+          };
+          const go = (file) => { if (file) { bump(); location.href = href(file); } };
           const nav = panel.querySelector(".go");
           const mk = (cls, file, glyph) => {
             const a = document.createElement(file ? "a" : "span");
             a.className = file ? cls : cls + " off";
-            if (file) a.href = href(file);
+            if (file) { a.href = href(file); a.addEventListener("click", bump); }
             else a.setAttribute("aria-disabled", "true");
             a.textContent = glyph;
             a.setAttribute("aria-label", cls === "prev" ? "previous piece" : "next piece");

@@ -105,6 +105,12 @@
   }
   :root { --day-base: 300ms; --day-step: 75ms; }
   .enc { --day-base: 130ms; --day-step: 45ms; }
+  /* inside a view-transition arrival the morph IS the entrance: content
+     complete in frame one, or the snapshot reads as a blank flicker */
+  .vt header.top, .vt .intro h1, .vt .intro p, .vt .day {
+    animation-duration: 0ms !important;
+    animation-delay: 0ms !important;
+  }
   header.top {
     display: grid;
     grid-template-columns: 1.15fr 1fr auto;
@@ -237,16 +243,25 @@
 </div>
 
 <script>
+  // arriving inside a view transition, the content must be COMPLETE in
+  // the very first frame — the morph is the entrance; rows starting at
+  // opacity 0 would snapshot as a blank sheet and read as flicker
   addEventListener("pagereveal", (e) => {
-    if (e.viewTransition) document.documentElement.classList.add("enc");
+    if (e.viewTransition) document.documentElement.classList.add("vt");
   });
-  // returning within the session, the full choreography has played once —
-  // the encore keeps every arrival animated at double tempo instead of
-  // making the visitor sit through the whole performance again
+  // returning within the session (without a morph), the full choreography
+  // has played once — the encore keeps the arrival animated at double
+  // tempo instead of making the visitor sit through the performance again
   try {
     if (sessionStorage.getItem("atelier-seen")) document.documentElement.classList.add("enc");
     sessionStorage.setItem("atelier-seen", "1");
   } catch (_) {}
+  // the crumb on a piece jumps home through history (back/forward cache:
+  // already rendered, zero flicker) — the depth resets whenever the index
+  // is in front, and starts counting when a day hands off
+  const clearDepth = () => { try { sessionStorage.removeItem("atelier-depth"); } catch (_) {} };
+  clearDepth();
+  addEventListener("pageshow", clearDepth);
 
   const days = document.getElementById("days");
   function render(data) {
@@ -274,6 +289,9 @@
         // transition isn't broken by a redirect; local dev keeps .html
         a.href = location.pathname.endsWith(".html")
           ? s.file : s.file.replace(/\.html$/, "");
+        a.addEventListener("click", () => {
+          try { sessionStorage.setItem("atelier-depth", "0"); } catch (_) {}
+        });
       } else {
         a.setAttribute("aria-disabled", "true");
       }
