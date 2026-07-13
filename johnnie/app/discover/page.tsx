@@ -266,9 +266,12 @@ html.is-dark .discover-view-btn.is-active {
        old 1rem — at 1rem the curve cut into the rows' text padding. */
     border-radius: 10px;
   }
-  /* Second row (logo wraps to its own row above): views share it with the
-     toggle, same split site.css originally gave the old text label. */
-  .discover-views { flex: 1; }
+  /* Second row (logo wraps to its own row above): views and the toggle sit
+     as ONE tight cluster of four icons, centred by site.css's
+     .discover-comp{justify-content:center} — NOT stretched apart (an
+     earlier flex:1 on .discover-views grew it to fill the whole row, so its
+     centred icons ended up clustered away from the toggle at the far edge
+     instead of sitting right next to it). */
 }
 .hero-list-wrapper.ready { opacity: 1; }
 .hero-list-wrapper.dragging { cursor: grabbing; }
