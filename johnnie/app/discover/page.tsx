@@ -560,23 +560,23 @@ html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opa
 }
 .globe-tile {
   position: absolute; top: 50%; left: 50%;
-  width: 150px; height: 84px;
+  width: 64px; height: 36px;
   backface-visibility: hidden;
   will-change: transform, opacity;
   pointer-events: none; user-select: none;
-  background-color: rgba(0, 0, 0, .05); border-radius: 3px;
+  background-color: rgba(0, 0, 0, .05); border-radius: 2px;
 }
 html.is-dark .globe-tile { background-color: rgba(255, 255, 255, .06); }
 .globe-image {
-  width: 100%; height: 100%; object-fit: cover; border-radius: 3px;
+  width: 100%; height: 100%; object-fit: cover; border-radius: 2px;
   pointer-events: none; user-select: none; -webkit-user-drag: none;
   /* Blur-up, same treatment as the grid's tiles. */
-  opacity: 0; filter: blur(10px);
+  opacity: 0; filter: blur(6px);
   transition: opacity .5s var(--ease-out), filter .5s var(--ease-out);
 }
 .globe-image.is-loaded { opacity: 1; filter: blur(0); }
 @media (max-width: 767px) {
-  .globe-tile { width: 92px; height: 52px; }
+  .globe-tile { width: 42px; height: 24px; }
 }
 
 /* View 3 — cascade (cascade-view.tsx): a few big lanes (centre, an

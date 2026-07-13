@@ -14,9 +14,12 @@ import type { DiscoverItem } from "@/lib/content";
 // which never actually turned the images to face their point on the sphere.
 // A wide grid — far more longitude columns than latitude rows — so the
 // sphere reads as an actual gridded globe (rows/columns of images wrapping
-// around it) rather than an evenly-scattered cloud of points.
-const ROWS = 9;
-const COLS = 16;
+// around it) rather than an evenly-scattered cloud of points. Rows/cols are
+// deliberately high and tiles (sized in CSS) small: small flat tiles hug a
+// curved surface far better than a few big ones, which read as flat panels
+// bent around a shape rather than a smoothly curved globe.
+const ROWS = 13;
+const COLS = 24;
 const TILE_COUNT = ROWS * COLS;
 const PERSPECTIVE_RATIO = 3.1; // camera distance as a multiple of the sphere radius
 

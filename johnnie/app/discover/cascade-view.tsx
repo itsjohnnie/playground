@@ -14,27 +14,35 @@ import type { DiscoverItem } from "@/lib/content";
 // drift so it's always gently alive, even untouched. Tiles are sized so only
 // a handful are ever on screen at once — big and legible, not a wallpaper.
 
+// Every image is the same 996x560 shape as the grid/globe views — tile
+// height is always DERIVED from width via this ratio, never picked
+// independently, so a tile is never a different shape than its photo and
+// object-fit: cover never has to crop anything off to make it fit.
+const IMAGE_RATIO = 560 / 996;
+
 type LaneConfig = {
   centerFrac: number; // horizontal centre, as a fraction of viewport width
-  widthFrac: number; // tile width, as a fraction of viewport width
-  heightFrac: number; // tile height, as a fraction of viewport height
+  widthFrac: number; // tile width, as a fraction of viewport width — height follows from IMAGE_RATIO
   speed: number;
   z: number; // stacking order — higher reads as "in front"
 };
 
 // Desktop: one dominant centred lane, with a smaller lane overlapping its
 // left edge from IN FRONT and another smaller one to the right — accents
-// around a clear centre, not three equal columns filling the screen.
+// around a clear centre, not three equal columns filling the screen. Tiles
+// are big enough that a fold shows a couple in full plus edges/corners of a
+// few more (as they scroll past or slide behind a neighbouring lane), not a
+// neat non-overlapping set of exactly six.
 const DESKTOP_LANES: LaneConfig[] = [
-  { centerFrac: 0.38, widthFrac: 0.16, heightFrac: 0.36, speed: 0.7, z: 3 },
-  { centerFrac: 0.5, widthFrac: 0.3, heightFrac: 0.48, speed: 1, z: 2 },
-  { centerFrac: 0.64, widthFrac: 0.17, heightFrac: 0.34, speed: 1.3, z: 1 },
+  { centerFrac: 0.36, widthFrac: 0.24, speed: 0.7, z: 3 },
+  { centerFrac: 0.52, widthFrac: 0.36, speed: 1, z: 2 },
+  { centerFrac: 0.72, widthFrac: 0.26, speed: 1.3, z: 1 },
 ];
 // Mobile: just the centre lane (prominent) and a peek of the right lane —
 // three side-by-side lanes don't fit legibly on a narrow phone.
 const MOBILE_LANES: LaneConfig[] = [
-  { centerFrac: 0.44, widthFrac: 0.5, heightFrac: 0.38, speed: 1, z: 2 },
-  { centerFrac: 0.9, widthFrac: 0.28, heightFrac: 0.32, speed: 1.3, z: 1 },
+  { centerFrac: 0.42, widthFrac: 0.62, speed: 1, z: 2 },
+  { centerFrac: 0.92, widthFrac: 0.34, speed: 1.3, z: 1 },
 ];
 const MOBILE_BREAKPOINT = 720;
 
@@ -123,7 +131,7 @@ class CascadeGrid {
 
     configs.forEach((cfg, laneIndex) => {
       const itemW = cfg.widthFrac * vw;
-      const itemH = cfg.heightFrac * vh;
+      const itemH = itemW * IMAGE_RATIO;
       const gap = -Math.round(itemH * 0.08); // slight built-in overlap
       const cellH = itemH + gap;
       const tilesPerLane = Math.ceil(vh / cellH) + 4;
