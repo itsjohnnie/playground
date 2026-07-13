@@ -839,8 +839,6 @@ class InfiniteGrid {
   }
 }
 
-const LIGHT = "#ffffff";
-const DARK = "#080808";
 // Extra pan room past the image edges when zoomed, so you can drag a touch
 // beyond the side and still see a little breathing space.
 const ZOOM_PAD = 44;
@@ -849,24 +847,9 @@ const ZOOM_PAD = 44;
 const IDLE_MS = 3000; // inactivity before the camera glides to the nearest tile
 const SNAP_MS = 750; // duration of that glide
 
-function setThemeColor(color: string) {
-  let metas = Array.from(
-    document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'),
-  );
-  if (metas.length === 0) {
-    const m = document.createElement("meta");
-    m.name = "theme-color";
-    document.head.appendChild(m);
-    metas = [m];
-  }
-  // Update every theme-color tag (and strip any media-scoped ones that could let
-  // the system appearance win) so iOS Safari tints its chrome to match.
-  for (const m of metas) {
-    m.removeAttribute("media");
-    m.setAttribute("content", color);
-  }
-}
-
+// Light/dark theme (persisted, OS-following) is owned by <DiscoverExperience>,
+// which mounts across all three view modes — the grid used to own it, but
+// that logic must survive switching to the globe/cascade views too.
 export default function DiscoverGrid() {
   useEffect(() => {
     const wrapper = document.querySelector<HTMLElement>(".hero-list-wrapper");
@@ -881,60 +864,8 @@ export default function DiscoverGrid() {
       mobileWidthPercent: 0.8,
     });
 
-    // Light/dark: follow the OS preference by default; a manual toggle overrides
-    // it and persists in localStorage (so a refresh keeps the chosen mode). The
-    // pre-paint head script already applied the same initial state to <html>.
-    const THEME_KEY = "discover-theme";
-    const root = document.documentElement;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const readSaved = (): string | null => {
-      try {
-        return localStorage.getItem(THEME_KEY);
-      } catch {
-        return null;
-      }
-    };
-    const applyTheme = (dark: boolean) => {
-      root.classList.toggle("is-dark", dark);
-      // color-scheme tells the browser the page itself is dark/light, which (with
-      // theme-color) is what some browsers use to tint their surrounding chrome.
-      root.style.colorScheme = dark ? "dark" : "light";
-      // Keep --bg in sync: the page <body> carries the global `.body { background:
-      // var(--bg) !important }` rule, and the pre-paint seed script sets --bg to
-      // the initial theme colour. Without updating it here, toggling to light after
-      // a dark load leaves the background stuck dark (everything else flips but the
-      // gaps behind the tiles stay #080808). Setting it also eases in unison.
-      root.style.setProperty("--bg", dark ? DARK : LIGHT);
-      setThemeColor(dark ? DARK : LIGHT);
-    };
-    const saved = readSaved();
-    applyTheme(saved ? saved === "dark" : mq.matches);
-
-    const toggle = document.querySelector<HTMLElement>("[data-theme-toggle]");
-    const onToggle = (e: Event) => {
-      e.preventDefault();
-      const next = !root.classList.contains("is-dark");
-      applyTheme(next);
-      try {
-        localStorage.setItem(THEME_KEY, next ? "dark" : "light");
-      } catch {
-        /* private mode / storage disabled — just don't persist */
-      }
-    };
-    toggle?.addEventListener("click", onToggle);
-
-    // Live-follow the OS preference only while the user hasn't set an override.
-    const onSystem = (e: MediaQueryListEvent) => {
-      if (!readSaved()) applyTheme(e.matches);
-    };
-    mq.addEventListener("change", onSystem);
-
     return () => {
       grid.destroy();
-      toggle?.removeEventListener("click", onToggle);
-      mq.removeEventListener("change", onSystem);
-      root.classList.remove("is-dark");
-      root.style.colorScheme = "";
     };
   }, []);
 
