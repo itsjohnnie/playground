@@ -72,13 +72,26 @@
     .sheet { animation: sheet-fade 200ms ease; }
     @keyframes sheet-fade { from { opacity: 0; } to { opacity: 1; } }
   }
-  header.top, .intro h1, .intro p {
+  /* the entrance is a cascade: the sheet lands, the masthead settles,
+     the headline resolves out of a blur, the introduction follows, and
+     the days walk in one after another from the top — each element its
+     own beat, nothing moving twice */
+  header.top, .intro p {
     opacity: 0;
-    animation: day-in 380ms var(--ease-out) forwards;
+    animation: rise-in 460ms var(--ease-out) forwards;
   }
-  header.top { animation-delay: 0ms; }
-  .intro h1 { animation-delay: 60ms; }
-  .intro p { animation-delay: 120ms; }
+  .intro h1 {
+    opacity: 0;
+    animation: rise-blur-in 560ms var(--ease-out) forwards;
+    animation-delay: 110ms;
+  }
+  header.top { animation-delay: 40ms; }
+  .intro p { animation-delay: 200ms; }
+  @keyframes rise-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes rise-blur-in {
+    from { opacity: 0; transform: translateY(16px); filter: blur(6px); }
+    to { opacity: 1; transform: none; filter: blur(0); }
+  }
   /* arriving via a view transition, the morph IS the entrance */
   .vt header.top, .vt .intro h1, .vt .intro p, .vt .day {
     animation-duration: 0ms;
@@ -133,14 +146,15 @@
     color: inherit;
     padding: clamp(6px, 1vw, 12px) 0;
     opacity: 0;
-    transform: translateY(10px);
-    animation: day-in 380ms var(--ease-out) forwards;
+    transform: translateY(22px);
+    filter: blur(7px);
+    animation: day-in 560ms var(--ease-out) forwards;
     animation-delay: var(--d, 0ms);
   }
-  @keyframes day-in { to { opacity: 1; transform: none; } }
+  @keyframes day-in { to { opacity: 1; transform: none; filter: blur(0); } }
   @media (prefers-reduced-motion: reduce) {
     .day, header.top, .intro h1, .intro p {
-      animation: day-fade 200ms ease forwards; transform: none;
+      animation: day-fade 200ms ease forwards; transform: none; filter: none;
     }
     @keyframes day-fade { to { opacity: 1; } }
   }
@@ -255,7 +269,7 @@
       } else {
         a.setAttribute("aria-disabled", "true");
       }
-      a.style.setProperty("--d", 220 + Math.min(i++ * 55, 440) + "ms");
+      a.style.setProperty("--d", 300 + Math.min(i++ * 75, 600) + "ms");
       const date = s.date.split("-").reverse().join(" · "); // 2026-07-06 → 06 · 07 · 2026
       // the list names only the opponent — every match is Argentina's,
       // and one word stays on one line
