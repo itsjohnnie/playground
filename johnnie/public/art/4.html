@@ -1,0 +1,1057 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>#4 · Bronce — Argentina vs. Cabo Verde · Johnnie&#x27;s atelier</title>
+<meta name="description" content="A commemorative slab, sand-cast in bronze: 120 minutes ring a sol de mayo — Argentina&#x27;s three goals raised from the metal, Cabo Verde&#x27;s two struck into it. One raking lamp crosses the relief; the…">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://johnnies.life/art/4">
+<meta property="og:title" content="#4 · Bronce — Argentina vs. Cabo Verde · Johnnie&#x27;s atelier">
+<meta property="og:description" content="A commemorative slab, sand-cast in bronze: 120 minutes ring a sol de mayo — Argentina&#x27;s three goals raised from the metal, Cabo Verde&#x27;s two struck into it. One raking lamp crosses the relief; the…">
+<meta property="og:image" content="https://johnnies.life/art/og/004.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="#4 · Bronce — Argentina vs. Cabo Verde · Johnnie&#x27;s atelier">
+<meta name="twitter:description" content="A commemorative slab, sand-cast in bronze: 120 minutes ring a sol de mayo — Argentina&#x27;s three goals raised from the metal, Cabo Verde&#x27;s two struck into it. One raking lamp crosses the relief; the…">
+<meta name="twitter:image" content="https://johnnies.life/art/og/004.png">
+<body>
+<script src="art.js"></script>
+<script src="frame.js"></script>
+<script src="data-004.js"></script>
+<script id="frag" type="x-shader">
+precision highp float;
+uniform vec2 u_res; uniform float u_time; uniform float u_seed; uniform float u_p;
+uniform vec4 u_geo;           // hw, hh, pad, T — face half-extents, texture pad, thickness (px)
+// the pose + lighting frame, hoisted to the CPU (per frame, not per pixel):
+uniform vec3 u_cx, u_cy, u_ro, u_rd;  // world->slab: o = p.x·cx + p.y·cy + ro, ray dir rd
+uniform vec3 u_ls, u_hv, u_lf, u_bn;  // key light, half-vector, fill, floor bounce (slab space)
+uniform vec3 u_lw;                    // key light, world space (for the wall)
+uniform vec2 u_lp;                    // lamp pool anchor on the wall (world px)
+uniform sampler2D u_map;              // the front: the match
+uniform sampler2D u_map2;             // the back: the eleven
+
+// Each map (slab-face space): RG = surface normal xy, B = height, A = cavity.
+// The slab is a real extruded rounded-rect raycast orthographically: relief
+// on BOTH faces, sand-cast side walls, a bevelled arris where face meets
+// edge, a thrown shadow on the felt wall behind. Whichever face meets the
+// ray is shaded in its own frame (x and z mirrored for the back), so a
+// full 180° turn shows the reverse of the same cast under the same lamp.
+
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7)) + u_seed)*43758.5453); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  f = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1,0)), f.x),
+             mix(hash(i+vec2(0,1)), hash(i+vec2(1,1)), f.x), f.y);
+}
+float sdRR(vec2 q, vec2 b, float r){
+  vec2 w = abs(q) - b + r;
+  return min(max(w.x, w.y), 0.0) + length(max(w, 0.0)) - r;
+}
+vec2 sdGrad(vec2 q, vec2 b, float r){
+  vec2 w = abs(q) - b + r;
+  vec2 g = (w.x > 0.0 && w.y > 0.0) ? normalize(w)
+         : (w.x > w.y ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
+  return g * sign(q + vec2(1e-4));
+}
+float sdCap(vec2 q, vec2 a, vec2 e, float w){
+  vec2 pa = q - a, ea = e - a;
+  float h = clamp(dot(pa, ea)/dot(ea, ea), 0.0, 1.0);
+  return length(pa - ea*h) - w;
+}
+// the cast's TRUE outline: the rounded rect, a breath of waver along the
+// whole edge (sand gives, metal shrinks), two ragged chips where the pour
+// ran short, and a hairline crack running inward from the larger one —
+// seeded, so every casting is its own. The arris bevel and the side walls
+// key off this same field, so the flaws are fully three-dimensional.
+float sdPl(vec2 q, vec2 b, float r, float S){
+  float sd = sdRR(q, b, r);
+  float ang = atan(q.y, q.x);
+  sd += (vnoise(vec2(ang*2.6 + u_seed, 7.3)) - 0.5)*0.006*S;
+  float h1 = hash(vec2(3.7, 9.1)), h2 = hash(vec2(8.2, 1.3)), h3 = hash(vec2(5.5, 4.4));
+  // the chips fracture, they don't scoop: the bite's radius is jittered
+  // around its own angle — straightish facets, not a circle's lick
+  vec2 qc = q - vec2(b.x, mix(-0.6, 0.2, h1)*b.y);
+  float a1 = atan(qc.y, qc.x);
+  float cr1 = (0.014 + 0.011*h2)*S
+            * (0.62 + 0.30*vnoise(vec2(a1*2.6 + u_seed, 3.7))
+                    + 0.26*vnoise(vec2(a1*8.5, 9.1 + u_seed)));
+  sd = max(sd, -(length(qc) - cr1));
+  vec2 qd = q - vec2(mix(-0.7, -0.1, h2)*b.x, -b.y);
+  float a2 = atan(qd.y, qd.x);
+  float cr2 = (0.011 + 0.008*h3)*S
+            * (0.62 + 0.30*vnoise(vec2(a2*3.1 - u_seed, 5.2))
+                    + 0.26*vnoise(vec2(a2*9.5, 2.4 - u_seed)));
+  sd = max(sd, -(length(qd) - cr2));
+  // the crack kinks once and tapers as it dies into the metal
+  vec2 c1 = vec2(b.x, mix(-0.6, 0.2, h1)*b.y);
+  vec2 cd = normalize(vec2(-(0.6 + 0.5*h3), h1 - 0.5));
+  float cl = (0.05 + 0.04*h1)*S;
+  vec2 k1 = c1 + cd*cl*0.45;
+  vec2 cd2 = normalize(cd + vec2(0.0, 0.5*(h2 - 0.5)));
+  sd = max(sd, -sdCap(q, c1, k1, 0.0019*S));
+  sd = max(sd, -sdCap(q, k1, k1 + cd2*cl*0.6, 0.0011*S));
+  return sd;
+}
+
+/* ---- bronze: a microfacet metal (GGX + Schlick, F0 = the alloy) ---- */
+float dGGX(float ndh, float a){
+  float a2 = a*a;
+  float dd = ndh*ndh*(a2 - 1.0) + 1.0;
+  return a2/(3.14159265*dd*dd);
+}
+float dAniso(vec3 h, vec3 n, vec3 t, vec3 bt, float at, float ab){
+  float td = dot(t, h)/at, bd = dot(bt, h)/ab, nd = dot(n, h);
+  float dd = td*td + bd*bd + nd*nd;
+  return 1.0/(3.14159265*at*ab*dd*dd);
+}
+float visSmith(float ndl, float ndv, float a){       // Hammon's height-correlated fit
+  return 0.5/max(mix(2.0*ndl*ndv, ndl + ndv, a), 1e-4);
+}
+vec3 fresnel(vec3 F0, float c){ return F0 + (1.0 - F0)*pow(1.0 - c, 5.0); }
+vec3 toWorld(vec3 s){ return vec3(dot(u_cx, s), dot(u_cy, s), -dot(u_rd, s)); }
+// the room as the metal sees it: dark floor, warm lamp lobe, faint cool
+// fill from above, the felt wall filling the back hemisphere
+vec3 envRoom(vec3 Rw, float rough, float fall){
+  vec3 key = vec3(1.06, 0.97, 0.86);
+  vec3 e = mix(vec3(0.048, 0.038, 0.028),
+               vec3(0.150, 0.168, 0.200),
+               smoothstep(-0.35, 0.85, -Rw.y));
+  e = mix(e, vec3(0.062, 0.050, 0.038), smoothstep(0.15, -0.55, Rw.z));
+  float lm = max(dot(Rw, u_lw), 0.0);
+  e += key*fall*(pow(lm, mix(46.0, 3.0, rough))*mix(3.0, 0.85, rough)
+               + pow(lm, 2.2)*0.20);
+  return e;
+}
+
+void main(){
+  vec2 fc = vec2(gl_FragCoord.x, u_res.y - gl_FragCoord.y);
+  vec2 p = fc - 0.5*u_res;                    // world px, origin at slab centre
+  float hw = u_geo.x, hh = u_geo.y, pad = u_geo.z, T = u_geo.w;
+  float S = hw*2.0/0.9;                       // the old design unit
+  float r = 0.0444*hw;                        // corner radius of the cast
+  vec2 b = vec2(hw, hh);
+  vec2 hwt = b + pad;
+
+  // pose: slab rotated about its core; the ray enters slab space pre-baked
+  vec3 o = p.x*u_cx + p.y*u_cy + u_ro;        // ortho ray in slab space
+  vec3 d = u_rd;
+
+  float dz = d.z;                             // edge-on guard: mid-flip the
+  if (abs(dz) < 8e-4) dz = (dz < 0.0) ? -8e-4 : 8e-4;  // faces pass through 90°
+  float tT = -o.z/dz;                         // face plane z = 0
+  float tB = (-T - o.z)/dz;                   // underside z = -T
+  vec2 q0 = o.xy + tT*d.xy;
+  vec2 q1 = o.xy + tB*d.xy;
+  float sd0 = sdPl(q0, b, r, S), sd1 = sdPl(q1, b, r, S);
+  // silhouette: turned steeply, a ray can pass through the slab's body
+  // while BOTH face-plane crossings land outside the outline — pure side
+  // wall. March the covered z-span for the true minimum so the walls
+  // stay solid all the way through a flip, never two floating faces.
+  float sdm = min(sd0, sd1);
+  float tmn = (sd0 < sd1) ? tT : tB;
+  if (abs(dz) < 0.85){
+    float t0 = min(tT, tB), t1 = max(tT, tB);
+    for (int i = 1; i <= 8; i++){
+      float t = mix(t0, t1, float(i)/9.0);
+      float sdt = sdPl(o.xy + t*d.xy, b, r, S);
+      if (sdt < sdm){ sdm = sdt; tmn = t; }
+    }
+  }
+  float cov = 1.0 - smoothstep(-0.9, 0.9, sdm);  // AA'd
+  float fs = (dz < 0.0) ? 1.0 : -1.0;         // +1: the front meets the ray
+  vec2 qn = (fs > 0.0) ? q0 : q1;             // the near face's intersection
+  float sdN = (fs > 0.0) ? sd0 : sd1;
+  float faceZ = (fs > 0.0) ? 0.0 : -T;
+
+  // the lamp: grazing from the lower right, arcs overhead, settles upper left
+  vec3 Lw = u_lw;
+  vec3 Ls = u_ls;
+  vec3 Hv = u_hv;
+  vec3 Lfs = u_lf;
+  vec3 key = vec3(1.06, 0.97, 0.86);
+  vec3 cool = vec3(0.80, 0.88, 1.02);
+  float fall = clamp(1.16 - 0.28*length(p - u_lp)/S, 0.35, 1.2);
+
+  // ---- no wall of its own: the plaque hangs on the page itself. Only the
+  // thrown shadow survives, a translucent veil composited over the room ----
+  vec3 col = vec3(0.0);
+  float wA = 0.0;
+  if (cov < 0.999){
+    float gap = 0.18*hw;                      // the plaque stands proud of the wall
+    vec2 po = p + Lw.xy*((0.5*T + gap)/max(Lw.z, 0.35));
+    wA = (1.0 - smoothstep(0.0, 0.09*S, sdRR(po, b*1.02, r)))*0.6*max(Lw.z, 0.25);
+  }
+
+  if (cov > 0.001){
+    vec3 sc;
+    // lights + view folded into the near face's frame (x, z mirror for the
+    // back) so both faces share one shading path, lit by the same lamp
+    vec3 Lsf = vec3(fs*Ls.x, Ls.y, fs*Ls.z);
+    vec3 Hvf = vec3(fs*Hv.x, Hv.y, fs*Hv.z);
+    vec3 Lff = vec3(fs*Lfs.x, Lfs.y, fs*Lfs.z);
+    vec3 df  = vec3(fs*d.x,  d.y,  fs*d.z);
+    if (sdN < 0.0){
+      // ---- a face: relief under the lamp ----
+      vec2 qf = vec2(fs*qn.x, qn.y);
+      vec2 uv = (qf + hwt)/(2.0*hwt);
+      vec4 m = (fs > 0.0) ? texture2D(u_map, uv) : texture2D(u_map2, uv);
+      float bw = 0.026*hw;                    // arris width
+      if (sdN < -bw - 2.0){                   // parallax: re-strike at relief depth
+        float t2 = (faceZ + fs*(m.z - 0.58)*0.05*S - o.z)/dz;
+        qf = vec2(fs*(o.x + t2*d.x), o.y + t2*d.y);
+        uv = (qf + hwt)/(2.0*hwt);
+        m = (fs > 0.0) ? texture2D(u_map, uv) : texture2D(u_map2, uv);
+      }
+      vec2 nxy = m.xy*2.0 - 1.0;
+      vec3 N = vec3(nxy, sqrt(max(0.04, 1.0 - dot(nxy, nxy))));
+      float h = m.z, cav = (m.w - 0.5)*2.0;
+      float occ  = smoothstep(0.03, -0.20, cav);          // recesses -> patina
+      float wear = smoothstep(0.06, 0.26, cav);           // proud edges -> polish
+      if (fs < 0.0) wear *= 0.62;             // the reverse was never dressed
+      float fb = smoothstep(-bw, -0.12*bw, sdN);          // bevelled arris
+      vec2 gb = sdGrad(qf, b, r);
+      if (fb > 0.0){
+        vec3 Nb = normalize(vec3(gb*0.80, 0.62));
+        N = normalize(mix(N, Nb, fb));
+        wear = max(wear, fb*0.85);
+        occ *= 1.0 - fb;
+      }
+      // cast shadow: march a few taps toward the lamp
+      float D = 0.055*S;
+      float tanel = Lsf.z/max(length(Lsf.xy), 1e-3);
+      vec2 Lh = normalize(Lsf.xy);
+      float shad = 0.0;
+      for (int k = 1; k <= 4; k++){
+        float s = float(k)*0.0055*S;
+        vec2 su = uv + Lh*s/(2.0*hwt);
+        float hs = (fs > 0.0) ? texture2D(u_map, su).z : texture2D(u_map2, su).z;
+        shad = max(shad, smoothstep(0.0, 0.10, ((hs - h)*D - s*tanel)/D));
+      }
+      shad *= 0.75;
+      float mot = 0.6*vnoise(qf/(S*0.055) + 7.3) + 0.4*vnoise(qf/(S*0.012));
+      // oxidized recesses are matte paint; everywhere else the color IS the alloy
+      vec3 alb = mix(vec3(0.40, 0.27, 0.15)*(0.80 + 0.45*mot),
+                     vec3(0.085, 0.082, 0.062), occ*0.88);
+      alb = mix(alb, vec3(0.72, 0.52, 0.26), wear*0.50);
+      // roughness by surface: sand-cast field / worn plateau / polished arris
+      float rough = mix(mix(0.68, 0.52, mot), 0.30, wear);
+      rough = mix(rough, 0.16, fb);
+      rough = mix(rough, 0.82, occ);
+      if (fs < 0.0) rough = min(rough + 0.09*(1.0 - fb), 0.92);  // raw back
+      float metal = mix(0.88, 0.10, occ);
+      vec3 F0 = mix(vec3(0.44, 0.30, 0.15), vec3(0.92, 0.67, 0.33), wear);
+      F0 = mix(F0, vec3(0.96, 0.75, 0.42), fb);
+      F0 = mix(vec3(0.045), F0, metal);
+      // sand grain breaks the highlight into sparkle at grazing light
+      float mic = (1.0 - wear*0.55)*(1.0 - fb)*(1.0 - occ*0.7);
+      vec2 cell = floor(qf/(S*0.0017));
+      N = normalize(vec3(N.xy + (vec2(hash(cell), hash(cell + 19.7)) - 0.5)*0.22*mic, N.z));
+      float ndl = max(dot(N, Lsf), 0.0);
+      float ndv = max(dot(N, -df), 1e-3);
+      float a = max(rough*rough, 2e-3);
+      // machined moments: the arris and the flat border rails are brushed
+      // along their run — the highlight stretches with the brushing
+      float rail = (1.0 - smoothstep(0.006*S, 0.012*S, abs(sdN + 0.042*S)))*wear;
+      float anis = max(fb, rail*0.8);
+      float Dg;
+      if (anis > 0.02){
+        vec3 Tt = normalize(vec3(-gb.y, gb.x, 0.0) - N*dot(N, vec3(-gb.y, gb.x, 0.0)));
+        Dg = dAniso(Hvf, N, Tt, cross(N, Tt),
+                    min(a*(1.0 + 2.4*anis), 0.30), a/(1.0 + 1.2*anis));
+      } else {
+        Dg = dGGX(max(dot(N, Hvf), 0.0), a);
+      }
+      float lit = 1.0 - shad;
+      vec3 spec = key*(Dg*visSmith(ndl, ndv, a)*ndl*lit*fall*1.4*(1.0 - occ*0.5))
+                * fresnel(F0, max(dot(Lsf, Hvf), 0.0));
+      float ao = 1.0 - occ*0.55;
+      // the room, mirrored in the metal — flat faces come alive as they tilt
+      vec3 Fe = F0 + (max(vec3(1.0 - rough), F0) - F0)*pow(1.0 - ndv, 5.0);
+      vec3 Rf = reflect(df, N);
+      vec3 env = envRoom(toWorld(vec3(fs*Rf.x, Rf.y, fs*Rf.z)), rough, fall)*Fe*ao
+               * (1.0 - occ*0.6)*mix(1.0, lit, 0.4);
+      float dif = ndl*lit;
+      float fil = max(dot(N, Lff), 0.0)*0.16;
+      sc = alb*(1.0 - metal*0.58)*(key*dif*fall*2.3 + cool*fil*ao*2.0 + 0.10*ao)
+         + spec + env
+         + F0*a*key*dif*fall*0.65;        // multiple-scatter return off the rough cast
+    } else {
+      // ---- side wall: rough sand-cast edge. Bracket the entry between
+      // the near face plane (outside) and the marched interior minimum
+      // (inside) — the far plane hit can be outside too when edge-on ----
+      float ta = (fs > 0.0) ? tT : tB;
+      float tb = (sdm < 0.0) ? tmn : ((fs > 0.0) ? tB : tT);
+      for (int k = 0; k < 10; k++){
+        float tm = 0.5*(ta + tb);
+        if (sdPl(o.xy + tm*d.xy, b, r, S) > 0.0) ta = tm; else tb = tm;
+      }
+      float th = 0.5*(ta + tb);
+      vec2 qh = o.xy + th*d.xy;
+      float zh = o.z + th*d.z;
+      vec2 g = sdGrad(qh, b, r);
+      float u1 = qh.x*0.8 + qh.y*0.8;
+      float sg = vnoise(vec2(u1, zh*2.0)/(S*0.004));       // sand grain
+      float sb = vnoise(vec2(u1, zh*2.0)/(S*0.022) + 3.1); // slump blotches
+      vec3 N = normalize(vec3(g + (sg - 0.5)*0.55*vec2(g.y, -g.x), (sb - 0.5)*0.6));
+      float fa = max(smoothstep(-0.20*T, 0.0, zh),         // arris, either face
+                     smoothstep(-0.20*T, 0.0, -zh - T));
+      float fz = (zh > -0.5*T) ? 1.0 : -1.0;               // which arris leans out
+      N = normalize(mix(N, normalize(vec3(g*0.8, fz*0.62)), fa*0.5));
+      float dif = max(dot(N, Ls), 0.0);
+      float fil = max(dot(N, Lfs), 0.0)*0.44;
+      float bnc = max(dot(N, u_bn), 0.0)*0.32;
+      float zf = (zh + T)/T;                               // dark toward the wall,
+      float aoz = mix(0.48, 1.0, (dz < 0.0) ? zf : 1.0 - zf);  // whichever way it hangs
+      vec3 alb = vec3(0.33, 0.225, 0.13)*(0.62 + 0.55*sb)*(0.82 + 0.36*sg);
+      // raw cast wall: rough alloy; the filed arris is the polished moment
+      float rough = mix(mix(0.86, 0.62, sb), 0.22, fa*0.8);
+      vec3 F0 = mix(vec3(0.34, 0.23, 0.12), vec3(0.90, 0.66, 0.33), fa*0.65);
+      float ndl = dif;
+      float ndv = max(dot(N, -d), 1e-3);
+      float a = max(rough*rough, 2e-3);
+      vec3 Tt = normalize(vec3(-g.y, g.x, 0.0) - N*dot(N, vec3(-g.y, g.x, 0.0)));
+      float Dg = dAniso(Hv, N, Tt, cross(N, Tt), min(a*(1.0 + 2.0*fa), 0.50), a);
+      vec3 spec = key*(Dg*visSmith(ndl, ndv, a)*ndl*fall)
+                * fresnel(F0, max(dot(Ls, Hv), 0.0));
+      vec3 Fe = F0 + (max(vec3(1.0 - rough), F0) - F0)*pow(1.0 - ndv, 5.0);
+      vec3 env = envRoom(toWorld(reflect(d, N)), rough, fall)*Fe*1.3;
+      sc = alb*0.80*aoz*(key*dif*fall*2.0 + cool*fil*2.4 + vec3(0.55, 0.42, 0.30)*bnc*2.4 + 0.20)
+         + (spec + env)*aoz
+         + F0*a*key*dif*fall*0.30*aoz;
+    }
+    col = mix(col, sc, cov);
+  }
+
+  // exposure rises with the lamp, then the print
+  col *= mix(0.55, 1.0, smoothstep(0.0, 0.30, u_p));
+  col = col/(1.0 + 0.42*col);
+  col = pow(col, vec3(0.90));
+  col *= mix(0.70, 1.0, smoothstep(1.35, 0.50, length(p)/S));
+  col += (hash(fc*0.83) - 0.5)*0.028*cov;     // grain only on the metal
+
+  // premultiplied out: metal opaque, shadow translucent, elsewhere clear
+  gl_FragColor = vec4(col, mix(wA, 1.0, cov));
+}
+</script>
+<script>
+// 004 · bronce — a commemorative plaque, sand-cast in bronze.
+// The relief is authored as a real heightfield (Canvas 2D: foundry
+// lettering, a 120-minute chapter ring, the sol de mayo, guarda pampa
+// bands), normals + cavity are baked on the CPU, and the metal is a real
+// SLAB now: an extruded rounded-rect raycast in GLSL — thick sand-cast
+// side walls, a bevelled arris, patina pooled in the recesses, wear on the
+// proud edges, a thrown shadow on the felt wall it stands proud of.
+// The alloy is a microfacet metal: GGX/Trowbridge-Reitz with roughness by
+// surface (polished arris ~0.15, worn plateau ~0.30, sand-cast field
+// ~0.55–0.70, raw side walls rougher), Schlick fresnel with F0 = the
+// bronze itself (specular is tinted, diffuse nearly nil where polished),
+// anisotropic D on the machined arris + border rails (highlight stretched
+// along the brushing), and an analytic room — dark floor, warm lamp lobe,
+// faint cool fill, the felt wall behind — sampled by the reflected vector,
+// so the flat plateau carries a moving reflection as the slab tilts.
+// Oxidized recesses stay rough and dielectric; the sand grain breaks the
+// highlight into sparkle under grazing light.
+// Every mark is the match: Argentina's three goals raised from the metal,
+// Cabo Verde's two sunk into it (the 111' own goal ringed), period marks
+// at 45/90/105, hydration notches at 26' and 73', scorers and venue in
+// raised type. One raking light crosses the plaque over ~9s and settles;
+// then the piece rests. Drag to take it in hand — the slab tilts a few
+// degrees and every highlight slides; release and it settles back.
+// The cast has a REVERSE: a second heightfield (u_map2) carries the
+// starting eleven in raised type on a rawer field — tap the slab and it
+// turns 180° in the hand (eased, with a small roll mid-turn), the side
+// walls and the wall shadow carrying the whole way because the flip is
+// just the same pose matrix swung half a turn. Tap again to turn it back.
+// Rendering is on demand: no rAF at rest.
+
+const seed = ART.seed("2026-07-03-004");
+const M = window.M8;
+const TAU = Math.PI * 2;
+
+let W = 0, H = 0, DPR = 1;
+let sh = null, gl = null, tex = null, tex2 = null;
+let built = false, mounted = false, curP = 0, buildTimer = 0;
+let fontsOK = false;
+let GEO = null;
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DUR = 9200;
+
+// the hand: rest pose + drag delta (radians), damped spring on release
+const REST = [0.15, -0.07];
+const MAXD = 0.19;                 // ~11° of hand each axis
+const KDRAG = 0.0014;              // rad per css px, 1:1 under the finger
+let tx = 0, ty = 0, vx = 0, vy = 0, dragging = false;
+let raf = 0, lastT = 0, arriving = false, arriveT0 = 0;
+// the turn: tap flips the slab half a revolution about its vertical axis
+const FLIPD = 1150;
+let side = 0;                      // 0 the match, 1 the eleven
+let flipA = 0, flipFrom = 0, flipT0 = 0, flipping = false, wob = 0;
+
+const F = FRAME.mount({
+  num: 4, title: "Bronce", subject: "Argentina vs. Cabo Verde",
+  edition: "04/8", date: "03·07·2026",
+  stack: "Canvas 2D → GLSL relief", time: "131 minutes",
+  desc: "A commemorative slab, sand-cast in bronze: 120 minutes ring a sol de mayo — Argentina's three goals raised from the metal, Cabo Verde's two struck into it. One raking lamp crosses the relief; the patina keeps the score. A slow drag tilts the slab; a tap turns it over — the eleven are cast on the back.",
+  dark: true, open: true, gesture: true, onResize(w, h, dpr) {
+    W = w; H = h; DPR = dpr;
+    if (!sh) {
+      sh = ART.shader(F.canvas, document.getElementById("frag").textContent,
+                      ["u_p", "u_map", "u_map2", "u_geo", "u_cx", "u_cy", "u_ro", "u_rd",
+                       "u_ls", "u_hv", "u_lf", "u_bn", "u_lw", "u_lp"]);
+      gl = sh.gl;
+      const mkTex = (unit) => {
+        const t = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + unit);
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        return t;
+      };
+      tex = mkTex(0); tex2 = mkTex(1);
+      gl.uniform1i(sh.extra.u_map, 0);
+      gl.uniform1i(sh.extra.u_map2, 1);
+      gl.activeTexture(gl.TEXTURE0);
+    }
+    schedule();
+  },
+});
+const sf = ART.rng(seed)() * 100;
+
+// wait for the sans face so the cast lettering is the real letterform
+Promise.race([
+  document.fonts.load('600 32px "Geist"'),
+  new Promise((r) => setTimeout(r, 1600)),
+]).then(() => { fontsOK = true; if (sh) schedule(); });
+
+function schedule() {
+  if (!fontsOK || !sh || !W) return;
+  clearTimeout(buildTimer);
+  buildTimer = setTimeout(rebuild, built ? 140 : 0);
+}
+
+/* ---------- the height master: white raises the metal, black sinks it ----------
+   Baked in slab-face space: the texture IS the face, plus a small pad. */
+
+const hc = document.createElement("canvas");
+const tc = document.createElement("canvas");
+
+function rebuild() {
+  // the object in the room: smaller on phones (dark room around it),
+  // near the old proportions on desktop
+  const narrow = H / W > 1.45;
+  const slabW = Math.round(Math.min((narrow ? 0.78 : 0.86) * W, 0.62 * H));
+  const faceH = Math.round(slabW * 1.37037);
+  const pad = Math.round(0.03 * slabW);
+  const TW = slabW + 2 * pad, TH = faceH + 2 * pad;
+  GEO = { hw: slabW / 2, hh: faceH / 2, pad, T: 0.08 * slabW };
+
+  // virtual frame so the composition keeps its authored fractions
+  const S = slabW / 0.9, DH = S / 0.75;
+  const mg = 0.05 * S;
+  const cx = TW / 2, top = pad - mg;
+  const PX0 = pad, PY0 = pad, PW = slabW, PH = faceH;
+  const RC = { x: cx, y: top + 0.565 * DH };
+  const RR = 0.245 * S;
+
+  hc.width = TW; hc.height = TH;
+  const x = hc.getContext("2d", { willReadFrequently: true });
+  x.fillStyle = "#000"; x.fillRect(0, 0, TW, TH);
+
+  function layer(fn, blur, alpha, mode) {
+    tc.width = TW; tc.height = TH;
+    const c = tc.getContext("2d");
+    fn(c);
+    x.save();
+    if (blur) x.filter = "blur(" + blur.toFixed(2) + "px)";
+    x.globalAlpha = alpha;
+    x.globalCompositeOperation = mode || "source-over";
+    x.drawImage(tc, 0, 0);
+    x.restore();
+    x.filter = "none";
+  }
+  function plaquePath(c, inset, r) {
+    const a = PX0 + inset, b = PY0 + inset, w = PW - 2 * inset, h = PH - 2 * inset;
+    c.beginPath();
+    if (c.roundRect) c.roundRect(a, b, w, h, r); else c.rect(a, b, w, h);
+  }
+  function setFont(c, px, wgt) {
+    // cast sans: engraver's tracking — wide-set caps so the bevel never bridges
+    if ("letterSpacing" in c) c.letterSpacing = (px * 0.16).toFixed(1) + "px";
+    c.font = (wgt || 600) + " " + px.toFixed(1) + "px 'Geist', ui-sans-serif, sans-serif";
+    c.textAlign = "center"; c.textBaseline = "middle";
+  }
+  function dome(c, px, py, r, ink) {
+    const g = c.createRadialGradient(px, py, 0, px, py, r);
+    g.addColorStop(0, ink + "1)");
+    g.addColorStop(0.72, ink + "0.55)");
+    g.addColorStop(1, ink + "0)");
+    c.fillStyle = g;
+    c.beginPath(); c.arc(px, py, r, 0, TAU); c.fill();
+  }
+  const white = "rgba(255,255,255,", black = "rgba(0,0,0,";
+  const mAngle = (min) => -Math.PI / 2 + (min / 120) * TAU;
+  // a goal's boss is cast OVER the minute ticks — they don't run through
+  // it; the smooth plateau band does, and the dome swells out of that
+  const goalAngles = M.goals.map((g) => mAngle(g.min));
+  const underGoal = (a) => goalAngles.some((ga) => {
+    let d = Math.abs(a - ga) % TAU;
+    if (d > Math.PI) d = TAU - d;
+    return d < 0.115;
+  });
+  // the guarda bands run rim to rim; the through-fixings sit inboard of
+  // them — below the top band, above the bottom one — on BOTH faces, so
+  // front screw and back washer are the same bolt
+  const BANDW = PW / 2 - 0.062 * S;
+  const fixX = 0.095 * S;
+  // inset so each screw keeps the same air to the band rail above/below it
+  // as to the side rim beside it
+  const fixPts = [[PX0 + fixX, top + 0.182 * DH], [PX0 + PW - fixX, top + 0.182 * DH],
+                  [PX0 + fixX, top + 0.845 * DH], [PX0 + PW - fixX, top + 0.845 * DH]];
+  // casting flaws must not land in the lettering
+  const textBands = [[0.175, 0.335], [0.825, 0.905]];
+  function flawSpot(Rn, m) {
+    for (let k = 0; k < 20; k++) {
+      const px = PX0 + m + Rn() * (PW - 2 * m), py = PY0 + m + Rn() * (PH - 2 * m);
+      const fy = (py - top) / DH;
+      if (!textBands.some(([a, b]) => fy > a && fy < b)) return [px, py];
+    }
+    return [PX0 + m, PY0 + PH / 2];
+  }
+
+  // the chain's centers — shared by the raised weave and the struck eyes
+  function gpts(halfW) {
+    const dwd = 0.052 * S, railHalf = halfW + 0.02 * S;
+    const n = Math.round((2 * railHalf) / dwd);
+    const sp = (2 * railHalf) / n;
+    const xs = [];
+    for (let i = 0; i < n; i++) xs.push(cx + (i - (n - 1) / 2) * sp);
+    return xs;
+  }
+  function guarda(c, gy, halfW) {
+    c.fillStyle = "#fff";
+    const bh = 0.030 * S, dwd = 0.052 * S, railHalf = halfW + 0.02 * S;
+    // the rails kiss the diamonds' tips; the chain runs rail-end to
+    // rail-end, tip touching tip — one woven ribbon, edge to edge
+    c.fillRect(cx - railHalf, gy - bh / 2 - 0.0035 * S, 2 * railHalf, 0.0035 * S);
+    c.fillRect(cx - railHalf, gy + bh / 2, 2 * railHalf, 0.0035 * S);
+    for (const dx of gpts(halfW)) {
+      for (let j = -3; j <= 3; j++) {
+        const bw = dwd * (1 - Math.abs(j) * 0.26);
+        c.fillRect(dx - bw / 2, gy + j * (bh / 7) - bh / 14, bw, bh / 7);
+      }
+    }
+  }
+  function guardaEyes(c, gy, halfW) {    // a dark eye struck into each diamond
+    for (const dx of gpts(halfW)) {
+      c.beginPath(); c.arc(dx, gy, 0.0052 * S, 0, TAU); c.fill();
+    }
+  }
+
+  const scorers = (team) => M.goals.filter((g) => g.team === team)
+    .map((g) => (g.og ? g.player.replace(/^og\s*·\s*/, "").toUpperCase() + " (E.C.)"
+                      : g.player.toUpperCase()) + " " + g.min + "’")
+    .join("  ·  ");
+
+  /* 1 — the plaque body: crisp to the edge (the arris is cut in the shader) */
+  layer((c) => { c.fillStyle = "#fff"; plaquePath(c, 0, 0.02 * S); c.fill(); }, 0.0012 * S, 0.58);
+
+  /* 2 — casting slump along the edges */
+  layer((c) => {
+    const Re = ART.rng(seed + "edge");
+    for (let i = 0; i < 26; i++) {
+      const side = (Re() * 4) | 0, t = Re();
+      let px, py;
+      if (side === 0) { px = PX0 + t * PW; py = PY0; }
+      else if (side === 1) { px = PX0 + t * PW; py = PY0 + PH; }
+      else if (side === 2) { px = PX0; py = PY0 + t * PH; }
+      else { px = PX0 + PW; py = PY0 + t * PH; }
+      c.fillStyle = Re() < 0.5 ? "#fff" : "#000";
+      c.beginPath();
+      c.ellipse(px, py, (0.006 + 0.014 * Re()) * S, (0.004 + 0.008 * Re()) * S, Re() * Math.PI, 0, TAU);
+      c.fill();
+    }
+  }, 0.006 * S, 0.10);
+
+  /* 3 — raised rim + chapter-ring plateau */
+  layer((c) => {
+    c.strokeStyle = "#fff"; c.lineWidth = 0.009 * S;
+    plaquePath(c, 0.042 * S, 0.012 * S); c.stroke();
+  }, 0.0022 * S, 0.20, "lighter");
+  layer((c) => {
+    c.strokeStyle = "#fff"; c.lineWidth = 0.075 * S;
+    c.beginPath(); c.arc(RC.x, RC.y, RR, 0, TAU); c.stroke();
+  }, 0.010 * S, 0.06, "lighter");
+
+  /* 4 — raised type, ticks, bands, rays */
+  layer((c) => {
+    c.fillStyle = "#fff"; c.strokeStyle = "#fff";
+    guarda(c, top + 0.125 * DH, BANDW);
+    guarda(c, top + 0.902 * DH, BANDW);
+
+    setFont(c, 0.046 * S);
+    c.fillText(M.home.name.toUpperCase() + "  " + M.home.score, cx, top + 0.197 * DH);
+    c.fillText(M.away.name.toUpperCase() + "  " + M.away.score, cx, top + 0.274 * DH);
+
+    // 120 minute ticks; kickoff + period marks longer
+    for (let m = 0; m < 120; m++) {
+      const a = mAngle(m);
+      if (underGoal(a)) continue;         // covered by the goal's boss
+      const per = m === 0 || M.periods.indexOf(m) >= 0;
+      const li = (per ? 0.034 : 0.016) * S;
+      c.lineWidth = (per ? 0.005 : 0.0028) * S;
+      c.beginPath();
+      c.moveTo(RC.x + Math.cos(a) * (RR - li / 2), RC.y + Math.sin(a) * (RR - li / 2));
+      c.lineTo(RC.x + Math.cos(a) * (RR + li / 2), RC.y + Math.sin(a) * (RR + li / 2));
+      c.stroke();
+    }
+    // sol de mayo — 32 rays, straight and wavy alternating
+    for (let k = 0; k < 32; k++) {
+      const a = -Math.PI / 2 + (k / 32) * TAU;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      if (k % 2 === 0) {
+        const r0 = 0.062 * S, r1 = 0.185 * S, bw = 0.0055 * S;
+        c.beginPath();
+        c.moveTo(RC.x + ca * r0 - sa * bw, RC.y + sa * r0 + ca * bw);
+        c.lineTo(RC.x + ca * r0 + sa * bw, RC.y + sa * r0 - ca * bw);
+        c.lineTo(RC.x + ca * r1, RC.y + sa * r1);
+        c.closePath(); c.fill();
+      } else {
+        c.lineWidth = 0.0055 * S;
+        c.beginPath();
+        for (let s = 0; s <= 12; s++) {
+          const t = s / 12, r = 0.062 * S + t * 0.113 * S;
+          const off = Math.sin(t * TAU * 1.25) * 0.0075 * S * (1 - t * 0.4);
+          const px = RC.x + ca * r - sa * off, py = RC.y + sa * r + ca * off;
+          s ? c.lineTo(px, py) : c.moveTo(px, py);
+        }
+        c.stroke();
+      }
+    }
+    // metal splash specks
+    const Rs = ART.rng(seed + "speck");
+    for (let i = 0; i < 6; i++) {
+      const [px, py] = flawSpot(Rs, 0.08 * S);
+      c.beginPath();
+      c.arc(px, py, (0.001 + 0.0015 * Rs()) * S, 0, TAU);
+      c.fill();
+    }
+  }, 0.0016 * S, 0.26, "lighter");
+
+  /* 4b — the small strike lines get a crisper bevel so the counters survive */
+  layer((c) => {
+    c.fillStyle = "#fff";
+    setFont(c, 0.020 * S, 500);
+    c.fillText(scorers("arg"), cx, top + 0.232 * DH);
+    c.fillText(scorers("cpv"), cx, top + 0.309 * DH);
+    c.fillText(M.competition.toUpperCase() + (M.aet ? "  ·  PRÓRROGA" : ""), cx, top + 0.842 * DH);
+    c.fillText(M.venue.toUpperCase().replace(", ", "  ·  ") + "  ·  " + M.date, cx, top + 0.868 * DH);
+    setFont(c, 0.026 * S);
+    for (const g of M.goals) {
+      const a = mAngle(g.min), rn = RR + 0.052 * S;
+      c.fillText(g.min + "’", RC.x + Math.cos(a) * rn, RC.y + Math.sin(a) * rn);
+    }
+  }, 0.0009 * S, 0.28, "lighter");
+
+  /* 5a — the goal markers sit on the unbroken ring and SUM with it
+     (additive): the dome's radial falloff rides the ring's height, so
+     each goal reads as a soft bulge swelling out of the ring — a faded
+     shine on the lamp side, a faded shade behind — not a hard boss. */
+  layer((c) => {
+    c.strokeStyle = "#fff";
+    for (const g of M.goals) {
+      const a = mAngle(g.min);
+      const bx = RC.x + Math.cos(a) * RR, by = RC.y + Math.sin(a) * RR;
+      if (g.team === "arg") {
+        dome(c, bx, by, 0.026 * S, white);
+        dome(c, bx, by, 0.010 * S, white);
+      } else {                            // the bowl's lip catches the lamp
+        c.lineWidth = 0.0045 * S;
+        c.beginPath(); c.arc(bx, by, 0.025 * S, 0, TAU); c.stroke();
+      }
+    }
+  }, 0.0050 * S, 0.36, "lighter");
+
+  /* 5b — sol disc, mounting screws: no ring beneath them, additive is fine */
+  layer((c) => {
+    dome(c, RC.x, RC.y, 0.052 * S, white);
+    dome(c, RC.x, RC.y, 0.022 * S, white);
+    for (const [px, py] of fixPts) dome(c, px, py, 0.015 * S, white);
+  }, 0.0016 * S, 0.34, "lighter");
+
+  /* 5c — struck goal marks share the swells' softness: a blurred dark */
+  layer((c) => {
+    c.fillStyle = "#000"; c.strokeStyle = "#000";
+    for (const g of M.goals) {
+      const a = mAngle(g.min);
+      const bx = RC.x + Math.cos(a) * RR, by = RC.y + Math.sin(a) * RR;
+      if (g.team === "cpv") dome(c, bx, by, 0.020 * S, black);
+      if (g.og) {                       // the own goal, ringed
+        c.lineWidth = 0.0035 * S;
+        c.beginPath(); c.arc(bx, by, 0.038 * S, 0, TAU); c.stroke();
+      }
+    }
+  }, 0.0050 * S, 0.32);
+
+  /* 6 — struck into the metal: engravings, pits, screw slots */
+  layer((c) => {
+    c.fillStyle = "#000"; c.strokeStyle = "#000";
+    for (const bm of M.breaks) {        // hydration notches
+      const a = mAngle(bm);
+      c.beginPath();
+      c.arc(RC.x + Math.cos(a) * (RR - 0.045 * S), RC.y + Math.sin(a) * (RR - 0.045 * S),
+            0.0045 * S, 0, TAU);
+      c.fill();
+    }
+    guardaEyes(c, top + 0.125 * DH, BANDW);
+    guardaEyes(c, top + 0.902 * DH, BANDW);
+    setFont(c, 0.013 * S, 500);
+    c.textAlign = "right";                // stamped in the outer margin, foundry habit
+    c.fillText("FUND. J.A. · Nº 4", PX0 + PW - 0.06 * S, PY0 + PH - 0.0205 * S);
+    const Rq = ART.rng(seed + "screw");
+    c.lineWidth = 0.004 * S;
+    for (const [px, py] of fixPts) {
+      const a = Rq() * Math.PI, r = 0.010 * S;
+      c.beginPath();
+      c.moveTo(px - Math.cos(a) * r, py - Math.sin(a) * r);
+      c.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r);
+      c.stroke();
+    }
+    const Rp = ART.rng(seed + "pits");
+    for (let i = 0; i < 12; i++) {
+      const [px, py] = flawSpot(Rp, 0.06 * S);
+      c.beginPath();
+      c.arc(px, py, (0.0015 + 0.003 * Rp()) * S, 0, TAU);
+      c.fill();
+    }
+  }, 0.0016 * S, 0.30);
+
+  bake(x, S, TW, TH, tex, 0);
+
+  /* ---------- the reverse: the eleven, cast into a rawer field ----------
+     Drawn unmirrored — the shader flips x when the back faces the camera,
+     so everything here is centered or corner-symmetric and reads true. */
+
+  x.fillStyle = "#000"; x.fillRect(0, 0, TW, TH);
+
+  /* body + rim: the same casting */
+  layer((c) => { c.fillStyle = "#fff"; plaquePath(c, 0, 0.02 * S); c.fill(); }, 0.0012 * S, 0.58);
+  layer((c) => {
+    const Re = ART.rng(seed + "edgeB");
+    for (let i = 0; i < 30; i++) {
+      const sideE = (Re() * 4) | 0, t = Re();
+      let px, py;
+      if (sideE === 0) { px = PX0 + t * PW; py = PY0; }
+      else if (sideE === 1) { px = PX0 + t * PW; py = PY0 + PH; }
+      else if (sideE === 2) { px = PX0; py = PY0 + t * PH; }
+      else { px = PX0 + PW; py = PY0 + t * PH; }
+      c.fillStyle = Re() < 0.5 ? "#fff" : "#000";
+      c.beginPath();
+      c.ellipse(px, py, (0.006 + 0.016 * Re()) * S, (0.004 + 0.009 * Re()) * S, Re() * Math.PI, 0, TAU);
+      c.fill();
+    }
+  }, 0.006 * S, 0.12);
+  layer((c) => {
+    c.strokeStyle = "#fff"; c.lineWidth = 0.009 * S;
+    plaquePath(c, 0.042 * S, 0.012 * S); c.stroke();
+  }, 0.0022 * S, 0.20, "lighter");
+
+  /* the honor roll: the three stars crown eleven names, the colophon
+     signs. The guarda bands run the full width, rim to rim; the screws
+     step inboard — below the top band, above the bottom one. */
+  const rowY = (i) => top + (0.262 + i * 0.0472) * DH;
+  layer((c) => {
+    c.fillStyle = "#fff"; c.strokeStyle = "#fff";
+    guarda(c, top + 0.125 * DH, BANDW);
+    guarda(c, top + 0.902 * DH, BANDW);
+    // the tricampeón's stars, cast above the eleven
+    setFont(c, 0.021 * S, 600);
+    c.fillText("★  ★  ★", cx, top + 0.216 * DH);
+    setFont(c, 0.0335 * S);
+    M.xi.arg.forEach((nm, i) => c.fillText(nm.toUpperCase(), cx, rowY(i)));
+  }, 0.0016 * S, 0.26, "lighter");
+  layer((c) => {
+    // the same screws as the front — the bolts come through
+    for (const [px, py] of fixPts) dome(c, px, py, 0.015 * S, white);
+  }, 0.0016 * S, 0.34, "lighter");
+  layer((c) => {
+    c.fillStyle = "#fff";
+    setFont(c, 0.020 * S, 500);
+    c.fillText("FUND. J.A.  ·  BRONCE A LA ARENA", cx, top + 0.796 * DH);
+    c.fillText("COLADA 07·26", cx, top + 0.822 * DH);
+  }, 0.0009 * S, 0.28, "lighter");
+
+  /* struck into the back: screw slots, guarda eyes, casting pits */
+  layer((c) => {
+    c.fillStyle = "#000"; c.strokeStyle = "#000";
+    guardaEyes(c, top + 0.125 * DH, BANDW);
+    guardaEyes(c, top + 0.902 * DH, BANDW);
+    const Rq = ART.rng(seed + "screwB");
+    c.lineWidth = 0.004 * S;
+    for (const [px, py] of fixPts) {
+      const a = Rq() * Math.PI, r = 0.010 * S;
+      c.beginPath();
+      c.moveTo(px - Math.cos(a) * r, py - Math.sin(a) * r);
+      c.lineTo(px + Math.cos(a) * r, py + Math.sin(a) * r);
+      c.stroke();
+    }
+    const bands = [[0.10, 0.27], [0.78, 0.93]];
+    for (let i = 0; i < 11; i++) {
+      const fy = (rowY(i) - top) / DH;
+      bands.push([fy - 0.017, fy + 0.017]);
+    }
+    const Rp = ART.rng(seed + "pitsB");
+    for (let i = 0; i < 10; i++) {
+      let px = 0, py = 0, ok = false;
+      for (let k = 0; k < 24 && !ok; k++) {
+        px = PX0 + 0.06 * S + Rp() * (PW - 0.12 * S);
+        py = PY0 + 0.06 * S + Rp() * (PH - 0.12 * S);
+        const fy = (py - top) / DH;
+        ok = !bands.some(([a, b]) => fy > a && fy < b);
+      }
+      if (!ok) continue;
+      c.beginPath();
+      c.arc(px, py, (0.0015 + 0.003 * Rp()) * S, 0, TAU);
+      c.fill();
+    }
+  }, 0.0016 * S, 0.30);
+
+  bake(x, S, TW, TH, tex2, 1);
+  built = true;
+  if (!mounted) { mounted = true; ART.whenVisible(start); } else render();
+}
+
+/* ---------- bake: heights -> normals + cavity, upload ---------- */
+
+function boxBlur(a, w, h, r, passes) {
+  const t = new Float32Array(a.length);
+  const iw = 1 / (2 * r + 1);
+  for (let p = 0; p < passes; p++) {
+    for (let y = 0; y < h; y++) {          // horizontal
+      const o = y * w;
+      let acc = a[o] * (r + 1);
+      for (let i = 1; i <= r; i++) acc += a[o + Math.min(i, w - 1)];
+      for (let xx = 0; xx < w; xx++) {
+        t[o + xx] = acc * iw;
+        acc += a[o + Math.min(xx + r + 1, w - 1)] - a[o + Math.max(xx - r, 0)];
+      }
+    }
+    for (let xx = 0; xx < w; xx++) {       // vertical
+      let acc = t[xx] * (r + 1);
+      for (let i = 1; i <= r; i++) acc += t[xx + Math.min(i, h - 1) * w];
+      for (let y = 0; y < h; y++) {
+        a[y * w + xx] = acc * iw;
+        acc += t[xx + Math.min(y + r + 1, h - 1) * w] - t[xx + Math.max(y - r, 0) * w];
+      }
+    }
+  }
+}
+
+function bake(x, S, tw, th, texture, unit) {
+  const img = x.getImageData(0, 0, tw, th);
+  const N = tw * th;
+  const hgt = new Float32Array(N);
+  for (let i = 0; i < N; i++) hgt[i] = img.data[i * 4] / 255;
+  boxBlur(hgt, tw, th, 1, 1);              // soften 8-bit steps
+
+  // seeded casting texture: low-frequency face undulation + sand grain
+  const nz = ART.makeNoise(seed + "cast");
+  const gs = Math.max(8, Math.round(S * 0.03));
+  const gw = Math.ceil(tw / gs) + 2, gh = Math.ceil(th / gs) + 2;
+  const und = new Float32Array(gw * gh);
+  for (let gy = 0; gy < gh; gy++)
+    for (let gx = 0; gx < gw; gx++)
+      und[gy * gw + gx] = nz.fbm2((gx * gs) / S * 2.6, (gy * gs) / S * 2.6, 3);
+  const grain = new Float32Array(256 * 256);
+  const Rg = ART.rng(seed + "grain");
+  for (let i = 0; i < grain.length; i++) grain[i] = Rg() - 0.5;
+
+  for (let y = 0; y < th; y++) {
+    const fy = y / gs, y0 = fy | 0, ty = fy - y0;
+    for (let xx = 0; xx < tw; xx++) {
+      const i = y * tw + xx;
+      const fx = xx / gs, x0 = fx | 0, tx = fx - x0;
+      const u00 = und[y0 * gw + x0], u10 = und[y0 * gw + x0 + 1];
+      const u01 = und[(y0 + 1) * gw + x0], u11 = und[(y0 + 1) * gw + x0 + 1];
+      const u = (u00 * (1 - tx) + u10 * tx) * (1 - ty) + (u01 * (1 - tx) + u11 * tx) * ty;
+      const g = grain[(xx & 255) + ((y & 255) << 8)];
+      const on = Math.min(1, Math.max(0, (hgt[i] - 0.30) / 0.15)); // plaque only
+      hgt[i] += u * 0.07 * on + g * (0.0025 + 0.0035 * on);
+    }
+  }
+
+  const hb = hgt.slice();
+  boxBlur(hb, tw, th, Math.max(4, Math.round(S * 0.011)), 3);
+
+  const out = new Uint8ClampedArray(N * 4);
+  const D = 0.05 * S;
+  for (let y = 0; y < th; y++) {
+    for (let xx = 0; xx < tw; xx++) {
+      const i = y * tw + xx;
+      const xm = i - (xx > 0 ? 1 : 0), xp = i + (xx < tw - 1 ? 1 : 0);
+      const ym = i - (y > 0 ? tw : 0), yp = i + (y < th - 1 ? tw : 0);
+      const nx = -(hgt[xp] - hgt[xm]) * 0.5 * D;
+      const ny = -(hgt[yp] - hgt[ym]) * 0.5 * D;
+      const il = 1 / Math.sqrt(nx * nx + ny * ny + 1);
+      const o = i * 4;
+      out[o] = (nx * il * 0.5 + 0.5) * 255;
+      out[o + 1] = (ny * il * 0.5 + 0.5) * 255;
+      out[o + 2] = hgt[i] * 255;
+      out[o + 3] = ((hgt[i] - hb[i]) * 2.2 + 0.5) * 255;
+    }
+  }
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, new ImageData(out, tw, th));
+  gl.activeTexture(gl.TEXTURE0);
+}
+
+/* ---------- render on demand: arrival, the hand, the settle ---------- */
+
+function render() {
+  if (!sh || !built || !GEO) return;
+  const rx = REST[0] + tx + wob, ry = REST[1] + ty + flipA;
+  // RT = Ry(-ry)·Rx(-rx): world -> slab space (rows below)
+  const ca = Math.cos(rx), sa = Math.sin(rx), cb = Math.cos(ry), sb = Math.sin(ry);
+  const RT = [
+    [cb, sb * sa, -sb * ca],
+    [0, ca, sa],
+    [sb, -cb * sa, cb * ca],
+  ];
+  const mul = (v) => [
+    RT[0][0] * v[0] + RT[0][1] * v[1] + RT[0][2] * v[2],
+    RT[1][0] * v[0] + RT[1][1] * v[1] + RT[1][2] * v[2],
+    RT[2][0] * v[0] + RT[2][1] * v[1] + RT[2][2] * v[2],
+  ];
+  const norm = (v) => {
+    const l = Math.hypot(v[0], v[1], v[2]);
+    return [v[0] / l, v[1] / l, v[2] / l];
+  };
+  const col0 = [RT[0][0], RT[1][0], RT[2][0]];   // o = p.x·col0 + p.y·col1 + ro
+  const col1 = [RT[0][1], RT[1][1], RT[2][1]];
+  const rd = mul([0, 0, -1]);
+  const hT = GEO.T / 2;
+  const ro = [RT[0][2] * hT, RT[1][2] * hT, RT[2][2] * hT - hT];
+  // lamp choreography (world), then into slab space
+  const pe = curP * curP * (3 - 2 * curP);
+  const az = 0.46 + (-2.25 - 0.46) * pe, el = 0.13 + (0.56 - 0.13) * pe;
+  const Lw = [Math.cos(az) * Math.cos(el), Math.sin(az) * Math.cos(el), Math.sin(el)];
+  const Ls = mul(Lw);
+  const Vs = [-rd[0], -rd[1], -rd[2]];
+  const Hv = norm([Ls[0] + Vs[0], Ls[1] + Vs[1], Ls[2] + Vs[2]]);
+  const Lf = mul(norm([0.55, 0.35, 0.45]));
+  const Bn = mul(norm([0.15, 0.85, 0.35]));
+  const S = (2 * GEO.hw) / 0.9;
+  const ll = Math.hypot(Lw[0], Lw[1]) || 1;
+  gl.uniform1f(sh.extra.u_p, curP);
+  gl.uniform4f(sh.extra.u_geo, GEO.hw, GEO.hh, GEO.pad, GEO.T);
+  gl.uniform3f(sh.extra.u_cx, col0[0], col0[1], col0[2]);
+  gl.uniform3f(sh.extra.u_cy, col1[0], col1[1], col1[2]);
+  gl.uniform3f(sh.extra.u_ro, ro[0], ro[1], ro[2]);
+  gl.uniform3f(sh.extra.u_rd, rd[0], rd[1], rd[2]);
+  gl.uniform3f(sh.extra.u_ls, Ls[0], Ls[1], Ls[2]);
+  gl.uniform3f(sh.extra.u_hv, Hv[0], Hv[1], Hv[2]);
+  gl.uniform3f(sh.extra.u_lf, Lf[0], Lf[1], Lf[2]);
+  gl.uniform3f(sh.extra.u_bn, Bn[0], Bn[1], Bn[2]);
+  gl.uniform3f(sh.extra.u_lw, Lw[0], Lw[1], Lw[2]);
+  gl.uniform2f(sh.extra.u_lp, (Lw[0] / ll) * 0.38 * S, (Lw[1] / ll) * 0.38 * S);
+  sh.draw(0, sf);
+}
+
+function wake() {
+  if (!raf) { lastT = performance.now(); raf = requestAnimationFrame(loop); }
+}
+function loop(t) {
+  raf = 0;
+  const dt = Math.min(0.05, Math.max(1e-3, (t - lastT) / 1000));
+  lastT = t;
+  let more = false;
+  if (arriving) {
+    curP = Math.min(1, (t - arriveT0) / DUR);
+    if (curP < 1) more = true; else arriving = false;
+  }
+  if (flipping) {                          // the turn: eased, with a small
+    const u = Math.min(1, (t - flipT0) / FLIPD);   // roll at the apex
+    const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+    flipA = flipFrom + (side * Math.PI - flipFrom) * e;
+    wob = Math.sin(e * Math.PI) * 0.085;
+    if (u < 1) more = true; else { flipping = false; wob = 0; }
+  }
+  if (dragging) {
+    more = true;
+  } else if (tx || ty || vx || vy) {       // damped ease back to rest
+    const w0 = 8.5;
+    vx += (-w0 * w0 * tx - 2 * w0 * vx) * dt;
+    vy += (-w0 * w0 * ty - 2 * w0 * vy) * dt;
+    tx += vx * dt; ty += vy * dt;
+    if (Math.abs(tx) < 5e-4 && Math.abs(ty) < 5e-4 &&
+        Math.abs(vx) < 4e-3 && Math.abs(vy) < 4e-3) {
+      tx = ty = vx = vy = 0;               // settled: this frame is the last
+    } else more = true;
+  }
+  render();
+  if (more) raf = requestAnimationFrame(loop);
+}
+function start() {
+  if (RM) { curP = 1; render(); return; }
+  arriving = true; arriveT0 = performance.now();
+  wake();
+}
+
+/* ---------- the hand: drag tilts the slab, the light answers ---------- */
+
+function turn() {
+  side = 1 - side;
+  if (RM) { flipping = false; flipA = side * Math.PI; wob = 0; render(); return; }
+  flipFrom = flipA; flipT0 = performance.now(); flipping = true;
+  wake();
+}
+
+(function hand() {
+  const el = F.stage;
+  el.style.touchAction = "none";
+  el.style.cursor = "grab";
+  const clamp = (v) => MAXD * Math.tanh(v / MAXD);
+  let sx = 0, sy = 0, bx = 0, by = 0, px = 0, py = 0, pt = 0, id = -1;
+  let downT = 0, moved = 0;                      // a quick, still press is a tap
+  el.addEventListener("pointerdown", (e) => {
+    if (id >= 0) return;
+    id = e.pointerId;
+    try { el.setPointerCapture(id); } catch (_) {}
+    dragging = true;
+    sx = e.clientX; sy = e.clientY; bx = tx; by = ty;
+    px = tx; py = ty; pt = performance.now();
+    downT = pt; moved = 0;
+    vx = vy = 0;
+    el.style.cursor = "grabbing";
+    wake();
+  });
+  el.addEventListener("pointermove", (e) => {
+    if (!dragging || e.pointerId !== id) return;
+    moved = Math.max(moved, Math.hypot(e.clientX - sx, e.clientY - sy));
+    tx = clamp(bx - (e.clientY - sy) * KDRAG);   // vertical drag rolls it in the hand
+    ty = clamp(by - (e.clientX - sx) * KDRAG);
+    const now = performance.now(), dt = Math.max(8, now - pt) / 1000;
+    vx = 0.5 * vx + 0.5 * (tx - px) / dt;        // carry a little momentum out
+    vy = 0.5 * vy + 0.5 * (ty - py) / dt;
+    px = tx; py = ty; pt = now;
+    wake();
+  });
+  const drop = (e) => {
+    if (e.pointerId !== id) return;
+    id = -1; dragging = false;
+    const vc = 1.2;                              // gentle release, no fling
+    vx = Math.max(-vc, Math.min(vc, vx * 0.4));
+    vy = Math.max(-vc, Math.min(vc, vy * 0.4));
+    el.style.cursor = "grab";
+    if (e.type === "pointerup" &&
+        performance.now() - downT < 350 && moved < 8) turn();
+    wake();
+  };
+  el.addEventListener("pointerup", drop);
+  el.addEventListener("pointercancel", drop);
+})();
+</script>
+</body>

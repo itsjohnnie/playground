@@ -43,9 +43,9 @@
 
     const css = document.createElement("style");
     css.textContent = `
-@font-face{font-family:'Geist';src:url('../lib/fonts/Geist-Variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
-@font-face{font-family:'Geist Mono';src:url('../lib/fonts/GeistMono-Variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
-@font-face{font-family:'Geist Pixel';src:url('../lib/fonts/GeistPixel-Square.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Geist';src:url('lib/fonts/Geist-Variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:'Geist Mono';src:url('lib/fonts/GeistMono-Variable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:'Geist Pixel';src:url('lib/fonts/GeistPixel-Square.woff2') format('woff2');font-weight:400;font-style:normal;font-display:swap}
 /* seamless navigation: the white sheet morphs between the index and the
    panel, artworks cross-blend — no reload flash. Browsers without
    cross-document view transitions simply navigate. */
@@ -217,7 +217,7 @@ h1{white-space:nowrap;font-size:62px}
     panel.setAttribute("aria-label", "about this piece");
     panel.innerHTML =
       '<header class="top">' +
-        '<div><span class="lab">Johnnie’s atelier</span><br><a href="../">← Art</a></div>' +
+        '<div><span class="lab">Johnnie’s atelier</span><br><a href="./">← Art</a></div>' +
         '<div class="m-col"><span class="m">Daily Practice</span><br>' + date + "</div>" +
         '<div><a href="https://johnnies.life/art" tabindex="-1">johnnies.life/art</a><br>' + num + "</div>" +
       "</header>" +
@@ -262,7 +262,7 @@ h1{white-space:nowrap;font-size:62px}
     // shipped that way and the return trip read as broken). Neutralize it
     // right before that specific navigation starts, so going back to the
     // index falls back to a clean, unnamed cross-fade instead.
-    const crumb = panel.querySelector('.top a[href="../"]');
+    const crumb = panel.querySelector('.top a[href="./"]');
     if (crumb) crumb.addEventListener("click", () => { room.style.viewTransitionName = "none"; });
 
     let canvas = null;
@@ -365,7 +365,7 @@ h1{white-space:nowrap;font-size:62px}
       // arrow keys anywhere. Production serves extensionless URLs, so match
       // basenames with the extension stripped.
       const base = (p) => p.split("/").pop().replace(/\.html$/, "");
-      fetch("../sketches.json")
+      fetch("sketches.json")
         .then((r) => r.text())
         .then((raw) => {
           // seed the index's manifest cache so ← Art renders the day list
@@ -414,7 +414,7 @@ h1{white-space:nowrap;font-size:62px}
           const spec = document.createElement("script");
           spec.type = "speculationrules";
           spec.textContent = JSON.stringify({
-            prerender: [{ urls: [prev, next].filter(Boolean).map(href).concat("../"),
+            prerender: [{ urls: [prev, next].filter(Boolean).map(href).concat("./"),
                           eagerness: "immediate" }],
           });
           document.head.appendChild(spec);
