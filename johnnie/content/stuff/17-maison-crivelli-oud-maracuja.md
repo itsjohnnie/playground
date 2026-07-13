@@ -4,7 +4,7 @@ name: "Maison Crivelli Oud Maracuja"
 category: "Perfume"
 owned: false
 brand: "Maison Crivelli"
-price: ""
+price: "$225"
 description: "Maison Crivelli's playful contrast — juicy passionfruit (maracujá) crashing into smoky oud. Fruity and dark at once, and totally addictive."
 image: ""
 image_dark: ""
