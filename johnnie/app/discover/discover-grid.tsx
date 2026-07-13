@@ -457,6 +457,14 @@ class InfiniteGrid {
   }
 
   onStagePointerDown(e: PointerEvent) {
+    // Without this, closing the stage on a backdrop TAP (touch) re-exposed the
+    // grid underneath (pointer-events flips to none the instant "is-open" is
+    // removed) just in time for the browser's post-touch compatibility mouse
+    // events (mousedown/mouseup, fired ~automatically unless cancelled here) to
+    // land on the newly-uncovered tile — reading as a fresh tap and opening a
+    // DIFFERENT stage instead of returning to the grid. preventDefault on the
+    // pointerdown suppresses that whole synthetic mouse sequence for this touch.
+    e.preventDefault();
     const img = this.zImg;
     this.zPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this.zPointers.size === 1) {
