@@ -135,8 +135,7 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
       </div>
 
       <p className="stuff-desc">
-        Things I have — and things I&#x27;ll have, one day. The dimmed ones are
-        still on the list.
+        Things I have — and things I&#x27;ll have.
       </p>
 
       <ul className="stuff-grid" role="list">
