@@ -78,6 +78,8 @@ let raf = 0, t0 = 0, printing = false, buildTimer = 0, fontsOK = false, mounted 
 // the drift is a dial, not a replay: 0 = first-half posts, 1 = where the
 // match pulled them; a tap retargets it smoothly, even mid-flight
 let driftCur = 0, driftTarget = 1, drifting = false, dLast = 0;
+// por la cuarta estrella: every fourth tap rains papelitos
+let conf = null, confRaf = 0, taps = 0;
 
 const F = FRAME.mount({
   num: 6, title: "Afiche", subject: "Argentina vs. Switzerland",
@@ -141,8 +143,9 @@ function font(g, px, wgt, track) {
 
 function build() {
   // a resize mid-unfold: the overlay's geometry is stale — drop it and
-  // let the finished sheet carry on
+  // let the finished sheet carry on (and any confetti with it)
   if (ufEl) { ufEl.remove(); ufEl = null; }
+  conf = null;
   const { pw, ph } = geom();
   const S = pw;                        // design unit: the sheet's width
   const m = 0.075 * S;                 // trim margin (live area inside)
@@ -480,9 +483,84 @@ function drawAt(k, drift) {
     ctx.fillRect(px + Rg() * pw, py + Rg() * ph, 1, 1);
   }
   ctx.globalAlpha = 1;
+  if (conf) drawConfetti(performance.now());
 }
 
 function drawFinal() { drawAt(plates.order.length, driftCur); }
+
+/* ---------------- papelitos: por la cuarta estrella ---------------- */
+
+// terrace confetti, celeste and white: each piece falls to a terminal
+// velocity, sways on its own sine, tumbles in depth (its apparent width
+// the cosine of the tumble) — all analytic in t, so no state to step
+function fireConfetti() {
+  if (RM) return;
+  const { pw, ph, px, py } = geom();
+  const R = Math.random;
+  const cols = ["#fbfaf7", "#75aadb", "#fbfaf7", "#75aadb", "#4a86b8"];
+  const pieces = [];
+  for (let i = 0; i < 150; i++) {
+    const len = (0.010 + 0.008 * R()) * pw;
+    pieces.push({
+      x0: px + R() * pw, y0: py - (0.03 + 0.10 * R()) * ph,
+      delay: R() * 0.9,
+      vT: (0.16 + 0.11 * R()) * ph, v0: 0.02 * ph * R(), k: 2 + 2 * R(),
+      A: (0.012 + 0.03 * R()) * pw, wf: 2 + 3 * R(), phi: R() * TAU,
+      rz0: R() * TAU, rzS: (R() - 0.5) * 5,
+      tu0: R() * TAU, tuS: 3 + 6 * R(),
+      len, wid: 0.55 * len, col: cols[(R() * cols.length) | 0],
+    });
+  }
+  // a few serpentinas — long strips, slow, swaying wide
+  for (let i = 0; i < 7; i++) {
+    pieces.push({
+      x0: px + R() * pw, y0: py - (0.05 + 0.12 * R()) * ph,
+      delay: R() * 1.1,
+      vT: (0.09 + 0.05 * R()) * ph, v0: 0.01 * ph * R(), k: 1.6,
+      A: (0.04 + 0.04 * R()) * pw, wf: 1.4 + 1.6 * R(), phi: R() * TAU,
+      rz0: R() * TAU, rzS: (R() - 0.5) * 2.4,
+      tu0: R() * TAU, tuS: 1.6 + 2.4 * R(),
+      len: (0.05 + 0.03 * R()) * pw, wid: 0.006 * pw,
+      col: R() < 0.5 ? "#75aadb" : "#fbfaf7",
+    });
+  }
+  conf = { t0: performance.now(), pieces, py, ph };
+  if (!confRaf) confRaf = requestAnimationFrame(confLoop);
+}
+
+function confLoop() {
+  confRaf = 0;
+  if (!conf) return;
+  // drift's own loop draws every frame while it runs; we only fill in
+  if (!drifting && !printing) drawAt(plates.order.length, driftCur);
+  if (conf) confRaf = requestAnimationFrame(confLoop);
+}
+
+function drawConfetti(now) {
+  const T = (now - conf.t0) / 1000;
+  const yEnd = conf.py + conf.ph + 0.03 * conf.ph;
+  let alive = 0;
+  for (const p of conf.pieces) {
+    const t = T - p.delay;
+    if (t < 0) { alive++; continue; }
+    const y = p.y0 + p.vT * t + ((p.v0 - p.vT) * (1 - Math.exp(-p.k * t))) / p.k;
+    if (y > yEnd || t > 7) continue;
+    alive++;
+    if (y < conf.py - 0.02 * conf.ph) continue;   // still above the sheet
+    const x = p.x0 + p.A * Math.sin(p.wf * t + p.phi);
+    const wS = 0.15 + 0.85 * Math.abs(Math.cos(p.tu0 + p.tuS * t));
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(p.rz0 + p.rzS * t);
+    // past the sheet's foot the piece leaves the stage light
+    ctx.globalAlpha = y > conf.py + conf.ph ? 1 - (y - conf.py - conf.ph) / (0.03 * conf.ph) : 1;
+    ctx.fillStyle = p.col;
+    ctx.fillRect(-p.len / 2, (-p.wid * wS) / 2, p.len, p.wid * wS);
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+  if (!alive) conf = null;
+}
 
 /* ---------------- the unfold: mailed folded to eighths ---------------- */
 
@@ -862,6 +940,8 @@ function driftLoop(t) {
     if (printing) return;
     // walk the eleven back to their first-half posts — or on again
     driftTarget = driftTarget > 0.5 ? 0 : 1;
+    taps++;
+    if (taps % 4 === 0) fireConfetti();   // por la cuarta estrella
     if (RM) { driftCur = driftTarget; drawFinal(); return; }
     if (!drifting) {
       drifting = true; dLast = performance.now();
