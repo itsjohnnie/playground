@@ -4,7 +4,7 @@ name: "Rolex Milgauss"
 category: "Watch"
 owned: false
 brand: "Rolex"
-price: ""
+price: "≈ $9,550 (discontinued)"
 description: "Rolex's antimagnetic scientist's watch — lightning-bolt seconds hand, green sapphire crystal. Discontinued now, so it's a hunt for a clean one."
 image: ""
 image_dark: ""

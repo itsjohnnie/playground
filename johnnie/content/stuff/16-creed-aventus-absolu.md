@@ -4,7 +4,7 @@ name: "Creed Aventus Absolu"
 category: "Perfume"
 owned: false
 brand: "Creed"
-price: ""
+price: "$510"
 description: "The richer, deeper Absolu take on Creed's iconic Aventus — smoky pineapple and birch dialled up into something denser and far longer-lasting."
 image: ""
 image_dark: ""

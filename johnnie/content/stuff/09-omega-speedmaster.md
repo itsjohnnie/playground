@@ -4,7 +4,7 @@ name: "Omega Speedmaster"
 category: "Watch"
 owned: false
 brand: "Omega"
-price: ""
+price: "From $7,400"
 description: "The Moonwatch: a hand-wound chronograph that flew to the Moon and still looks right on any strap. The definitive tool-watch grail."
 image: ""
 image_dark: ""
