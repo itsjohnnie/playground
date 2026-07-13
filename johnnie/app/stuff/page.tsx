@@ -73,6 +73,10 @@ export default function StuffPage() {
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* iOS-like sheet curve */
   color: var(--s-fg);
   font-family: "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  /* Inter's alternate capital G (cv10, "Capital G with spur") throughout —
+     an inherited property, so this one declaration covers the whole page
+     and modal without repeating it per element. */
+  font-feature-settings: "cv10" 1;
   overflow-x: clip;
 }
 @media (prefers-color-scheme: dark) {
