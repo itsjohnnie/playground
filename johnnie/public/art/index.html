@@ -105,11 +105,19 @@
   }
   :root { --day-base: 300ms; --day-step: 75ms; }
   .enc { --day-base: 130ms; --day-step: 45ms; }
-  /* inside a view-transition arrival the morph IS the entrance: content
-     complete in frame one, or the snapshot reads as a blank flicker */
-  .vt header.top, .vt .intro h1, .vt .intro p, .vt .day {
+  /* inside a view-transition arrival the sheet's head must be complete
+     in frame one — a blank surface mid-morph reads as flicker — but the
+     days still walk in: the stagger IS the welcome home, starting on
+     the very first frame so there's never a dead moment */
+  .vt header.top, .vt .intro h1, .vt .intro p {
     animation-duration: 0ms !important;
     animation-delay: 0ms !important;
+  }
+  .vt { --day-base: 40ms; --day-step: 45ms; }
+  .vt .day {
+    transform: translateY(14px);
+    filter: blur(4px);
+    animation-duration: 400ms;
   }
   header.top {
     display: grid;
@@ -261,7 +269,19 @@
   // is in front, and starts counting when a day hands off
   const clearDepth = () => { try { sessionStorage.removeItem("atelier-depth"); } catch (_) {} };
   clearDepth();
-  addEventListener("pageshow", clearDepth);
+  addEventListener("pageshow", (e) => {
+    clearDepth();
+    // restored from the back/forward cache the list arrives settled —
+    // rewind just the days and let them walk in again, encore tempo:
+    // the head stays put, the stagger welcomes you home
+    if (!e.persisted) return;
+    document.documentElement.classList.add("enc");
+    document.querySelectorAll("#days .day").forEach((el) => {
+      el.style.animation = "none";
+      void el.offsetWidth;
+      el.style.animation = "";
+    });
+  });
 
   const days = document.getElementById("days");
   function render(data) {
