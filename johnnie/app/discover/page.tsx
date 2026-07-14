@@ -605,9 +605,26 @@ html.is-dark .globe-tile { background-color: rgba(255, 255, 255, .06); }
   will-change: transform;
   pointer-events: none; user-select: none;
   background-color: rgba(0, 0, 0, .05); border-radius: 4px;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, .16);
+  /* Two layers, same language as the stage lightbox's shadow (below): a
+     tight, closer, higher-opacity "contact" shadow plus a longer, softer
+     one for the ambient cast — reads as a real object sitting a little off
+     the surface behind it, not a single flat blur. Both layers are the same
+     neutral black the vignette dims toward, so the two effects harmonize
+     instead of competing when a tile nears the dimmed edge. */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .1), 0 14px 32px rgba(0, 0, 0, .17);
 }
-html.is-dark .cascade-tile { background-color: rgba(255, 255, 255, .06); box-shadow: 0 12px 28px rgba(0, 0, 0, .45); }
+html.is-dark .cascade-tile {
+  background-color: rgba(255, 255, 255, .06);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, .28), 0 14px 32px rgba(0, 0, 0, .48);
+}
+/* Shadow weight follows stacking order: the lane nearest the "camera"
+   (highest z, set alongside z-index in cascade-view.tsx) casts the most
+   present shadow; the back lane's is the most subtle — depth you can feel,
+   not just see. */
+.cascade-lane[data-depth="3"] .cascade-tile { box-shadow: 0 6px 14px rgba(0, 0, 0, .12), 0 20px 45px rgba(0, 0, 0, .22); }
+html.is-dark .cascade-lane[data-depth="3"] .cascade-tile { box-shadow: 0 6px 14px rgba(0, 0, 0, .35), 0 20px 45px rgba(0, 0, 0, .55); }
+.cascade-lane[data-depth="1"] .cascade-tile { box-shadow: 0 2px 6px rgba(0, 0, 0, .06), 0 8px 20px rgba(0, 0, 0, .13); }
+html.is-dark .cascade-lane[data-depth="1"] .cascade-tile { box-shadow: 0 2px 6px rgba(0, 0, 0, .22), 0 8px 20px rgba(0, 0, 0, .4); }
 .cascade-image {
   width: 100%; height: 100%; object-fit: cover; border-radius: 3px; display: block;
   pointer-events: none; user-select: none; -webkit-user-drag: none;

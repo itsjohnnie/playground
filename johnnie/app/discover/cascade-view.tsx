@@ -153,6 +153,11 @@ class CascadeGrid {
       laneEl.style.width = `${itemW}px`;
       laneEl.style.left = `${cfg.centerFrac * vw - itemW / 2}px`;
       laneEl.style.zIndex = String(cfg.z);
+      // Drives the tile shadow's weight in CSS — the lane closest to the
+      // "camera" (highest z) casts the most present shadow, tapering off
+      // toward the back lane, instead of every tile casting an identical
+      // shadow regardless of its depth in the stack.
+      laneEl.dataset.depth = String(cfg.z);
 
       const pool = this.shuffle(this.sourceItems);
       const lane: Lane = {
