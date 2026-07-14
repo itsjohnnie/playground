@@ -60,6 +60,10 @@ class InfiniteGrid {
 
   contentPool: HTMLElement[] = [];
   poolIndex = 0;
+  // Which images are currently on screen (src -> how many cells show it) —
+  // consulted so the same photo is never assigned to two cells at once,
+  // whether at initial fill or when a cell's content is swapped on wrap.
+  usedImages = new Map<string, number>();
 
   rafId = 0;
   resizeTimeout = 0;
@@ -190,7 +194,38 @@ class InfiniteGrid {
     return shuffled;
   }
 
+  imageKeyOf(el: HTMLElement): string | null {
+    return el.querySelector("img")?.getAttribute("src") ?? null;
+  }
+
+  markUsed(key: string | null) {
+    if (!key) return;
+    this.usedImages.set(key, (this.usedImages.get(key) || 0) + 1);
+  }
+
+  unmarkUsed(key: string | null) {
+    if (!key) return;
+    const n = (this.usedImages.get(key) || 0) - 1;
+    if (n <= 0) this.usedImages.delete(key);
+    else this.usedImages.set(key, n);
+  }
+
+  // Draws the next tile's source, skipping any image already on screen
+  // elsewhere — the pool (~100 images) is always far bigger than what's ever
+  // visible at once, so this reliably finds a free one well within one lap.
   getNextContent(): HTMLElement {
+    const attempts = this.originalItems.length;
+    for (let n = 0; n < attempts; n++) {
+      if (this.poolIndex >= this.contentPool.length) {
+        this.contentPool = this.shuffleArray(this.originalItems);
+        this.poolIndex = 0;
+      }
+      const candidate = this.contentPool[this.poolIndex++];
+      const key = this.imageKeyOf(candidate);
+      if (!key || !this.usedImages.has(key)) return candidate;
+    }
+    // Every image is already in view (shouldn't happen) — fall back rather
+    // than loop forever.
     if (this.poolIndex >= this.contentPool.length) {
       this.contentPool = this.shuffleArray(this.originalItems);
       this.poolIndex = 0;
@@ -199,15 +234,22 @@ class InfiniteGrid {
   }
 
   swapContent(item: Cell) {
+    // Keep the cell's current image marked "in use" while drawing the next
+    // one, so a cell can't be swapped right back to what it already shows —
+    // only free it once a genuinely different image has been found.
+    const oldKey = this.imageKeyOf(item.el);
     const source = this.getNextContent();
+    this.unmarkUsed(oldKey);
     const newContent = source.cloneNode(true) as HTMLElement;
     item.el.innerHTML = newContent.innerHTML;
+    this.markUsed(this.imageKeyOf(item.el));
     this.markLoaded(item.el);
   }
 
   createGrid() {
     this.contentPool = this.shuffleArray(this.originalItems);
     this.poolIndex = 0;
+    this.usedImages.clear();
 
     // Size to the actual canvas (the fixed wrapper spans 100lvh, into the iOS
     // safe areas) rather than window.innerHeight (the smaller visual viewport) —
@@ -230,6 +272,7 @@ class InfiniteGrid {
       clone.classList.add("hero-item");
       clone.style.width = this.itemWidth + "px";
       clone.style.height = this.itemHeight + "px";
+      this.markUsed(this.imageKeyOf(clone));
 
       const col = i % this.cols;
       const row = (i / this.cols) | 0;
@@ -457,6 +500,14 @@ class InfiniteGrid {
   }
 
   onStagePointerDown(e: PointerEvent) {
+    // Without this, closing the stage on a backdrop TAP (touch) re-exposed the
+    // grid underneath (pointer-events flips to none the instant "is-open" is
+    // removed) just in time for the browser's post-touch compatibility mouse
+    // events (mousedown/mouseup, fired ~automatically unless cancelled here) to
+    // land on the newly-uncovered tile — reading as a fresh tap and opening a
+    // DIFFERENT stage instead of returning to the grid. preventDefault on the
+    // pointerdown suppresses that whole synthetic mouse sequence for this touch.
+    e.preventDefault();
     const img = this.zImg;
     this.zPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this.zPointers.size === 1) {
@@ -839,8 +890,6 @@ class InfiniteGrid {
   }
 }
 
-const LIGHT = "#ffffff";
-const DARK = "#080808";
 // Extra pan room past the image edges when zoomed, so you can drag a touch
 // beyond the side and still see a little breathing space.
 const ZOOM_PAD = 44;
@@ -849,24 +898,9 @@ const ZOOM_PAD = 44;
 const IDLE_MS = 3000; // inactivity before the camera glides to the nearest tile
 const SNAP_MS = 750; // duration of that glide
 
-function setThemeColor(color: string) {
-  let metas = Array.from(
-    document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'),
-  );
-  if (metas.length === 0) {
-    const m = document.createElement("meta");
-    m.name = "theme-color";
-    document.head.appendChild(m);
-    metas = [m];
-  }
-  // Update every theme-color tag (and strip any media-scoped ones that could let
-  // the system appearance win) so iOS Safari tints its chrome to match.
-  for (const m of metas) {
-    m.removeAttribute("media");
-    m.setAttribute("content", color);
-  }
-}
-
+// Light/dark theme (persisted, OS-following) is owned by <DiscoverExperience>,
+// which mounts across all three view modes — the grid used to own it, but
+// that logic must survive switching to the globe/cascade views too.
 export default function DiscoverGrid() {
   useEffect(() => {
     const wrapper = document.querySelector<HTMLElement>(".hero-list-wrapper");
@@ -881,60 +915,8 @@ export default function DiscoverGrid() {
       mobileWidthPercent: 0.8,
     });
 
-    // Light/dark: follow the OS preference by default; a manual toggle overrides
-    // it and persists in localStorage (so a refresh keeps the chosen mode). The
-    // pre-paint head script already applied the same initial state to <html>.
-    const THEME_KEY = "discover-theme";
-    const root = document.documentElement;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const readSaved = (): string | null => {
-      try {
-        return localStorage.getItem(THEME_KEY);
-      } catch {
-        return null;
-      }
-    };
-    const applyTheme = (dark: boolean) => {
-      root.classList.toggle("is-dark", dark);
-      // color-scheme tells the browser the page itself is dark/light, which (with
-      // theme-color) is what some browsers use to tint their surrounding chrome.
-      root.style.colorScheme = dark ? "dark" : "light";
-      // Keep --bg in sync: the page <body> carries the global `.body { background:
-      // var(--bg) !important }` rule, and the pre-paint seed script sets --bg to
-      // the initial theme colour. Without updating it here, toggling to light after
-      // a dark load leaves the background stuck dark (everything else flips but the
-      // gaps behind the tiles stay #080808). Setting it also eases in unison.
-      root.style.setProperty("--bg", dark ? DARK : LIGHT);
-      setThemeColor(dark ? DARK : LIGHT);
-    };
-    const saved = readSaved();
-    applyTheme(saved ? saved === "dark" : mq.matches);
-
-    const toggle = document.querySelector<HTMLElement>("[data-theme-toggle]");
-    const onToggle = (e: Event) => {
-      e.preventDefault();
-      const next = !root.classList.contains("is-dark");
-      applyTheme(next);
-      try {
-        localStorage.setItem(THEME_KEY, next ? "dark" : "light");
-      } catch {
-        /* private mode / storage disabled — just don't persist */
-      }
-    };
-    toggle?.addEventListener("click", onToggle);
-
-    // Live-follow the OS preference only while the user hasn't set an override.
-    const onSystem = (e: MediaQueryListEvent) => {
-      if (!readSaved()) applyTheme(e.matches);
-    };
-    mq.addEventListener("change", onSystem);
-
     return () => {
       grid.destroy();
-      toggle?.removeEventListener("click", onToggle);
-      mq.removeEventListener("change", onSystem);
-      root.classList.remove("is-dark");
-      root.style.colorScheme = "";
     };
   }, []);
 

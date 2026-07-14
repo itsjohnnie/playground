@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { getDiscover } from "@/lib/content";
 import { asset } from "@/lib/asset";
-import DiscoverGrid from "./discover-grid";
+import DiscoverExperience from "./discover-experience";
 
 export const metadata: Metadata = {
   title: "Discovery Area — Designed by Johnnie Gomez",
@@ -38,56 +38,7 @@ export default function DiscoverPage() {
 
   return (
     <>
-      {/* Floating control bar: home link, page label, light/dark toggle. */}
-      <div className="discover-comp">
-        <a href={asset("/")} className="discover-logo">
-          <div>Johnnie Gómez Álzaga ®</div>
-        </a>
-        <div className="discover-text">
-          <div>Discovery Area</div>
-        </div>
-        <a data-theme-toggle href="#" className="toggle-mode" aria-label="Toggle light or dark mode">
-          {/* Sun/moon morph: a disc that masks into a crescent (moon) while
-              eight rays fold in; back out to a smaller disc + rays (sun).
-              Pure CSS, state-driven by html.is-dark — styles below. */}
-          <span className="button-icon sunmoon" aria-hidden="true">
-            <span className="ray" />
-            <span className="ray" />
-            <span className="ray" />
-            <span className="ray" />
-            <span className="ray" />
-            <span className="ray" />
-            <span className="ray" />
-            <span className="ray" />
-          </span>
-        </a>
-      </div>
-
-      {/* The draggable, infinitely-wrapping gallery. Items below are the source
-          pool; the client script clones them into a torus grid. */}
-      <div className="hero">
-        <div className="hero-list-wrapper">
-          <div role="list" className="hero-list">
-            {items.map((it) => (
-              <div role="listitem" className="hero-item" key={it.image}>
-                <img
-                  src={asset(it.image)}
-                  loading="eager"
-                  alt=""
-                  className="hero-image"
-                />
-                <div className="hero-meta_data">
-                  <div>{it.name}</div>
-                  <div className="hero-meta_data-lighter">{it.category}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="hero-gradient cc-white"></div>
-
-      <DiscoverGrid />
+      <DiscoverExperience items={items} />
 
       {/* Discover-only styles: the grid layout (the source site shipped these
           from JS; here they're plain CSS) plus the native dark theme. */}
@@ -138,7 +89,8 @@ body { background-color: #fff; }
 body,
 .discover-comp,
 .discover-logo,
-.discover-text,
+.discover-views,
+.discover-view-btn,
 .toggle-mode,
 .hero-image,
 .hero-item {
@@ -257,11 +209,41 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
 .discover-comp {
   bottom: calc(2rem + env(safe-area-inset-bottom));
 }
-/* Quieter page label: smaller than the 1rem it inherited (site.css sets
-   .925rem under 480px; this later sheet wins at equal specificity). */
-.discover-text { font-size: .9rem; }
+/* View switcher: three small icon buttons — right next to the sun/moon
+   toggle — replacing the old static "Discovery Area" label. Same segment
+   treatment as the logo/toggle (translucent tint over the bar's single
+   shared frost sheet, no border — dividers are the etched hairlines below). */
+.discover-views {
+  z-index: 4;
+  color: #080808;
+  background-color: rgba(255, 255, 255, .68);
+  justify-content: center; align-items: stretch;
+  margin-left: -1px; margin-right: -1px;
+  position: relative;
+  display: flex;
+}
+.discover-view-btn {
+  appearance: none; border: none; background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: inherit;
+  padding: .55rem .55rem;
+  opacity: .5;
+  transition: opacity .2s ease, background-color .2s ease;
+}
+.view-icon { width: 17px; height: 17px; display: block; }
+@media (hover: hover) and (pointer: fine) {
+  .discover-view-btn:hover { opacity: .85; }
+}
+.discover-view-btn.is-active {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, .06);
+}
+html.is-dark .discover-view-btn.is-active {
+  background-color: rgba(255, 255, 255, .1);
+}
 @media (max-width: 479px) {
-  .discover-text { font-size: .85rem; }
+  .discover-view-btn { padding: .45rem .45rem; }
+  .view-icon { width: 15px; height: 15px; }
 }
 
 /* Phones: one consistent gutter around the control bar — the same 1rem gap on
@@ -284,6 +266,12 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
        old 1rem — at 1rem the curve cut into the rows' text padding. */
     border-radius: 10px;
   }
+  /* Second row (logo wraps to its own row above): views and the toggle sit
+     as ONE tight cluster of four icons, centred by site.css's
+     .discover-comp{justify-content:center} — NOT stretched apart (an
+     earlier flex:1 on .discover-views grew it to fill the whole row, so its
+     centred icons ended up clustered away from the toggle at the far edge
+     instead of sitting right next to it). */
 }
 .hero-list-wrapper.ready { opacity: 1; }
 .hero-list-wrapper.dragging { cursor: grabbing; }
@@ -323,13 +311,12 @@ html.is-dark .hero-item { background-color: rgba(255, 255, 255, .06); }
 html.is-dark, html.is-dark body { background-color: #080808 !important; color: #fff; }
 html.is-dark .hero-image { outline-color: #ffffff14; }
 html.is-dark .discover-logo,
-html.is-dark .discover-text,
+html.is-dark .discover-views,
 html.is-dark .toggle-mode {
   background-color: rgba(24, 24, 24, .6); color: #fff;
 }
 html.is-dark .discover-logo:hover,
 html.is-dark .toggle-mode:hover { background-color: rgba(36, 36, 36, .72); }
-html.is-dark .discover-text { border-color: #ffffff14; }
 html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #00000052; }
 
 /* While the stage is open the grid scene recedes: the vignette and control
@@ -380,7 +367,7 @@ html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s e
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
   pointer-events: none;
 }
-.discover-logo, .discover-text, .toggle-mode {
+.discover-logo, .discover-views, .toggle-mode {
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
 
@@ -388,31 +375,27 @@ html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s e
    1px borders read as hard seams cutting the glass; an etched line that
    dissolves before reaching the edges keeps the panes separate while still
    reading as one sheet. Solid borders and their -1px overlap margins go. */
-.discover-text {
-  border-left: none !important; border-right: none !important;
-  margin-left: 0 !important; margin-right: 0 !important;
-}
-/* Vertical divider: text ↔ toggle (all widths). */
-.discover-text::after {
+/* Vertical divider: views ↔ toggle (all widths). */
+.discover-views::after {
   content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 1px;
   background: linear-gradient(180deg, transparent, #0000001f 30%, #0000001f 70%, transparent);
   pointer-events: none;
 }
-html.is-dark .discover-text::after {
+html.is-dark .discover-views::after {
   background: linear-gradient(180deg, transparent, #ffffff1f 30%, #ffffff1f 70%, transparent);
 }
-/* Vertical divider: logo ↔ text (desktop pill only — rows stack on phones). */
-.discover-text::before {
+/* Vertical divider: logo ↔ views (desktop pill only — rows stack on phones). */
+.discover-views::before {
   content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 1px;
   background: linear-gradient(180deg, transparent, #0000001f 30%, #0000001f 70%, transparent);
   pointer-events: none;
 }
-html.is-dark .discover-text::before {
+html.is-dark .discover-views::before {
   background: linear-gradient(180deg, transparent, #ffffff1f 30%, #ffffff1f 70%, transparent);
 }
 @media (max-width: 479px) {
-  .discover-text::before { display: none; }
-  /* Horizontal divider: logo row ↔ text row. */
+  .discover-views::before { display: none; }
+  /* Horizontal divider: logo row ↔ views row. */
   .discover-logo { border-bottom: none !important; position: relative; top: auto; right: auto; bottom: auto; left: auto; }
   .discover-logo::after {
     content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
@@ -516,6 +499,140 @@ html:not(.is-dark) .discover-stage .hero-image {
    keeps enough contrast on the pale backdrop. */
 html:not(.is-dark) .discover-stage .hero-meta_data { color: #1b1b1b; }
 html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opacity: 1; }
+
+/* Bottom bar entrance: mounts hidden, then (half a second later, timed in
+   discover-experience.tsx) slides up + fades in. The two classes below carry
+   the whole animation and are then REMOVED once it finishes, handing full
+   control back to the rules above (theme easing, the tap-to-stage slide-off)
+   exactly as before rather than living alongside them permanently. */
+.discover-comp.discover-comp--pre {
+  opacity: 0;
+  transform: translate(-50%, 14px);
+}
+.discover-comp.discover-comp--entering {
+  opacity: 1 !important;
+  transform: translate(-50%, 0) !important;
+  transition: opacity .6s cubic-bezier(.22, 1, .36, 1),
+    transform .6s cubic-bezier(.22, 1, .36, 1) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .discover-comp.discover-comp--pre { transform: translate(-50%, 0); }
+  .discover-comp.discover-comp--entering {
+    transform: translate(-50%, 0) !important;
+    transition: opacity .25s ease !important;
+  }
+}
+
+/* View switching: the outgoing view fades out (this wrapper), then the
+   incoming one mounts and fades itself in via its own existing .ready
+   transition (see the grid/globe/cascade rules) — a full crossfade without
+   ever needing two views mounted and animating at once. */
+.discover-view-pane {
+  position: absolute; inset: 0;
+  transition: opacity .32s ease;
+}
+.discover-view-pane.is-leaving { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .discover-view-pane { transition: opacity .15s ease; }
+}
+
+/* View 2 — globe (globe-view.tsx): a REAL CSS 3D sphere. Each tile gets a
+   fixed rotateY(lon) rotateX(lat) translateZ(radius) transform planting it
+   tangent to the sphere's surface (a decal, not a billboard); the whole
+   sphere spins as one rigid body via rotateX/rotateY on .globe-stage, so the
+   browser's own 3D engine drives perspective foreshortening, depth sorting,
+   and hiding the far hemisphere (backface-visibility) — properly "mapped"
+   onto the sphere rather than a flat cloud of always-facing-camera cards.
+   Full-bleed like the grid; the sphere is sized off the SMALLER viewport
+   axis, so on a narrow phone it's always fully centred, never edge-clipped —
+   a "central view" by construction, not a fallback. */
+.globe-viewport {
+  position: absolute; inset: 0; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  cursor: grab; touch-action: none;
+  opacity: 0; transition: opacity .6s ease-out;
+  /* Overridden per-frame in JS (calcRadius) once mounted; this is just the
+     pre-mount fallback so nothing renders flattened before that runs. */
+  perspective: 1000px;
+}
+.globe-viewport.ready { opacity: 1; }
+.globe-viewport.dragging { cursor: grabbing; }
+.globe-stage {
+  position: relative; width: 0; height: 0;
+  transform-style: preserve-3d;
+}
+.globe-tile {
+  position: absolute; top: 50%; left: 50%;
+  /* 996:560 — the same ratio every image on this page actually is — kept
+     exact (not rounded to whole pixels) so object-fit: cover never has to
+     crop a sliver off to make the image fit its tile. */
+  width: 26.68px; height: 15px;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+  pointer-events: none; user-select: none;
+  background-color: rgba(0, 0, 0, .05); border-radius: 2px;
+}
+html.is-dark .globe-tile { background-color: rgba(255, 255, 255, .06); }
+.globe-image {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 2px;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+  /* Blur-up, same treatment as the grid's tiles. */
+  opacity: 0; filter: blur(6px);
+  transition: opacity .5s var(--ease-out), filter .5s var(--ease-out);
+}
+.globe-image.is-loaded { opacity: 1; filter: blur(0); }
+@media (max-width: 767px) {
+  .globe-tile { width: 17.79px; height: 10px; }
+}
+
+/* View 3 — cascade (cascade-view.tsx): a few big lanes (centre, an
+   overlapping front lane, a right lane — not a dense wall of small columns)
+   drifting upward at different speeds. Lanes are positioned explicitly
+   (left, in px, set by the engine) rather than flowed by flexbox, so the
+   front lane can genuinely sit in front of (z-index above) the centre one. */
+.cascade-viewport {
+  position: absolute; inset: 0; overflow: hidden;
+  cursor: grab; touch-action: none;
+  opacity: 0; transition: opacity .6s ease-out;
+}
+.cascade-viewport.ready { opacity: 1; }
+.cascade-viewport.dragging { cursor: grabbing; }
+.cascade-pool { display: none; }
+.cascade-columns { position: relative; width: 100%; height: 100%; }
+.cascade-lane { position: absolute; top: 0; height: 100%; }
+.cascade-tile {
+  position: absolute; top: 0; left: 0;
+  will-change: transform;
+  pointer-events: none; user-select: none;
+  background-color: rgba(0, 0, 0, .05); border-radius: 4px;
+  /* Two layers, same language as the stage lightbox's shadow (below): a
+     tight, closer, higher-opacity "contact" shadow plus a longer, softer
+     one for the ambient cast — reads as a real object sitting a little off
+     the surface behind it, not a single flat blur. Both layers are the same
+     neutral black the vignette dims toward, so the two effects harmonize
+     instead of competing when a tile nears the dimmed edge. */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .05), 0 16px 36px rgba(0, 0, 0, .09);
+}
+html.is-dark .cascade-tile {
+  background-color: rgba(255, 255, 255, .06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .16), 0 16px 36px rgba(0, 0, 0, .28);
+}
+/* Shadow weight follows stacking order: the lane nearest the "camera"
+   (highest z, set alongside z-index in cascade-view.tsx) casts the most
+   present shadow; the back lane's is the most subtle — depth you can feel,
+   not just see. Kept gentle throughout — a wide, soft blur with low
+   opacity on both layers, never a tight/dark edge. */
+.cascade-lane[data-depth="3"] .cascade-tile { box-shadow: 0 3px 10px rgba(0, 0, 0, .06), 0 22px 46px rgba(0, 0, 0, .12); }
+html.is-dark .cascade-lane[data-depth="3"] .cascade-tile { box-shadow: 0 3px 10px rgba(0, 0, 0, .2), 0 22px 46px rgba(0, 0, 0, .36); }
+.cascade-lane[data-depth="1"] .cascade-tile { box-shadow: 0 1px 6px rgba(0, 0, 0, .035), 0 10px 26px rgba(0, 0, 0, .06); }
+html.is-dark .cascade-lane[data-depth="1"] .cascade-tile { box-shadow: 0 1px 6px rgba(0, 0, 0, .1), 0 10px 26px rgba(0, 0, 0, .2); }
+.cascade-image {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 3px; display: block;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+  opacity: 0; filter: blur(10px);
+  transition: opacity .5s var(--ease-out), filter .5s var(--ease-out);
+}
+.cascade-image.is-loaded { opacity: 1; filter: blur(0); }
 `,
         }}
       />
