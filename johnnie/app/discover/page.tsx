@@ -563,7 +563,10 @@ html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opa
 }
 .globe-tile {
   position: absolute; top: 50%; left: 50%;
-  width: 26px; height: 15px;
+  /* 996:560 — the same ratio every image on this page actually is — kept
+     exact (not rounded to whole pixels) so object-fit: cover never has to
+     crop a sliver off to make the image fit its tile. */
+  width: 26.68px; height: 15px;
   backface-visibility: hidden;
   will-change: transform, opacity;
   pointer-events: none; user-select: none;
@@ -579,7 +582,7 @@ html.is-dark .globe-tile { background-color: rgba(255, 255, 255, .06); }
 }
 .globe-image.is-loaded { opacity: 1; filter: blur(0); }
 @media (max-width: 767px) {
-  .globe-tile { width: 18px; height: 10px; }
+  .globe-tile { width: 17.79px; height: 10px; }
 }
 
 /* View 3 — cascade (cascade-view.tsx): a few big lanes (centre, an
