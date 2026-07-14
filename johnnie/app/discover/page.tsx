@@ -611,20 +611,21 @@ html.is-dark .globe-tile { background-color: rgba(255, 255, 255, .06); }
      the surface behind it, not a single flat blur. Both layers are the same
      neutral black the vignette dims toward, so the two effects harmonize
      instead of competing when a tile nears the dimmed edge. */
-  box-shadow: 0 4px 10px rgba(0, 0, 0, .1), 0 14px 32px rgba(0, 0, 0, .17);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .05), 0 16px 36px rgba(0, 0, 0, .09);
 }
 html.is-dark .cascade-tile {
   background-color: rgba(255, 255, 255, .06);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, .28), 0 14px 32px rgba(0, 0, 0, .48);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .16), 0 16px 36px rgba(0, 0, 0, .28);
 }
 /* Shadow weight follows stacking order: the lane nearest the "camera"
    (highest z, set alongside z-index in cascade-view.tsx) casts the most
    present shadow; the back lane's is the most subtle — depth you can feel,
-   not just see. */
-.cascade-lane[data-depth="3"] .cascade-tile { box-shadow: 0 6px 14px rgba(0, 0, 0, .12), 0 20px 45px rgba(0, 0, 0, .22); }
-html.is-dark .cascade-lane[data-depth="3"] .cascade-tile { box-shadow: 0 6px 14px rgba(0, 0, 0, .35), 0 20px 45px rgba(0, 0, 0, .55); }
-.cascade-lane[data-depth="1"] .cascade-tile { box-shadow: 0 2px 6px rgba(0, 0, 0, .06), 0 8px 20px rgba(0, 0, 0, .13); }
-html.is-dark .cascade-lane[data-depth="1"] .cascade-tile { box-shadow: 0 2px 6px rgba(0, 0, 0, .22), 0 8px 20px rgba(0, 0, 0, .4); }
+   not just see. Kept gentle throughout — a wide, soft blur with low
+   opacity on both layers, never a tight/dark edge. */
+.cascade-lane[data-depth="3"] .cascade-tile { box-shadow: 0 3px 10px rgba(0, 0, 0, .06), 0 22px 46px rgba(0, 0, 0, .12); }
+html.is-dark .cascade-lane[data-depth="3"] .cascade-tile { box-shadow: 0 3px 10px rgba(0, 0, 0, .2), 0 22px 46px rgba(0, 0, 0, .36); }
+.cascade-lane[data-depth="1"] .cascade-tile { box-shadow: 0 1px 6px rgba(0, 0, 0, .035), 0 10px 26px rgba(0, 0, 0, .06); }
+html.is-dark .cascade-lane[data-depth="1"] .cascade-tile { box-shadow: 0 1px 6px rgba(0, 0, 0, .1), 0 10px 26px rgba(0, 0, 0, .2); }
 .cascade-image {
   width: 100%; height: 100%; object-fit: cover; border-radius: 3px; display: block;
   pointer-events: none; user-select: none; -webkit-user-drag: none;
