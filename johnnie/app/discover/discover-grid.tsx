@@ -60,6 +60,10 @@ class InfiniteGrid {
 
   contentPool: HTMLElement[] = [];
   poolIndex = 0;
+  // Which images are currently on screen (src -> how many cells show it) —
+  // consulted so the same photo is never assigned to two cells at once,
+  // whether at initial fill or when a cell's content is swapped on wrap.
+  usedImages = new Map<string, number>();
 
   rafId = 0;
   resizeTimeout = 0;
@@ -190,7 +194,38 @@ class InfiniteGrid {
     return shuffled;
   }
 
+  imageKeyOf(el: HTMLElement): string | null {
+    return el.querySelector("img")?.getAttribute("src") ?? null;
+  }
+
+  markUsed(key: string | null) {
+    if (!key) return;
+    this.usedImages.set(key, (this.usedImages.get(key) || 0) + 1);
+  }
+
+  unmarkUsed(key: string | null) {
+    if (!key) return;
+    const n = (this.usedImages.get(key) || 0) - 1;
+    if (n <= 0) this.usedImages.delete(key);
+    else this.usedImages.set(key, n);
+  }
+
+  // Draws the next tile's source, skipping any image already on screen
+  // elsewhere — the pool (~100 images) is always far bigger than what's ever
+  // visible at once, so this reliably finds a free one well within one lap.
   getNextContent(): HTMLElement {
+    const attempts = this.originalItems.length;
+    for (let n = 0; n < attempts; n++) {
+      if (this.poolIndex >= this.contentPool.length) {
+        this.contentPool = this.shuffleArray(this.originalItems);
+        this.poolIndex = 0;
+      }
+      const candidate = this.contentPool[this.poolIndex++];
+      const key = this.imageKeyOf(candidate);
+      if (!key || !this.usedImages.has(key)) return candidate;
+    }
+    // Every image is already in view (shouldn't happen) — fall back rather
+    // than loop forever.
     if (this.poolIndex >= this.contentPool.length) {
       this.contentPool = this.shuffleArray(this.originalItems);
       this.poolIndex = 0;
@@ -199,15 +234,22 @@ class InfiniteGrid {
   }
 
   swapContent(item: Cell) {
+    // Keep the cell's current image marked "in use" while drawing the next
+    // one, so a cell can't be swapped right back to what it already shows —
+    // only free it once a genuinely different image has been found.
+    const oldKey = this.imageKeyOf(item.el);
     const source = this.getNextContent();
+    this.unmarkUsed(oldKey);
     const newContent = source.cloneNode(true) as HTMLElement;
     item.el.innerHTML = newContent.innerHTML;
+    this.markUsed(this.imageKeyOf(item.el));
     this.markLoaded(item.el);
   }
 
   createGrid() {
     this.contentPool = this.shuffleArray(this.originalItems);
     this.poolIndex = 0;
+    this.usedImages.clear();
 
     // Size to the actual canvas (the fixed wrapper spans 100lvh, into the iOS
     // safe areas) rather than window.innerHeight (the smaller visual viewport) —
@@ -230,6 +272,7 @@ class InfiniteGrid {
       clone.classList.add("hero-item");
       clone.style.width = this.itemWidth + "px";
       clone.style.height = this.itemHeight + "px";
+      this.markUsed(this.imageKeyOf(clone));
 
       const col = i % this.cols;
       const row = (i / this.cols) | 0;

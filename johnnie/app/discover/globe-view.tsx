@@ -33,14 +33,31 @@ const LAT_SPAN = 100; // degrees between the top and bottom row, centred on the 
 const PERSPECTIVE_RATIO = 3.1; // camera distance as a multiple of the sphere radius
 const TILE_COUNT = ROWS * COLS;
 
+function shuffle<T>(arr: T[]): T[] {
+  const out = arr.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+// With more tile slots (count) than source photos, some images necessarily
+// repeat — but a fixed stride (e.g. every 100th tile) put each repeat at the
+// exact same row-major offset from the last, which (given the grid wraps
+// every COLS tiles) landed repeats of the same photo only ~3 rows apart —
+// close enough to often share a fold. Filling with independently-reshuffled
+// laps instead means repeats land at a different, uncorrelated spot in the
+// grid each time, so they no longer cluster in nearby rows. It can't
+// guarantee zero repeats in the visible hemisphere (~200 tiles are visible
+// at once against ~100 photos — that's a hard ceiling on any single-sphere
+// layout), but it spreads them out instead of stacking the same offset
+// every lap.
 function sampleItems(items: DiscoverItem[], count: number): DiscoverItem[] {
   if (items.length === 0) return [];
-  // Stride through the pool (not a plain slice) so the sphere isn't just
-  // whichever items happen to sort first.
-  const stride = Math.max(1, Math.floor(items.length / count) || 1);
   const out: DiscoverItem[] = [];
-  for (let i = 0; i < count; i++) out.push(items[(i * stride) % items.length]);
-  return out;
+  while (out.length < count) out.push(...shuffle(items));
+  return out.slice(0, count);
 }
 
 type SpherePoint = { x: number; y: number; z: number; latDeg: number; lonDeg: number };

@@ -73,8 +73,6 @@ type Lane = {
   length: number;
   speed: number;
   phase: number;
-  pool: HTMLElement[];
-  poolIndex: number;
 };
 
 class CascadeGrid {
@@ -84,6 +82,15 @@ class CascadeGrid {
   lanes: Lane[] = [];
 
   mobileBreakpoint = MOBILE_BREAKPOINT;
+
+  // ONE shared pool across every lane (not per-lane) — content-swaps for the
+  // front, centre, and right lanes all draw from the same sequence, so the
+  // same photo is never handed to two lanes at once.
+  pool: HTMLElement[] = [];
+  poolIndex = 0;
+  // Which images are currently on screen (src -> how many tiles show it, in
+  // ANY lane) — consulted so the same photo never shows twice in one fold.
+  usedImages = new Map<string, number>();
 
   scrollPos = 0;
   velocity = 0;
@@ -142,6 +149,9 @@ class CascadeGrid {
 
     this.lanesEl.innerHTML = "";
     this.lanes = [];
+    this.pool = this.shuffle(this.sourceItems);
+    this.poolIndex = 0;
+    this.usedImages.clear();
 
     configs.forEach((cfg, laneIndex) => {
       const gap = Math.round(itemH * 0.32); // real breathing room between stacked tiles
@@ -159,7 +169,6 @@ class CascadeGrid {
       // shadow regardless of its depth in the stack.
       laneEl.dataset.depth = String(cfg.z);
 
-      const pool = this.shuffle(this.sourceItems);
       const lane: Lane = {
         el: laneEl,
         tiles: [],
@@ -169,18 +178,17 @@ class CascadeGrid {
         length: cellH * tilesPerLane,
         speed: cfg.speed,
         phase: ((laneIndex * 0.37) % 1) * cellH * tilesPerLane,
-        pool,
-        poolIndex: 0,
       };
 
       for (let i = 0; i < tilesPerLane; i++) {
-        const source = this.nextFrom(lane);
+        const source = this.nextFrom();
         const clone = source.cloneNode(true) as HTMLElement;
         clone.classList.remove("cascade-source");
         clone.classList.add("cascade-tile");
         clone.style.width = `${itemW}px`;
         clone.style.height = `${itemH}px`;
         this.markLoaded(clone);
+        this.markUsed(this.imageKeyOf(clone));
         laneEl.appendChild(clone);
 
         // Alternate left/right so tiles fall into two offset sub-columns
@@ -196,17 +204,55 @@ class CascadeGrid {
     });
   }
 
-  nextFrom(lane: Lane): HTMLElement {
-    if (lane.poolIndex >= lane.pool.length) {
-      lane.pool = this.shuffle(this.sourceItems);
-      lane.poolIndex = 0;
-    }
-    return lane.pool[lane.poolIndex++];
+  imageKeyOf(el: HTMLElement): string | null {
+    return el.querySelector("img")?.getAttribute("src") ?? null;
   }
 
-  swapContent(lane: Lane, tile: Tile) {
-    const source = this.nextFrom(lane);
+  markUsed(key: string | null) {
+    if (!key) return;
+    this.usedImages.set(key, (this.usedImages.get(key) || 0) + 1);
+  }
+
+  unmarkUsed(key: string | null) {
+    if (!key) return;
+    const n = (this.usedImages.get(key) || 0) - 1;
+    if (n <= 0) this.usedImages.delete(key);
+    else this.usedImages.set(key, n);
+  }
+
+  // Draws the next tile's source from the ONE shared pool, skipping any
+  // image already on screen in any lane — the pool (~100 images) is always
+  // far bigger than the handful of tiles ever visible at once, so this
+  // reliably finds a free one well within a single lap.
+  nextFrom(): HTMLElement {
+    const attempts = this.sourceItems.length;
+    for (let n = 0; n < attempts; n++) {
+      if (this.poolIndex >= this.pool.length) {
+        this.pool = this.shuffle(this.sourceItems);
+        this.poolIndex = 0;
+      }
+      const candidate = this.pool[this.poolIndex++];
+      const key = this.imageKeyOf(candidate);
+      if (!key || !this.usedImages.has(key)) return candidate;
+    }
+    // Every image is already in view (shouldn't happen) — fall back rather
+    // than loop forever.
+    if (this.poolIndex >= this.pool.length) {
+      this.pool = this.shuffle(this.sourceItems);
+      this.poolIndex = 0;
+    }
+    return this.pool[this.poolIndex++];
+  }
+
+  swapContent(tile: Tile) {
+    // Keep the tile's current image marked "in use" while drawing the next
+    // one, so it can't be swapped right back to what it already shows — only
+    // free it once a genuinely different image has been found.
+    const oldKey = this.imageKeyOf(tile.el);
+    const source = this.nextFrom();
+    this.unmarkUsed(oldKey);
     tile.el.innerHTML = source.innerHTML;
+    this.markUsed(this.imageKeyOf(tile.el));
     this.markLoaded(tile.el);
   }
 
@@ -274,7 +320,7 @@ class CascadeGrid {
 
         const wrapIndex = Math.floor((tile.baseY - laneScroll) / lane.length);
         if (tile.lastWrap !== null && wrapIndex !== tile.lastWrap) {
-          this.swapContent(lane, tile);
+          this.swapContent(tile);
         }
         tile.lastWrap = wrapIndex;
 
