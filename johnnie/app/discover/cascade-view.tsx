@@ -57,7 +57,6 @@ type Tile = {
   lastY: number;
   lastWrap: number | null;
   xShift: number;
-  scale: number;
 };
 
 type Lane = {
@@ -173,10 +172,10 @@ class CascadeGrid {
 
         // Alternate left/right so tiles fall into two offset sub-columns
         // within the lane (a shifted, brick-like stack) instead of one
-        // straight column — no rotation, so every tile stays axis-aligned.
+        // straight column — no rotation and no size variation, so every
+        // tile in a lane stays the same shape and size as every other.
         const xShift = (i % 2 === 0 ? -1 : 1) * itemW * 0.16;
-        const scale = 1 + (((i * 31 + laneIndex * 13) % 10) - 5) / 140;
-        lane.tiles.push({ el: clone, baseY: i * cellH, lastY: -99999, lastWrap: null, xShift, scale });
+        lane.tiles.push({ el: clone, baseY: i * cellH, lastY: -99999, lastWrap: null, xShift });
       }
 
       this.lanesEl.appendChild(laneEl);
@@ -268,7 +267,7 @@ class CascadeGrid {
 
         const yi = y | 0;
         if (yi !== tile.lastY) {
-          tile.el.style.transform = `translate3d(${tile.xShift}px, ${yi}px, 0) scale(${tile.scale})`;
+          tile.el.style.transform = `translate3d(${tile.xShift}px, ${yi}px, 0)`;
           tile.lastY = yi;
         }
       }
