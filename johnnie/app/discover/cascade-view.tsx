@@ -25,29 +25,34 @@ const IMAGE_RATIO = 560 / 996;
 
 type LaneConfig = {
   centerFrac: number; // horizontal centre, as a fraction of viewport width
-  widthFrac: number; // tile width, as a fraction of viewport width — height follows from IMAGE_RATIO
   speed: number;
   z: number; // stacking order — higher reads as "in front"
 };
 
-// Desktop: one dominant centred lane, with a lane overlapping its left edge
-// from IN FRONT and another to the right — accents around a clear centre,
-// not three equal columns. Tiles are DELIBERATELY big enough to bleed past
-// the viewport edges (the centre lane starts and finishes off-screen on
-// both sides) rather than being confined within a safe margin — a fold
-// shows a couple in full plus edges/corners of a few more as they scroll
-// past or slide behind a neighbouring lane, not a neat set of exactly six.
+// Every lane uses the SAME tile width (height follows from IMAGE_RATIO) —
+// lanes differ in position, speed and stacking order, never in size, so no
+// tile is ever bigger or smaller than any other. Big enough that the lanes
+// positioned toward an edge bleed past the viewport there, rather than
+// every tile being confined within a safe margin.
+const DESKTOP_TILE_WIDTH_FRAC = 0.42;
+const MOBILE_TILE_WIDTH_FRAC = 0.56;
+
+// Desktop: one centred lane, with a lane overlapping its left edge from IN
+// FRONT and another to the right — accents around a clear centre, not three
+// identical columns marching in a row. A fold shows a couple tiles in full
+// plus edges/corners of a few more as they scroll past or slide behind a
+// neighbouring lane, not a neat non-overlapping set of exactly six.
 const DESKTOP_LANES: LaneConfig[] = [
-  { centerFrac: 0.2, widthFrac: 0.36, speed: 0.7, z: 3 },
-  { centerFrac: 0.52, widthFrac: 0.7, speed: 1, z: 2 },
-  { centerFrac: 0.86, widthFrac: 0.38, speed: 1.3, z: 1 },
+  { centerFrac: 0.2, speed: 0.7, z: 3 },
+  { centerFrac: 0.52, speed: 1, z: 2 },
+  { centerFrac: 0.86, speed: 1.3, z: 1 },
 ];
-// Mobile: just the centre lane (prominent, itself bleeding past both edges)
-// and a peek of the right lane — three side-by-side lanes don't fit legibly
-// on a narrow phone.
+// Mobile: just the centre lane (prominent) and a peek of the right lane
+// (bleeding past the right edge) — three side-by-side lanes don't fit
+// legibly on a narrow phone.
 const MOBILE_LANES: LaneConfig[] = [
-  { centerFrac: 0.46, widthFrac: 0.7, speed: 1, z: 2 },
-  { centerFrac: 0.92, widthFrac: 0.36, speed: 1.3, z: 1 },
+  { centerFrac: 0.42, speed: 1, z: 2 },
+  { centerFrac: 0.88, speed: 1.3, z: 1 },
 ];
 const MOBILE_BREAKPOINT = 720;
 
@@ -128,14 +133,17 @@ class CascadeGrid {
   init() {
     const vw = this.wrapper.clientWidth || window.innerWidth;
     const vh = this.wrapper.clientHeight || window.innerHeight;
-    const configs = vw < this.mobileBreakpoint ? MOBILE_LANES : DESKTOP_LANES;
+    const isMobile = vw < this.mobileBreakpoint;
+    const configs = isMobile ? MOBILE_LANES : DESKTOP_LANES;
+    // ONE width for every lane — the only thing that ever varies is position,
+    // speed and stacking order, never size.
+    const itemW = (isMobile ? MOBILE_TILE_WIDTH_FRAC : DESKTOP_TILE_WIDTH_FRAC) * vw;
+    const itemH = itemW * IMAGE_RATIO;
 
     this.lanesEl.innerHTML = "";
     this.lanes = [];
 
     configs.forEach((cfg, laneIndex) => {
-      const itemW = cfg.widthFrac * vw;
-      const itemH = itemW * IMAGE_RATIO;
       const gap = Math.round(itemH * 0.32); // real breathing room between stacked tiles
       const cellH = itemH + gap;
       const tilesPerLane = Math.ceil(vh / cellH) + 4;
