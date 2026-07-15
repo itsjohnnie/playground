@@ -11,7 +11,8 @@ body{display:flex;align-items:center;justify-content:center;
 font-family:'Geist Mono',monospace}
 .stage{position:relative;touch-action:none}
 pre{margin:0;line-height:1.14;font-weight:520;color:#f2f1ee;
-font-family:'Geist Mono',monospace;user-select:text;-webkit-user-select:text}
+font-family:'Geist Mono',monospace;user-select:text;-webkit-user-select:text;
+text-shadow:0 0 16px rgba(242,241,238,.10)}
 body.nosel pre{user-select:none;-webkit-user-select:none}
 canvas{position:absolute;inset:0;pointer-events:none}
 #dots{position:relative;display:none}
@@ -118,24 +119,67 @@ function splat(px, py) {
       if (d < 1) torch[y * COLS + x] = Math.max(torch[y * COLS + x], 1 - d * d);
     }
   if (!raf) raf = requestAnimationFrame(torchLoop);
+  // the stroke also disturbs the surface: bright glyphs at the torch
+  // head flutter and settle behind the finger
+  if (!RM && Math.random() < 0.5) {
+    const G = face ? KT : MT;
+    for (let k = 0; k < 2; k++) {
+      const x = (cx + Math.random() * 5 - 2.5) | 0, y = (cy + Math.random() * 3 - 1.5) | 0;
+      if (x >= 0 && x < COLS && y >= 0 && y < RT && chAt(G[y][x]) !== " ") flickCell(x, y);
+    }
+  }
 }
 
-/* ---- morph (text): radial split-flap ---- */
-function morphText(px, py) {
+/* ---- idle life: stray cells flicker like a live signal ---- */
+let preDirty = false;
+function dirtyPre() {
+  if (preDirty) return; preDirty = true;
+  requestAnimationFrame(() => {
+    preDirty = false;
+    pre.textContent = cur.map(q => q.join("")).join("\n");
+  });
+}
+function flickCell(x, y) {
+  if (morphing) return;
+  cur[y][x] = GLYPHS[(Math.random() * GLYPHS.length) | 0];
+  dirtyPre();
+  setTimeout(() => {
+    if (morphing) return;
+    const G = face ? KT : MT;
+    cur[y][x] = chAt(G[y][x]);
+    dirtyPre();
+  }, 140 + Math.random() * 160);
+}
+let idleTimer = 0;
+function schedIdle() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(idleFlick, 1100 + Math.random() * 2200);
+}
+function idleFlick() {
+  if (mode !== "c" && !morphing && !RM && !document.hidden) {
+    const G = face ? KT : MT;
+    const n = 2 + (Math.random() * 3 | 0);
+    for (let k = 0, tries = 0; k < n && tries < 40; tries++) {
+      const y = (Math.random() * RT) | 0, x = (Math.random() * COLS) | 0;
+      if (chAt(G[y][x]) === " ") continue;
+      k++; flickCell(x, y);
+    }
+  }
+  schedIdle();
+}
+schedIdle();
+
+/* ---- the split-flap wave: shared by tap-morph and entrance ---- */
+function waveText(target, ccx, ccy, SPREAD, SPIN) {
+  if (RM) { cur = target.map(r => r.slice()); pre.textContent = cur.map(q => q.join("")).join("\n"); drawDim(); return; }
   morphing = true;
-  const to = face ? MT : KT; face = 1 - face;
-  label();
-  const r = pre.getBoundingClientRect();
-  const cx = (px - r.left) / cw, cy = (py - r.top) / chh;
-  const t0 = performance.now(), SPREAD = 1200, SPIN = 240;
-  const target = to.map(row => row.map(chAt));
-  if (RM) { cur = target; pre.textContent = cur.map(q => q.join("")).join("\n"); drawDim(); morphing = false; return; }
+  const t0 = performance.now();
   (function tick(now) {
     const t = now - t0; let done = true;
     for (let y = 0; y < RT; y++) for (let x = 0; x < COLS; x++) {
       const tgt = target[y][x];
       if (cur[y][x] === tgt && t > SPREAD) continue;
-      const d = Math.hypot((x - cx) * 0.62, y - cy);
+      const d = Math.hypot((x - ccx) * 0.62, y - ccy);
       const start = (d / Math.hypot(COLS * 0.62, RT)) * SPREAD;
       if (t < start) { done = false; continue; }
       if (t < start + SPIN) {
@@ -148,6 +192,20 @@ function morphText(px, py) {
     if (!done) requestAnimationFrame(tick);
     else { morphing = false; drawDim(); }
   })(t0);
+}
+function morphText(px, py) {
+  const to = face ? MT : KT; face = 1 - face;
+  label();
+  const r = pre.getBoundingClientRect();
+  waveText(to.map(row => row.map(chAt)), (px - r.left) / cw, (py - r.top) / chh, 1200, 240);
+}
+function enterText() {
+  cur = Array.from({ length: RT }, () => Array(COLS).fill(" "));
+  pre.textContent = cur.map(q => q.join("")).join("\n");
+  const G = face ? KT : MT;
+  // the face spans ~half the grid diagonal, so the wave needs ~2x the
+  // morph SPREAD for the front to visibly travel from the bridge out
+  waveText(G.map(row => row.map(chAt)), COLS / 2, RT * 0.42, 2300, 300);
 }
 
 /* ---- mode C: the dots (trama) ---- */
@@ -184,18 +242,11 @@ function setFaceDots(f) {
   for (let y = 0; y < RD; y++) for (let x = 0; x < COLS; x++) dotCur[y * COLS + x] = dval(G[y][x]);
   drawDots();
 }
-function morphDots(px, py) {
+function waveDots(target, cx, cy, WAVE, TWEEN) {
+  if (RM) { dotCur = target; drawDots(); return; }
   morphing = true;
-  const to = face ? MD : KD; face = 1 - face;
-  label();
-  const target = new Float32Array(COLS * RD);
-  for (let y = 0; y < RD; y++) for (let x = 0; x < COLS; x++) target[y * COLS + x] = dval(to[y][x]);
-  if (RM) { dotCur = target; drawDots(); morphing = false; return; }
   const from = Float32Array.from(dotCur);
-  const r = dots.getBoundingClientRect();
-  const cell = dots._cell;
-  const cx = (px - r.left) / cell, cy = (py - r.top) / cell;
-  const t0 = performance.now(), WAVE = 700, TWEEN = 420;
+  const t0 = performance.now();
   const maxd = Math.hypot(COLS, RD);
   (function tick(now) {
     const t = now - t0; let done = true;
@@ -212,6 +263,22 @@ function morphDots(px, py) {
     if (!done) requestAnimationFrame(tick);
     else morphing = false;
   })(t0);
+}
+function morphDots(px, py) {
+  const to = face ? MD : KD; face = 1 - face;
+  label();
+  const target = new Float32Array(COLS * RD);
+  for (let y = 0; y < RD; y++) for (let x = 0; x < COLS; x++) target[y * COLS + x] = dval(to[y][x]);
+  const r = dots.getBoundingClientRect(), cell = dots._cell;
+  waveDots(target, (px - r.left) / cell, (py - r.top) / cell, 700, 420);
+}
+function enterDots() {
+  const G = face ? KD : MD;
+  const target = new Float32Array(COLS * RD);
+  for (let y = 0; y < RD; y++) for (let x = 0; x < COLS; x++) target[y * COLS + x] = dval(G[y][x]);
+  dotCur = new Float32Array(COLS * RD);
+  drawDots();
+  waveDots(target, COLS / 2, RD * 0.42, 1400, 560);
 }
 function splatDots(px, py) {
   const r = dots.getBoundingClientRect(), cell = dots._cell;
@@ -230,7 +297,8 @@ function label() {
   who.textContent = (face ? "KANE" : "MESSI") + " · " +
     (mode === "a" ? "UMBRAL" : mode === "b" ? "DOSLUCES" : "TRAMA") + " · TAP / DRAG";
 }
-function setMode(m) {
+function setMode(m, enter) {
+  const wasText = mode !== "c";
   mode = m;
   for (const id of ["ma", "mb", "mc"])
     document.getElementById(id).classList.toggle("on", id === "m" + m);
@@ -238,8 +306,13 @@ function setMode(m) {
   pre.style.display = text ? "" : "none";
   dim.style.display = text ? "" : "none";
   dots.style.display = text ? "none" : "block";
-  if (text) { setFaceText(face); drawDim(); }
-  else setFaceDots(face);
+  if (text) {
+    if (enter || !wasText) { enterText(); drawDim(); }
+    else { setFaceText(face); drawDim(); }
+  } else {
+    if (enter || wasText) enterDots();
+    else setFaceDots(face);
+  }
   label();
 }
 for (const m of ["a", "b", "c"])
@@ -277,6 +350,8 @@ stage.addEventListener("pointercancel", up);
 
 addEventListener("resize", () => { metrics(); setMode(mode); });
 document.fonts.load("520 12px 'Geist Mono'").then(() => {
-  metrics(); setMode("a");
+  metrics();
+  // a beat of dark room before the face resolves
+  setTimeout(() => setMode("a", true), RM ? 0 : 380);
 });
 </script>
