@@ -1,0 +1,282 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>umbral — lab</title>
+<meta name="robots" content="noindex">
+<style>
+@font-face{font-family:'Geist Mono';src:url('lib/fonts/GeistMono-Variable.woff2') format('woff2');font-weight:100 900}
+html,body{margin:0;height:100%;background:#0d0a07;overflow:hidden}
+html{-webkit-tap-highlight-color:transparent}
+body{display:flex;align-items:center;justify-content:center;
+font-family:'Geist Mono',monospace}
+.stage{position:relative;touch-action:none}
+pre{margin:0;line-height:1.14;font-weight:520;color:#f2f1ee;
+font-family:'Geist Mono',monospace;user-select:text;-webkit-user-select:text}
+body.nosel pre{user-select:none;-webkit-user-select:none}
+canvas{position:absolute;inset:0;pointer-events:none}
+#dots{position:relative;display:none}
+.abc{position:fixed;top:calc(16px + env(safe-area-inset-top));right:18px;z-index:5;
+display:flex;gap:16px}
+.abc a{color:rgba(242,241,238,.32);text-decoration:none;font-size:13px;
+letter-spacing:.1em;padding:6px;transition:color 160ms ease, transform 160ms cubic-bezier(.23,1,.32,1)}
+.abc a.on{color:#f2f1ee}
+.abc a:active{transform:scale(.9)}
+.who{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom));left:0;right:0;
+text-align:center;color:rgba(242,241,238,.3);font-size:10.5px;letter-spacing:.18em}
+</style>
+<nav class="abc">
+  <a href="#" id="ma">A</a><a href="#" id="mb">B</a><a href="#" id="mc">C</a>
+</nav>
+<div class="stage" id="stage">
+  <pre id="bright"></pre>
+  <canvas id="dim"></canvas>
+  <canvas id="dots"></canvas>
+</div>
+<div class="who" id="who"></div>
+<script>
+const DATA = {"cols":72,"rowsT":47,"rowsD":90,"messiT":["000000000000000000000000001233455433333444443232100000000000000000000000","000000000000000000000000000355666875433576567533331100000000000000000000","000000000000000000012200001134677887643102445774344321000000000000000000","000000000000000001233000000000011221110000000125432222200000000000000000","000000000000000012120000000012222247654432100011100101221000000000000000","0000000000000002400000137aaaacba9aaffffdbb9987a9864300001110000000000000","000000000000003640017beinqppnnmkiklnoppqpooomkkjkifa62000111000000000000","0000000000012597404gprtutttuvwwwwvuvvwvvvvvvvusrqqqmib500112100000000000","00000000001359b957muvvuttuwxyyyyxyxxxxxxxxwwvvvwvvwvrle30243100000000000","0000000002468b97anvxvuvuuyzzzzyyyyyyyyyxxxwvuttttuuvxrmb3453210000000000","000000001469ab79muvxwvvuwxxxxyxyzyyzyyyxxwwuutrrrrsuvrqj8976532000000000","00000001369bb99kuvvwwwvvwvwxyzyzzzzzzyyyxxwvwvtsrrrttrqkdb97643210000000","0000000247aba9dowwwxxxwwwxyzzzzzzzzzzzzzyxwvwtuvvuttrqpljea8644310000000","0000001358ba98fsvvwxwwwwvwwwyzzyxuyywyzytutrsqqrtuuwuqojdeba854321000000","0000002469a988jtvxyzxwvvwvvvvvvuqpwrpuvtosporrrrqtvxxuqlc9baa75432000000","0000003579777esvxxwuqonnmkjllijkmssokjklmpppqqqrrsuwxtsqlb89986433100000","000001468a669lvwvrnjjiifba87799jtuqkf899999aegijjllopqqqoja7874433100000","000002468b869mwvqkijjfa52115321kxzytj7321012469cefefjmooqoh9653422100000","000002469bb7amwumihcbbd97688439tzzytme311161001557bdehloppkb764312100000","00000248gjkccmwusqopsqpopoonoorxzzyqkkkgedfebbeggfcehiknqqnfb76335400000","00000246biotppwvwwxzyywwxxwxyvuyzzwpkkopsvvtronnpqqppoopqrqidceb96300000","000002469ejrvvxwyzzzzzzzzzzzxuvzzyxsmlnpswyyzzzzzyxxwurqqqrohigb85200000","000001459imnqvvwxxyyyyzzzzzyvwyzzzxsommnrwzzzyyzzzxxwusppoppjebba7300000","000001359inlittuuvvvwxyzzzxvtuvvvvronopnpwzzzzzzyvtrqponmnonic7575200000","00000024aef9grrrrsstuvwwwuslbbihhhda77dkmrwyyyxwtrpnmllllmmjhj5122100000","00000014aaaboqooppqrssttsqpqe68aab98643akmswvvtrqnlkijjlllhffhb531000000","000000039ceiqpmoppqrrrrrrsvytoje86bdefhlnnnrtsrqnlkjijklkifeefb951000000","000000016bgklmmnoprrsstvvvtqlghjgb9998chjmnpssromllkjjkjihgedca740000000","0000000039ddekkllprstuwunkjjkmptpoolebbbddhlorromkklkjjjjhed975310000000","00000000158bedgjjloqstspljiklkhghigeeeeffcdgimnmlkjjjjiihgeb654100000000","00000000002456bgilnnqrplgb9eefhiheeeeeca9748dikjkjighiigfeb8532000000000","000000000012357cfilknpmgbdlrrnqpppnlllmkjie78dghiigggffdca95320000000000","0000000000012458cdghjjkhehnnlgea9a889adgikkiaacdggghedca8764200000000000","00000000000012459bcdggggceefhkid96458aceededbbbdefgec9865542000000000000","00000000000000237b98aeeda77bkquuspqpqpnlieca99bdddca75444310000000000000","0000000000000001489858aba9chkmppqppqrrqnjieb99bca85433432000000000000000","00000000000000001367744678acefgfcacehhgccdb99876432333210000000000000000","000000000000000000135533357998898688897666654322233321000000000000000000","000000000000000000000232222334555433454332221133221000000000000000000000","000000000000000000000000111111112211111111001111000000000000000000000000","000000000000000000000000000000011111111100000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000"],"kaneT":["000000000000000000000000012244432222225311110111000000000000000000000000","000000000000000000000111245444465532436541242334310000000000000000000000","000000000000000000111348abbab97a9ab9aa8aa9568898863100000000000000000000","0000000000000000001499fijjlkjkihhgjiiijjiigfhiiiifd951000000000000000000","0000000000000001259eielrruwxwwvtrorqrtuutttuuuttrpmjfa410000000000000000","00000000000000248dimnlvzyzzzzzyxxusxyyzzzzzzzzzzzwuqnje82110000000000000","000000000000125afkotvrwzyzyzzzyxyyurtwyzzzzzzzzzzzzwtplga421000000000000","000000000001259glsvyzzywsuvvvvwwwxxwuttuvvwxxxxxxxzzzwsnhb42100000000000","00000000001358elnuzzzzyvputtsstuuvvuuvvuutttuuuuuuuuxytpkga6420000000000","0000000001247bkssszzvtrlopooooppqrrrrrssssrqpooonmlllpqokig8652000000000","0000000002457fpvvqstrojilkjjjklmnopppqrrqppnlkiiiiijlmnpmkib763100000000","000000001344ajrsqooronmmllllmnpppqrqqrrrrqppopolkjiijkmnlkid852100000000","000000001235ckqrpnnoooppppqqrtvwwvvvvvvuuvwwvvusqonkkkmmklje831000000000","000000001017ckqqponqrtttwwuuuuuuuuvuwvwvvvuuuuuvvwvvusomnnle710000000000","000000000017bflpqpptuwxwvttrrrrqqqqrqprrsrqqqpqqrrtvvvtpnomc400100000000","0000000000158ahossswwupkgcbaabcfijjkllmmmifeb8779deinqstqpnb200000000000","0000021100017dlrrsuuoga64332012359bejmmid85311013467aglqpopg301100100000","000003222112bnssqsokb8752100210003ahostpg81000001347999gmnpoc10001200000","000004422226istrsqieb7103349gc4234dluxyvmb6235336b60168dkmnqi31114400000","00000268535dltuuuohf96acgedfec9bfgjntxyxphfgdcccfgfca68dkpoqn82157400000","00000037cdbfmruvvspnmprpmjhgghkmonppvyxxrlkmomlkklmprrnlloqqob3674000000","00000047decdltuvxwvvvvwwvvuutttttrrqvxywoonnsustuvvvwxxussrpnb6863000000","00000157a8a8irsuvwxyzzzyvtrqpqqpsuvvxyzzvrolkmonnpqsssuusrrok85875200000","0000024554giltstrtuwyywuronmmmmoppuzzzzzztomklmoppqppqqrqopni82454300000","000001455aojlssrqqqstsqqonmlklkjnuwuxzzzzzupjklmopppmlmnnnmlgg9344200000","0000003679ikenrpnmnppomllljlkjfionuzytnnqspjjjllmnmmmllkjjjicgb664000000","00000015abeieippmllonmkiihhiigilb07kib778817lkjkllllkkjjijkfcfa862000000","0000000479bdgelnmllmlkjihiiiilttlfd7211147clrrljiiijjiijjkje9aa851000000","0000000147addehkllklmmlklmnorxwqnga4000158bhostolkjihiijjjhcb85420000000","000000001469feeiiilmnooooprrtoigfdedba9bdcc9chlppolkjjijigfda75200000000","000000000269cdbdefkmnooonqokgcdggebbbcca99abdcaeilljkjhgecadd84000000000","0000000000258b99degjnopppqhb86641234643442100237chlljgfdba7b941000000000","00000000000248879aefhmooqpea86743232321322248ccbefmlgba88668410000000000","00000000000014755799afhjnoe9djnnnnnnmllnnopprrokihkf96565364000000000000","0000000000000146435668cbficaflnqqoopoqqrppoprqnlideb54332330000000000000","0000000000000002422454678999cgjkkihfdbbcdggikkiea76742101100000000000000","00000000000000001211213455569cfgggda844479ceffd8543320000000000000000000","0000000000000000000000233445579dghfda898aeffda74211100000000000000000000","00000000000000000000000112234568abaaa99989876532100000000000000000000000","000000000000000000000000000123333444433333221110000000000000000000000000","000000000000000000000000000000000001110000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000"],"messiD":["000000000000000000000000012234455443434444432322100000000000000000000000","000000000000000000000000101244465443334544453333210000000000000000000000","000000000000000000000000000244667754222785477444321100000000000000000000","000000000000000000001100000466676996664368758733342210000000000000000000","00000000000000000001221000114787789a635203756993234321000000000000000000","000000000000000000023210002001367764640000123477444332100000000000000000","000000000000000001233000000000010342021000000116432312100000000000000000","000000000000000002332000000001201000000000000112322222310000000000000000","000000000000000012120000100001211236554331000001101101321100000000000000","00000000000000012101000023224766659ecb9888533243210300012110000000000000","000000000000001241000013699a9cbaab9deeda999987a9763310001110000000000000","000000000000001450000258eiiihigecffjklmmjigfecffgda511001011000000000000","000000000000003740007cfjorrponlkiklmoppqqpqpmlkklkfb72001210000000000000","00000000000012784008kmpttsstttttsrsssttttstuuronmmlid6101011000000000000","0000000000012697504hqstttstuwwxwxwvwxwvvwwvvvutrpqrmid600102100000000000","00000000001249b943ertvuttuvvxxxxxxwwwwwwwwwvvvvuuvvtoia20233100000000000","0000000000236aca68puvvuttuwxyyxyxyyxxxxxxxwvvuvxwvwvrmf40252200000000000","0000000001356bb87iuwvuuuuwzzzzyyyyyyyyxxxxwvvttuvvuwvrl83453100000000000","0000000002469c96bqvxuuvuuyzzzyyyyzyyyyyxxxwvutsrsutvzqnd4454311000000000","000000001368ab97juvxvvvuwyyyyywxyyyyyyxwxwvuutsrrsttuqpi7764431000000000","000000002479ab7apuvxwwvvwxvwwxxyyyzzzyyxwwwuttsrrrsvvrrk9a97542000000000","00000000358bba8itvvwvvwvvuvwxyyzzzzzzyyyxxwwvussqrruvrrlbb97643100000000","00000001369bc9bovvvwwwvvwwxyyzyzzzzzzyyyyxvvwwvtssrrsrpkeba8654210000000","0000000247aaa9dnvwvxxxwwwxyyzzzzzzzzzzyzywvvwwwvuuttrqpljea7545310000000","0000000257aba9dowwwxxwwwwxyzzzzzzzzzzzzzyxwvvqruvttusqpljf99744320000000","0000001358baa8fsvvwwwwwwwwxxzzzzxvzzxyzzwwvutqqsuvuwtqojefba744321000000","0000001369b988fsvwwxxvvwvvuvxzyxvsxwuxzxqsqprrqrsuuvuqojadba864322000000","0000002469a987htvwyyxwwwwvvwvwvvspwrrvvtnqmmqrrqpsuxxuqkb9caa75432000000","00000025799889nuwyzywvutvvtvurrsopwpmrsrqttssrrrstvyyuqnf9baa85332000000","0000003579776drvwxyvsqonnmknnjlkjrupjlmnprrrssrsttuxxuspka8a986433100000","0000013589668itvxuspljjieddddbcfrvpmkdefgiiiknmnoqruursrnf78876533100000","000001368a669luwwsmjiggdbb99acanusnhe9999aabfgijjmnooqqqoja6884433100000","000001468a769lvvtokilmlfb852256isxxre78742369beffefkmoppqmf8864432100000","000002468b858mwuqkikmjb42236421jyzytk742001248begedfkmooqoh9753421100000","000002468ba89mwvnihic3200007531ozzytm80022300015afechjnpppjb653412100000","000002468bb7bnwumjha7cf85577119uzzytmf201170000315dedhloppkb765312100000","00000247cee8amwtpmiemprprnmgdelwzzyskkf84398439ed43eggjoqqmd975312300000","00000249iklbcmwutrpuuonnmnnprrtwzzyqkkljhfgffgiiijfdhjjnpqofb76325410000","00000247ekpnhnwuuuvxyvrqrttuwvuyzzxokkonoqrnigggknommmnoqrphc9b887300000","000002469iovrqwwwxyyyzzzzzxyxvuyzyvpllnqtxwwurppqqqrqopqqrqjddfda6200000","000002469eltwtxwxyzzzzzzzzzzxuuzzywqllnpswyyzzzyywvutsqqqrrmgihc85200000","000002469fiquwwwyzzzzzzzzzzywuwzzyytnmnorvyyzzzzzzzxxvsqpqrpiifa85300000","000001469hkorwwwyyyzyzzzzzzyvuxzzyxsnmnorwyyyyyzzzzyxvsqqpqpigca97300000","000001459iomouvwxxyxxxyzzzzxuvyzzzwspllnrwzzzyyyzywwvtrooopojdbbb7300000","000001359iopkttuuwwwvxzzzzzvvxzyxyuqoqolqxzzzzzzywvsrqqonnooib9996200000","00000135ahmjgstututuvxyzyywusqsstsolmnqpovyzzzzyxusqponnmmnmid5244200000","00000034aff8errsssttvwxxwvtohimjkhhhedjnnswyyyyxvrqonmlmlmnkhj5122100000","00000024addairprrrsttuvuvtqh34edcfa3005glpvxxxvusrnmkkkllmlihk6121000000","000000249aaboroppqrrstttsrooa22bdd630008inuwwvtsrpmkjjjllligghb321000000","00000014aa9bqpoopoqqrrssrpqwneea99cggc8cllqvvutrpmkkiijllkfeefc941000000","000000039bdhponopqqrrrrrrruyurld45ceghjmnmnstssqnlkjijkllifeefa851000000","000000028cfkqpmoopqrrssssvxxrmigd99a9dhlmonpsrponlkkjjkkiigeeea841000000","000000016bglonmooprrsttuxyvrlghiha7aa8chkopqssqpnllkjkkkihgeddb840000000","0000000158ehfillmprsstuwupnmjfilifca969dfilpstsomkllkjjjjhfeb88530000000","0000000049dbbkklkprsttwumjiiikpvpmokb999cdhlorromkllkjjjjhed974310000000","0000000028acijikknqrsuurjiijputttvurmigeebehjoqomlkkkiijihed675200000000","00000000048cfcgjiloqsuspmkkoplhfgiecfhiihddgimnnlkjjjjihhgeb544200000000","00000000014787dhiloqrroolhdea77666455569bbacgklkkkiiijjhhec9632000000000","00000000002356agilnnqrplea59cghigcceeea75328cijkkjighhigfdb7541000000000","000000000012458egkmlorogb9gssquxxwwsrrqljf629fiijjgffggedca6431000000000","000000000002357beikkmomgbenrqlomlmkiiilkijh98cfhjhgggffdc985320000000000","0000000000013469degilllhdhopnjjefeccddfijljf9adgggghgedb9864210000000000","0000000000002457bdfghijgegmmkfc97a7689cfikljbaccfgggdcc97764100000000000","0000000000001346acefghihdhijigc8753569begggebcbbefgfca975553000000000000","00000000000002349bacffffbccehmkf9646abefdcdbaabeeefdc9755541000000000000","00000000000001238b89deeea879jqtrnjjhkjhhgccaa9beeeeb96444420000000000000","00000000000000126a969edda77dlrvwwvwwvusokgc979bccba954443200000000000000","000000000000000149a75acba8ciloqsutrsssrplieb88ccba7543433100000000000000","00000000000000003689559a99dgkknkkkkmppnjhgfcb9ab973334321000000000000000","00000000000000001468634888adfgjhdbcfkkiddecaa998622343210000000000000000","000000000000000001466534679accdda9bbddcabb988764223332100000000000000000","0000000000000000001455334689988a9699998667655411233321000000000000000000","000000000000000000013433225767777455686444542122332210000000000000000000","000000000000000000001232221344566444554332221133221000000000000000000000","000000000000000000000012221122233322332222101222100000000000000000000000","000000000000000000000000111111111111011111011111000000000000000000000000","000000000000000000000000000011222212111111001100000000000000000000000000","000000000000000000000000000000011111111100000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000"],"kaneD":["000000000000000000000000012343322223224312110110000000000000000000000000","000000000000000000000000122244542321225411220222000000000000000000000000","000000000000000000000111234343564531326530241324200000000000000000000000","000000000000000000000212467665576654657683254455420000000000000000000000","0000000000000000001113279aa9a87a8aa7a97a99457797751000000000000000000000","00000000000000000012249dededdc9dbbgdbebccc98bbcbba6210000000000000000000","0000000000000000011389ehjiljiifghfhihhiihgfdggghgec930000000000000000000","00000000000000001139dcilnoqqoqqlljmlnmopnnmlmnmnmjhea3000000000000000000","0000000000000001249eiekqruwxvvutqoqpqstttstuutssromjfa310000000000000000","000000000000000249dikgovvzzzzxwwvqtuuwxxxwxyzzyxvtqnje930000000000000000","00000000000001248dimnmvyyzzzzzyxxuszyyzyyzzzzzzzzwtqnje82110000000000000","0000000000000137chlprozzzzzzzzyxxwquzyzzzzzzzzzzzzxtqmid6211000000000000","000000000000136afkotvqvzxyyzyyxxxxvnsyyyyyyzzzzzzzzwtqmhb422000000000000","000000000000247djpsxzztvvvvvwwwwxyxwpouwxwxyyyxxxzzzwtpkf832100000000000","00000000000125agmtvyzzzvrtuvuvvvwxwwxurruvvwxxwwwvyzzxtohc52100000000000","00000000000247bjmuzzzzzwqtuutstuvvvvvwwvuttuvuvvvvxzzzvpke84210000000000","00000000001359emntzzzzyuptssssstuuuutvuuutsstutuuuusvysokgb6520000000000","0000000000247aiqpszzzvsppurqqqrrstrttssttssrqqrrronolqrnkie7641000000000","0000000001357blttszztsqjmnnnnnooqpqqrrsrrsqqpnnnkkkklopolig9553000000000","0000000002467dnvwquvrrmglkkkjllmnopopqrrqqqomljjjkjjlnoplkib653100000000","0000000013557gpvvqqsrnhjlkjijkknoooqqqqqpppmjkihiiikllmpnkjc763100000000","0000000013549jruroorpnlmmlkklmmmoopqoqrrrponnnlkkiijklmnmkid853100000000","000000002344ckqrpnpqnnomllllnprrqqsqqssrrqqqqqqnlkiijjmmlkie952100000000","000000011335ckqqonnnoonoooooqsuwvvvvuuuttuvuttsqnmmjjjlmkkie831000000000","000000001126ckrrqomopoqqqrssstvwwwvuvvvvvwxwxwuutqnmllmmllje820000000000","000000001026dkqqpnmpptsruvttuuvvwvvuvvwvvvwvwwvvvwuurpmmmmke810000000000","000000010017cjpponoqtuvwxxvtsssrrstuvvvvutrrrrttuvxyyxpmnole601000000000","000000010017agmprpqtuvxwwuusrrrqqqqsrqqrssrrrqrrrsuwwwunmomc500210000000","000000000027adkprppsuwvuroonoppooononmoqrqononnnnoorrrtrnolc300000000000","0000000100259bgostswwvrlifdddeeiklkkllnnnjhfc988cghjoqssqpmc200000000000","00000111000379horsuwvpid94110127begijllkhd994000037chprtrqnc201000100000","0000021000028dkrqsvvpha53344233459bejmlhd85322234446agnqqnof202111100000","0000022110118iqsrsroga666542112346adjopjc632111379998aflnopk700001200000","000003221112amssqsokb8864100000003bhnstoh92000000159a89gmnpoc11001200000","000004223214fqsrrrlgaa710003a50001cktwxtka1000000301697dkmopg20113300000","000004422225jssqrqiec8002349ie4234dmuxxvmb6236335c60079djlmqi41124300000","000003741249ktvsuqheb205ebbhjg99abgltxxvndda9cbbgif711aelomql61125510000","00000279525emtuutnhf86degggfdb9chhkotxxxpifiebcdefedd66ckqoqn82157400000","00000039db9fmstutoliekomidba9adikknotyxxrkijifedefhlomggjpqrna2486200000","00000026cecfmrvwwtqpprrqnliijlmnonppvxwwrlknponnmnoqssrommpqob3673000000","00000045adbemsvwwxusttstttrrqrsttqrqwxxvonmotuttttssuwutrrqqnb5752000000","00000049eeccluuuwvvwwwxxwvuuttuttrrquxywoonmrursuwwxxyyvttrpmb6864000000","00000158ccd9jrsuwvxzyzzzxvtsqrsrstusvxyxsqnllnpoorrtuuvussrola5a84100000","000002577498irruuwwxyzywuronnpoorvwwyzzzxsplilomlmpqpqrtrrroj85675200000","00000245539ejsstrtuwyyxwspnnnnmorquyzzzzztpnklnoopqqrrrsrppni62454300000","0000014445nmmtstqrsvwxvsqommmllonmtzzzzzztmmllloqqpoooqqqopnha3454200000","000001455aojmsssqqrsttrronmljklkkqutvyzzzxrljkkmppqpmlmoonnmgh8344200000","000000466blhissrpppqrqoonmlklljhqxxtwzxxzzxsijlmnooomllmlmlkgfa354100000","000000366ajjeorpomnppommmlklligisuxyzxqqstvqkklmlmmmmllljjjicgc554100000","0000002678fldkrpmlmoonmkkkjkkjfkiaozvmggjmeajikllnmmllkkiijgbha663000000","00000015aacjdiqpmllonmkiiihiiggja05nkc77ab04kjjlmmmlkkjkiijfcf9762000000","00000015adhhfgoomlmnmlkihgghhglma35ab755421domijkkkjjjjjijkecfb951000000","0000000479aagelnlllmlkjiihhhhjstmge9211149emrrkiijijjiijjkje9cc851000000","00000002579eheknmllllkkiijjklsxuoke6100159gmsupkiihiiiijjjjd955430000000","0000000147cecehkmljlmlljklnorwwrnga4000259bhottnlkiihiijjjhcc96410000000","000000002588bcehklllmnnnnoqqtwqljd940001687bhorronljiiijiifc986300000000","000000002459gfeiiillnnoooprrtohgebcec98bfcb7bhkppnlkkjjjiggd954200000000","00000000047beddffgkmnonoopqqnfccfkkijlkifgiebcejmnlkkjihgedde95200000000","000000000258cc9cefkmnonnmqnieadike8999a7888dgc9dhlljjjhgecacc84000000000","000000000036abaaeeiknoppnqkebbec5545543233315989chlkkhgecb8ca62000000000","0000000000247a8acefimnpqpqha85420244754653110026dilkjffcb97a840000000000","0000000000035987acefjnopqpea60000144755753100137demmhdda9769620000000000","00000000000147878adfflonqpfa99a6301000000003ahgceflkfa987657400000000000","000000000000257568bbciilope9bhlkjigfcaadegkmqrmighkgb8765365100000000000","000000000000136546889egimne9fkoopqrsttsttttrrroligjd76454353000000000000","0000000000000156446669ddhldaflorqoqssvwvrrqprromjegc64443240000000000000","0000000000000035434566a9cgc9fllqpmllkkkmlllnqplkgcc943222310000000000000","0000000000000013423455889a99eijmlkigfedefjjklljfb67843111200000000000000","00000000000000013213424687889diihhffd99abddgiigb874531001000000000000000","00000000000000001201312566669dfggfda855469cdfge9644421000000000000000000","00000000000000000110113444559adgggea743489deedb6433210000000000000000000","000000000000000000100124444556aeghgd9677aeggea74322100000000000000000000","0000000000000000000000232444468bfgddcac9addcb864101000000000000000000000","00000000000000000000000112234579ababa9a999877532110000000000000000000000","000000000000000000000000112234556787766655543322000000000000000000000000","000000000000000000000000000123333445433333222110000000000000000000000000","000000000000000000000000000001111222221111100000000000000000000000000000","000000000000000000000000000000000001110000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000"]};
+const B36 = "0123456789abcdefghijklmnopqrstuvwxyz";
+const dec = (rows) => rows.map(r => Array.from(r, ch => B36.indexOf(ch)));
+const MT = dec(DATA.messiT), KT = dec(DATA.kaneT);
+const MD = dec(DATA.messiD), KD = dec(DATA.kaneD);
+const COLS = DATA.cols, RT = DATA.rowsT, RD = DATA.rowsD;
+const RAMP = ".:+*oO#%@", DIMR = ".:-~=+";
+const HI = 24, LO = 15;      // base36 thresholds: bright band, dim band
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const GLYPHS = "abcdefghijklmnopqrstuvwxyz0123456789#%&@$+*=~-:.";
+
+let mode = "a", face = 0, morphing = false;
+const stage = document.getElementById("stage");
+const pre = document.getElementById("bright");
+const dim = document.getElementById("dim"), dg = dim.getContext("2d");
+const dots = document.getElementById("dots"), og = dots.getContext("2d");
+const who = document.getElementById("who");
+
+const chAt = (l) => l >= HI ? RAMP[Math.min(8, ((l - HI) * 9 / (36 - HI)) | 0)] : " ";
+const dimAt = (l) => l >= LO && l < HI ? DIMR[Math.min(5, ((l - LO) * 6 / (HI - LO)) | 0)] : " ";
+
+let fs = 8, cw = 4.8, chh = 9.1, DPR = Math.min(2, devicePixelRatio || 1);
+function metrics() {
+  fs = Math.min(innerWidth * 0.92 / (COLS * 0.6), innerHeight * 0.74 / (RT * 1.14));
+  cw = fs * 0.6; chh = fs * 1.14;
+  pre.style.fontSize = fs + "px";
+  dim.style.width = (COLS * cw) + "px"; dim.style.height = (RT * chh) + "px";
+  dim.width = Math.ceil(COLS * cw * DPR); dim.height = Math.ceil(RT * chh * DPR);
+  const dc = Math.min(innerWidth * 0.92 / COLS, innerHeight * 0.8 / RD);
+  dots.style.width = (COLS * dc) + "px"; dots.style.height = (RD * dc) + "px";
+  dots.width = Math.ceil(COLS * dc * DPR); dots.height = Math.ceil(RD * dc * DPR);
+  dots._cell = dc;
+}
+
+/* ---- text modes (A: umbral · B: dosluces) ---- */
+let cur = [];
+function setFaceText(f) {
+  const G = f ? KT : MT;
+  cur = G.map(r => r.map(chAt));
+  pre.textContent = cur.map(r => r.join("")).join("\n");
+}
+const torch = new Float32Array(COLS * RT);
+let torchLive = false, raf = 0;
+function drawDim(now) {
+  const G = face ? KT : MT;
+  dg.setTransform(DPR, 0, 0, DPR, 0, 0);
+  dg.clearRect(0, 0, COLS * cw, RT * chh);
+  dg.font = "520 " + fs + "px 'Geist Mono',monospace";
+  dg.textBaseline = "top";
+  const base = mode === "b" ? 0.42 : 0;
+  let any = false;
+  for (let y = 0; y < RT; y++) for (let x = 0; x < COLS; x++) {
+    const ch = dimAt(G[y][x]);
+    if (ch === " ") continue;
+    const t = torch[y * COLS + x];
+    const a = Math.min(1, base + t * (mode === "b" ? 0.58 : 1));
+    if (a < 0.02) continue;
+    any = true;
+    dg.globalAlpha = a;
+    dg.fillStyle = "#f2f1ee";
+    dg.fillText(ch, x * cw, y * chh);
+  }
+  dg.globalAlpha = 1;
+  return any;
+}
+function torchLoop() {
+  raf = 0;
+  let alive = false;
+  for (let i = 0; i < torch.length; i++) {
+    if (torch[i] > 0.01) { torch[i] *= 0.90; alive = true; } else torch[i] = 0;
+  }
+  drawDim();
+  if (alive) raf = requestAnimationFrame(torchLoop);
+}
+function splat(px, py) {
+  const r = pre.getBoundingClientRect();
+  const cx = (px - r.left) / cw, cy = (py - r.top) / chh;
+  const R = 9;
+  for (let y = Math.max(0, cy - R | 0); y < Math.min(RT, cy + R); y++)
+    for (let x = Math.max(0, cx - R | 0); x < Math.min(COLS, cx + R); x++) {
+      const d = Math.hypot((x - cx) * 0.62, y - cy) / (R * 0.62);
+      if (d < 1) torch[y * COLS + x] = Math.max(torch[y * COLS + x], 1 - d * d);
+    }
+  if (!raf) raf = requestAnimationFrame(torchLoop);
+}
+
+/* ---- morph (text): radial split-flap ---- */
+function morphText(px, py) {
+  morphing = true;
+  const to = face ? MT : KT; face = 1 - face;
+  label();
+  const r = pre.getBoundingClientRect();
+  const cx = (px - r.left) / cw, cy = (py - r.top) / chh;
+  const t0 = performance.now(), SPREAD = 1200, SPIN = 240;
+  const target = to.map(row => row.map(chAt));
+  if (RM) { cur = target; pre.textContent = cur.map(q => q.join("")).join("\n"); drawDim(); morphing = false; return; }
+  (function tick(now) {
+    const t = now - t0; let done = true;
+    for (let y = 0; y < RT; y++) for (let x = 0; x < COLS; x++) {
+      const tgt = target[y][x];
+      if (cur[y][x] === tgt && t > SPREAD) continue;
+      const d = Math.hypot((x - cx) * 0.62, y - cy);
+      const start = (d / Math.hypot(COLS * 0.62, RT)) * SPREAD;
+      if (t < start) { done = false; continue; }
+      if (t < start + SPIN) {
+        done = false;
+        if (cur[y][x] !== " " || tgt !== " ")
+          cur[y][x] = GLYPHS[(Math.random() * GLYPHS.length) | 0];
+      } else cur[y][x] = tgt;
+    }
+    pre.textContent = cur.map(q => q.join("")).join("\n");
+    if (!done) requestAnimationFrame(tick);
+    else { morphing = false; drawDim(); }
+  })(t0);
+}
+
+/* ---- mode C: the dots (trama) ---- */
+let dotCur = null, dotAnim = 0;
+const dval = (l) => { const v = l / 35; return v < 0.30 ? 0 : Math.pow((v - 0.30) / 0.70, 1.05); };
+function drawDots(boost) {
+  const cell = dots._cell;
+  og.setTransform(DPR, 0, 0, DPR, 0, 0);
+  og.clearRect(0, 0, COLS * cell, RD * cell);
+  const RMAX = cell * 0.62;
+  for (let y = 0; y < RD; y++) for (let x = 0; x < COLS; x++) {
+    let v = dotCur[y * COLS + x];
+    if (boost) v = Math.min(1, v + boost[y * COLS + x] * 0.25);
+    if (v <= 0.004) continue;
+    og.fillStyle = v > 0.72 ? "#f2f1ee" : "rgba(242,241,238,.75)";
+    og.beginPath();
+    og.arc(x * cell + cell / 2, y * cell + cell / 2, v * RMAX, 0, 6.2832);
+    og.fill();
+  }
+}
+const dotTorch = new Float32Array(COLS * RD);
+let dotRaf = 0;
+function dotLoop() {
+  dotRaf = 0; let alive = false;
+  for (let i = 0; i < dotTorch.length; i++) {
+    if (dotTorch[i] > 0.01) { dotTorch[i] *= 0.9; alive = true; } else dotTorch[i] = 0;
+  }
+  drawDots(dotTorch);
+  if (alive) dotRaf = requestAnimationFrame(dotLoop);
+}
+function setFaceDots(f) {
+  const G = f ? KD : MD;
+  dotCur = new Float32Array(COLS * RD);
+  for (let y = 0; y < RD; y++) for (let x = 0; x < COLS; x++) dotCur[y * COLS + x] = dval(G[y][x]);
+  drawDots();
+}
+function morphDots(px, py) {
+  morphing = true;
+  const to = face ? MD : KD; face = 1 - face;
+  label();
+  const target = new Float32Array(COLS * RD);
+  for (let y = 0; y < RD; y++) for (let x = 0; x < COLS; x++) target[y * COLS + x] = dval(to[y][x]);
+  if (RM) { dotCur = target; drawDots(); morphing = false; return; }
+  const from = Float32Array.from(dotCur);
+  const r = dots.getBoundingClientRect();
+  const cell = dots._cell;
+  const cx = (px - r.left) / cell, cy = (py - r.top) / cell;
+  const t0 = performance.now(), WAVE = 700, TWEEN = 420;
+  const maxd = Math.hypot(COLS, RD);
+  (function tick(now) {
+    const t = now - t0; let done = true;
+    for (let y = 0; y < RD; y++) for (let x = 0; x < COLS; x++) {
+      const i = y * COLS + x;
+      const start = (Math.hypot(x - cx, y - cy) / maxd) * WAVE;
+      let u = (t - start) / TWEEN;
+      if (u < 1) done = false;
+      u = Math.max(0, Math.min(1, u));
+      u = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      dotCur[i] = from[i] + (target[i] - from[i]) * u;
+    }
+    drawDots();
+    if (!done) requestAnimationFrame(tick);
+    else morphing = false;
+  })(t0);
+}
+function splatDots(px, py) {
+  const r = dots.getBoundingClientRect(), cell = dots._cell;
+  const cx = (px - r.left) / cell, cy = (py - r.top) / cell;
+  const R = 8;
+  for (let y = Math.max(0, cy - R | 0); y < Math.min(RD, cy + R); y++)
+    for (let x = Math.max(0, cx - R | 0); x < Math.min(COLS, cx + R); x++) {
+      const d = Math.hypot(x - cx, y - cy) / R;
+      if (d < 1) dotTorch[y * COLS + x] = Math.max(dotTorch[y * COLS + x], 1 - d * d);
+    }
+  if (!dotRaf) dotRaf = requestAnimationFrame(dotLoop);
+}
+
+/* ---- modes & input ---- */
+function label() {
+  who.textContent = (face ? "KANE" : "MESSI") + " · " +
+    (mode === "a" ? "UMBRAL" : mode === "b" ? "DOSLUCES" : "TRAMA") + " · TAP / DRAG";
+}
+function setMode(m) {
+  mode = m;
+  for (const id of ["ma", "mb", "mc"])
+    document.getElementById(id).classList.toggle("on", id === "m" + m);
+  const text = m !== "c";
+  pre.style.display = text ? "" : "none";
+  dim.style.display = text ? "" : "none";
+  dots.style.display = text ? "none" : "block";
+  if (text) { setFaceText(face); drawDim(); }
+  else setFaceDots(face);
+  label();
+}
+for (const m of ["a", "b", "c"])
+  document.getElementById("m" + m).addEventListener("click", (e) => { e.preventDefault(); setMode(m); });
+
+let pid = -1, x0 = 0, y0 = 0, t1 = 0, moved = 0;
+stage.addEventListener("pointerdown", (e) => {
+  if (pid >= 0) return;
+  pid = e.pointerId; x0 = e.clientX; y0 = e.clientY;
+  t1 = performance.now(); moved = 0;
+  stage.setPointerCapture(pid);
+});
+stage.addEventListener("pointermove", (e) => {
+  if (e.pointerId !== pid) return;
+  moved = Math.max(moved, Math.hypot(e.clientX - x0, e.clientY - y0));
+  if (moved >= 8 && !morphing) {
+    // a drag is a torch stroke, not a selection — the text stays
+    // selectable at rest (double-tap, long-press, select-all)
+    if (!document.body.classList.contains("nosel")) {
+      document.body.classList.add("nosel");
+      getSelection().removeAllRanges();
+    }
+    (mode === "c" ? splatDots : splat)(e.clientX, e.clientY);
+  }
+});
+const up = (e) => {
+  if (e.pointerId !== pid) return;
+  pid = -1;
+  document.body.classList.remove("nosel");
+  if (e.type === "pointerup" && moved < 8 && performance.now() - t1 < 350 && !morphing)
+    (mode === "c" ? morphDots : morphText)(e.clientX, e.clientY);
+};
+stage.addEventListener("pointerup", up);
+stage.addEventListener("pointercancel", up);
+
+addEventListener("resize", () => { metrics(); setMode(mode); });
+document.fonts.load("520 12px 'Geist Mono'").then(() => {
+  metrics(); setMode("a");
+});
+</script>
