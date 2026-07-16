@@ -22,7 +22,7 @@
    layer carries the same characters for selection and copy. */
 .um{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
 .um .fw{position:relative}
-.um pre{margin:0;line-height:1.14;font-weight:520;position:relative;
+.um pre{margin:0;line-height:1.14;font-weight:520;position:absolute;left:0;top:0;
 font-family:'Geist Mono',ui-monospace,monospace;
 color:transparent;-webkit-user-select:text;user-select:text}
 .um pre::selection,.um pre ::selection{background:rgba(117,170,219,.85);color:#0d0a07}
@@ -59,7 +59,11 @@ const DATA = {"cols":112,"rows":74,"messi":["00000000000000000000000000000012357
 const B36 = "0123456789abcdefghijklmnopqrstuvwxyz";
 const dec = (rows) => rows.map((r) => Array.from(r, (ch) => B36.indexOf(ch)));
 const MT = dec(DATA.messi), KT = dec(DATA.kane);
-const COLS = DATA.cols, ROWS = DATA.rows, N = COLS * ROWS;
+for (let k = 0; k < 4; k++) {           // air under the chin for the record
+  MT.push(new Array(DATA.cols).fill(0));
+  KT.push(new Array(DATA.cols).fill(0));
+}
+const COLS = DATA.cols, ROWS = DATA.rows + 4, N = COLS * ROWS;
 const DIMR = ".:-~=+";
 const HI = 24, LO = 15;   // lit threshold · hidden band
 const dimAt = (l) => l >= LO && l < HI ? DIMR[Math.min(5, ((l - LO) * 6 / (HI - LO)) | 0)] : " ";
@@ -91,12 +95,12 @@ function stamp(map, row, text) {
 }
 // the record block prints at its own size, free of the grid cell
 const OVL = [
-  { row: 64.6, text: "INGLATERRA 1 · ARGENTINA 2", sc: 1.6, w: 620 },
-  { row: 66.8, text: "GORDON 55′ — E. FERNÁNDEZ 85′ · LAUTARO 90+2′", sc: 1.9, w: 620 },
+  { row: 68.0, text: "INGLATERRA 1 · ARGENTINA 2", sc: 1.9, w: 620 },
+  { row: 70.3, text: "GORDON 55′ — E. FERNÁNDEZ 85′ · LAUTARO 90+2′", sc: 1.9, w: 620 },
 ];
 const HIDL = [                               // the quieter numbers, for the torch
-  { row: 69.8, text: "MESSI ASISTIÓ LOS DOS GOLES", sc: 1.45 },
-  { row: 72.0, text: "POSESIÓN 64–36 · XG 0.91–0.54", sc: 1.45 },
+  { row: 73.2, text: "MESSI ASISTIÓ LOS DOS GOLES", sc: 1.45 },
+  { row: 75.6, text: "POSESIÓN 64–36 · XG 0.91–0.54", sc: 1.45 },
 ];
 const SELOV = new Map();          // grid-aligned copy of the record, for select/copy
 stamp(SELOV, 65, "INGLATERRA 1 · ARGENTINA 2");
@@ -132,11 +136,17 @@ const pre2 = document.getElementById("sel");
 const bc = document.getElementById("bc"), bg = bc.getContext("2d");
 const dim = document.getElementById("dm"), dg = dim.getContext("2d");
 
+let lastFit = "";
 function metrics() {
   if (!W) return;
   fs = Math.max(4, Math.min(W * 0.90 / ((C1 - C0 + 1) * 0.6), H * 0.80 / (ROWS * 1.14)));
+  const fit = fs.toFixed(2) + "/" + DPR;
+  if (fit === lastFit) return;   // resize storms clear the canvas for nothing
+  lastFit = fit;
   cw = fs * 0.6; chh = fs * 1.14;
   pre2.style.fontSize = fs + "px";
+  const fw = pre2.parentNode;
+  fw.style.width = (COLS * cw) + "px"; fw.style.height = (ROWS * chh) + "px";
   for (const c of [bc, dim]) {
     c.style.width = (COLS * cw) + "px"; c.style.height = (ROWS * chh) + "px";
     c.width = Math.ceil(COLS * cw * DPR); c.height = Math.ceil(ROWS * chh * DPR);
@@ -482,7 +492,10 @@ document.fonts.load("520 12px 'Geist Mono'").then(() => {
   metrics();
   setSelText();
   if (THUMB || RM) { entered = true; render(performance.now()); drawDim(); return; }
-  // a beat of dark room before the face resolves
-  setTimeout(() => { enter(); schedIdle(); }, 380);
+  // let the viewport and any view transition settle, then a beat of dark
+  // room before the face resolves — measured fresh at that moment
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    setTimeout(() => { metrics(); enter(); schedIdle(); }, 380);
+  }));
 });
 </script>
