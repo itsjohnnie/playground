@@ -83,17 +83,18 @@ const CH = [MT, KT].map((G, f) => {
     if (G[y][x] >= HI) { a[y * COLS + x] = TXT[f][p % TXT[f].length]; p++; }
   return a;
 });
-// the result stays above the brow, full-bright, on both faces
+// the result and the three goals sit under the chin, full-bright
 function stamp(map, row, text) {
   const c0 = Math.round((COLS - text.length) / 2);
   for (let i = 0; i < text.length; i++)
     if (text[i] !== " ") map.set(row * COLS + c0 + i, text[i]);
 }
 const OV = new Map();
-stamp(OV, 1, "INGLATERRA 1 · ARGENTINA 2");
+stamp(OV, 54, "INGLATERRA 1 · ARGENTINA 2");
+stamp(OV, 56, "GORDON 55′ — E. FERNÁNDEZ 85′ · LAUTARO 90+2′");
 const HID = new Map();                       // the quieter numbers, for the torch
-stamp(HID, 55, "MESSI ASISTIÓ LOS DOS GOLES");
-stamp(HID, 58, "POSESIÓN 64–36 · XG 0.91–0.54");
+stamp(HID, 58, "MESSI ASISTIÓ LOS DOS GOLES");
+stamp(HID, 60, "POSESIÓN 64–36 · XG 0.91–0.54");
 
 let face = 0, entered = false;
 let W = 0, H = 0, DPR = 1, fs = 8, cw = 4.8, chh = 9.1;
