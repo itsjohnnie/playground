@@ -163,12 +163,13 @@ function metrics() {
   pre2.style.fontSize = fs + "px";
   const fw = pre2.parentNode;
   fw.style.width = (COLS * cw) + "px"; fw.style.height = (ROWS * chh) + "px";
-  fw.style.top = ((H - ROWS * chh) * 0.30) + "px";
+  const lift = matchMedia("(max-width:820px)").matches ? 0.36 : 0.30;
+  fw.style.top = ((H - ROWS * chh) * lift) + "px";
   for (const c of [bc, dim]) {
     c.style.width = (COLS * cw) + "px"; c.style.height = (ROWS * chh) + "px";
     c.width = Math.ceil(COLS * cw * DPR); c.height = Math.ceil(ROWS * chh * DPR);
   }
-  const fwTop = (H - ROWS * chh) * 0.30;
+  const fwTop = (H - ROWS * chh) * (matchMedia("(max-width:820px)").matches ? 0.36 : 0.30);
   const headTop = fwTop + DATA.litmin * chh;
   const chin = fwTop + (DATA.litmax + 1) * chh;
   const bot = H - (matchMedia("(max-width:820px)").matches ? 96 : 28);
