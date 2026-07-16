@@ -69,9 +69,10 @@ git push --force-with-lease -u origin claude/daily-generative-art-1cn3lq
 | 4 | Bronce | vs Cabo Verde (03·07, R32) | W | bronze plaque; Messi 29' (20) |
 | 5 | Embate | vs Egypt (07·07, R16) | W | 0–x until the celeste breaks at 90+2'; Messi 83' (21) |
 | 6 | Afiche | vs Switzerland (11·07, QF) | W 3–1 aet | 0–0 at 90'; Messi 97' (22), Álvarez 106', Embolo 113', Lautaro 119'. Arrowhead, KC, att 76 416, M61 |
-| 7 | — | vs England (14·07, SF, Dallas) | upcoming | |
+| 7 | Umbral | vs England (14·07, SF, Dallas) | W 2–1 | Álvarez 38', Kane 57' pen, Messi 81' (23). AT&T Stadium, att 91 412, possession 44–56, e. martínez 6 saves. h2h vs ENG 4-3-3. PROVISIONAL — authored by Claude while Johnnie was away; his correction rewrites this row |
+| 8 | — | vs France (19·07, Final, MetLife) | upcoming | opponent provisional (France) |
 
-Standing facts: the same XI six matches running; Messi's goal ledger above;
+Standing facts: the same XI seven matches running; Messi's goal ledger above;
 head-to-head vs Switzerland now 6-2-0; **AFA crest still has three stars**
 (the fourth isn't won yet — period-correct until the final); venues/dates
 follow the real 2026 US/MEX/CAN schedule. Argentina always attacks downward

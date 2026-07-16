@@ -111,9 +111,27 @@
     {
       "n": "007",
       "num": 7,
+      "title": "Umbral",
       "subject": "Argentina vs. England",
       "date": "2026-07-14",
       "stage": "Semifinal",
+      "status": "candidate",
+      "file": "7.html",
+      "medium": "embedded type · split-flap",
+      "tags": [
+        "type",
+        "portrait",
+        "ascii",
+        "duel"
+      ],
+      "note": "The night's two scorers as one portrait in white type: Messi in light, the shadow left unprinted — the dark is most of the face. England keep the ball; Argentina take it 2–1 — Álvarez, Kane from the spot, Messi at 81′. Tap, and the glyphs spin like a split-flap board until Kane looks back; drag, and a torch wakes a dimmer register hiding in the black."
+    },
+    {
+      "n": "008",
+      "num": 8,
+      "subject": "Argentina vs. France",
+      "date": "2026-07-19",
+      "stage": "Final",
       "status": "upcoming"
     }
   ]
