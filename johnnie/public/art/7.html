@@ -156,7 +156,7 @@ const BAND = [MT, KT].map((G) => {
   return [a, b];
 });
 function placeFace() {
-  const dy = face ? ((BAND[0][0] + BAND[0][1]) - (BAND[1][0] + BAND[1][1])) / 2 * chh : 0;
+  const dy = face ? ((BAND[0][0] + BAND[0][1]) - (BAND[1][0] + BAND[1][1])) / 2 * chh + 14 : 0;
   FW.style.transform = "translateX(-50%) translateY(" + dy + "px)";
 }
 const bc = document.getElementById("bc"), bg = bc.getContext("2d");
