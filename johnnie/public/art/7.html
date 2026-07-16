@@ -1,0 +1,313 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>#7 · Umbral — Argentina vs. England · Johnnie&#x27;s atelier</title>
+<meta name="description" content="The night's two scorers as one portrait in white type: Messi in light, the shadow left unprinted. England keep the ball; Argentina take it 2–1 — Álvarez, Kane from the spot, Messi at 81′. Tap, and the glyphs spin like a split-flap board until Kane looks back; drag, and a torch wakes a dimmer register hiding in the black.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://johnnies.life/art/7">
+<meta property="og:title" content="#7 · Umbral — Argentina vs. England · Johnnie&#x27;s atelier">
+<meta property="og:description" content="The night's two scorers as one portrait in white type: Messi in light, the shadow left unprinted. England keep the ball; Argentina take it 2–1 — Álvarez, Kane from the spot, Messi at 81′. Tap, and the glyphs spin like a split-flap board until Kane looks back; drag, and a torch wakes a dimmer register hiding in the black.">
+<meta property="og:image" content="https://johnnies.life/art/og/007.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="#7 · Umbral — Argentina vs. England · Johnnie&#x27;s atelier">
+<meta name="twitter:description" content="The night's two scorers as one portrait in white type: Messi in light, the shadow left unprinted. England keep the ball; Argentina take it 2–1 — Álvarez, Kane from the spot, Messi at 81′. Tap, and the glyphs spin like a split-flap board until Kane looks back; drag, and a torch wakes a dimmer register hiding in the black.">
+<meta name="twitter:image" content="https://johnnies.life/art/og/007.png">
+<body>
+<style>
+/* the portrait is real type — the one artwork in the atelier you can
+   select and copy. The frame kills selection on art surfaces; the bright
+   layer alone takes it back (and yields it again while a drag torches). */
+.um{position:absolute;inset:0;display:flex;flex-direction:column;
+align-items:center;justify-content:center}
+.um .fw{position:relative}
+.um pre{margin:0;line-height:1.14;font-weight:520;color:#f2f1ee;
+font-family:'Geist Mono',ui-monospace,monospace;
+text-shadow:0 0 16px rgba(242,241,238,.10)}
+.um pre.br{-webkit-user-select:text;user-select:text}
+body.nosel .um pre.br{-webkit-user-select:none;user-select:none}
+.um canvas{position:absolute;inset:0;pointer-events:none}
+.um .cap{margin-top:clamp(16px,3.4vh,30px);text-align:center;
+font-family:'Geist Mono',ui-monospace,monospace;
+color:rgba(242,241,238,.38);font-size:11px;letter-spacing:.18em;line-height:2.1}
+.um .cap .c2{font-size:9.5px;color:rgba(242,241,238,.22);letter-spacing:.22em}
+</style>
+<script src="art.js"></script>
+<script src="frame.js"></script>
+<script src="data-007.js"></script>
+<script>
+// 007 · umbral — Argentina 2–1 England as the light it left. A portrait
+// of the night's decisive scorer set in white glyphs on the dark room:
+// real, selectable type, an alphabet standing in for skin, with the whole
+// mid-tone of the photograph erased — the dark is most of the portrait
+// (an umbral is a threshold; the face sits on it). The luminance of each
+// cell picks its glyph from a nine-step ramp; everything below the bright
+// band prints nothing… almost: a second, dimmer register (six fainter
+// glyphs) hides at alpha zero under the black. The face arrives as a
+// split-flap wave from the bridge of the nose after a beat of dark room;
+// at rest, stray cells flicker and settle — the signal stays live. Tap,
+// and every differing cell spins through glyphs and lands on the OTHER
+// scorer of the night (Messi ↔ Kane), the wave spreading from the finger;
+// the caption follows. Hold and drag, and the finger is a torch: the
+// hidden register rises to meet it and decays behind it, while the bright
+// surface flutters at the torch head. Seeded randomness only; reduced
+// motion gets instant states, no theatre; the piece rests at rAF-zero.
+
+const seed = ART.seed("2026-07-14-007");
+const M = window.M7;
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const THUMB = ART.isThumb;
+const R = ART.rng(seed + "-flap");
+
+const DATA = {"cols":72,"rows":47,"messi":["000000000000000000000000001233455433333444443232100000000000000000000000","000000000000000000000000000355666875433576567533331100000000000000000000","000000000000000000012200001134677887643102445774344321000000000000000000","000000000000000001233000000000011221110000000125432222200000000000000000","000000000000000012120000000012222247654432100011100101221000000000000000","0000000000000002400000137aaaacba9aaffffdbb9987a9864300001110000000000000","000000000000003640017beinqppnnmkiklnoppqpooomkkjkifa62000111000000000000","0000000000012597404gprtutttuvwwwwvuvvwvvvvvvvusrqqqmib500112100000000000","00000000001359b957muvvuttuwxyyyyxyxxxxxxxxwwvvvwvvwvrle30243100000000000","0000000002468b97anvxvuvuuyzzzzyyyyyyyyyxxxwvuttttuuvxrmb3453210000000000","000000001469ab79muvxwvvuwxxxxyxyzyyzyyyxxwwuutrrrrsuvrqj8976532000000000","00000001369bb99kuvvwwwvvwvwxyzyzzzzzzyyyxxwvwvtsrrrttrqkdb97643210000000","0000000247aba9dowwwxxxwwwxyzzzzzzzzzzzzzyxwvwtuvvuttrqpljea8644310000000","0000001358ba98fsvvwxwwwwvwwwyzzyxuyywyzytutrsqqrtuuwuqojdeba854321000000","0000002469a988jtvxyzxwvvwvvvvvvuqpwrpuvtosporrrrqtvxxuqlc9baa75432000000","0000003579777esvxxwuqonnmkjllijkmssokjklmpppqqqrrsuwxtsqlb89986433100000","000001468a669lvwvrnjjiifba87799jtuqkf899999aegijjllopqqqoja7874433100000","000002468b869mwvqkijjfa52115321kxzytj7321012469cefefjmooqoh9653422100000","000002469bb7amwumihcbbd97688439tzzytme311161001557bdehloppkb764312100000","00000248gjkccmwusqopsqpopoonoorxzzyqkkkgedfebbeggfcehiknqqnfb76335400000","00000246biotppwvwwxzyywwxxwxyvuyzzwpkkopsvvtronnpqqppoopqrqidceb96300000","000002469ejrvvxwyzzzzzzzzzzzxuvzzyxsmlnpswyyzzzzzyxxwurqqqrohigb85200000","000001459imnqvvwxxyyyyzzzzzyvwyzzzxsommnrwzzzyyzzzxxwusppoppjebba7300000","000001359inlittuuvvvwxyzzzxvtuvvvvronopnpwzzzzzzyvtrqponmnonic7575200000","00000024aef9grrrrsstuvwwwuslbbihhhda77dkmrwyyyxwtrpnmllllmmjhj5122100000","00000014aaaboqooppqrssttsqpqe68aab98643akmswvvtrqnlkijjlllhffhb531000000","000000039ceiqpmoppqrrrrrrsvytoje86bdefhlnnnrtsrqnlkjijklkifeefb951000000","000000016bgklmmnoprrsstvvvtqlghjgb9998chjmnpssromllkjjkjihgedca740000000","0000000039ddekkllprstuwunkjjkmptpoolebbbddhlorromkklkjjjjhed975310000000","00000000158bedgjjloqstspljiklkhghigeeeeffcdgimnmlkjjjjiihgeb654100000000","00000000002456bgilnnqrplgb9eefhiheeeeeca9748dikjkjighiigfeb8532000000000","000000000012357cfilknpmgbdlrrnqpppnlllmkjie78dghiigggffdca95320000000000","0000000000012458cdghjjkhehnnlgea9a889adgikkiaacdggghedca8764200000000000","00000000000012459bcdggggceefhkid96458aceededbbbdefgec9865542000000000000","00000000000000237b98aeeda77bkquuspqpqpnlieca99bdddca75444310000000000000","0000000000000001489858aba9chkmppqppqrrqnjieb99bca85433432000000000000000","00000000000000001367744678acefgfcacehhgccdb99876432333210000000000000000","000000000000000000135533357998898688897666654322233321000000000000000000","000000000000000000000232222334555433454332221133221000000000000000000000","000000000000000000000000111111112211111111001111000000000000000000000000","000000000000000000000000000000011111111100000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000"],"kane":["000000000000000000000000012244432222225311110111000000000000000000000000","000000000000000000000111245444465532436541242334310000000000000000000000","000000000000000000111348abbab97a9ab9aa8aa9568898863100000000000000000000","0000000000000000001499fijjlkjkihhgjiiijjiigfhiiiifd951000000000000000000","0000000000000001259eielrruwxwwvtrorqrtuutttuuuttrpmjfa410000000000000000","00000000000000248dimnlvzyzzzzzyxxusxyyzzzzzzzzzzzwuqnje82110000000000000","000000000000125afkotvrwzyzyzzzyxyyurtwyzzzzzzzzzzzzwtplga421000000000000","000000000001259glsvyzzywsuvvvvwwwxxwuttuvvwxxxxxxxzzzwsnhb42100000000000","00000000001358elnuzzzzyvputtsstuuvvuuvvuutttuuuuuuuuxytpkga6420000000000","0000000001247bkssszzvtrlopooooppqrrrrrssssrqpooonmlllpqokig8652000000000","0000000002457fpvvqstrojilkjjjklmnopppqrrqppnlkiiiiijlmnpmkib763100000000","000000001344ajrsqooronmmllllmnpppqrqqrrrrqppopolkjiijkmnlkid852100000000","000000001235ckqrpnnoooppppqqrtvwwvvvvvvuuvwwvvusqonkkkmmklje831000000000","000000001017ckqqponqrtttwwuuuuuuuuvuwvwvvvuuuuuvvwvvusomnnle710000000000","000000000017bflpqpptuwxwvttrrrrqqqqrqprrsrqqqpqqrrtvvvtpnomc400100000000","0000000000158ahossswwupkgcbaabcfijjkllmmmifeb8779deinqstqpnb200000000000","0000021100017dlrrsuuoga64332012359bejmmid85311013467aglqpopg301100100000","000003222112bnssqsokb8752100210003ahostpg81000001347999gmnpoc10001200000","000004422226istrsqieb7103349gc4234dluxyvmb6235336b60168dkmnqi31114400000","00000268535dltuuuohf96acgedfec9bfgjntxyxphfgdcccfgfca68dkpoqn82157400000","00000037cdbfmruvvspnmprpmjhgghkmonppvyxxrlkmomlkklmprrnlloqqob3674000000","00000047decdltuvxwvvvvwwvvuutttttrrqvxywoonnsustuvvvwxxussrpnb6863000000","00000157a8a8irsuvwxyzzzyvtrqpqqpsuvvxyzzvrolkmonnpqsssuusrrok85875200000","0000024554giltstrtuwyywuronmmmmoppuzzzzzztomklmoppqppqqrqopni82454300000","000001455aojlssrqqqstsqqonmlklkjnuwuxzzzzzupjklmopppmlmnnnmlgg9344200000","0000003679ikenrpnmnppomllljlkjfionuzytnnqspjjjllmnmmmllkjjjicgb664000000","00000015abeieippmllonmkiihhiigilb07kib778817lkjkllllkkjjijkfcfa862000000","0000000479bdgelnmllmlkjihiiiilttlfd7211147clrrljiiijjiijjkje9aa851000000","0000000147addehkllklmmlklmnorxwqnga4000158bhostolkjihiijjjhcb85420000000","000000001469feeiiilmnooooprrtoigfdedba9bdcc9chlppolkjjijigfda75200000000","000000000269cdbdefkmnooonqokgcdggebbbcca99abdcaeilljkjhgecadd84000000000","0000000000258b99degjnopppqhb86641234643442100237chlljgfdba7b941000000000","00000000000248879aefhmooqpea86743232321322248ccbefmlgba88668410000000000","00000000000014755799afhjnoe9djnnnnnnmllnnopprrokihkf96565364000000000000","0000000000000146435668cbficaflnqqoopoqqrppoprqnlideb54332330000000000000","0000000000000002422454678999cgjkkihfdbbcdggikkiea76742101100000000000000","00000000000000001211213455569cfgggda844479ceffd8543320000000000000000000","0000000000000000000000233445579dghfda898aeffda74211100000000000000000000","00000000000000000000000112234568abaaa99989876532100000000000000000000000","000000000000000000000000000123333444433333221110000000000000000000000000","000000000000000000000000000000000001110000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000","000000000000000000000000000000000000000000000000000000000000000000000000"]};
+const B36 = "0123456789abcdefghijklmnopqrstuvwxyz";
+const dec = (rows) => rows.map((r) => Array.from(r, (ch) => B36.indexOf(ch)));
+const MT = dec(DATA.messi), KT = dec(DATA.kane);
+const COLS = DATA.cols, ROWS = DATA.rows;
+const RAMP = ".:+*oO#%@", DIMR = ".:-~=+";
+const HI = 24, LO = 15;      // base36 thresholds: the bright band, the hidden band
+const GLYPHS = "abcdefghijklmnopqrstuvwxyz0123456789#%&@$+*=~-:.";
+const chAt = (l) => l >= HI ? RAMP[Math.min(8, ((l - HI) * 9 / (36 - HI)) | 0)] : " ";
+const dimAt = (l) => l >= LO && l < HI ? DIMR[Math.min(5, ((l - LO) * 6 / (HI - LO)) | 0)] : " ";
+
+let face = 0, morphing = false, entered = false;
+let W = 0, H = 0, DPR = 1, fs = 8, cw = 4.8, chh = 9.1;
+
+const F = FRAME.mount({
+  num: 7, title: "Umbral", subject: "Argentina vs. England",
+  edition: "07/8", date: "14·07·2026",
+  stack: "embedded type · split-flap", time: "108 minutes",
+  desc: "The semifinal as the light it left. The decisive face of the night is set in white glyphs — real type, selectable, an alphabet standing in for skin — and everything the shadow owns stays unprinted room; the dark is most of the portrait. England keep the ball; Argentina keep the night: Álvarez against the run, Kane from the spot, Messi at 81′ — his twenty-third at World Cups. Tap, and the portrait spins cell by cell, a split-flap board resolving into the other scorer. Hold and drag, and the finger is a torch — a second, dimmer register wakes under the black and fades behind it.",
+  dark: true, open: true, gesture: true, noCanvas: true,
+  onResize(w, h, dpr) {
+    W = w / dpr; H = h / dpr; DPR = dpr;
+    metrics();
+  },
+});
+
+const wrap = document.createElement("div");
+wrap.className = "um";
+wrap.innerHTML =
+  '<div class="fw"><pre class="br" id="br"></pre><canvas id="dm"></canvas></div>' +
+  '<div class="cap"><div class="c1" id="c1"></div><div class="c2" id="c2"></div></div>';
+F.stage.appendChild(wrap);
+F.stage.style.touchAction = "none";
+
+const pre = document.getElementById("br");
+const dim = document.getElementById("dm"), dg = dim.getContext("2d");
+const c1 = document.getElementById("c1");
+const gMessi = M.goals.find((g) => g.player === "messi");
+const gKane = M.goals.find((g) => g.player === "kane");
+const capOf = (f) => f ? "KANE · " + gKane.min + "′" : "MESSI · " + gMessi.min + "′";
+document.getElementById("c2").textContent =
+  (M.home.name + " " + M.home.score + " — " + M.away.name + " " + M.away.score).toUpperCase();
+
+function metrics() {
+  if (!W) return;
+  fs = Math.max(4, Math.min(W * 0.92 / (COLS * 0.6), H * 0.70 / (ROWS * 1.14)));
+  cw = fs * 0.6; chh = fs * 1.14;
+  pre.style.fontSize = fs + "px";
+  dim.style.width = (COLS * cw) + "px"; dim.style.height = (ROWS * chh) + "px";
+  dim.width = Math.ceil(COLS * cw * DPR); dim.height = Math.ceil(ROWS * chh * DPR);
+  if (entered && !morphing) { setFace(face); drawDim(); }
+}
+
+/* ---- the two layers ---- */
+let cur = [];
+function setFace(f) {
+  const G = f ? KT : MT;
+  cur = G.map((r) => r.map(chAt));
+  pre.textContent = cur.map((r) => r.join("")).join("\n");
+}
+const torch = new Float32Array(COLS * ROWS);
+let raf = 0;
+function drawDim() {
+  const G = face ? KT : MT;
+  dg.setTransform(DPR, 0, 0, DPR, 0, 0);
+  dg.clearRect(0, 0, COLS * cw, ROWS * chh);
+  dg.font = "520 " + fs + "px 'Geist Mono',monospace";
+  dg.textBaseline = "top";
+  dg.fillStyle = "#f2f1ee";
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+    const ch = dimAt(G[y][x]);
+    if (ch === " ") continue;
+    const a = torch[y * COLS + x];
+    if (a < 0.02) continue;
+    dg.globalAlpha = Math.min(1, a);
+    dg.fillText(ch, x * cw, y * chh);
+  }
+  dg.globalAlpha = 1;
+}
+function torchLoop() {
+  raf = 0;
+  let alive = false;
+  for (let i = 0; i < torch.length; i++) {
+    if (torch[i] > 0.01) { torch[i] *= 0.90; alive = true; } else torch[i] = 0;
+  }
+  drawDim();
+  if (alive) raf = requestAnimationFrame(torchLoop);
+}
+function splat(px, py) {
+  const r = pre.getBoundingClientRect();
+  const cx = (px - r.left) / cw, cy = (py - r.top) / chh;
+  const RAD = 9;
+  for (let y = Math.max(0, cy - RAD | 0); y < Math.min(ROWS, cy + RAD); y++)
+    for (let x = Math.max(0, cx - RAD | 0); x < Math.min(COLS, cx + RAD); x++) {
+      const d = Math.hypot((x - cx) * 0.62, y - cy) / (RAD * 0.62);
+      if (d < 1) torch[y * COLS + x] = Math.max(torch[y * COLS + x], 1 - d * d);
+    }
+  if (!raf) raf = requestAnimationFrame(torchLoop);
+  // the stroke disturbs the surface too: bright glyphs at the torch head
+  // flutter and settle behind the finger
+  if (!RM && R() < 0.5) {
+    const G = face ? KT : MT;
+    for (let k = 0; k < 2; k++) {
+      const x = (cx + R() * 5 - 2.5) | 0, y = (cy + R() * 3 - 1.5) | 0;
+      if (x >= 0 && x < COLS && y >= 0 && y < ROWS && chAt(G[y][x]) !== " ") flickCell(x, y);
+    }
+  }
+}
+
+/* ---- the split-flap wave: entrance and tap-morph share it ---- */
+function waveTo(target, ccx, ccy, SPREAD, SPIN) {
+  if (RM) {
+    cur = target.map((r) => r.slice());
+    pre.textContent = cur.map((q) => q.join("")).join("\n");
+    drawDim();
+    return;
+  }
+  morphing = true;
+  const t0 = performance.now();
+  (function tick(now) {
+    const t = now - t0; let done = true;
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
+      const tgt = target[y][x];
+      if (cur[y][x] === tgt && t > SPREAD) continue;
+      const d = Math.hypot((x - ccx) * 0.62, y - ccy);
+      const start = (d / Math.hypot(COLS * 0.62, ROWS)) * SPREAD;
+      if (t < start) { done = false; continue; }
+      if (t < start + SPIN) {
+        done = false;
+        if (cur[y][x] !== " " || tgt !== " ")
+          cur[y][x] = GLYPHS[(R() * GLYPHS.length) | 0];
+      } else cur[y][x] = tgt;
+    }
+    pre.textContent = cur.map((q) => q.join("")).join("\n");
+    if (!done) requestAnimationFrame(tick);
+    else { morphing = false; drawDim(); }
+  })(t0);
+}
+function morph(px, py) {
+  face = 1 - face;
+  setCap(true);
+  const G = face ? KT : MT;
+  const r = pre.getBoundingClientRect();
+  waveTo(G.map((row) => row.map(chAt)), (px - r.left) / cw, (py - r.top) / chh, 1200, 240);
+}
+function enter() {
+  cur = Array.from({ length: ROWS }, () => Array(COLS).fill(" "));
+  pre.textContent = cur.map((q) => q.join("")).join("\n");
+  const G = face ? KT : MT;
+  // the face spans ~half the grid diagonal: the wave needs ~2x the morph
+  // SPREAD for the front to visibly travel from the bridge of the nose out
+  waveTo(G.map((row) => row.map(chAt)), COLS / 2, ROWS * 0.42, 2300, 300);
+  entered = true;
+}
+
+/* ---- the caption follows the face, spinning briefly ---- */
+function setCap(scramble) {
+  const target = capOf(face);
+  if (!scramble || RM) { c1.textContent = target; return; }
+  const t0 = performance.now(), DUR = 420;
+  (function tick(now) {
+    const u = Math.min(1, (now - t0) / DUR);
+    let s = "";
+    for (let i = 0; i < target.length; i++) {
+      s += (i / target.length < u || target[i] === " " || target[i] === "·")
+        ? target[i] : GLYPHS[(R() * GLYPHS.length) | 0];
+    }
+    c1.textContent = s;
+    if (u < 1) requestAnimationFrame(tick);
+  })(t0);
+}
+
+/* ---- idle life: stray cells flicker like a live signal ---- */
+let preDirty = false;
+function dirtyPre() {
+  if (preDirty) return; preDirty = true;
+  requestAnimationFrame(() => {
+    preDirty = false;
+    pre.textContent = cur.map((q) => q.join("")).join("\n");
+  });
+}
+function flickCell(x, y) {
+  if (morphing) return;
+  cur[y][x] = GLYPHS[(R() * GLYPHS.length) | 0];
+  dirtyPre();
+  setTimeout(() => {
+    if (morphing) return;
+    const G = face ? KT : MT;
+    cur[y][x] = chAt(G[y][x]);
+    dirtyPre();
+  }, 140 + R() * 160);
+}
+let idleTimer = 0;
+function schedIdle() {
+  clearTimeout(idleTimer);
+  idleTimer = setTimeout(idleFlick, 1100 + R() * 2200);
+}
+function idleFlick() {
+  if (entered && !morphing && !RM && !document.hidden) {
+    const G = face ? KT : MT;
+    const n = 2 + (R() * 3 | 0);
+    for (let k = 0, tries = 0; k < n && tries < 40; tries++) {
+      const y = (R() * ROWS) | 0, x = (R() * COLS) | 0;
+      if (chAt(G[y][x]) === " ") continue;
+      k++; flickCell(x, y);
+    }
+  }
+  schedIdle();
+}
+
+/* ---- input: tap flips the face, a drag is a torch ---- */
+let pid = -1, x0 = 0, y0 = 0, t1 = 0, moved = 0;
+F.stage.addEventListener("pointerdown", (e) => {
+  if (pid >= 0) return;
+  pid = e.pointerId; x0 = e.clientX; y0 = e.clientY;
+  t1 = performance.now(); moved = 0;
+  try { F.stage.setPointerCapture(pid); } catch (_) {}
+});
+F.stage.addEventListener("pointermove", (e) => {
+  if (e.pointerId !== pid) return;
+  moved = Math.max(moved, Math.hypot(e.clientX - x0, e.clientY - y0));
+  if (moved >= 8 && entered && !morphing) {
+    // a drag is a torch stroke, not a selection — the text stays
+    // selectable at rest (double-tap, long-press, select-all)
+    if (!document.body.classList.contains("nosel")) {
+      document.body.classList.add("nosel");
+      getSelection().removeAllRanges();
+    }
+    splat(e.clientX, e.clientY);
+  }
+});
+const up = (e) => {
+  if (e.pointerId !== pid) return;
+  pid = -1;
+  document.body.classList.remove("nosel");
+  if (e.type === "pointerup" && moved < 8 && performance.now() - t1 < 350 &&
+      entered && !morphing)
+    morph(e.clientX, e.clientY);
+};
+F.stage.addEventListener("pointerup", up);
+F.stage.addEventListener("pointercancel", up);
+
+/* ---- arrival ---- */
+setCap(false);
+document.fonts.load("520 12px 'Geist Mono'").then(() => {
+  metrics();
+  if (THUMB || RM) { setFace(face); entered = true; drawDim(); return; }
+  // a beat of dark room before the face resolves
+  setTimeout(() => { enter(); schedIdle(); }, 380);
+});
+</script>
