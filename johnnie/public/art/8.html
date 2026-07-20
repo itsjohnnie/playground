@@ -1,0 +1,348 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>#8 · Once — Spain vs. Argentina · Johnnie&#x27;s atelier</title>
+<meta name="description" content="The siege drawn shot by shot: Spain's twenty attempts as fire on the Argentine goal — eleven die on Martínez's line, the most saves any final has seen, and at 106′ the one that doesn't ends the dream under the crossbar. The eleven embers keep burning where the gloves were. Tap, and the siege runs again.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://johnnies.life/art/8">
+<meta property="og:title" content="#8 · Once — Spain vs. Argentina · Johnnie&#x27;s atelier">
+<meta property="og:description" content="The siege drawn shot by shot: Spain's twenty attempts as fire on the Argentine goal — eleven die on Martínez's line, the most saves any final has seen, and at 106′ the one that doesn't ends the dream under the crossbar. The eleven embers keep burning where the gloves were. Tap, and the siege runs again.">
+<meta property="og:image" content="https://johnnies.life/art/og/008.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="#8 · Once — Spain vs. Argentina · Johnnie&#x27;s atelier">
+<meta name="twitter:description" content="The siege drawn shot by shot: Spain's twenty attempts as fire on the Argentine goal — eleven die on Martínez's line, the most saves any final has seen, and at 106′ the one that doesn't ends the dream under the crossbar. The eleven embers keep burning where the gloves were. Tap, and the siege runs again.">
+<meta name="twitter:image" content="https://johnnies.life/art/og/008.png">
+<body>
+<script src="art.js"></script>
+<script src="frame.js"></script>
+<script src="data-008.js"></script>
+<script>
+// 008 · once — the final as the siege it was. Spain's twenty attempts
+// drawn as fire on the Argentine goal, an elevation of the goalmouth on
+// the dark room: eleven trajectories die on Martínez's line (once
+// atajadas — the most any final has seen) and stay burning there as
+// celeste embers; eight pass into the dark; at 106′ the one rojo line
+// goes under the crossbar and the net remembers it. Argentina's two
+// shots rise from the bottom of the sheet and fade before they matter.
+// A match clock runs the hundred and twenty minutes; the red card at
+// 90+3′ marks itself; after the whistle the record prints, and beneath
+// it — the practice's colophon, eight pieces, June to July. The counts
+// are exact from the verified record; the individual shot minutes
+// (except the goal) are rendered, not reported. Tap replays the siege.
+// Seeded randomness only; reduced motion gets the final state; the
+// piece rests at rAF-zero.
+
+const M = window.M8;
+const seed = ART.seed("2026-07-19-008");
+const R = ART.rng(seed + "-once");
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const THUMB = ART.isThumb;
+const SLOW = Math.max(0.1, +(new URLSearchParams(location.search).get("ufslow") || 1));
+
+const CELESTE = M.ink.celeste, ROJO = M.ink.rojo, BONE = M.ink.bone;
+
+const F = FRAME.mount({
+  num: 8, title: "Once", subject: "Spain vs. Argentina",
+  edition: "08/8", date: "19·07·2026",
+  stack: "shot ballistics · match clock", time: "120 minutes",
+  desc: "The siege drawn shot by shot: Spain&#x27;s twenty attempts as fire on the Argentine goal — eleven die on Martínez&#x27;s line, the most saves any final has seen, and the eight that miss pass into the dark. For a hundred and five minutes the dam holds; at 106′, under the crossbar, it doesn&#x27;t. The eleven embers keep burning where the gloves were, and beneath the record the practice closes its ledger — eight pieces, June to July. Tap, and the siege runs again.",
+  dark: true, open: true, gesture: true,
+  onResize(w, h, dpr) { DW = w; DH = h; DPR = dpr; metrics(); draw(); },
+});
+
+let DW = 0, DH = 0, DPR = 1;
+let W = 0, H = 0;
+const g = F.canvas.getContext("2d");
+
+/* ---- geometry ---- */
+let clockY, clockX0, clockX1, goal = {}, fs = 10;
+function metrics() {
+  W = DW / DPR; H = DH / DPR;
+  const mob = matchMedia("(max-width:820px)").matches;
+  clockY = H * 0.14;
+  clockX0 = W * 0.14; clockX1 = W * 0.86;
+  const gw = Math.min(W * (mob ? 0.66 : 0.36), mob ? 340 : 300);
+  const gh = gw * 2.44 / 7.32;
+  goal = { w: gw, h: gh, x: (W - gw) / 2, bar: H * (mob ? 0.50 : 0.42) };
+  goal.ground = goal.bar + gh;
+  fs = Math.max(9, Math.min(12, W / 36));
+}
+
+/* ---- the ballistics (counts exact; micro-timing rendered) ---- */
+// 20 Spanish attempts: 12 on target (11 saved + the goal at 106′), 8 wide/over.
+const ESP_MIN = [9, 14, 21, 27, 33, 39, 46, 52, 57, 63, 68, 73, 78, 83, 88, 93.6, 98, 102, 106, 117];
+const ON_TARGET = new Set([1, 3, 4, 6, 8, 9, 11, 12, 14, 16, 17, 18]);   // indices; 18 = the goal
+const GOAL_IDX = 18;
+const ARG_MIN = [24, 71];   // two attempts, none on target
+
+const shots = ESP_MIN.map((min, i) => {
+  const r1 = R(), r2 = R(), r3 = R(), r4 = R();
+  const onT = ON_TARGET.has(i), isGoal = i === GOAL_IDX;
+  return {
+    min, onT, isGoal, side: r1 < 0.5 ? -1 : 1,
+    ox: 0.12 + r1 * 0.76,                 // origin x fraction of W
+    oy: 0.20 + r2 * 0.16,                 // origin y fraction of H
+    tx: isGoal ? 0.615 : (onT ? 0.08 + r3 * 0.84 : (r3 < 0.5 ? -0.14 - r3 * 0.2 : 1.14 + r3 * 0.2)),
+    ty: isGoal ? 0.10 : (onT ? 0.30 + r4 * 0.62 : (r4 < 0.4 ? -0.35 : 0.45 + r4 * 0.5)),
+    bend: (r2 - 0.5) * 0.5,
+    fl: isGoal ? 1.8 : 1.0,               // flight time in match-minutes
+  };
+});
+const argShots = ARG_MIN.map((min, i) => {
+  const r1 = R(), r2 = R();
+  return { min, ox: 0.22 + r1 * 0.2 + i * 0.36, oy: 0.90, tx: 0.30 + r2 * 0.4, ty: 0.16, fl: 1.2 };
+});
+
+function curve(s) {
+  // origin in sheet space → target on the goal plane (fractions of goal box
+  // for on-target, of the sheet for misses)
+  const p0 = { x: s.ox * W, y: s.oy * H };
+  const p2 = s.onT || s.isGoal
+    ? { x: goal.x + s.tx * goal.w, y: goal.bar + s.ty * goal.h }
+    : { x: goal.x + s.tx * goal.w, y: s.ty < 0 ? goal.bar + s.ty * goal.h : goal.bar + s.ty * goal.h };
+  const p1 = { x: (p0.x + p2.x) / 2 + s.bend * W * 0.2, y: Math.min(p0.y, p2.y) - H * 0.06 };
+  return [p0, p1, p2];
+}
+function bez(P, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * P[0].x + 2 * u * t * P[1].x + t * t * P[2].x,
+    y: u * u * P[0].y + 2 * u * t * P[1].y + t * t * P[2].y,
+  };
+}
+
+/* ---- the clock ---- */
+const DUR = 15000;                    // 120′ of siege at 1×
+const POST = 3600;                    // the record, then the colophon
+let t0 = 0, raf = 0, done = false, minute = 0, postT = 0;
+
+function minuteAt(t) { return Math.min(120, (t / (DUR * SLOW)) * 120); }
+const mx = (m) => clockX0 + (m / 120) * (clockX1 - clockX0);
+
+/* ---- drawing ---- */
+function draw(now) {
+  g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.clearRect(0, 0, W, H);
+  const m = minute;
+  const goalDim = m > 105.9 && m < 108.5 ? 0.45 : 1;   // the room holds its breath
+
+  /* clock strip */
+  g.strokeStyle = "rgba(242,241,238,0.22)"; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(clockX0, clockY); g.lineTo(mx(m), clockY); g.stroke();
+  g.strokeStyle = "rgba(242,241,238,0.08)";
+  g.beginPath(); g.moveTo(mx(m), clockY); g.lineTo(clockX1, clockY); g.stroke();
+  g.font = "500 " + (fs * 0.78) + "px 'Geist Mono',monospace";
+  g.textAlign = "center"; g.textBaseline = "top";
+  for (const [mm, lab] of [[0, "0′"], [45, "45′"], [90, "90′"], [105, "105′"], [120, "120′"]]) {
+    const passed = m >= mm;
+    g.strokeStyle = passed ? "rgba(242,241,238,0.35)" : "rgba(242,241,238,0.12)";
+    g.beginPath(); g.moveTo(mx(mm), clockY - 3); g.lineTo(mx(mm), clockY + 3); g.stroke();
+    g.fillStyle = passed ? "rgba(242,241,238,0.5)" : "rgba(242,241,238,0.18)";
+    g.fillText(lab, mx(mm), clockY + 8);
+  }
+  if (m >= 93) {                                        // roja 90+3′
+    const k = Math.min(1, (m - 93) / 1.2);
+    g.fillStyle = "rgba(213,43,30," + (0.5 + 0.5 * k) + ")";
+    g.fillRect(mx(93) - 1.5, clockY - 7, 3, 4);
+    g.font = "500 " + (fs * 0.74) + "px 'Geist Mono',monospace";
+    g.fillStyle = "rgba(213,43,30," + (0.55 * k) + ")";
+    g.textBaseline = "bottom";
+    g.fillText("E. FERNÁNDEZ · ROJA · 90+3′", mx(93), clockY - 10);
+    g.textBaseline = "top";
+  }
+  if (m >= 106) {
+    g.fillStyle = ROJO;
+    g.beginPath(); g.arc(mx(106), clockY, 2.4, 0, 7); g.fill();
+  }
+
+  /* the goal, straight on */
+  g.globalAlpha = goalDim === 1 ? 1 : 0.8;
+  g.strokeStyle = "rgba(242,241,238,0.85)"; g.lineWidth = 2; g.lineCap = "round";
+  g.beginPath();
+  g.moveTo(goal.x, goal.ground); g.lineTo(goal.x, goal.bar);
+  g.lineTo(goal.x + goal.w, goal.bar); g.lineTo(goal.x + goal.w, goal.ground);
+  g.stroke();
+  g.strokeStyle = "rgba(242,241,238,0.30)"; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(W * 0.06, goal.ground); g.lineTo(W * 0.94, goal.ground); g.stroke();
+  g.strokeStyle = "rgba(242,241,238,0.07)";
+  for (let i = 1; i < 10; i++) {
+    const x = goal.x + (i / 10) * goal.w;
+    g.beginPath(); g.moveTo(x, goal.bar); g.lineTo(x, goal.ground); g.stroke();
+  }
+  for (let i = 1; i < 4; i++) {
+    const y = goal.bar + (i / 4) * goal.h;
+    g.beginPath(); g.moveTo(goal.x, y); g.lineTo(goal.x + goal.w, y); g.stroke();
+  }
+  g.globalAlpha = 1;
+
+  /* argentina's two, rising and dying */
+  for (const s of argShots) {
+    if (m < s.min) continue;
+    const p = Math.min(1, (m - s.min) / s.fl);
+    const P = [{ x: s.ox * W, y: s.oy * H },
+               { x: (s.ox + s.tx) / 2 * W + 20, y: (s.oy + s.ty) / 2 * H },
+               { x: s.tx * W, y: s.ty * H }];
+    const fade = 1 - Math.max(0, (m - s.min - s.fl) / 6);
+    if (fade <= 0) continue;
+    g.strokeStyle = "rgba(117,170,219," + (0.30 * fade) + ")";
+    g.lineWidth = 1.2;
+    g.beginPath();
+    for (let k = 0; k <= 24; k++) {
+      const q = bez(P, (k / 24) * p);
+      k ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y);
+    }
+    g.stroke();
+  }
+
+  /* the siege */
+  for (const s of shots) {
+    if (m < s.min) continue;
+    const p = Math.min(1, (m - s.min) / s.fl);
+    const P = curve(s);
+    const col = s.isGoal ? "213,43,30" : "242,241,238";
+    const dim = s.isGoal ? 1 : goalDim;
+
+    if (p < 1 || s.onT || s.isGoal || m - s.min < s.fl + 4) {
+      const tailFade = s.onT || s.isGoal ? 1 : Math.max(0, 1 - (m - s.min - s.fl) / 4);
+      const pMax = s.onT || s.isGoal ? p : Math.min(1.14, (m - s.min) / s.fl);
+      const tail = Math.max(0, pMax - 0.34);
+      g.strokeStyle = "rgba(" + col + "," + ((s.isGoal ? 0.9 : s.onT ? 0.4 : 0.16) * tailFade * dim) + ")";
+      g.lineWidth = s.isGoal ? 2 : 1.1;
+      g.beginPath();
+      for (let k = 0; k <= 30; k++) {
+        const q = bez(P, tail + (k / 30) * (Math.min(pMax, s.onT || s.isGoal ? 1 : 1.14) - tail));
+        k ? g.lineTo(q.x, q.y) : g.moveTo(q.x, q.y);
+      }
+      g.stroke();
+      if (p < 1) {
+        const head = bez(P, p);
+        g.fillStyle = "rgba(" + col + "," + (0.9 * dim) + ")";
+        g.beginPath(); g.arc(head.x, head.y, s.isGoal ? 2.4 : 1.6, 0, 7); g.fill();
+      }
+    }
+
+    if ((s.onT && !s.isGoal) && p >= 1) {
+      /* the save: a spark, then the ember stays */
+      const age = m - s.min - s.fl;
+      const P2 = P[2];
+      if (age < 1.4) {
+        const k = age / 1.4;
+        g.strokeStyle = "rgba(117,170,219," + (0.7 * (1 - k)) + ")";
+        g.lineWidth = 1;
+        for (let a = 0; a < 6; a++) {
+          const an = (a / 6) * Math.PI * 2 + s.bend;
+          const r0 = 2 + k * 9, r1 = 4 + k * 12;
+          g.beginPath();
+          g.moveTo(P2.x + Math.cos(an) * r0, P2.y + Math.sin(an) * r0);
+          g.lineTo(P2.x + Math.cos(an) * r1, P2.y + Math.sin(an) * r1);
+          g.stroke();
+        }
+      }
+      g.fillStyle = "rgba(117,170,219," + (0.85 * goalDim) + ")";
+      g.beginPath(); g.arc(P2.x, P2.y, 2.2, 0, 7); g.fill();
+      g.fillStyle = "rgba(117,170,219," + (0.16 * goalDim) + ")";
+      g.beginPath(); g.arc(P2.x, P2.y, 5.5, 0, 7); g.fill();
+    }
+
+    if (s.isGoal && p >= 1) {
+      /* 106′ — under the crossbar */
+      const age = m - s.min - s.fl;
+      const P2 = P[2];
+      if (age < 2.4) {
+        const k = age / 2.4;
+        g.strokeStyle = "rgba(213,43,30," + (0.55 * (1 - k)) + ")";
+        g.lineWidth = 1.4;
+        g.beginPath(); g.arc(P2.x, P2.y, 3 + k * 26, 0, 7); g.stroke();
+      }
+      g.fillStyle = "rgba(213,43,30,0.95)";
+      g.beginPath(); g.arc(P2.x, P2.y, 3, 0, 7); g.fill();
+      g.fillStyle = "rgba(213,43,30,0.18)";
+      g.beginPath(); g.arc(P2.x, P2.y, 8, 0, 7); g.fill();
+      const lk = Math.min(1, Math.max(0, (m - 107) / 1.4));
+      if (lk > 0) {
+        g.font = "620 " + (fs * 0.9) + "px 'Geist Mono',monospace";
+        g.fillStyle = "rgba(213,43,30," + (0.85 * lk) + ")";
+        g.textAlign = "center";
+        g.fillText("F. TORRES · 106′", goal.x + goal.w / 2, goal.ground + 10);
+      }
+    }
+  }
+
+  /* after the whistle: the record, then the ledger closes — one flowed
+     stack from the ground line, clamped clear of the pill */
+  if (postT > 0) {
+    const pb = matchMedia("(max-width:820px)").matches ? 96 : 28;
+    let cY = goal.ground + fs * 4.6;
+    const bottom = cY + fs * 11.6;
+    const over = bottom - (H - pb - fs * 0.5);
+    if (over > 0) cY -= over;
+    const a1 = Math.min(1, postT / 700);
+    g.textAlign = "center"; g.textBaseline = "alphabetic";
+    g.font = "620 " + (fs * 1.7) + "px 'Geist Mono',monospace";
+    g.fillStyle = "rgba(242,241,238," + a1 + ")";
+    g.fillText("ESPAÑA 1 — ARGENTINA 0", W / 2, cY);
+    const a2 = Math.min(1, Math.max(0, (postT - 500) / 700));
+    g.font = "500 " + (fs * 1.02) + "px 'Geist Mono',monospace";
+    g.fillStyle = "rgba(242,241,238," + (0.62 * a2) + ")";
+    g.fillText("F. TORRES 106′ · PRÓRROGA", W / 2, cY + fs * 2.2);
+    const a3 = Math.min(1, Math.max(0, (postT - 1100) / 700));
+    g.fillStyle = "rgba(117,170,219," + (0.78 * a3) + ")";
+    g.fillText("MARTÍNEZ · ONCE ATAJADAS · RÉCORD DE FINALES", W / 2, cY + fs * 4.0);
+
+    const a4 = Math.min(1, Math.max(0, (postT - 2000) / 900));
+    if (a4 > 0) {
+      const yC = cY + fs * 6.6;
+      g.font = "500 " + (fs * 0.82) + "px 'Geist Mono',monospace";
+      g.fillStyle = "rgba(242,241,238," + (0.40 * a4) + ")";
+      g.fillText("LA PRÁCTICA · OCHO PIEZAS · JUNIO — JULIO 2026", W / 2, yC);
+      g.font = "500 " + (fs * 0.74) + "px 'Geist Mono',monospace";
+      g.fillStyle = "rgba(242,241,238," + (0.26 * a4) + ")";
+      g.fillText("TERRENO · SISMÓGRAFO · RESONANCIA · BRONCE", W / 2, yC + fs * 1.7);
+      g.fillText("EMBATE · AFICHE · UMBRAL · ONCE", W / 2, yC + fs * 3.1);
+      g.font = "500 " + (fs * 0.82) + "px 'Geist Mono',monospace";
+      g.fillStyle = "rgba(117,170,219," + (0.55 * a4) + ")";
+      g.fillText("GRACIAS, LEO", W / 2, yC + fs * 5.0);
+    }
+  }
+}
+
+/* ---- the run ---- */
+function loop(now) {
+  raf = 0;
+  const t = now - t0;
+  minute = minuteAt(t);
+  if (minute >= 120) {
+    postT = t - DUR * SLOW;
+    if (postT > POST) { minute = 120; postT = POST; done = true; }
+  }
+  draw(now);
+  if (!done) raf = requestAnimationFrame(loop);
+}
+function start() {
+  done = false; postT = 0; minute = 0;
+  t0 = performance.now();
+  if (raf) cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(loop);
+}
+function finalState() {
+  done = true; minute = 120; postT = POST;
+  draw(performance.now());
+}
+
+/* tap replays the siege */
+let pd = 0, px = 0, py = 0;
+F.stage.addEventListener("pointerdown", (e) => { pd = performance.now(); px = e.clientX; py = e.clientY; });
+F.stage.addEventListener("pointerup", (e) => {
+  if (performance.now() - pd < 350 && Math.hypot(e.clientX - px, e.clientY - py) < 8) {
+    if (RM) finalState(); else start();
+  }
+});
+
+document.fonts.load("620 12px 'Geist Mono'").then(() => {
+  metrics();
+  if (THUMB || RM) { finalState(); return; }
+  setTimeout(start, 420);
+});
+</script>
