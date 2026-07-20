@@ -70,7 +70,7 @@ git push --force-with-lease -u origin claude/daily-generative-art-1cn3lq
 | 5 | Embate | vs Egypt (07·07, R16) | W | 0–x until the celeste breaks at 90+2'; Messi 83' (21) |
 | 6 | Afiche | vs Switzerland (11·07, QF) | W 3–1 aet | 0–0 at 90'; Messi 97' (22), Álvarez 106', Embolo 113', Lautaro 119'. Arrowhead, KC, att 76 416, M61 |
 | 7 | Umbral | ENG vs ARG (15·07, SF, Mercedes-Benz Atlanta, M102) | W 2–1 | REAL, web-verified: Gordon 55' (Rogers); E. Fernández 85' (Messi), Lautaro 90+2' (Messi, header) — Messi two assists, NO goal. HT 0–0. Att 68 239, ref Elfath (USA), possession 64–36 ARG, xG 0.91–0.54. England the team of record (subject "England vs. Argentina") |
-| 8 | — | vs Spain (19·07, Final, MetLife) | upcoming | Spain beat France 2–0 in the other semi |
+| 8 | Once | ESP vs ARG (19·07, Final, MetLife, M104) | L 0–1 aet | REAL, web-verified: F. Torres 106′ (N. Williams); E. Fernández red 90+3′ (2nd yellow); 0–0 at 90′. E. Martínez 11 saves — record for any men's final. Att 80 663, ref Vinčić (SVN). Possession 65–35 ESP, shots 20–2 (12–0 on target), xG 1.94–0.22, corners 9–4. Spain's 2nd title, 1 goal conceded all tournament (record); de la Fuente oldest champion coach. Messi: no goal, ends runner-up — la cuarta unwon; AFA crest keeps three stars permanently. Spain the team of record |
 
 **The tournament is REAL** — from piece 7 on, every match fact is researched on
 the live web (FIFA/ESPN/press), never invented, and unreported fields stay null.
@@ -237,9 +237,10 @@ on text/plain).
 
 ## Cadence
 
-The practice is **match-driven**: a check-in Routine fires the morning after
-each Argentina fixture (13:00 UTC next day), builds the piece from Johnnie's
-result, updates the manifest (new piece + next dimmed upcoming row), and
-re-arms itself for the next fixture. No daily cron. Johnnie announces
-results and corrections — his facts always win; audit the whole canon when
-one changes.
+The practice is **match-driven** and is now **closed**: the final was played
+19·07·2026 (piece 8, Once) and no further fixtures exist. No Routine is
+armed and the daily cron stays retired — new work happens only when Johnnie
+asks. His facts always win; audit the whole canon when one changes. From
+piece 7 on every match fact is web-verified; unreported fields stay null
+(piece 8's individual shot minutes, except the goal, are rendered, not
+reported — noted in data-008.js).

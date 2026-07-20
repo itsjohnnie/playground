@@ -129,10 +129,20 @@
     {
       "n": "008",
       "num": 8,
-      "subject": "Argentina vs. Spain",
+      "title": "Once",
+      "subject": "Spain vs. Argentina",
       "date": "2026-07-19",
       "stage": "Final",
-      "status": "upcoming"
+      "status": "candidate",
+      "file": "8.html",
+      "medium": "canvas · balística",
+      "tags": [
+        "data",
+        "ballistics",
+        "siege",
+        "final"
+      ],
+      "note": "The siege drawn shot by shot: Spain's twenty attempts as fire on the Argentine goal — eleven die on Martínez's line, the most saves any final has seen, and at 106′ the one that doesn't ends the dream under the crossbar. The eleven embers keep burning where the gloves were, and beneath the record the practice closes its ledger. Tap, and the siege runs again."
     }
   ]
 }
