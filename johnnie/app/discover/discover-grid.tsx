@@ -87,6 +87,11 @@ class InfiniteGrid {
   // The grid cell whose image is on stage — hidden while staged so the tile
   // reads as having travelled to the centre, restored on close.
   stagedCell: Cell | null = null;
+  // When the stage last closed. The closing tap's compatibility mouse events
+  // (dispatched after touchend) land on the grid once the stage drops
+  // pointer-events, and would immediately re-stage the tile under the finger —
+  // taps inside this window are ignored.
+  stageClosedAt = 0;
 
   // Staged-image zoom: double-tap toggles ~2.5x at the tap point, pinch zooms
   // freeform, one-finger drag pans while zoomed. A tap on the backdrop closes.
@@ -348,7 +353,12 @@ class InfiniteGrid {
       this.lastY - this.pointerStartY,
     );
     const elapsed = Date.now() - this.pointerStartTime;
-    if (moved < 8 && elapsed < 350 && window.innerWidth < this.mobileBreakpoint) {
+    if (
+      moved < 8 &&
+      elapsed < 350 &&
+      window.innerWidth < this.mobileBreakpoint &&
+      Date.now() - this.stageClosedAt > 600
+    ) {
       this.openStageAt(this.pointerStartX, this.pointerStartY);
     }
   }
@@ -457,6 +467,11 @@ class InfiniteGrid {
   }
 
   onStagePointerDown(e: PointerEvent) {
+    // Suppress the compatibility mouse events the browser fires after touchend.
+    // Without this, a backdrop tap closes the stage on pointerup, the stage
+    // drops pointer-events, and the tap's synthetic mousedown/mouseup then hit
+    // the grid underneath — re-opening whatever tile sat behind the scrim.
+    e.preventDefault();
     const img = this.zImg;
     this.zPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this.zPointers.size === 1) {
@@ -636,6 +651,7 @@ class InfiniteGrid {
 
   closeStage() {
     if (!this.stage) return;
+    this.stageClosedAt = Date.now();
     this.stage.classList.remove("is-open");
     this.stage.setAttribute("aria-hidden", "true");
     // Removing the class starts the close choreography: the vignette and the
