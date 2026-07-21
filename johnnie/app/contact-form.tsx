@@ -106,12 +106,12 @@ export default function ContactForm() {
         </form>
       )}
       {status === "success" && (
-        <div className="form-success ui-form-done" style={{ display: "block" }}>
+        <div role="status" className="form-success ui-form-done" style={{ display: "block" }}>
           <div className="text-block-4">¡Gracias! Your message landed in my inbox — I&#x27;ll get back to you soon. 🙌</div>
         </div>
       )}
       {status === "error" && (
-        <div className="ui-form-fail" style={{ display: "block" }}>
+        <div role="alert" className="ui-form-fail" style={{ display: "block" }}>
           <div>Oops! Something went wrong while submitting the form.</div>
         </div>
       )}

@@ -71,6 +71,9 @@ export default function RootLayout({
 /* Anchor links are smooth-scrolled with a custom ease in app/scripts.tsx. */
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 
+/* Screen-reader-only text: visually hidden, still announced. */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 /* Balance the footer copyright across lines. */
 ._w-60 > div { text-wrap: balance; }
 #about, #work, #features, #contact { scroll-margin-top: 72px; }
@@ -140,11 +143,17 @@ export default function RootLayout({
     clip-path: inset(0 0 100% 0);
     pointer-events: none;
     will-change: clip-path;
-    transition: clip-path .42s cubic-bezier(.22, 1, .36, 1);
+    /* visibility keeps the closed menu out of the accessibility tree and the
+       tab order (clip-path alone only hides it visually). The 0s transition is
+       delayed on close so the wipe finishes before the menu goes hidden. */
+    visibility: hidden;
+    transition: clip-path .42s cubic-bezier(.22, 1, .36, 1), visibility 0s .42s;
   }
   .navbar.is-open .nav_menu {
     clip-path: inset(0 0 0 0);
     pointer-events: auto;
+    visibility: visible;
+    transition-delay: 0s, 0s;
   }
   @media (prefers-reduced-motion: reduce) {
     .nav_menu { transition: none; }

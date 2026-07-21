@@ -57,9 +57,10 @@ export default function SiteNav() {
 
   return (
     <div ref={fixedRef} style={{ display: "none", opacity: 0 }} className="cc-fixed">
+      {/* No role="banner" here — the hero <header> is the page's banner
+          landmark; a second one is a duplicate-landmark violation. */}
       <div
         ref={barRef}
-        role="banner"
         className={`navbar ui-nav${open ? " is-open" : ""}`}
         style={{ transition: "transform 0.4s ease" }}
       >
@@ -67,7 +68,7 @@ export default function SiteNav() {
           <a href="#hero" className="brand ui-nav-brand" onClick={() => setOpen(false)}>
             <div>Johnnie&#x27;s LiFe</div>
           </a>
-          <nav role="navigation" className="nav_menu ui-nav-menu">
+          <nav id="site-menu" aria-label="Site" className="nav_menu ui-nav-menu">
             {LINKS.map((l) => (
               <a key={l.href} href={l.href} className="nav_link ui-nav-link" onClick={() => setOpen(false)}>
                 {l.label}
@@ -79,6 +80,7 @@ export default function SiteNav() {
             className="nav_button ui-nav-button hamburger"
             aria-label="Menu"
             aria-expanded={open}
+            aria-controls="site-menu"
             onClick={() => setOpen((v) => !v)}
           >
             <span />
