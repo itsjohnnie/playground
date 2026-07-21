@@ -132,6 +132,18 @@
 *, *::before, *::after { box-sizing: border-box; }
 * { -webkit-tap-highlight-color: transparent; }
 
+/* App-like feel: no text selection or long-press callout anywhere —
+   this is a score tracker, not a document. Editable fields opt back in. */
+html {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+input, textarea, [contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 html, body {
   margin: 0;
   background: hsl(var(--bg));
