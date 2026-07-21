@@ -2147,7 +2147,9 @@ strong {
   .section.hero {
     flex-direction: column;
     justify-content: center;
-    min-height: 92vh;
+    /* svh = visible viewport even with Safari's chrome shown; -6rem keeps the
+       next section peeking in below the fold on phones. */
+    min-height: calc(100svh - 6rem);
     padding-bottom: 120px;
     padding-left: 24px;
     padding-right: 24px;
