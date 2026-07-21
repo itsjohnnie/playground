@@ -92,14 +92,18 @@ export default function Home() {
 
       {/* ============ HERO ============ */}
       <header id="hero" className="section hero">
-        <div className="marquee_wrapper cc-top">
+        {/* The scrolling marquees repeat the same text ~40 times for the visual
+            loop — hide the whole thing from assistive tech and expose the
+            message once, invisibly, instead. */}
+        <p className="sr-only">design &amp; web @ anthropic</p>
+        <div className="marquee_wrapper cc-top" aria-hidden="true">
           <div className="marquee_track">
             {Array.from({ length: 20 }).map((_, i) => (
               <div key={i} className="marquee-text_item">{MARQUEE_TEXT}</div>
             ))}
           </div>
         </div>
-        <div className="marquee_wrapper cc-bottom">
+        <div className="marquee_wrapper cc-bottom" aria-hidden="true">
           <div className="marquee_track">
             {Array.from({ length: 20 }).map((_, i) => (
               <div key={i} className="marquee-text_item">{MARQUEE_TEXT}</div>
@@ -145,11 +149,11 @@ export default function Home() {
                   loading="lazy"
                   sizes="(max-width: 2000px) 100vw, 2000px"
                   srcSet={`${asset("/images/johnnie-gomez-p-500.jpeg")} 500w, ${asset("/images/johnnie-gomez.jpeg")} 2000w`}
-                  alt=""
+                  alt="Portrait of Johnnie Gomez"
                   className="photo"
                 />
-                <div className="year cc-right">2026</div>
-                <div className="year">2006</div>
+                <div className="year cc-right" aria-hidden="true">2026</div>
+                <div className="year" aria-hidden="true">2006</div>
               </div>
             </div>
           </div>
@@ -192,7 +196,7 @@ export default function Home() {
             <div className="div-block-3">
               <h2 className="section_heading cc-sub">Contact Johnnie</h2>
               <div className="footer-availability">
-                <div className="footer-availability-indicator"></div>
+                <div className="footer-availability-indicator" aria-hidden="true"></div>
                 <div className="footer-availability-text">not Available for projects</div>
               </div>
             </div>
@@ -206,9 +210,16 @@ export default function Home() {
         <div className="container">
           <div className="ui-layout-grid grid cc-gap-4 cc-col_3">
             <div id="ui-node-bcb10cf6-8be8-4af7-ed1a-458ad6dfee0d-88754749" className="footer-column cc-first">
-              <a href="#" className="brand cc-footer ui-inline-block">
+              {/* The SVG spells "forever sharing · forever learning" one letter
+                  per <text> node — screen readers would read it letter by
+                  letter. Hide it and put the accessible name on the link. */}
+              <a
+                href="#hero"
+                className="brand cc-footer ui-inline-block"
+                aria-label="Forever sharing, forever learning — back to top"
+              >
                 <div
-                  aria-label="Forever learning, forever sharing."
+                  aria-hidden="true"
                   className="rotating_circle ui-embed"
                   dangerouslySetInnerHTML={{ __html: CIRCLE_SVG }}
                 />

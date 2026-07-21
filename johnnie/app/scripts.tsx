@@ -70,8 +70,15 @@ function lightbox(): () => void {
     const videoSrc = link.getAttribute("data-video");
     const src = link.querySelector("img")?.getAttribute("src");
     if (!videoSrc && !src) return;
+    const trigger = document.activeElement as HTMLElement | null;
     const overlay = document.createElement("div");
     overlay.className = "lb-overlay";
+    // Dialog semantics + a focus target, so screen readers announce the
+    // lightbox and Escape/close hand focus back to the tile that opened it.
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Enlarged project media — press Escape to close");
+    overlay.tabIndex = -1;
     let media: HTMLElement;
     if (videoSrc) {
       const v = document.createElement("video");
@@ -95,11 +102,13 @@ function lightbox(): () => void {
       overlay.classList.remove("is-open");
       setTimeout(() => overlay.remove(), 200);
       document.removeEventListener("keydown", onKey);
+      trigger?.focus?.();
     };
     const onKey = (ev: KeyboardEvent) => ev.key === "Escape" && close();
     overlay.addEventListener("click", close);
     document.addEventListener("keydown", onKey);
     document.body.appendChild(overlay);
+    overlay.focus();
     requestAnimationFrame(() => overlay.classList.add("is-open"));
   };
   document.addEventListener("click", onClick);
