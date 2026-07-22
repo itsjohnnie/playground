@@ -260,6 +260,9 @@ class InfiniteGrid {
 
     this.currentX = this.gridWidth / 2;
     this.currentY = this.gridHeight / 2;
+    // First paint sharp: the half-size constants can leave the initial
+    // projection off the pixel grid.
+    this.alignToPixels();
   }
 
   setupEventListeners() {
@@ -728,6 +731,21 @@ class InfiniteGrid {
     this.velocityY = -deltaY * 0.3;
   }
 
+  // Nudge currentX/Y by <1px so the projected tile positions land on whole
+  // pixels. Rendering is sub-pixel while things move (smooth), but a tile
+  // RESTING off the pixel grid gets bilinear-softened — so every glide parks
+  // on integers. The projection in animate() adds fixed half-size constants
+  // to the wrapped offset; compensate for them here so the RESULT is whole,
+  // not the offset itself.
+  alignToPixels() {
+    const viewW = this.wrapper.clientWidth || window.innerWidth;
+    const viewH = this.wrapper.clientHeight || window.innerHeight;
+    const kx = viewW / 2 - this.itemWidth / 2 - this.gridWidth / 2;
+    const ky = viewH / 2 - this.itemHeight / 2 - this.gridHeight / 2;
+    this.currentX = Math.round(this.currentX + kx) - kx;
+    this.currentY = Math.round(this.currentY + ky) - ky;
+  }
+
   // Pick the tile whose centre is nearest the viewport centre and set up a
   // smooth glide (in currentX/Y space) that brings it to the middle.
   startFocusSnap() {
@@ -772,6 +790,8 @@ class InfiniteGrid {
         this.velocityY = Math.abs(vy) < 0.1 ? 0 : vy * this.friction;
         this.currentX += this.velocityX;
         this.currentY += this.velocityY;
+        // The fling just fully decayed — park on whole pixels.
+        if (this.velocityX === 0 && this.velocityY === 0) this.alignToPixels();
       }
     }
 
@@ -785,6 +805,8 @@ class InfiniteGrid {
       if (t >= 1) {
         this.snapping = false;
         this.hasSnapped = true;
+        // Settle the focused tile on whole pixels (≤0.5px, imperceptible).
+        this.alignToPixels();
       }
     } else if (
       !this.isDragging &&
@@ -825,8 +847,13 @@ class InfiniteGrid {
       item.lastWrapX = wrapX;
       item.lastWrapY = wrapY;
 
-      x = x | 0;
-      y = y | 0;
+      // Sub-pixel rendering: truncating to whole pixels made slow motion (the
+      // tail of the idle-focus glide, where the ease drops below 1px/frame)
+      // advance in visible, unevenly-timed 1px hops — a stutter right before
+      // settling. Round to 1/100px so the change-check below still skips
+      // writes at rest; alignToPixels() parks resting tiles on integers.
+      x = Math.round(x * 100) / 100;
+      y = Math.round(y * 100) / 100;
       if (x !== item.lastX || y !== item.lastY) {
         item.el.style.transform = `translate3d(${x}px,${y}px,0)`;
         item.lastX = x;
