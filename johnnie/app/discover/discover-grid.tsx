@@ -120,6 +120,15 @@ class InfiniteGrid {
   zLastTapTime = 0;
   zLastTapX = 0;
   zLastTapY = 0;
+  // Pan momentum: velocity is low-passed from per-event deltas exactly like
+  // the grid's drag (raw deltas are too noisy for a consistent fling), then a
+  // rAF glide with the same friction coasts the image after release instead
+  // of freezing it dead under the lifted finger.
+  zVx = 0;
+  zVy = 0;
+  zPrevPanX = 0;
+  zPrevPanY = 0;
+  zGlideRaf = 0;
 
   constructor(
     wrapper: HTMLElement,
@@ -440,7 +449,40 @@ class InfiniteGrid {
     }
   }
 
+  stopZoomGlide() {
+    if (this.zGlideRaf) {
+      cancelAnimationFrame(this.zGlideRaf);
+      this.zGlideRaf = 0;
+    }
+    this.zVx = 0;
+    this.zVy = 0;
+  }
+
+  // Momentum glide after a zoomed pan: the release velocity decays with the
+  // same friction as the grid's fling, clamped each frame; an axis that hits
+  // the pan boundary stops there (no rubber-band) while the other keeps
+  // coasting. rAF-driven, so applyZoom runs transition-free.
+  startZoomGlide() {
+    cancelAnimationFrame(this.zGlideRaf);
+    const step = () => {
+      const wantX = this.zTx + this.zVx;
+      const wantY = this.zTy + this.zVy;
+      this.zTx = wantX;
+      this.zTy = wantY;
+      this.clampZoom();
+      if (this.zTx !== wantX) this.zVx = 0;
+      if (this.zTy !== wantY) this.zVy = 0;
+      this.zVx = Math.abs(this.zVx) < 0.1 ? 0 : this.zVx * this.friction;
+      this.zVy = Math.abs(this.zVy) < 0.1 ? 0 : this.zVy * this.friction;
+      this.applyZoom(false);
+      this.zGlideRaf =
+        this.zVx !== 0 || this.zVy !== 0 ? requestAnimationFrame(step) : 0;
+    };
+    this.zGlideRaf = requestAnimationFrame(step);
+  }
+
   resetZoom() {
+    this.stopZoomGlide();
     this.zScale = 1;
     this.zTx = 0;
     this.zTy = 0;
@@ -480,6 +522,8 @@ class InfiniteGrid {
     // the grid underneath — re-opening whatever tile sat behind the scrim.
     e.preventDefault();
     const img = this.zImg;
+    // A touch mid-glide grabs the image where it is.
+    this.stopZoomGlide();
     this.zPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this.zPointers.size === 1) {
       this.zDownOnImg = !!img && img.contains(e.target as Node);
@@ -488,6 +532,10 @@ class InfiniteGrid {
       this.zDownY = e.clientY;
       this.zStartTx = this.zTx;
       this.zStartTy = this.zTy;
+      this.zPrevPanX = e.clientX;
+      this.zPrevPanY = e.clientY;
+      this.zVx = 0;
+      this.zVy = 0;
     } else if (this.zPointers.size === 2) {
       const pts = Array.from(this.zPointers.values());
       this.zStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
@@ -523,6 +571,10 @@ class InfiniteGrid {
         this.zMoved = true;
       }
       if (this.zScale > 1 && this.zDownOnImg) {
+        this.zVx = this.zVx * 0.7 + (e.clientX - this.zPrevPanX) * 0.3;
+        this.zVy = this.zVy * 0.7 + (e.clientY - this.zPrevPanY) * 0.3;
+        this.zPrevPanX = e.clientX;
+        this.zPrevPanY = e.clientY;
         this.zTx = this.zStartTx + (e.clientX - this.zDownX);
         this.zTy = this.zStartTy + (e.clientY - this.zDownY);
         this.clampZoom();
@@ -541,6 +593,11 @@ class InfiniteGrid {
       this.zDownY = rem.y;
       this.zStartTx = this.zTx;
       this.zStartTy = this.zTy;
+      // Fresh anchor, fresh velocity — the pinch phase's deltas are stale.
+      this.zPrevPanX = rem.x;
+      this.zPrevPanY = rem.y;
+      this.zVx = 0;
+      this.zVy = 0;
       return;
     }
 
@@ -550,10 +607,21 @@ class InfiniteGrid {
         this.zScale = 1;
         this.zTx = 0;
         this.zTy = 0;
+        this.applyZoom(true);
+        return;
+      }
+      // Zoomed pan release: coast with the fling's momentum instead of
+      // freezing under the lifted finger. Below the threshold (or with
+      // reduced motion) just ease any clamp correction as before.
+      if (
+        Math.hypot(this.zVx, this.zVy) > 1.5 &&
+        !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ) {
+        this.startZoomGlide();
       } else {
         this.clampZoom();
+        this.applyZoom(true);
       }
-      this.applyZoom(true);
       return;
     }
 
@@ -670,6 +738,7 @@ class InfiniteGrid {
     this.zImg = null;
     this.stagedCell = null;
     // Reset gesture state now (gestures are dead with zImg null)…
+    this.stopZoomGlide();
     this.zScale = 1;
     this.zTx = 0;
     this.zTy = 0;
@@ -866,6 +935,7 @@ class InfiniteGrid {
 
   destroy() {
     cancelAnimationFrame(this.rafId);
+    this.stopZoomGlide();
     clearTimeout(this.resizeTimeout);
     window.removeEventListener("mousemove", this.onDragMove);
     window.removeEventListener("mouseup", this.onDragEnd);
