@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { getDiscover } from "@/lib/content";
 import { asset } from "@/lib/asset";
+import { gradientPlaceholder } from "@/lib/placeholders";
 import DiscoverGrid from "./discover-grid";
 
 export const metadata: Metadata = {
@@ -33,8 +34,14 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function DiscoverPage() {
+export default async function DiscoverPage() {
   const items = getDiscover();
+  // Per-image gradient LQIPs, computed at build time from the photos
+  // themselves (see lib/placeholders.ts). "" on failure → no inline style,
+  // flat tint fallback.
+  const placeholders = await Promise.all(
+    items.map((it) => gradientPlaceholder(it.image)),
+  );
 
   return (
     <>
@@ -68,11 +75,24 @@ export default function DiscoverPage() {
       <div className="hero">
         <div className="hero-list-wrapper">
           <div role="list" className="hero-list">
-            {items.map((it) => (
-              <div role="listitem" className="hero-item" key={it.image}>
+            {items.map((it, i) => (
+              <div
+                role="listitem"
+                className="hero-item"
+                key={it.image}
+                // The gradient rides on the ITEM, not the <img> — the image
+                // sits at opacity 0 until it decodes, so a background on it
+                // would be invisible exactly when the placeholder is needed.
+                style={
+                  placeholders[i]
+                    ? { backgroundImage: placeholders[i] }
+                    : undefined
+                }
+              >
                 <img
                   src={asset(it.image)}
                   loading="eager"
+                  decoding="async"
                   alt=""
                   className="hero-image"
                 />
@@ -299,7 +319,8 @@ html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
   width: auto; max-width: none; height: auto;
   will-change: transform; contain: layout style paint;
   backface-visibility: hidden; pointer-events: none; user-select: none;
-  /* Placeholder tint shown under an image while it decodes. */
+  /* Fallback tint under an image while it decodes — normally hidden by the
+     per-image gradient LQIP set inline (lib/placeholders.ts). */
   background-color: rgba(0, 0, 0, .05); border-radius: 4px;
 }
 html.is-dark .hero-item { background-color: rgba(255, 255, 255, .06); }

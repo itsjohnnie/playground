@@ -207,6 +207,10 @@ class InfiniteGrid {
     const source = this.getNextContent();
     const newContent = source.cloneNode(true) as HTMLElement;
     item.el.innerHTML = newContent.innerHTML;
+    // The gradient LQIP rides on the item element itself (page.tsx sets it
+    // inline), not in the innerHTML — carry it across so a recycled tile
+    // shows the incoming photo's colours while that image decodes.
+    item.el.style.backgroundImage = source.style.backgroundImage;
     this.markLoaded(item.el);
   }
 
