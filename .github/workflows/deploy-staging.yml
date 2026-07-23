@@ -25,7 +25,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Wrangler 4.x (pinned below) requires Node >= 22.
+          node-version: 22
           cache: npm
           cache-dependency-path: johnnie/package-lock.json
 
