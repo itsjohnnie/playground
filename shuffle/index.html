@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>shuffle — archivo barcelona</title>
+<meta name="description" content="A photo layout randomizer. Twelve columns, six rows, ten frames, too much micro-copy.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- corner chrome -->
+  <header class="chrome chrome--tl">
+    <span class="chrome__strong">ARCHIVO&nbsp;·&nbsp;BARCELONA</span>
+    <span class="chrome__dim">selected frames — one grid</span>
+  </header>
+
+  <div class="chrome chrome--tr">
+    <span class="chrome__dim">LAYOUT&nbsp;<span id="layout-no">№ 001</span></span>
+    <span class="chrome__dim">SEED&nbsp;<span id="seed" class="accent">——</span></span>
+  </div>
+
+  <div class="chrome chrome--bl">
+    <span class="chrome__dim">41.3874° N&nbsp;&nbsp;2.1686° E</span>
+    <span class="chrome__dim">GRID <span id="grid-spec">12 × 6</span> · <span id="frame-count">10</span> FR</span>
+  </div>
+
+  <div class="chrome chrome--bc" aria-hidden="true">
+    <span class="chrome__dim" id="cursor-readout">C·— R·—</span>
+  </div>
+
+  <div class="chrome chrome--br">
+    <button id="regen" class="regen" type="button" aria-label="Regenerate layout (R)">
+      <svg class="regen__icon" viewBox="0 0 12 12" aria-hidden="true">
+        <path d="M6 1.5a4.5 4.5 0 1 0 4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+        <path d="M8.4 1.2 10.7 1.7 10.2 4" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="regen__label">REGENERATE</span>
+      <span class="regen__key" aria-hidden="true">R</span>
+    </button>
+  </div>
+
+  <!-- the sheet -->
+  <main class="stage" id="stage">
+    <div class="grid" id="underlay" aria-hidden="true"></div>
+    <div class="grid grid--live" id="grid"></div>
+    <div class="crosshair" id="crosshair" aria-hidden="true">
+      <span class="crosshair__v"></span>
+      <span class="crosshair__h"></span>
+    </div>
+  </main>
+
+  <!-- paper grain -->
+  <svg class="grain" aria-hidden="true">
+    <filter id="grain-f"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/></filter>
+    <rect width="100%" height="100%" filter="url(#grain-f)"/>
+  </svg>
+
+  <script src="app.js"></script>
+</body>
+</html>
