@@ -17,7 +17,6 @@
   --bone-60: rgba(245, 243, 238, 0.62);
   --bone-35: rgba(245, 243, 238, 0.38);
   --line: rgba(245, 243, 238, 0.16);
-  --edge-frag: rgba(245, 243, 238, 0.55);
   --accent: #ff4b38;
   --edge-x: clamp(14px, 3vw, 40px);
   --edge-y: 64px;
@@ -219,7 +218,6 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   background-position:
     calc(-1 * (var(--edge-x) + (var(--vpw) - 2 * var(--edge-x)) * var(--sx) / var(--cols)))
     calc(-1 * (var(--edge-y) + (var(--vph) - 2 * var(--edge-y)) * var(--sy) / var(--rows)));
-  border: 1px solid var(--edge-frag);
   box-shadow: 0 2px 28px rgba(0, 0, 0, 0.28);
   opacity: 0;
   clip-path: inset(100% 0 0 0);
@@ -228,7 +226,7 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
     opacity 140ms linear,
     clip-path 800ms var(--ease-out),
     background-position 850ms var(--ease-out),
-    border-color 300ms var(--ease-out),
+    box-shadow 300ms var(--ease-out),
     filter 700ms var(--ease-out);
 }
 .frag.is-in {
@@ -242,13 +240,11 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
 .frag.is-home, .is-settled .frag:hover {
   --sx: var(--cx);
   --sy: var(--cy);
-  border-color: rgba(245, 243, 238, 0.14);
   box-shadow: none;
 }
 
 .frag--mono { filter: grayscale(1) contrast(1.06); }
 .frag--mono.is-home, .is-settled .frag--mono:hover { filter: grayscale(0) contrast(1); }
-.frag--accent { border-color: var(--accent); }
 
 .frag__no {
   position: absolute;

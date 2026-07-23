@@ -167,8 +167,6 @@
         }
       }
     }
-    if (frags.length) frags[(rng() * frags.length) | 0].accentBorder = true;
-
     // micro-copy: a column stack on an anchor, a row run, then scatter
     const copies = [];
     const freeCellsInCol = (c) => {
@@ -262,7 +260,6 @@
       const el = document.createElement("div");
       el.className = "frag";
       if (f.mono) el.classList.add("frag--mono");
-      if (f.accentBorder) el.classList.add("frag--accent");
       el.style.gridColumn = `${f.x + 1} / span ${f.w}`;
       el.style.gridRow = `${f.y + 1} / span ${f.h}`;
       el.style.setProperty("--img", `url("${url}")`);
