@@ -1,7 +1,9 @@
 /* gomis · un negatiu, una graella
    one photograph fills the page; cells carry displaced crops of the SAME
-   image, resolved by a hidden grid. photos are free-to-use placeholders
-   from picsum.photos (Lorem Picsum). */
+   image, resolved by a hidden grid. the negatives are real: public-domain
+   photographs by Eugène Atget (CC0 scans, National Gallery of Art) and
+   Josep Brangulí (pre-1930 Barcelona, public domain), served from
+   Wikimedia Commons and credited on the sheet. */
 
 (() => {
   "use strict";
@@ -17,7 +19,8 @@
   const layoutNoEl = document.getElementById("layout-no");
   const gridSpecEl = document.getElementById("grid-spec");
   const frameCountEl = document.getElementById("frame-count");
-  const negInfoEl = document.getElementById("neg-info");
+  const negInfoEl = document.getElementById("neg-credit");
+  const negLicEl = document.getElementById("neg-lic");
   const readoutEl = document.getElementById("cursor-readout");
   const crosshair = document.getElementById("crosshair");
 
@@ -232,51 +235,88 @@
     return {
       cfg, rng, frags, copies, marks,
       seed: seedHex(seed),
-      neg: { no: String(irange(rng, 1, 412)).padStart(3, "0"), place: pick(rng, PLACES), time: fmtTime(rng) },
+      negative: pick(rng, NEGATIVES),
     };
   }
 
-  // ————— the negative (one image per deal) —————
+  // ————— the negatives: real photographs, public domain, credited —————
 
-  function negativeUrl(layout) {
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    const w = Math.min(1800, Math.round(innerWidth * dpr));
-    const h = Math.min(1800, Math.round(innerHeight * dpr));
-    return `https://picsum.photos/seed/gomis-${layout.seed}/${w}/${h}`;
-  }
+  const COMMONS = "https://commons.wikimedia.org/wiki/File:";
+  const NGA = (hash, name) =>
+    `https://upload.wikimedia.org/wikipedia/commons/thumb/${hash}/${name}/1920px-${name}`;
+  const NEGATIVES = [
+    { author: "EUGÈNE ATGET", title: "AU PETIT DUNKERQUE", year: 1900, lic: "CC0",
+      src: NGA("3/39", "Eug%C3%A8ne_Atget%2C_Au_Petit_Dunkerque%2C_3_quai_Conti%2C_1900%2C_NGA_124962.jpg"),
+      page: COMMONS + "Eug%C3%A8ne_Atget,_Au_Petit_Dunkerque,_3_quai_Conti,_1900,_NGA_124962.jpg" },
+    { author: "EUGÈNE ATGET", title: "MAGASIN, AV. DES GOBELINS", year: 1925, lic: "CC0",
+      src: NGA("7/71", "Eug%C3%A8ne_Atget%2C_Magasin%2C_Avenue_des_Gobelins%2C_1925%2C_NGA_92719.jpg"),
+      page: COMMONS + "Eug%C3%A8ne_Atget,_Magasin,_Avenue_des_Gobelins,_1925,_NGA_92719.jpg" },
+    { author: "EUGÈNE ATGET", title: "NOTRE-DAME", year: 1922, lic: "CC0",
+      src: NGA("9/9e", "Eug%C3%A8ne_Atget%2C_Notre-Dame%2C_1922%2C_NGA_124979.jpg"),
+      page: COMMONS + "Eug%C3%A8ne_Atget,_Notre-Dame,_1922,_NGA_124979.jpg" },
+    { author: "EUGÈNE ATGET", title: "PARC DE SCEAUX", year: 1925, lic: "CC0",
+      src: NGA("2/29", "Eug%C3%A8ne_Atget%2C_Parc_de_Sceaux%2C_1925%2C_NGA_124991.jpg"),
+      page: COMMONS + "Eug%C3%A8ne_Atget,_Parc_de_Sceaux,_1925,_NGA_124991.jpg" },
+    { author: "EUGÈNE ATGET", title: "PONT MARIE", year: 1926, lic: "CC0",
+      src: NGA("9/93", "Eug%C3%A8ne_Atget%2C_Pont_Marie%2C_1926%2C_NGA_124989.jpg"),
+      page: COMMONS + "Eug%C3%A8ne_Atget,_Pont_Marie,_1926,_NGA_124989.jpg" },
+    { author: "EUGÈNE ATGET", title: "SAINT-CLOUD", year: 1922, lic: "CC0",
+      src: NGA("d/d1", "Eug%C3%A8ne_Atget%2C_Saint-Cloud%2C_1922%2C_NGA_124980.jpg"),
+      page: COMMONS + "Eug%C3%A8ne_Atget,_Saint-Cloud,_1922,_NGA_124980.jpg" },
+    { author: "EUGÈNE ATGET", title: "STEPS AT SAINT-CLOUD", year: 1906, lic: "CC0",
+      src: NGA("4/42", "Eug%C3%A8ne_Atget%2C_The_Steps_at_Saint-Cloud%2C_1906%2C_NGA_106293.jpg"),
+      page: COMMONS + "Eug%C3%A8ne_Atget,_The_Steps_at_Saint-Cloud,_1906,_NGA_106293.jpg" },
+    { author: "JOSEP BRANGULÍ", title: "SANT PERE MÉS ALT, BCN", year: 1913, lic: "DOMINI PÚBLIC",
+      src: "https://upload.wikimedia.org/wikipedia/commons/f/fc/Sant_Pere_m%C3%A9s_alt-Via_Laietana.jpg",
+      page: COMMONS + "Sant_Pere_m%C3%A9s_alt-Via_Laietana.jpg" },
+    { author: "JOSEP BRANGULÍ", title: "AIGUAT DEL MASNOU", year: 1909, lic: "DOMINI PÚBLIC",
+      src: "https://upload.wikimedia.org/wikipedia/commons/9/97/Aiguat_del_Masnou_1909_-_Carrer.jpg",
+      page: COMMONS + "Aiguat_del_Masnou_1909_-_Carrer.jpg" },
+    { author: "JOSEP BRANGULÍ", title: "CARRER PINTOR FORTUNY, BCN", year: 1930, lic: "DOMINI PÚBLIC",
+      src: "https://upload.wikimedia.org/wikipedia/commons/6/63/Carrer_Pintor_Fortuny.jpg",
+      page: COMMONS + "Carrer_Pintor_Fortuny.jpg" },
+  ];
 
-  function loadImage(url, timeout = 6000) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      const done = () => resolve(url);
-      img.onload = () => (img.decode ? img.decode().then(done, done) : done());
-      img.onerror = done;
-      img.src = url;
-      setTimeout(done, timeout);
-    });
-  }
-
-  // ————— contrast: sample the negative so ink is decided before paint —————
-
-  function buildSampler(url, timeout = 6000) {
+  function loadNegative(url, timeout = 9000) {
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
-      img.onload = () => {
-        try {
-          const w = 96;
-          const h = Math.max(48, Math.round((w * innerHeight) / innerWidth));
-          const c = document.createElement("canvas");
-          c.width = w; c.height = h;
-          const ctx = c.getContext("2d", { willReadFrequently: true });
-          ctx.drawImage(img, 0, 0, w, h);
-          resolve({ data: ctx.getImageData(0, 0, w, h).data, w, h });
-        } catch { resolve(null); } // tainted canvas: keep white ink
-      };
+      img.onload = () => (img.decode ? img.decode().then(() => resolve(img), () => resolve(img)) : resolve(img));
       img.onerror = () => resolve(null);
       img.src = url;
       setTimeout(() => resolve(null), timeout);
     });
+  }
+
+  // cover-fit: the negative keeps its own aspect and crops to the viewport;
+  // --dw/--dh/--ox/--oy drive the body layers AND every clipping's crop math
+  let negDims = null;
+  function applyCover() {
+    if (!negDims) return;
+    const scale = Math.max(innerWidth / negDims.iw, innerHeight / negDims.ih);
+    const dw = negDims.iw * scale, dh = negDims.ih * scale;
+    root.style.setProperty("--dw", `${dw}px`);
+    root.style.setProperty("--dh", `${dh}px`);
+    root.style.setProperty("--ox", `${(dw - innerWidth) / 2}px`);
+    root.style.setProperty("--oy", `${(dh - innerHeight) / 2}px`);
+  }
+
+  // ————— contrast: sample the negative so ink is decided before paint —————
+
+  // draws the same cover crop the viewer sees, so viewport fractions map 1:1
+  function makeSampler(img) {
+    try {
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const scale = Math.max(innerWidth / iw, innerHeight / ih);
+      const sw = innerWidth / scale, sh = innerHeight / scale;
+      const w = 96;
+      const h = Math.max(48, Math.round((w * innerHeight) / innerWidth));
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, w, h);
+      return { data: ctx.getImageData(0, 0, w, h).data, w, h };
+    } catch { return null; } // tainted canvas: keep white ink
   }
 
   // mean linear luminance of a viewport-fraction rect; above the crossover
@@ -421,9 +461,8 @@
     root.style.setProperty("--cols", cols);
     root.style.setProperty("--rows", rows);
 
-    const url = negativeUrl(layout);
-    const loading = loadImage(url);
-    const sampling = buildSampler(url);
+    const neg = layout.negative;
+    const loading = loadNegative(neg.src);
 
     // exit the old sheet, back-to-front
     const old = [...grid.children];
@@ -436,16 +475,20 @@
       await wait(old.length * 12 + 260);
     }
 
-    await loading;
-    const sampler = await sampling;
+    const img = await loading;
+    negDims = img
+      ? { iw: img.naturalWidth, ih: img.naturalHeight }
+      : { iw: innerWidth, ih: innerHeight };
+    applyCover();
+    const sampler = img ? makeSampler(img) : null;
 
     // ink is decided from the sampled negative before anything paints
-    const { frag, cells } = buildCells(layout, url, sampler);
+    const { frag, cells } = buildCells(layout, neg.src, sampler);
     flipChrome(sampler);
 
     // crossfade the negative
     const back = frontBg === bgA ? bgB : bgA;
-    back.style.backgroundImage = `url("${url}")`;
+    back.style.backgroundImage = `url("${neg.src}")`;
     if (firstRun) back.classList.add("is-first");
     await nextFrame();
     back.classList.add("is-on");
@@ -463,7 +506,9 @@
     layoutNoEl.textContent = `№ ${String(layoutCount).padStart(3, "0")}`;
     gridSpecEl.textContent = `${cols} × ${rows}`;
     frameCountEl.textContent = layout.frags.length;
-    negInfoEl.textContent = `NEG ${layout.neg.no} · ${layout.neg.place} ${layout.neg.time}`;
+    negInfoEl.textContent = `${neg.author} — ${neg.title}, ${neg.year}`;
+    negInfoEl.href = neg.page;
+    negLicEl.textContent = neg.lic;
 
     const settleMs = reducedMotion ? 0 : cols * 22 + rows * 30 + 900;
     await wait(settleMs);
@@ -530,23 +575,11 @@
     });
   }
 
-  // ————— resize: keep the crop math honest —————
+  // ————— resize: cover-fit follows the viewport live —————
 
-  let resizeTimer;
   addEventListener("resize", () => {
     setViewportVars();
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => {
-      // the negative is requested at viewport aspect; a big change (rotation,
-      // window reshape) would stretch it, so quietly deal a fresh sheet
-      const img = frontBg.style.backgroundImage;
-      if (!img || busy) return;
-      const m = img.match(/\/(\d+)\/(\d+)"?\)$/);
-      if (!m) return;
-      const imgAspect = Number(m[1]) / Number(m[2]);
-      const vpAspect = innerWidth / innerHeight;
-      if (Math.abs(imgAspect - vpAspect) / vpAspect > 0.18) render();
-    }, 400);
+    applyCover();
   });
 
   smallScreen.addEventListener("change", () => { if (!busy) render(); });

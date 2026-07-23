@@ -21,6 +21,11 @@
   --edge-y: 64px;
   --vpw: 100vw;
   --vph: 100vh;
+  /* cover-fit geometry of the negative, set from JS */
+  --dw: var(--vpw);
+  --dh: var(--vph);
+  --ox: 0px;
+  --oy: 0px;
   --cols: 6;
   --rows: 10;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -63,7 +68,8 @@ body {
   top: 0; left: 0;
   width: var(--vpw);
   height: var(--vph);
-  background-size: 100% 100%;
+  background-size: var(--dw) var(--dh);
+  background-position: calc(-1 * var(--ox)) calc(-1 * var(--oy));
   background-repeat: no-repeat;
   opacity: 0;
   transition: opacity 900ms var(--ease-out);
@@ -117,6 +123,14 @@ body {
 .chrome__strong { font-weight: 600; letter-spacing: 0.12em; }
 .chrome__dim { font-weight: 400; }
 .hi { font-weight: 500; }
+
+/* the credit is real: let it be followed */
+.credit {
+  color: inherit;
+  text-decoration: none;
+  pointer-events: auto;
+}
+.credit:hover, .credit:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
 
 /* ————— controls, quietly ————— */
 
@@ -200,11 +214,11 @@ body {
   position: relative;
   background-image: var(--img);
   background-repeat: no-repeat;
-  background-size: var(--vpw) var(--vph);
-  /* show the source cell's region of the negative */
+  background-size: var(--dw) var(--dh);
+  /* show the source cell's region of the cover-cropped negative */
   background-position:
-    calc(-1 * (var(--edge-x) + (var(--vpw) - 2 * var(--edge-x)) * var(--sx) / var(--cols)))
-    calc(-1 * (var(--edge-y) + (var(--vph) - 2 * var(--edge-y)) * var(--sy) / var(--rows)));
+    calc(-1 * (var(--ox) + var(--edge-x) + (var(--vpw) - 2 * var(--edge-x)) * var(--sx) / var(--cols)))
+    calc(-1 * (var(--oy) + var(--edge-y) + (var(--vph) - 2 * var(--edge-y)) * var(--sy) / var(--rows)));
   opacity: 0;
   clip-path: inset(100% 0 0 0);
   cursor: pointer;
