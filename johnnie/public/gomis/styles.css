@@ -218,16 +218,13 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   background-position:
     calc(-1 * (var(--edge-x) + (var(--vpw) - 2 * var(--edge-x)) * var(--sx) / var(--cols)))
     calc(-1 * (var(--edge-y) + (var(--vph) - 2 * var(--edge-y)) * var(--sy) / var(--rows)));
-  box-shadow: 0 2px 28px rgba(0, 0, 0, 0.28);
   opacity: 0;
   clip-path: inset(100% 0 0 0);
   cursor: pointer;
   transition:
     opacity 140ms linear,
     clip-path 800ms var(--ease-out),
-    background-position 850ms var(--ease-out),
-    box-shadow 300ms var(--ease-out),
-    filter 700ms var(--ease-out);
+    background-position 850ms var(--ease-out);
 }
 .frag.is-in {
   opacity: 1;
@@ -240,11 +237,7 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
 .frag.is-home, .is-settled .frag:hover {
   --sx: var(--cx);
   --sy: var(--cy);
-  box-shadow: none;
 }
-
-.frag--mono { filter: grayscale(1) contrast(1.06); }
-.frag--mono.is-home, .is-settled .frag--mono:hover { filter: grayscale(0) contrast(1); }
 
 .frag__no {
   position: absolute;

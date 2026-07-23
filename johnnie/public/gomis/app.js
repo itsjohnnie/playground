@@ -52,8 +52,8 @@
 
   const config = () =>
     smallScreen.matches
-      ? { cols: 6, rows: 10, frags: 6, spans: [[2, 2], [2, 3], [3, 2], [2, 4], [3, 3], [1, 2], [2, 1]] }
-      : { cols: 12, rows: 6, frags: 8, spans: [[2, 2], [3, 2], [2, 3], [4, 2], [3, 3], [2, 1], [1, 2]] };
+      ? { cols: 6, rows: 10, frags: [2, 3], spans: [[2, 2], [2, 3], [3, 2], [2, 4], [3, 3], [1, 2], [2, 1]] }
+      : { cols: 12, rows: 6, frags: [3, 4], spans: [[2, 2], [3, 2], [2, 3], [4, 2], [3, 3], [2, 1], [1, 2]] };
 
   // ————— micro-copy pools (català) —————
 
@@ -141,7 +141,8 @@
       }
       return [(x + 2) % (cols - w + 1), (y + 2) % (rows - h + 1)];
     };
-    for (let i = 0; i < cfg.frags; i++) {
+    const fragCount = irange(rng, cfg.frags[0], cfg.frags[1]);
+    for (let i = 0; i < fragCount; i++) {
       let placed = false;
       for (let t = 0; t < 60 && !placed; t++) {
         const [w, h] = pick(rng, cfg.spans);
@@ -150,7 +151,7 @@
         if (free(x, y, w, h)) {
           claim(x, y, w, h);
           const [sx, sy] = sourceFor(x, y, w, h);
-          frags.push({ x, y, w, h, sx, sy, mono: rng() < 0.28 });
+          frags.push({ x, y, w, h, sx, sy });
           placed = true;
         }
       }
@@ -161,7 +162,7 @@
             const [x, y] = pick(rng, slots);
             claim(x, y, w, h);
             const [sx, sy] = sourceFor(x, y, w, h);
-            frags.push({ x, y, w, h, sx, sy, mono: rng() < 0.28 });
+            frags.push({ x, y, w, h, sx, sy });
             break;
           }
         }
@@ -190,22 +191,27 @@
       }
     };
 
-    const stackCol = [...anchorCols].sort((a, b) => freeCellsInCol(b).length - freeCellsInCol(a).length)[0];
-    for (const r of freeCellsInCol(stackCol).slice(0, 4)) {
-      const c = { x: stackCol, y: r, w: 1, h: 1, kind: pick(rng, COPY_KINDS) };
-      occ[r * cols + stackCol] = 1;
-      widen(c);
-      copies.push(c);
+    // the sheet is mostly text now: stack copy down every anchor column,
+    // run it along the anchor rows, then scatter generously
+    for (const stackCol of anchorCols) {
+      for (const r of freeCellsInCol(stackCol).slice(0, irange(rng, 3, 5))) {
+        if (occ[r * cols + stackCol]) continue;
+        const c = { x: stackCol, y: r, w: 1, h: 1, kind: pick(rng, COPY_KINDS) };
+        occ[r * cols + stackCol] = 1;
+        widen(c);
+        copies.push(c);
+      }
     }
-    const runRow = [...anchorRows].sort((a, b) => freeCellsInRow(b).length - freeCellsInRow(a).length)[0];
-    for (const cx of freeCellsInRow(runRow).slice(0, 3)) {
-      if (occ[runRow * cols + cx]) continue; // a widened neighbor may have claimed it
-      const c = { x: cx, y: runRow, w: 1, h: 1, kind: pick(rng, COPY_KINDS), rule: rng() < 0.5 };
-      occ[runRow * cols + cx] = 1;
-      widen(c);
-      copies.push(c);
+    for (const runRow of anchorRows) {
+      for (const cx of freeCellsInRow(runRow).slice(0, irange(rng, 3, 4))) {
+        if (occ[runRow * cols + cx]) continue; // a widened neighbor may have claimed it
+        const c = { x: cx, y: runRow, w: 1, h: 1, kind: pick(rng, COPY_KINDS), rule: rng() < 0.5 };
+        occ[runRow * cols + cx] = 1;
+        widen(c);
+        copies.push(c);
+      }
     }
-    const scatterTarget = irange(rng, 3, 5);
+    const scatterTarget = irange(rng, 6, 9);
     for (let t = 0; t < 90 && copies.filter((c) => c.scatter).length < scatterTarget; t++) {
       const x = irange(rng, 0, cols - 1);
       const y = irange(rng, 0, rows - 1);
