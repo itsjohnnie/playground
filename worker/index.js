@@ -13,6 +13,7 @@ import { EmailMessage } from "cloudflare:email";
 const ALLOWED_ORIGINS = [
   "https://johnnies.life",
   "https://www.johnnies.life",
+  "https://staging.johnnies.life",
   "https://itsjohnnie.github.io",
 ];
 
@@ -93,7 +94,7 @@ async function handleContact(request, env) {
     `From: Johnnie's Life <${from}>`,
     `To: ${to}`,
     `Reply-To: ${name} <${email}>`,
-    `Subject: ${encodeSubject(clean(`📨 ${name} via johnnies.life: ${subject}`))}`,
+    `Subject: ${encodeSubject(clean(`📨 ${env.ENVIRONMENT === "staging" ? "[staging] " : ""}${name} via johnnies.life: ${subject}`))}`,
     `Message-ID: <${crypto.randomUUID()}@johnnies.life>`,
     `Date: ${new Date().toUTCString()}`,
     `MIME-Version: 1.0`,
@@ -183,6 +184,10 @@ async function handleAuthCallback(request, url, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // Staging (playground-staging → staging.johnnies.life) serves the same
+    // assets but must stay out of search engines: disallow-all robots.txt and
+    // a noindex header on everything. Production is untouched.
+    const staging = env.ENVIRONMENT === "staging";
 
     if (url.pathname === "/api/contact") {
       const origin = request.headers.get("Origin");
@@ -197,8 +202,18 @@ export default {
     if (url.pathname === "/auth") return handleAuthStart(url, env);
     if (url.pathname === "/callback") return handleAuthCallback(request, url, env);
 
+    if (staging && url.pathname === "/robots.txt") {
+      return new Response("User-agent: *\nDisallow: /\n", {
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    }
+
     // Everything else: static assets.
-    return env.ASSETS.fetch(request);
+    const res = await env.ASSETS.fetch(request);
+    if (!staging) return res;
+    const tagged = new Response(res.body, res);
+    tagged.headers.set("X-Robots-Tag", "noindex, nofollow");
+    return tagged;
   },
 };
 

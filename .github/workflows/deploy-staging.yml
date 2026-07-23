@@ -1,0 +1,44 @@
+name: Deploy staging
+
+# Deploys ANY branch to the staging Worker (playground-staging →
+# staging.johnnies.life). Manual only: Actions tab → "Deploy staging" →
+# "Run workflow" → pick the branch. Same root build as production; the
+# noindex/robots lockdown comes from the worker's ENVIRONMENT=staging var,
+# so nothing here differs from the production build.
+#
+# Reuses the CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets already set
+# up for deploy-cloudflare.yml. The staging.johnnies.life custom domain
+# attaches automatically on the first deploy.
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: johnnie/package-lock.json
+
+      # Root build: DO NOT set PAGES_BASE_PATH — staging serves from "/" too.
+      - name: Build johnnie (root)
+        working-directory: johnnie
+        run: |
+          npm ci
+          npm run build
+
+      - name: Deploy Worker (staging)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --env staging

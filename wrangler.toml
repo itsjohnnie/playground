@@ -21,6 +21,7 @@ directory = "./johnnie/out"
 binding = "ASSETS"
 
 [vars]
+ENVIRONMENT = "production"              # the worker gates staging-only behaviour on this
 CONTACT_TO = "johnnie@hey.com"          # destination inbox (verify in Email Routing)
 CONTACT_FROM = "contact@johnnies.life"  # any address on your Cloudflare domain
 GITHUB_CLIENT_ID = "Ov23liqqHkn6z2xLlZT9"  # CMS OAuth app (public; secret is a Worker secret)
@@ -28,5 +29,35 @@ GITHUB_CLIENT_ID = "Ov23liqqHkn6z2xLlZT9"  # CMS OAuth app (public; secret is a 
 # Cloudflare Email Routing "send" binding. Locked to the destination above.
 # Requires Email Routing enabled on johnnies.life + CONTACT_TO verified there.
 [[send_email]]
+name = "CONTACT_EMAIL"
+destination_address = "johnnie@hey.com"
+
+# -----------------------------------------------------------------------------
+# Staging: a second copy of this Worker at staging.johnnies.life, deployed on
+# demand from any branch via the "Deploy staging" GitHub workflow
+# (`wrangler deploy --env staging`). The custom domain attaches itself on the
+# first deploy (the zone is on Cloudflare) — no manual DNS. The worker reads
+# ENVIRONMENT=staging to add noindex headers + a disallow-all robots.txt, so
+# staging never gets crawled. Env sections don't inherit vars/routes/bindings
+# from the top level, hence the re-declarations.
+[env.staging]
+name = "playground-staging"
+routes = [{ pattern = "staging.johnnies.life", custom_domain = true }]
+
+[env.staging.assets]
+directory = "./johnnie/out"
+binding = "ASSETS"
+
+[env.staging.vars]
+ENVIRONMENT = "staging"
+CONTACT_TO = "johnnie@hey.com"
+CONTACT_FROM = "contact@johnnies.life"
+GITHUB_CLIENT_ID = "Ov23liqqHkn6z2xLlZT9"
+
+# Contact form works on staging too (subjects get a [staging] tag from the
+# worker). NOTE: the CMS admin's OAuth won't work here — GITHUB_CLIENT_SECRET
+# is a production-worker secret and the GitHub OAuth app's callback points at
+# production. Use /admin on the live site.
+[[env.staging.send_email]]
 name = "CONTACT_EMAIL"
 destination_address = "johnnie@hey.com"
