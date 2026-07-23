@@ -217,7 +217,8 @@
       widen(c);
       copies.push(c);
     }
-    if (copies.length) copies[(rng() * copies.length) | 0].accent = true;
+    // one emphasized copy block per layout (full shade, heavier weight)
+    if (copies.length) copies[(rng() * copies.length) | 0].strong = true;
 
     const marks = new Set();
     for (let t = 0; t < 10; t++) marks.add(irange(rng, cols + 1, cols * rows - 1));
@@ -290,9 +291,7 @@
     layout.copies.forEach((c) => {
       const el = document.createElement("div");
       el.className = "cp";
-      if (c.accent) el.classList.add("cp--accent");
-      else if (layout.rng() < 0.3) el.classList.add("cp--strong");
-      else if (layout.rng() < 0.3) el.classList.add("cp--faint");
+      if (c.strong || layout.rng() < 0.3) el.classList.add("cp--strong");
       if (c.vert) el.classList.add("cp--vert");
       if (c.rule) el.classList.add("cp--rule");
       if (layout.rng() < 0.25) el.classList.add("cp--end");
