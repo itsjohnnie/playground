@@ -41,4 +41,9 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # The action's default wrangler is too old to know run_worker_first
+          # and silently drops it ("Unexpected fields found in assets field"),
+          # which left staging pages without their noindex header. Pin a
+          # version that supports it.
+          wranglerVersion: "4.113.0"
           command: deploy --env staging
