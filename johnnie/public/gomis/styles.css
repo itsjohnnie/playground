@@ -12,11 +12,10 @@
 }
 
 :root {
-  /* one type color, two shades; one type size */
+  /* one type color, one shade; one type size */
   --night: #0c0b0a;
-  --bone: rgba(245, 243, 238, 0.95);
-  --bone-dim: rgba(245, 243, 238, 0.55);
-  --line: rgba(245, 243, 238, 0.16);
+  --bone: #ffffff;
+  --line: rgba(255, 255, 255, 0.16);
   --fs: 10px;
   --edge-x: clamp(14px, 3vw, 40px);
   --edge-y: 64px;
@@ -26,7 +25,6 @@
   --rows: 10;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --shadow-t: 0 1px 3px rgba(0, 0, 0, 0.55), 0 1px 12px rgba(0, 0, 0, 0.35);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -99,7 +97,6 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   font-size: var(--fs);
   line-height: 1.25;
   text-transform: uppercase;
-  text-shadow: var(--shadow-t);
   pointer-events: none;
   opacity: 0;
   animation: chrome-in 700ms var(--ease-out) forwards;
@@ -127,8 +124,8 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
 @keyframes chrome-in-flat { from { opacity: 0; } to { opacity: 1; } }
 
 .chrome__strong { font-weight: 600; letter-spacing: 0.12em; }
-.chrome__dim { color: var(--bone-dim); font-weight: 400; }
-.hi { color: var(--bone); font-weight: 500; }
+.chrome__dim { font-weight: 400; }
+.hi { font-weight: 500; }
 
 /* ————— controls, quietly ————— */
 
@@ -143,7 +140,7 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   font: 500 var(--fs)/1 var(--mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--bone-dim);
+  color: var(--bone);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 3px;
@@ -152,7 +149,7 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
               background-color 240ms var(--ease-out), transform 240ms var(--ease-out);
 }
 .ctl:hover, .ctl:focus-visible { color: var(--bone); border-color: var(--line); background: rgba(12, 11, 10, 0.35); }
-.ctl:focus-visible { outline: 1px solid var(--bone-dim); outline-offset: 2px; }
+.ctl:focus-visible { outline: 1px solid var(--bone); outline-offset: 2px; }
 .ctl:active { transform: scale(0.94); }
 
 .ctl__icon { width: 13px; height: 13px; flex: none; }
@@ -201,7 +198,7 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   top: 0; left: 0;
   translate: -50% -50%;
   font-size: var(--fs);
-  color: var(--bone-dim);
+  color: var(--bone);
 }
 
 .grid--live { pointer-events: none; }
@@ -247,7 +244,6 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   font-weight: 500;
   letter-spacing: 0.1em;
   color: var(--bone);
-  text-shadow: var(--shadow-t);
   transition: opacity 300ms var(--ease-out);
 }
 .frag.is-home .frag__no, .is-settled .frag:hover .frag__no { opacity: 0.25; }
@@ -261,8 +257,7 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   line-height: 1.5;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--bone-dim);
-  text-shadow: var(--shadow-t);
+  color: var(--bone);
   white-space: pre-line;
   opacity: 0;
   translate: 0 7px;
@@ -273,7 +268,7 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   transition: opacity 600ms var(--ease-out), translate 600ms var(--ease-out);
   transition-delay: var(--d, 0ms);
 }
-.cp--strong { color: var(--bone); font-weight: 500; }
+.cp--strong { font-weight: 500; }
 .cp--end { display: flex; align-items: flex-end; }
 .cp--right { text-align: right; }
 .cp--vert { writing-mode: vertical-rl; padding: 6px 5px; }
@@ -281,7 +276,7 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   content: "";
   position: absolute;
   left: 6px; right: 6px; top: 20px;
-  border-top: 1px solid var(--bone-dim);
+  border-top: 1px solid var(--bone);
 }
 
 /* exit */
