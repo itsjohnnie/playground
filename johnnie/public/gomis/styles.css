@@ -74,17 +74,6 @@ body {
 .bg.is-first { transition: opacity 1400ms var(--ease-out), transform 2600ms var(--ease-out); transform: scale(1.03); }
 .bg.is-first.is-on { transform: scale(1); }
 
-/* legibility vignettes behind the chrome */
-body::before, body::after {
-  content: "";
-  position: fixed;
-  left: 0; right: 0;
-  height: 110px;
-  z-index: 5;
-  pointer-events: none;
-}
-body::before { top: 0; background: linear-gradient(to bottom, rgba(8, 7, 6, 0.5), transparent); }
-body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55), transparent); }
 
 /* ————— corner chrome ————— */
 
@@ -97,6 +86,8 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   font-size: var(--fs);
   line-height: 1.25;
   text-transform: uppercase;
+  color: var(--bone);
+  transition: color 300ms var(--ease-out);
   pointer-events: none;
   opacity: 0;
   animation: chrome-in 700ms var(--ease-out) forwards;
@@ -140,7 +131,7 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   font: 500 var(--fs)/1 var(--mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--bone);
+  color: inherit;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 3px;
@@ -148,8 +139,8 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   transition: color 240ms var(--ease-out), border-color 240ms var(--ease-out),
               background-color 240ms var(--ease-out), transform 240ms var(--ease-out);
 }
-.ctl:hover, .ctl:focus-visible { color: var(--bone); border-color: var(--line); background: rgba(12, 11, 10, 0.35); }
-.ctl:focus-visible { outline: 1px solid var(--bone); outline-offset: 2px; }
+.ctl:hover, .ctl:focus-visible { border-color: currentColor; }
+.ctl:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
 .ctl:active { transform: scale(0.94); }
 
 .ctl__icon { width: 13px; height: 13px; flex: none; }
@@ -164,7 +155,6 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   transition: opacity 240ms var(--ease-out), transform 320ms var(--ease-out);
 }
 .ctl[aria-pressed="true"] .ctl__slash { opacity: 0; transform: scale(0.6) rotate(-8deg); }
-.ctl[aria-pressed="true"] { color: var(--bone); }
 
 /* ————— the sheet ————— */
 
@@ -192,13 +182,13 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
 .ucell { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); position: relative; }
 .ucell--edge-r { border-right: none; }
 .ucell--edge-b { border-bottom: none; }
+.ucell { color: var(--bone); }
 .ucell--mark::before {
   content: "+";
   position: absolute;
   top: 0; left: 0;
   translate: -50% -50%;
   font-size: var(--fs);
-  color: var(--bone);
 }
 
 .grid--live { pointer-events: none; }
@@ -276,7 +266,7 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   content: "";
   position: absolute;
   left: 6px; right: 6px; top: 20px;
-  border-top: 1px solid var(--bone);
+  border-top: 1px solid currentColor;
 }
 
 /* exit */
@@ -324,6 +314,12 @@ body::after { bottom: 0; background: linear-gradient(to top, rgba(8, 7, 6, 0.55)
   .ctl--wide .ctl__label { display: none; }
   .ctl--wide { padding: 0; }
 }
+
+/* ————— adaptive ink —————
+   flips to dark wherever the sampled negative is bright.
+   last in the sheet so it wins every color declaration above. */
+
+.dk { color: var(--night); }
 
 /* ————— reduced motion ————— */
 

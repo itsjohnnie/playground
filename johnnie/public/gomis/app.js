@@ -256,12 +256,64 @@
     });
   }
 
+  // ————— contrast: sample the negative so ink is decided before paint —————
+
+  function buildSampler(url, timeout = 6000) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          const w = 96;
+          const h = Math.max(48, Math.round((w * innerHeight) / innerWidth));
+          const c = document.createElement("canvas");
+          c.width = w; c.height = h;
+          const ctx = c.getContext("2d", { willReadFrequently: true });
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve({ data: ctx.getImageData(0, 0, w, h).data, w, h });
+        } catch { resolve(null); } // tainted canvas: keep white ink
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+      setTimeout(() => resolve(null), timeout);
+    });
+  }
+
+  // mean linear luminance of a viewport-fraction rect; above the crossover
+  // (~0.19, where dark ink out-contrasts white ink) the region is "bright"
+  function isBright(s, x0, y0, x1, y1) {
+    if (!s) return false;
+    const ax = Math.max(0, Math.floor(x0 * s.w)), bx = Math.min(s.w, Math.ceil(x1 * s.w));
+    const ay = Math.max(0, Math.floor(y0 * s.h)), by = Math.min(s.h, Math.ceil(y1 * s.h));
+    let sum = 0, n = 0;
+    for (let y = ay; y < by; y++) {
+      for (let x = ax; x < bx; x++) {
+        const i = (y * s.w + x) * 4;
+        sum += 0.2126 * (s.data[i] / 255) ** 2.2
+             + 0.7152 * (s.data[i + 1] / 255) ** 2.2
+             + 0.0722 * (s.data[i + 2] / 255) ** 2.2;
+        n++;
+      }
+    }
+    return n > 0 && sum / n > 0.19;
+  }
+
   // ————— rendering —————
 
-  function buildCells(layout, url) {
+  function buildCells(layout, url, sampler) {
     const frag = document.createDocumentFragment();
     const cells = [];
     const enterDelay = (x, y) => (reducedMotion ? 0 : x * 22 + y * 30 + ((Math.random() * 40) | 0));
+
+    const { cols, rows } = layout.cfg;
+    const box = stage.getBoundingClientRect();
+    const cellFrac = (x, y, w, h) => [
+      (box.left + (x / cols) * box.width) / innerWidth,
+      (box.top + (y / rows) * box.height) / innerHeight,
+      (box.left + ((x + w) / cols) * box.width) / innerWidth,
+      (box.top + ((y + h) / rows) * box.height) / innerHeight,
+    ];
+    const brightCell = (x, y, w, h) => isBright(sampler, ...cellFrac(x, y, w, h));
 
     layout.frags.forEach((f, i) => {
       const el = document.createElement("div");
@@ -278,6 +330,8 @@
 
       const no = document.createElement("span");
       no.className = "frag__no";
+      // the clipping shows its SOURCE region, so contrast-check that
+      if (brightCell(f.sx, f.sy, f.w, f.h)) no.classList.add("dk");
       no.textContent = String(i + 1).padStart(2, "0");
       el.appendChild(no);
 
@@ -305,6 +359,7 @@
       el.style.gridColumn = `${c.x + 1} / span ${c.w}`;
       el.style.gridRow = `${c.y + 1} / span ${c.h}`;
       el.style.setProperty("--d", `${enterDelay(c.x, c.y)}ms`);
+      if (brightCell(c.x, c.y, c.w, c.h)) el.classList.add("dk");
       el.textContent = copyText(layout.rng, c.kind, { frags: layout.frags.length });
       frag.appendChild(el);
       cells.push(el);
@@ -313,15 +368,35 @@
     return { frag, cells };
   }
 
-  function buildUnderlay(layout) {
+  // persistent chrome flips per deal, eased by a color transition
+  const CHROME_REGIONS = [
+    [".chrome--tl", 0, 0, 0.3, 0.07],
+    [".chrome--tr", 0.7, 0, 1, 0.07],
+    [".chrome--bl", 0, 0.93, 0.35, 1],
+    [".chrome--bc", 0.4, 0.93, 0.6, 1],
+    [".chrome--br", 0.8, 0.9, 1, 1],
+  ];
+  function flipChrome(sampler) {
+    for (const [sel, ...rect] of CHROME_REGIONS)
+      document.querySelector(sel).classList.toggle("dk", isBright(sampler, ...rect));
+  }
+
+  function buildUnderlay(layout, sampler) {
     const { cols, rows } = layout.cfg;
+    const box = stage.getBoundingClientRect();
     underlay.innerHTML = "";
     for (let i = 0; i < cols * rows; i++) {
       const u = document.createElement("div");
       u.className = "ucell";
       if (i % cols === cols - 1) u.classList.add("ucell--edge-r");
       if (i >= cols * (rows - 1)) u.classList.add("ucell--edge-b");
-      if (layout.marks.has(i) && i % cols !== 0 && i >= cols) u.classList.add("ucell--mark");
+      if (layout.marks.has(i) && i % cols !== 0 && i >= cols) {
+        u.classList.add("ucell--mark");
+        const x = i % cols, y = (i / cols) | 0;
+        const fx = (box.left + (x / cols) * box.width) / innerWidth;
+        const fy = (box.top + (y / rows) * box.height) / innerHeight;
+        if (isBright(sampler, fx - 0.02, fy - 0.02, fx + 0.02, fy + 0.02)) u.classList.add("dk");
+      }
       underlay.appendChild(u);
     }
   }
@@ -348,7 +423,7 @@
 
     const url = negativeUrl(layout);
     const loading = loadImage(url);
-    const { frag, cells } = buildCells(layout, url);
+    const sampling = buildSampler(url);
 
     // exit the old sheet, back-to-front
     const old = [...grid.children];
@@ -362,6 +437,11 @@
     }
 
     await loading;
+    const sampler = await sampling;
+
+    // ink is decided from the sampled negative before anything paints
+    const { frag, cells } = buildCells(layout, url, sampler);
+    flipChrome(sampler);
 
     // crossfade the negative
     const back = frontBg === bgA ? bgB : bgA;
@@ -372,7 +452,7 @@
     frontBg.classList.remove("is-on");
     frontBg = back;
 
-    buildUnderlay(layout);
+    buildUnderlay(layout, sampler);
     grid.classList.remove("is-settled");
     grid.replaceChildren(frag);
     await nextFrame();
