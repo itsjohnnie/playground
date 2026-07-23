@@ -2,8 +2,8 @@
    one photograph fills the page; cells carry displaced crops of the SAME
    image, resolved by a hidden grid. the negatives are real: public-domain
    photographs by Eugène Atget (CC0 scans, National Gallery of Art) and
-   Josep Brangulí (pre-1930 Barcelona, public domain), served from
-   Wikimedia Commons and credited on the sheet. */
+   Josep Brangulí (pre-1930 Barcelona, public domain), self-hosted in
+   negatives/ (see SOURCES.md) and credited on the sheet. */
 
 (() => {
   "use strict";
@@ -242,45 +242,42 @@
   // ————— the negatives: real photographs, public domain, credited —————
 
   const COMMONS = "https://commons.wikimedia.org/wiki/File:";
-  const NGA = (hash, name) =>
-    `https://upload.wikimedia.org/wikipedia/commons/thumb/${hash}/${name}/1920px-${name}`;
   const NEGATIVES = [
     { author: "EUGÈNE ATGET", title: "AU PETIT DUNKERQUE", year: 1900, lic: "CC0",
-      src: NGA("3/39", "Eug%C3%A8ne_Atget%2C_Au_Petit_Dunkerque%2C_3_quai_Conti%2C_1900%2C_NGA_124962.jpg"),
+      src: "negatives/atget-dunkerque-1900.jpg",
       page: COMMONS + "Eug%C3%A8ne_Atget,_Au_Petit_Dunkerque,_3_quai_Conti,_1900,_NGA_124962.jpg" },
     { author: "EUGÈNE ATGET", title: "MAGASIN, AV. DES GOBELINS", year: 1925, lic: "CC0",
-      src: NGA("7/71", "Eug%C3%A8ne_Atget%2C_Magasin%2C_Avenue_des_Gobelins%2C_1925%2C_NGA_92719.jpg"),
+      src: "negatives/atget-gobelins-1925.jpg",
       page: COMMONS + "Eug%C3%A8ne_Atget,_Magasin,_Avenue_des_Gobelins,_1925,_NGA_92719.jpg" },
     { author: "EUGÈNE ATGET", title: "NOTRE-DAME", year: 1922, lic: "CC0",
-      src: NGA("9/9e", "Eug%C3%A8ne_Atget%2C_Notre-Dame%2C_1922%2C_NGA_124979.jpg"),
+      src: "negatives/atget-notredame-1922.jpg",
       page: COMMONS + "Eug%C3%A8ne_Atget,_Notre-Dame,_1922,_NGA_124979.jpg" },
     { author: "EUGÈNE ATGET", title: "PARC DE SCEAUX", year: 1925, lic: "CC0",
-      src: NGA("2/29", "Eug%C3%A8ne_Atget%2C_Parc_de_Sceaux%2C_1925%2C_NGA_124991.jpg"),
+      src: "negatives/atget-sceaux-1925.jpg",
       page: COMMONS + "Eug%C3%A8ne_Atget,_Parc_de_Sceaux,_1925,_NGA_124991.jpg" },
     { author: "EUGÈNE ATGET", title: "PONT MARIE", year: 1926, lic: "CC0",
-      src: NGA("9/93", "Eug%C3%A8ne_Atget%2C_Pont_Marie%2C_1926%2C_NGA_124989.jpg"),
+      src: "negatives/atget-pontmarie-1926.jpg",
       page: COMMONS + "Eug%C3%A8ne_Atget,_Pont_Marie,_1926,_NGA_124989.jpg" },
     { author: "EUGÈNE ATGET", title: "SAINT-CLOUD", year: 1922, lic: "CC0",
-      src: NGA("d/d1", "Eug%C3%A8ne_Atget%2C_Saint-Cloud%2C_1922%2C_NGA_124980.jpg"),
+      src: "negatives/atget-saintcloud-1922.jpg",
       page: COMMONS + "Eug%C3%A8ne_Atget,_Saint-Cloud,_1922,_NGA_124980.jpg" },
     { author: "EUGÈNE ATGET", title: "STEPS AT SAINT-CLOUD", year: 1906, lic: "CC0",
-      src: NGA("4/42", "Eug%C3%A8ne_Atget%2C_The_Steps_at_Saint-Cloud%2C_1906%2C_NGA_106293.jpg"),
+      src: "negatives/atget-steps-1906.jpg",
       page: COMMONS + "Eug%C3%A8ne_Atget,_The_Steps_at_Saint-Cloud,_1906,_NGA_106293.jpg" },
     { author: "JOSEP BRANGULÍ", title: "SANT PERE MÉS ALT, BCN", year: 1913, lic: "DOMINI PÚBLIC",
-      src: "https://upload.wikimedia.org/wikipedia/commons/f/fc/Sant_Pere_m%C3%A9s_alt-Via_Laietana.jpg",
+      src: "negatives/branguli-santpere-1913.jpg",
       page: COMMONS + "Sant_Pere_m%C3%A9s_alt-Via_Laietana.jpg" },
     { author: "JOSEP BRANGULÍ", title: "AIGUAT DEL MASNOU", year: 1909, lic: "DOMINI PÚBLIC",
-      src: "https://upload.wikimedia.org/wikipedia/commons/9/97/Aiguat_del_Masnou_1909_-_Carrer.jpg",
+      src: "negatives/branguli-masnou-1909.jpg",
       page: COMMONS + "Aiguat_del_Masnou_1909_-_Carrer.jpg" },
     { author: "JOSEP BRANGULÍ", title: "CARRER PINTOR FORTUNY, BCN", year: 1930, lic: "DOMINI PÚBLIC",
-      src: "https://upload.wikimedia.org/wikipedia/commons/6/63/Carrer_Pintor_Fortuny.jpg",
+      src: "negatives/branguli-fortuny-1930.jpg",
       page: COMMONS + "Carrer_Pintor_Fortuny.jpg" },
   ];
 
   function loadNegative(url, timeout = 9000) {
     return new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = "anonymous";
       img.onload = () => (img.decode ? img.decode().then(() => resolve(img), () => resolve(img)) : resolve(img));
       img.onerror = () => resolve(null);
       img.src = url;
@@ -301,59 +298,12 @@
     root.style.setProperty("--oy", `${(dh - innerHeight) / 2}px`);
   }
 
-  // ————— contrast: sample the negative so ink is decided before paint —————
-
-  // draws the same cover crop the viewer sees, so viewport fractions map 1:1
-  function makeSampler(img) {
-    try {
-      const iw = img.naturalWidth, ih = img.naturalHeight;
-      const scale = Math.max(innerWidth / iw, innerHeight / ih);
-      const sw = innerWidth / scale, sh = innerHeight / scale;
-      const w = 96;
-      const h = Math.max(48, Math.round((w * innerHeight) / innerWidth));
-      const c = document.createElement("canvas");
-      c.width = w; c.height = h;
-      const ctx = c.getContext("2d", { willReadFrequently: true });
-      ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, w, h);
-      return { data: ctx.getImageData(0, 0, w, h).data, w, h };
-    } catch { return null; } // tainted canvas: keep white ink
-  }
-
-  // mean linear luminance of a viewport-fraction rect; above the crossover
-  // (~0.19, where dark ink out-contrasts white ink) the region is "bright"
-  function isBright(s, x0, y0, x1, y1) {
-    if (!s) return false;
-    const ax = Math.max(0, Math.floor(x0 * s.w)), bx = Math.min(s.w, Math.ceil(x1 * s.w));
-    const ay = Math.max(0, Math.floor(y0 * s.h)), by = Math.min(s.h, Math.ceil(y1 * s.h));
-    let sum = 0, n = 0;
-    for (let y = ay; y < by; y++) {
-      for (let x = ax; x < bx; x++) {
-        const i = (y * s.w + x) * 4;
-        sum += 0.2126 * (s.data[i] / 255) ** 2.2
-             + 0.7152 * (s.data[i + 1] / 255) ** 2.2
-             + 0.0722 * (s.data[i + 2] / 255) ** 2.2;
-        n++;
-      }
-    }
-    return n > 0 && sum / n > 0.19;
-  }
-
   // ————— rendering —————
 
-  function buildCells(layout, url, sampler) {
+  function buildCells(layout, url) {
     const frag = document.createDocumentFragment();
     const cells = [];
     const enterDelay = (x, y) => (reducedMotion ? 0 : x * 22 + y * 30 + ((Math.random() * 40) | 0));
-
-    const { cols, rows } = layout.cfg;
-    const box = stage.getBoundingClientRect();
-    const cellFrac = (x, y, w, h) => [
-      (box.left + (x / cols) * box.width) / innerWidth,
-      (box.top + (y / rows) * box.height) / innerHeight,
-      (box.left + ((x + w) / cols) * box.width) / innerWidth,
-      (box.top + ((y + h) / rows) * box.height) / innerHeight,
-    ];
-    const brightCell = (x, y, w, h) => isBright(sampler, ...cellFrac(x, y, w, h));
 
     layout.frags.forEach((f, i) => {
       const el = document.createElement("div");
@@ -370,8 +320,6 @@
 
       const no = document.createElement("span");
       no.className = "frag__no";
-      // the clipping shows its SOURCE region, so contrast-check that
-      if (brightCell(f.sx, f.sy, f.w, f.h)) no.classList.add("dk");
       no.textContent = String(i + 1).padStart(2, "0");
       el.appendChild(no);
 
@@ -399,7 +347,6 @@
       el.style.gridColumn = `${c.x + 1} / span ${c.w}`;
       el.style.gridRow = `${c.y + 1} / span ${c.h}`;
       el.style.setProperty("--d", `${enterDelay(c.x, c.y)}ms`);
-      if (brightCell(c.x, c.y, c.w, c.h)) el.classList.add("dk");
       el.textContent = copyText(layout.rng, c.kind, { frags: layout.frags.length });
       frag.appendChild(el);
       cells.push(el);
@@ -408,35 +355,15 @@
     return { frag, cells };
   }
 
-  // persistent chrome flips per deal, eased by a color transition
-  const CHROME_REGIONS = [
-    [".chrome--tl", 0, 0, 0.3, 0.07],
-    [".chrome--tr", 0.7, 0, 1, 0.07],
-    [".chrome--bl", 0, 0.93, 0.35, 1],
-    [".chrome--bc", 0.4, 0.93, 0.6, 1],
-    [".chrome--br", 0.8, 0.9, 1, 1],
-  ];
-  function flipChrome(sampler) {
-    for (const [sel, ...rect] of CHROME_REGIONS)
-      document.querySelector(sel).classList.toggle("dk", isBright(sampler, ...rect));
-  }
-
-  function buildUnderlay(layout, sampler) {
+  function buildUnderlay(layout) {
     const { cols, rows } = layout.cfg;
-    const box = stage.getBoundingClientRect();
     underlay.innerHTML = "";
     for (let i = 0; i < cols * rows; i++) {
       const u = document.createElement("div");
       u.className = "ucell";
       if (i % cols === cols - 1) u.classList.add("ucell--edge-r");
       if (i >= cols * (rows - 1)) u.classList.add("ucell--edge-b");
-      if (layout.marks.has(i) && i % cols !== 0 && i >= cols) {
-        u.classList.add("ucell--mark");
-        const x = i % cols, y = (i / cols) | 0;
-        const fx = (box.left + (x / cols) * box.width) / innerWidth;
-        const fy = (box.top + (y / rows) * box.height) / innerHeight;
-        if (isBright(sampler, fx - 0.02, fy - 0.02, fx + 0.02, fy + 0.02)) u.classList.add("dk");
-      }
+      if (layout.marks.has(i) && i % cols !== 0 && i >= cols) u.classList.add("ucell--mark");
       underlay.appendChild(u);
     }
   }
@@ -461,7 +388,7 @@
     root.style.setProperty("--cols", cols);
     root.style.setProperty("--rows", rows);
 
-    const neg = layout.negative;
+    let neg = layout.negative;
     const loading = loadNegative(neg.src);
 
     // exit the old sheet, back-to-front
@@ -475,16 +402,22 @@
       await wait(old.length * 12 + 260);
     }
 
-    const img = await loading;
+    let img = await loading;
+    // a negative that will not load leaves the sheet black; fall through
+    // the manifest until one arrives
+    if (!img) {
+      const start = NEGATIVES.indexOf(neg);
+      for (let k = 1; k < NEGATIVES.length && !img; k++) {
+        neg = NEGATIVES[(start + k) % NEGATIVES.length];
+        img = await loadNegative(neg.src, 6000);
+      }
+    }
     negDims = img
       ? { iw: img.naturalWidth, ih: img.naturalHeight }
       : { iw: innerWidth, ih: innerHeight };
     applyCover();
-    const sampler = img ? makeSampler(img) : null;
 
-    // ink is decided from the sampled negative before anything paints
-    const { frag, cells } = buildCells(layout, neg.src, sampler);
-    flipChrome(sampler);
+    const { frag, cells } = buildCells(layout, neg.src);
 
     // crossfade the negative
     const back = frontBg === bgA ? bgB : bgA;
@@ -495,7 +428,7 @@
     frontBg.classList.remove("is-on");
     frontBg = back;
 
-    buildUnderlay(layout, sampler);
+    buildUnderlay(layout);
     grid.classList.remove("is-settled");
     grid.replaceChildren(frag);
     await nextFrame();

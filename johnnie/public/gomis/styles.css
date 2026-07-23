@@ -16,6 +16,7 @@
   --night: #0c0b0a;
   --bone: #ffffff;
   --line: rgba(255, 255, 255, 0.16);
+  --veil: rgba(10, 9, 8, 0.32);
   --fs: 10px;
   --edge-x: clamp(14px, 3vw, 40px);
   --edge-y: 64px;
@@ -80,6 +81,17 @@ body {
 .bg.is-first { transition: opacity 1400ms var(--ease-out), transform 2600ms var(--ease-out); transform: scale(1.03); }
 .bg.is-first.is-on { transform: scale(1); }
 
+/* a quiet dark veil so white ink always has ground;
+   clippings carry the same veil so their crops match the page */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: var(--veil);
+  pointer-events: none;
+}
+
 
 /* ————— corner chrome ————— */
 
@@ -93,7 +105,6 @@ body {
   line-height: 1.25;
   text-transform: uppercase;
   color: var(--bone);
-  transition: color 300ms var(--ease-out);
   pointer-events: none;
   opacity: 0;
   animation: chrome-in 700ms var(--ease-out) forwards;
@@ -240,8 +251,17 @@ body {
   --sy: var(--cy);
 }
 
+.frag::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--veil);
+  pointer-events: none;
+}
+
 .frag__no {
   position: absolute;
+  z-index: 1;
   top: 5px;
   right: 6px;
   font-size: var(--fs);
@@ -328,12 +348,6 @@ body {
   .ctl--wide .ctl__label { display: none; }
   .ctl--wide { padding: 0; }
 }
-
-/* ————— adaptive ink —————
-   flips to dark wherever the sampled negative is bright.
-   last in the sheet so it wins every color declaration above. */
-
-.dk { color: var(--night); }
 
 /* ————— reduced motion ————— */
 
