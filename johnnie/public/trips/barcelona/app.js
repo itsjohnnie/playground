@@ -430,6 +430,7 @@
       cells.push(el);
     });
 
+    let pillCount = 0;
     layout.copies.forEach((c) => {
       const el = document.createElement("div");
       el.className = "cp";
@@ -439,12 +440,23 @@
       el.style.gridRow = `${c.y + 1} / span ${c.h}`;
       el.style.setProperty("--d", `${enterDelay(c.x, c.y)}ms`);
       const text = copyText(layout.rng, c.kind, { frags: layout.frags.length, meta: layout.negative.meta });
-      const icon = ICONS[c.kind];
-      if (icon && layout.negative.meta && !c.vert) {
-        const rot = icon === "arrow" ? parseInt(layout.negative.meta.dir, 10) || 0 : 0;
-        el.classList.add("cp--ic");
+      const icon = ICONS[c.kind] && layout.negative.meta && !c.vert ? ICONS[c.kind] : null;
+      const rot = icon === "arrow" ? parseInt(layout.negative.meta.dir, 10) || 0 : 0;
+      if (icon) {
         el.dataset.icon = icon;
         el.dataset.rot = rot;
+      }
+      // short tokens sometimes sit inside a hairline pill — never more
+      // than two per sheet, or the device turns into decoration
+      const pillable = !c.vert && !text.includes("\n") && text.length <= 12 &&
+        ["index", "contact", "meter", "alt", "dir", "note"].includes(c.kind);
+      if (pillable && pillCount < 2 && layout.rng() < 0.45) {
+        pillCount++;
+        el.classList.add("cp--pill");
+        el.dataset.pill = "1";
+        el.innerHTML = `<span class="cp__pill">${icon ? iconSvg(icon, rot) : ""}<span>${text}</span></span>`;
+      } else if (icon) {
+        el.classList.add("cp--ic");
         el.innerHTML = iconSvg(icon, rot) + `<span>${text}</span>`;
       } else {
         el.textContent = text;
@@ -844,6 +856,23 @@
         ctx.rotate(Math.PI / 2);
         lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), 0, k * lh));
         ctx.restore();
+      } else if (el.dataset.pill) {
+        const text = (lines[0] || "").toUpperCase();
+        const iconW = el.dataset.icon ? (12 + 6) * S : 0;
+        const w = ctx.measureText(text).width + iconW + 18 * S;
+        const h = 20 * S;
+        const x0 = r.left * S + 8 * S, y0 = r.top * S + 8 * S;
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = S;
+        ctx.beginPath();
+        ctx.roundRect(x0 + S / 2, y0 + S / 2, w - S, h - S, h / 2);
+        ctx.stroke();
+        let x = x0 + 9 * S;
+        if (el.dataset.icon) {
+          drawIcon(el.dataset.icon, x, y0 + (h - 12 * S) / 2, 12 * S, +el.dataset.rot || 0);
+          x += iconW;
+        }
+        ctx.fillText(text, x, y0 + (h - fs) / 2 + S);
       } else {
         let x = r.left * S + 8 * S;
         if (el.dataset.icon) {
@@ -862,6 +891,9 @@
       ctx.fillText(el.textContent, r.left * S, r.top * S);
     });
     document.querySelectorAll(".chrome--tl span, .chrome--tr span, .chrome--bl span, .chrome--bl a").forEach((el) => {
+      // nested spans (№, seed, grid spec) already ride inside their
+      // parent line's textContent; drawing them again doubles the type
+      if (!el.parentElement.classList.contains("chrome")) return;
       const cs = getComputedStyle(el);
       const r = el.getBoundingClientRect();
       ctx.fillStyle = "#ffffff";
