@@ -1,0 +1,361 @@
+/* ——————————————————————————————————————————
+   gomis · un negatiu, una graella
+   the photograph is the page. the grid is a secret.
+   —————————————————————————————————————————— */
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/art/lib/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* one type color, one shade; one type size */
+  --night: #0c0b0a;
+  --bone: #ffffff;
+  --line: rgba(255, 255, 255, 0.16);
+  --veil: rgba(10, 9, 8, 0.32);
+  --fs: 10px;
+  --edge-x: clamp(14px, 3vw, 40px);
+  --edge-y: 64px;
+  --vpw: 100vw;
+  --vph: 100vh;
+  /* cover-fit geometry of the negative, set from JS */
+  --dw: var(--vpw);
+  --dh: var(--vph);
+  --ox: 0px;
+  --oy: 0px;
+  --cols: 6;
+  --rows: 10;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--night);
+  color: var(--bone);
+  font-family: var(--mono);
+  font-size: var(--fs);
+  letter-spacing: 0.04em;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  cursor: crosshair;
+}
+
+::selection { background: var(--bone); color: var(--night); }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ————— the negative ————— */
+
+.bg {
+  position: fixed;
+  top: 0; left: 0;
+  width: var(--vpw);
+  height: var(--vph);
+  background-size: var(--dw) var(--dh);
+  background-position: calc(-1 * var(--ox)) calc(-1 * var(--oy));
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 900ms var(--ease-out);
+  z-index: 0;
+}
+.bg.is-on { opacity: 1; }
+/* first arrival: a slow settle */
+.bg.is-first { transition: opacity 1400ms var(--ease-out), transform 2600ms var(--ease-out); transform: scale(1.03); }
+.bg.is-first.is-on { transform: scale(1); }
+
+/* a quiet dark veil so white ink always has ground;
+   clippings carry the same veil so their crops match the page */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: var(--veil);
+  pointer-events: none;
+}
+
+
+/* ————— corner chrome ————— */
+
+.chrome {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: var(--fs);
+  line-height: 1.25;
+  text-transform: uppercase;
+  color: var(--bone);
+  pointer-events: none;
+  opacity: 0;
+  animation: chrome-in 700ms var(--ease-out) forwards;
+}
+.chrome--tl { top: max(16px, env(safe-area-inset-top)); left: var(--edge-x); animation-delay: 120ms; }
+.chrome--tr { top: max(16px, env(safe-area-inset-top)); right: var(--edge-x); text-align: right; animation-delay: 200ms; }
+.chrome--bl { bottom: max(16px, env(safe-area-inset-bottom)); left: var(--edge-x); animation-delay: 280ms; }
+.chrome--bc { bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); animation-delay: 360ms; }
+.chrome--br {
+  bottom: max(10px, calc(env(safe-area-inset-bottom) - 2px));
+  right: calc(var(--edge-x) - 8px);
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  pointer-events: auto;
+  animation-delay: 440ms;
+}
+
+@keyframes chrome-in {
+  from { opacity: 0; translate: 0 6px; }
+  to { opacity: 1; translate: 0 0; }
+}
+/* --bc centers with transform; keep translate out of its animation */
+.chrome--bc { animation-name: chrome-in-flat; }
+@keyframes chrome-in-flat { from { opacity: 0; } to { opacity: 1; } }
+
+.chrome__strong { font-weight: 600; letter-spacing: 0.12em; }
+.chrome__dim { font-weight: 400; }
+.hi { font-weight: 500; }
+
+/* the credit is real: let it be followed */
+.credit {
+  color: inherit;
+  text-decoration: none;
+  pointer-events: auto;
+}
+.credit:hover, .credit:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+
+/* ————— controls, quietly ————— */
+
+.ctl {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 42px;
+  min-height: 42px;
+  padding: 0 10px;
+  font: 500 var(--fs)/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 240ms var(--ease-out), border-color 240ms var(--ease-out),
+              background-color 240ms var(--ease-out), transform 240ms var(--ease-out);
+}
+.ctl:hover, .ctl:focus-visible { border-color: currentColor; }
+.ctl:focus-visible { outline: 1px solid currentColor; outline-offset: 2px; }
+.ctl:active { transform: scale(0.94); }
+
+.ctl__icon { width: 13px; height: 13px; flex: none; }
+.ctl--wide .ctl__icon { width: 11px; height: 11px; transition: transform 600ms var(--ease-out); }
+.ctl--wide:hover .ctl__icon { transform: rotate(90deg); }
+.ctl--wide.is-busy .ctl__icon { animation: spin 700ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* eye: slash visible while the grid is hidden */
+.ctl__slash {
+  transform-origin: center;
+  transition: opacity 240ms var(--ease-out), transform 320ms var(--ease-out);
+}
+.ctl[aria-pressed="true"] .ctl__slash { opacity: 0; transform: scale(0.6) rotate(-8deg); }
+
+/* ————— the sheet ————— */
+
+.stage {
+  position: fixed;
+  inset: var(--edge-y) var(--edge-x);
+  z-index: 10;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-rows: repeat(var(--rows), 1fr);
+}
+
+/* the secret lattice: off by default, an exhale when revealed */
+.grid--lines {
+  border: 1px solid var(--line);
+  opacity: 0;
+  transition: opacity 500ms var(--ease-out);
+}
+.grid-on .grid--lines { opacity: 1; }
+.ucell { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); position: relative; }
+.ucell--edge-r { border-right: none; }
+.ucell--edge-b { border-bottom: none; }
+.ucell { color: var(--bone); }
+.ucell--mark::before {
+  content: "+";
+  position: absolute;
+  top: 0; left: 0;
+  translate: -50% -50%;
+  font-size: var(--fs);
+}
+
+.grid--live { pointer-events: none; }
+.grid--live > * { pointer-events: auto; }
+
+/* ————— clippings: crops of elsewhere in the same negative ————— */
+
+.frag {
+  position: relative;
+  background-image: var(--img);
+  background-repeat: no-repeat;
+  background-size: var(--dw) var(--dh);
+  /* show the source cell's region of the cover-cropped negative */
+  background-position:
+    calc(-1 * (var(--ox) + var(--edge-x) + (var(--vpw) - 2 * var(--edge-x)) * var(--sx) / var(--cols)))
+    calc(-1 * (var(--oy) + var(--edge-y) + (var(--vph) - 2 * var(--edge-y)) * var(--sy) / var(--rows)));
+  opacity: 0;
+  clip-path: inset(100% 0 0 0);
+  cursor: pointer;
+  transition:
+    opacity 140ms linear,
+    clip-path 800ms var(--ease-out),
+    background-position 850ms var(--ease-out);
+}
+.frag.is-in {
+  opacity: 1;
+  clip-path: inset(0 0 0 0);
+  transition-delay: var(--d, 0ms);
+}
+.is-settled .frag { transition-delay: 0ms; }
+
+/* slide home: the clipping resolves into the background */
+.frag.is-home, .is-settled .frag:hover {
+  --sx: var(--cx);
+  --sy: var(--cy);
+}
+
+.frag::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--veil);
+  pointer-events: none;
+}
+
+.frag__no {
+  position: absolute;
+  z-index: 1;
+  top: 5px;
+  right: 6px;
+  font-size: var(--fs);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  color: var(--bone);
+  transition: opacity 300ms var(--ease-out);
+}
+.frag.is-home .frag__no, .is-settled .frag:hover .frag__no { opacity: 0.25; }
+
+/* ————— micro-copy ————— */
+
+.cp {
+  position: relative;
+  padding: 5px 6px;
+  font-size: var(--fs);
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--bone);
+  white-space: pre-line;
+  opacity: 0;
+  translate: 0 7px;
+}
+.cp.is-in {
+  opacity: 1;
+  translate: 0 0;
+  transition: opacity 600ms var(--ease-out), translate 600ms var(--ease-out);
+  transition-delay: var(--d, 0ms);
+}
+.cp--strong { font-weight: 500; }
+.cp--end { display: flex; align-items: flex-end; }
+.cp--right { text-align: right; }
+.cp--vert { writing-mode: vertical-rl; padding: 6px 5px; }
+.cp--rule::after {
+  content: "";
+  position: absolute;
+  left: 6px; right: 6px; top: 20px;
+  border-top: 1px solid currentColor;
+}
+
+/* exit */
+.frag.is-out, .cp.is-out {
+  transition: opacity 240ms var(--ease-out), translate 240ms var(--ease-out) !important;
+  transition-delay: var(--d, 0ms) !important;
+  opacity: 0 !important;
+  translate: 0 -8px;
+}
+
+/* ————— crosshair (fine pointers only) ————— */
+
+.crosshair {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 400ms var(--ease-out);
+}
+.crosshair.is-on { opacity: 1; }
+.crosshair__v, .crosshair__h { position: absolute; background: var(--bone); opacity: 0.14; }
+.crosshair__v { top: 0; bottom: 0; width: 1px; left: 0; }
+.crosshair__h { left: 0; right: 0; height: 1px; top: 0; }
+
+/* ————— grain ————— */
+
+.grain {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+}
+
+/* ————— small screens ————— */
+
+@media (max-width: 720px) {
+  :root { --edge-y: 60px; }
+  body { cursor: default; }
+  .chrome--bc, .crosshair { display: none; }
+  .ctl--wide .ctl__label { display: none; }
+  .ctl--wide { padding: 0; }
+}
+
+/* ————— reduced motion ————— */
+
+@media (prefers-reduced-motion: reduce) {
+  .chrome { animation-duration: 1ms; }
+  .bg, .bg.is-first { transition: opacity 1ms linear; transform: none; }
+  .frag, .frag.is-in { transition: opacity 1ms linear; clip-path: none; }
+  .cp, .cp.is-in { transition: opacity 1ms linear; translate: 0 0; }
+  .frag.is-out, .cp.is-out { translate: 0 0; }
+  .ctl--wide.is-busy .ctl__icon { animation: none; }
+}
