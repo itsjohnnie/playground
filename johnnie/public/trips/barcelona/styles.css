@@ -127,8 +127,9 @@ body::before {
 .chrome--bl { bottom: max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom)); left: calc(var(--edge-x) + var(--pad)); animation-delay: 280ms; }
 .chrome--bc { bottom: max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); animation-delay: 360ms; }
 .chrome--br {
-  bottom: max(12px, env(safe-area-inset-bottom));
-  right: calc(var(--edge-x) - 8px);
+  /* the chip honours the same margin line as the corner chrome */
+  bottom: max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom));
+  right: calc(var(--edge-x) + var(--pad));
   flex-direction: row;
   align-items: center;
   gap: 2px;
@@ -220,7 +221,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   position: fixed;
   /* bottom-anchored above the chip, which stays put as the close */
   inset: auto max(12px, env(safe-area-inset-right))
-         calc(max(12px, env(safe-area-inset-bottom)) + var(--chip) + 8px) max(12px, env(safe-area-inset-left));
+         calc(max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom)) + var(--chip) + 8px) max(12px, env(safe-area-inset-left));
   max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 80px);
   z-index: 50;
   display: flex;
@@ -238,7 +239,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
     inset 0 16px 40px rgba(255, 255, 255, 0.045),
     0 24px 80px rgba(0, 0, 0, 0.4);
   /* the bloom grows out of the chip sitting just below the panel */
-  transform-origin: calc(100% - var(--edge-x) + 4px) calc(100% + 24px);
+  transform-origin: calc(100% - var(--edge-x) - 12px) calc(100% + 24px);
   transform: scale(0.04);
   border-radius: 240px;
   opacity: 0;
@@ -449,8 +450,8 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
    chip's own footprint, bottom right */
 .holdring {
   position: fixed;
-  right: calc(var(--edge-x) - 8px + (var(--chip) - 32px) / 2);
-  bottom: calc(max(12px, env(safe-area-inset-bottom)) + (var(--chip) - 32px) / 2);
+  right: calc(var(--edge-x) + var(--pad) + (var(--chip) - 32px) / 2);
+  bottom: calc(max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom)) + (var(--chip) - 32px) / 2);
   width: 32px;
   height: 32px;
   z-index: 45;
