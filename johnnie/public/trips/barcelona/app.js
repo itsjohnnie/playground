@@ -96,6 +96,21 @@
   }
   const COPY_KINDS = ["place", "spec", "film", "gps", "note", "index", "contact", "date", "meter", "alt", "dir"];
 
+  // hairline iconography: 1px strokes beside the factual single-line
+  // kinds — a sun for the meter, a peak for altitude, an arrow that
+  // actually points along the recorded compass bearing
+  const ICONS = { meter: "sun", alt: "peak", dir: "arrow" };
+  function iconSvg(name, rot) {
+    const open = '<svg class="cp__ic" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+    if (name === "sun")
+      return open +
+        '<circle cx="6" cy="6" r="2.4"/>' +
+        '<path d="M6 0.6v1.6M6 9.8v1.6M0.6 6h1.6M9.8 6h1.6M2.2 2.2l1.13 1.13M8.67 8.67l1.13 1.13M9.8 2.2 8.67 3.33M3.33 8.67 2.2 9.8"/></svg>';
+    if (name === "peak")
+      return open + '<path d="M1.2 9.5 4.8 3.6 6.9 6.9 8.3 5 10.8 9.5"/></svg>';
+    return open + `<g transform="rotate(${rot || 0} 6 6)"><path d="M6 10.4V1.9M3.4 4.5 6 1.9l2.6 2.6"/></g></svg>`;
+  }
+
   // ————— layout generation —————
 
   function pickAnchors(rng, count, max, minGap) {
@@ -423,7 +438,17 @@
       el.style.gridColumn = `${c.x + 1} / span ${c.w}`;
       el.style.gridRow = `${c.y + 1} / span ${c.h}`;
       el.style.setProperty("--d", `${enterDelay(c.x, c.y)}ms`);
-      el.textContent = copyText(layout.rng, c.kind, { frags: layout.frags.length, meta: layout.negative.meta });
+      const text = copyText(layout.rng, c.kind, { frags: layout.frags.length, meta: layout.negative.meta });
+      const icon = ICONS[c.kind];
+      if (icon && layout.negative.meta && !c.vert) {
+        const rot = icon === "arrow" ? parseInt(layout.negative.meta.dir, 10) || 0 : 0;
+        el.classList.add("cp--ic");
+        el.dataset.icon = icon;
+        el.dataset.rot = rot;
+        el.innerHTML = iconSvg(icon, rot) + `<span>${text}</span>`;
+      } else {
+        el.textContent = text;
+      }
       frag.appendChild(el);
       cells.push(el);
     });
@@ -770,6 +795,40 @@
     // every piece of type, straight from the DOM
     const fs = 10 * S;
     ctx.textBaseline = "top";
+    // canvas twins of the hairline copy icons
+    const drawIcon = (name, x, y, size, rot) => {
+      const u = size / 12;
+      ctx.save();
+      ctx.translate(x + size / 2, y + size / 2);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = u;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      if (name === "sun") {
+        ctx.arc(0, 0, 2.4 * u, 0, Math.PI * 2);
+        for (let k = 0; k < 8; k++) {
+          const a = (k * Math.PI) / 4;
+          ctx.moveTo(Math.cos(a) * 3.8 * u, Math.sin(a) * 3.8 * u);
+          ctx.lineTo(Math.cos(a) * 5.4 * u, Math.sin(a) * 5.4 * u);
+        }
+      } else if (name === "peak") {
+        ctx.moveTo(-4.8 * u, 3.5 * u);
+        ctx.lineTo(-1.2 * u, -2.4 * u);
+        ctx.lineTo(0.9 * u, 0.9 * u);
+        ctx.lineTo(2.3 * u, -1 * u);
+        ctx.lineTo(4.8 * u, 3.5 * u);
+      } else {
+        ctx.rotate(((rot || 0) * Math.PI) / 180);
+        ctx.moveTo(0, 4.4 * u);
+        ctx.lineTo(0, -4.1 * u);
+        ctx.moveTo(-2.6 * u, -1.5 * u);
+        ctx.lineTo(0, -4.1 * u);
+        ctx.lineTo(2.6 * u, -1.5 * u);
+      }
+      ctx.stroke();
+      ctx.restore();
+    };
     const drawText = (el, vertical = false) => {
       const cs = getComputedStyle(el);
       if (cs.visibility === "hidden" || cs.display === "none") return;
@@ -786,7 +845,13 @@
         lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), 0, k * lh));
         ctx.restore();
       } else {
-        lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), r.left * S + 8 * S, r.top * S + 8 * S + k * lh));
+        let x = r.left * S + 8 * S;
+        if (el.dataset.icon) {
+          const size = 12 * S;
+          drawIcon(el.dataset.icon, x, r.top * S + 8 * S + (lh - size) / 2, size, +el.dataset.rot || 0);
+          x += size + 6 * S;
+        }
+        lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), x, r.top * S + 8 * S + k * lh));
       }
     };
     grid.querySelectorAll(".cp").forEach((el) => drawText(el, el.classList.contains("cp--vert")));
@@ -862,7 +927,78 @@
   panelBody.addEventListener("scroll", updateScrollHint, { passive: true });
   addEventListener("resize", updateScrollHint);
 
+  // ————— the chip hides until summoned: press and hold anywhere —————
+
+  const holdRing = document.getElementById("holdring");
+  const ringProg = holdRing.querySelector(".holdring__progress");
+  const RING_LEN = 94.25;
+  const HOLD_MS = 3000;
+  let hold = null;
+  let chipTimer = null;
+  let suppressClick = false;
+
+  function showChip() {
+    clearTimeout(chipTimer);
+    document.body.classList.add("chip-on");
+  }
+  function scheduleChipHide(ms) {
+    clearTimeout(chipTimer);
+    chipTimer = setTimeout(() => {
+      if (!panel.classList.contains("is-open"))
+        document.body.classList.remove("chip-on");
+    }, ms);
+  }
+
+  function cancelHold() {
+    if (!hold) return;
+    clearTimeout(hold.timer);
+    hold = null;
+    holdRing.classList.remove("is-on");
+    ringProg.style.transition = "none";
+    ringProg.style.strokeDashoffset = RING_LEN;
+  }
+
+  stage.addEventListener("pointerdown", (e) => {
+    if (!e.isPrimary || panel.classList.contains("is-open")) return;
+    if (document.body.classList.contains("chip-on")) return;
+    holdRing.style.left = `${e.clientX}px`;
+    holdRing.style.top = `${e.clientY}px`;
+    ringProg.style.transition = "none";
+    ringProg.style.strokeDashoffset = RING_LEN;
+    holdRing.classList.add("is-on");
+    // the fill must start from empty: flush the reset, then ease to full
+    requestAnimationFrame(() => {
+      if (!hold) return;
+      ringProg.style.transition = `stroke-dashoffset ${HOLD_MS}ms linear`;
+      ringProg.style.strokeDashoffset = "0";
+    });
+    hold = {
+      x: e.clientX, y: e.clientY,
+      timer: setTimeout(() => {
+        cancelHold();
+        showChip();
+        scheduleChipHide(8000);
+        suppressClick = true; // the release must not poke a clipping
+      }, HOLD_MS),
+    };
+  });
+  stage.addEventListener("pointermove", (e) => {
+    if (hold && Math.hypot(e.clientX - hold.x, e.clientY - hold.y) > 12) cancelHold();
+  });
+  stage.addEventListener("pointerup", cancelHold);
+  stage.addEventListener("pointercancel", cancelHold);
+  // android's long-press menu would break the hold mid-fill
+  stage.addEventListener("contextmenu", (e) => { if (hold) e.preventDefault(); });
+  stage.addEventListener("click", (e) => {
+    if (suppressClick) {
+      suppressClick = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }, true);
+
   function openPanel() {
+    showChip();
     panel.classList.add("is-open");
     settingsBtn.setAttribute("aria-expanded", "true");
     panel.focus({ preventScroll: true });
@@ -872,6 +1008,7 @@
     panel.classList.remove("is-open");
     settingsBtn.setAttribute("aria-expanded", "false");
     settingsBtn.focus({ preventScroll: true });
+    scheduleChipHide(2500);
   }
   // the same spot opens and closes
   settingsBtn.addEventListener("click", () =>
