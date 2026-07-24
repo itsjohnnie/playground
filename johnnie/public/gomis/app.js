@@ -734,12 +734,12 @@
       const lh = fs * 1.55;
       if (vertical) {
         ctx.save();
-        ctx.translate(r.right * S - 6 * S, r.top * S + 6 * S);
+        ctx.translate(r.right * S - 8 * S, r.top * S + 8 * S);
         ctx.rotate(Math.PI / 2);
         lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), 0, k * lh));
         ctx.restore();
       } else {
-        lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), r.left * S + 7 * S, r.top * S + 6 * S + k * lh));
+        lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), r.left * S + 8 * S, r.top * S + 8 * S + k * lh));
       }
     };
     grid.querySelectorAll(".cp").forEach((el) => drawText(el, el.classList.contains("cp--vert")));
@@ -786,10 +786,21 @@
 
   // ————— the panel —————
 
+  // the foot of the panel blurs while content remains below the fold;
+  // the hint dissolves in the last 48px of scroll
+  const panelBody = panel.querySelector(".panel__body");
+  function updateScrollHint() {
+    const remaining = panelBody.scrollHeight - panelBody.scrollTop - panelBody.clientHeight;
+    panel.style.setProperty("--scroll-hint", Math.max(0, Math.min(1, remaining / 48)).toFixed(3));
+  }
+  panelBody.addEventListener("scroll", updateScrollHint, { passive: true });
+  addEventListener("resize", updateScrollHint);
+
   function openPanel() {
     panel.classList.add("is-open");
     settingsBtn.setAttribute("aria-expanded", "true");
     panel.focus({ preventScroll: true });
+    requestAnimationFrame(updateScrollHint);
   }
   function closePanel() {
     panel.classList.remove("is-open");

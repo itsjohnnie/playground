@@ -18,9 +18,8 @@
   --line: rgba(255, 255, 255, 0.16);
   --veil: rgba(10, 9, 8, 0.32);
   --fs: 10px;
-  /* every piece of type in a cell shares this inset */
-  --pad-y: 6px;
-  --pad-x: 7px;
+  /* one text inset everywhere: 8px, on the 4px base grid (~0.8x type size) */
+  --pad: 8px;
   --edge-x: clamp(14px, 3vw, 40px);
   --edge-y: 64px;
   --vpw: 100vw;
@@ -116,9 +115,9 @@ body::before {
   animation: chrome-in 700ms var(--ease-out) forwards;
 }
 /* corner chrome shares the cells' text line: edge + the cell inset */
-.chrome--tl { top: max(16px, env(safe-area-inset-top)); left: calc(var(--edge-x) + var(--pad-x)); animation-delay: 120ms; }
-.chrome--tr { top: max(16px, env(safe-area-inset-top)); right: calc(var(--edge-x) + var(--pad-x)); text-align: right; animation-delay: 200ms; }
-.chrome--bl { bottom: max(16px, env(safe-area-inset-bottom)); left: calc(var(--edge-x) + var(--pad-x)); animation-delay: 280ms; }
+.chrome--tl { top: max(16px, env(safe-area-inset-top)); left: calc(var(--edge-x) + var(--pad)); animation-delay: 120ms; }
+.chrome--tr { top: max(16px, env(safe-area-inset-top)); right: calc(var(--edge-x) + var(--pad)); text-align: right; animation-delay: 200ms; }
+.chrome--bl { bottom: max(16px, env(safe-area-inset-bottom)); left: calc(var(--edge-x) + var(--pad)); animation-delay: 280ms; }
 .chrome--bc { bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); animation-delay: 360ms; }
 .chrome--br {
   bottom: max(10px, calc(env(safe-area-inset-bottom) - 2px));
@@ -251,6 +250,22 @@ body::before {
 
 /* the last row of each group ends the group: no trailing divider */
 .panel__group > :last-child { border-bottom: none; }
+
+/* off-scroll content hints at itself: a progressive blur at the foot
+   that dissolves as you scroll, fully sharp exactly at the end.
+   --scroll-hint (0..1) is set continuously from the scroll position. */
+.panel__fade {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 72px;
+  pointer-events: none;
+  opacity: var(--scroll-hint, 0);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 70%);
+  mask-image: linear-gradient(to bottom, transparent, black 70%);
+  background: linear-gradient(to bottom, rgba(14, 12, 10, 0), rgba(14, 12, 10, 0.4));
+}
 
 /* the controls arrive a beat after the glass */
 .panel__head, .panel__body { opacity: 0; translate: 0 8px; transition: opacity 180ms var(--ease-out), translate 180ms var(--ease-out); }
@@ -456,8 +471,8 @@ body.color-on .frag { filter: none; }
 .frag__no {
   position: absolute;
   z-index: 1;
-  top: var(--pad-y);
-  right: var(--pad-x);
+  top: var(--pad);
+  right: var(--pad);
   font-size: var(--fs);
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -470,7 +485,7 @@ body.color-on .frag { filter: none; }
 
 .cp {
   position: relative;
-  padding: var(--pad-y) var(--pad-x);
+  padding: var(--pad);
   font-size: var(--fs);
   line-height: 1.55;
   letter-spacing: 0.06em;
