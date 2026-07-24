@@ -548,13 +548,16 @@
     }
   }
 
-  // ordered 4x4 Bayer dithering in the sheet's own tones; cached per source
+  // ordered 4x4 Bayer dithering in the sheet's own tones; cached per source.
+  // the working canvas is small on purpose: each dither cell lands on
+  // roughly 3 CSS pixels once cover-stretched, so the pattern reads as
+  // chunky retro halftone instead of dissolving into plain black and white
   const ditherCache = new Map();
   function ditherize(img) {
-    const key = img.src;
+    const maxW = Math.max(96, Math.round(innerWidth / 3));
+    const key = `${img.src}@${maxW}`;
     if (ditherCache.has(key)) return ditherCache.get(key);
     try {
-      const maxW = 1400;
       const s = Math.min(1, maxW / img.naturalWidth);
       const w = Math.round(img.naturalWidth * s);
       const h = Math.round(img.naturalHeight * s);
@@ -782,6 +785,8 @@
     const sw = innerWidth / cover, sh = innerHeight / cover;
     const sx0 = (iw - sw) / 2, sy0 = (ih - sh) / 2;
     ctx.imageSmoothingQuality = "high";
+    // the dithered plate must upscale with hard pixel edges
+    ctx.imageSmoothingEnabled = !settings.dither;
     const monoFilter = settings.color ? "none" : "grayscale(1) contrast(1.15)";
     ctx.filter = monoFilter;
     ctx.drawImage(source, sx0, sy0, sw, sh, 0, 0, W, H);
@@ -1114,7 +1119,10 @@
       setBoil(on);
     }
     if (key === "color") document.body.classList.toggle("color-on", on);
-    if (key === "dither" && current.img) applyNegativeSrc();
+    if (key === "dither") {
+      document.body.classList.toggle("dither-on", on);
+      if (current.img) applyNegativeSrc();
+    }
     const tgl = panel.querySelector(`[data-setting="${key}"]`);
     if (tgl) tgl.setAttribute("aria-checked", String(on));
   }
