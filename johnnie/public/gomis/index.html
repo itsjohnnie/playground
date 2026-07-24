@@ -37,27 +37,25 @@
 
   <div class="chrome chrome--br">
     <button id="settings" class="chip" type="button" aria-expanded="false" aria-controls="panel" aria-label="Settings">
-      <svg class="chip__icon" viewBox="0 0 14 14" aria-hidden="true">
+      <svg class="chip__icon chip__icon--sliders" viewBox="0 0 14 14" aria-hidden="true">
         <line x1="1.5" y1="4" x2="12.5" y2="4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
         <line x1="1.5" y1="10" x2="12.5" y2="10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
         <circle cx="9" cy="4" r="1.9" fill="currentColor" stroke="none"/>
         <circle cx="5" cy="10" r="1.9" fill="currentColor" stroke="none"/>
       </svg>
+      <svg class="chip__icon chip__icon--x" viewBox="0 0 14 14" aria-hidden="true">
+        <path d="M3.5 3.5 10.5 10.5 M10.5 3.5 3.5 10.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+      </svg>
     </button>
   </div>
 
   <!-- ajustos: blooms out of the chip -->
-  <div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="Settings" tabindex="-1">
     <header class="panel__head">
       <span class="panel__title">SETTINGS</span>
       <span class="panel__spin" id="panel-busy" aria-hidden="true">
         <svg viewBox="0 0 12 12"><path d="M6 1.5a4.5 4.5 0 1 0 4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
       </span>
-      <button class="panel__close" id="panel-close" type="button" aria-label="Close">
-        <svg viewBox="0 0 12 12" aria-hidden="true">
-          <path d="M2.5 2.5 9.5 9.5 M9.5 2.5 2.5 9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
-        </svg>
-      </button>
     </header>
 
     <div class="panel__body">

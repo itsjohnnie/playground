@@ -128,6 +128,8 @@ body::before {
   gap: 2px;
   pointer-events: auto;
   animation-delay: 440ms;
+  /* stays tappable above the open panel: tap to open, tap to close */
+  z-index: 60;
 }
 
 @keyframes chrome-in {
@@ -178,11 +180,21 @@ body::before {
 }
 .chip:active { transform: scale(0.96); }
 .chip:focus-visible { outline: 1px solid var(--bone); outline-offset: 2px; }
-.chip__icon { width: 15px; height: 15px; transition: transform 480ms var(--ease-out); }
-@media (hover: hover) and (pointer: fine) {
-  .chip:hover .chip__icon { transform: rotate(90deg); }
+
+/* one spot opens and closes: the sliders morph into a cross */
+.chip__icon {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  transition: transform 320ms var(--ease-out), opacity 200ms var(--ease-out);
 }
-.chip[aria-expanded="true"] { opacity: 0; pointer-events: none; transform: scale(0.8); }
+.chip__icon--x { opacity: 0; transform: rotate(-90deg) scale(0.8); }
+.chip[aria-expanded="true"] .chip__icon--sliders { opacity: 0; transform: rotate(90deg) scale(0.8); }
+.chip[aria-expanded="true"] .chip__icon--x { opacity: 1; transform: rotate(0deg) scale(1); }
+@media (hover: hover) and (pointer: fine) {
+  .chip:hover .chip__icon--sliders { transform: rotate(90deg); }
+  .chip[aria-expanded="true"]:hover .chip__icon--sliders { transform: rotate(90deg) scale(0.8); }
+}
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -190,11 +202,10 @@ body::before {
 
 .panel {
   position: fixed;
-  /* bottom-anchored: the glass fits its content instead of leaving a
-     dead slab under the last row */
+  /* bottom-anchored above the chip, which stays put as the close */
   inset: auto max(12px, env(safe-area-inset-right))
-         max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-  max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 22px);
+         calc(max(10px, env(safe-area-inset-bottom)) + 56px) max(12px, env(safe-area-inset-left));
+  max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 78px);
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -206,7 +217,8 @@ body::before {
   backdrop-filter: blur(28px) saturate(1.6);
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 24px 80px rgba(0, 0, 0, 0.35);
-  transform-origin: calc(100% - 30px) calc(100% - 30px);
+  /* the bloom grows out of the chip sitting just below the panel */
+  transform-origin: calc(100% - 24px) calc(100% + 33px);
   transform: scale(0.04);
   border-radius: 260px;
   opacity: 0;
@@ -231,9 +243,9 @@ body::before {
 }
 @media (min-width: 721px) {
   .panel {
-    inset: auto max(20px, env(safe-area-inset-right)) 18px auto;
+    inset: auto max(20px, env(safe-area-inset-right)) 74px auto;
     width: min(420px, calc(100vw - 40px));
-    max-height: calc(100vh - 120px);
+    max-height: calc(100vh - 150px);
   }
 }
 
@@ -259,27 +271,7 @@ body::before {
 .panel__spin { width: 12px; height: 12px; margin-left: auto; opacity: 0; transition: opacity 240ms var(--ease-out); }
 .panel__spin svg { width: 100%; height: 100%; animation: spin 700ms linear infinite; }
 .panel.is-busy .panel__spin { opacity: 0.7; }
-.panel__close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 38px;
-  height: 38px;
-  margin-right: -8px;
-  padding: 0;
-  color: var(--bone);
-  background: transparent;
-  border: none;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background-color 200ms var(--ease-out), transform 120ms var(--ease-out);
-}
-@media (hover: hover) and (pointer: fine) {
-  .panel__close:hover { background: rgba(255, 255, 255, 0.1); }
-}
-.panel__close:active { transform: scale(0.92); }
-.panel__close:focus-visible { outline: 1px solid var(--bone); outline-offset: 2px; }
-.panel__close svg { width: 12px; height: 12px; }
+.panel:focus-visible { outline: 1px solid var(--bone); outline-offset: -4px; }
 
 .panel__body {
   overflow-y: auto;

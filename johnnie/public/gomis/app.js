@@ -15,7 +15,6 @@
   const bgB = document.getElementById("bg-b");
   const settingsBtn = document.getElementById("settings");
   const panel = document.getElementById("panel");
-  const panelClose = document.getElementById("panel-close");
   const seedEl = document.getElementById("seed");
   const layoutNoEl = document.getElementById("layout-no");
   const gridSpecEl = document.getElementById("grid-spec");
@@ -790,15 +789,17 @@
   function openPanel() {
     panel.classList.add("is-open");
     settingsBtn.setAttribute("aria-expanded", "true");
-    panelClose.focus({ preventScroll: true });
+    panel.focus({ preventScroll: true });
   }
   function closePanel() {
     panel.classList.remove("is-open");
     settingsBtn.setAttribute("aria-expanded", "false");
     settingsBtn.focus({ preventScroll: true });
   }
-  settingsBtn.addEventListener("click", openPanel);
-  panelClose.addEventListener("click", closePanel);
+  // the same spot opens and closes
+  settingsBtn.addEventListener("click", () =>
+    panel.classList.contains("is-open") ? closePanel() : openPanel()
+  );
 
   function applySetting(key, on) {
     settings[key] = on;
