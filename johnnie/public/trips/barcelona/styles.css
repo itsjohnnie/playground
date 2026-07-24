@@ -17,11 +17,15 @@
   --bone: #ffffff;
   --line: rgba(255, 255, 255, 0.16);
   --veil: rgba(10, 9, 8, 0.26);
-  --fs: 10px;
-  /* one text inset everywhere: 8px, on the 4px base grid (~0.8x type size) */
+  --fs: 10px; /* type size: optical, the one deliberate off-grid value */
+  /* ————— the spatial scale: every meaningful distance is a multiple
+     of 4px — pad 8, margins 16-40 (fluid), chrome margin edge+pad
+     (24 phone / 48 desktop), stage 64, chip 48, radius 24 ————— */
   --pad: 8px;
-  --edge-x: clamp(14px, 3vw, 40px);
+  --edge-x: clamp(16px, 3vw, 40px);
   --edge-y: 64px;
+  --chip: 48px;
+  --radius: 24px;
   --vpw: 100vw;
   --vph: 100vh;
   /* cover-fit geometry of the negative, set from JS */
@@ -105,7 +109,7 @@ body::before {
   z-index: 30;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   font-size: var(--fs);
   line-height: 1.25;
   text-transform: uppercase;
@@ -121,7 +125,7 @@ body::before {
 .chrome--bl { bottom: max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom)); left: calc(var(--edge-x) + var(--pad)); animation-delay: 280ms; }
 .chrome--bc { bottom: max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); animation-delay: 360ms; }
 .chrome--br {
-  bottom: max(10px, calc(env(safe-area-inset-bottom) - 2px));
+  bottom: max(12px, env(safe-area-inset-bottom));
   right: calc(var(--edge-x) - 8px);
   flex-direction: row;
   align-items: center;
@@ -133,7 +137,7 @@ body::before {
 }
 
 @keyframes chrome-in {
-  from { opacity: 0; translate: 0 6px; }
+  from { opacity: 0; translate: 0 8px; }
   to { opacity: 1; translate: 0 0; }
 }
 /* --bc centers with transform; keep translate out of its animation */
@@ -150,7 +154,7 @@ body::before {
   text-decoration: none;
   pointer-events: auto;
 }
-.credit:hover, .credit:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.credit:hover, .credit:focus-visible { text-decoration: underline; text-underline-offset: 4px; }
 
 /* ————— one control: a glass chip that blooms into the panel ————— */
 
@@ -165,8 +169,8 @@ body::before {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
+  width: var(--chip);
+  height: var(--chip);
   padding: 0;
   color: var(--bone);
   border-radius: 999px;
@@ -184,8 +188,8 @@ body::before {
 /* one spot opens and closes: the sliders morph into a cross */
 .chip__icon {
   position: absolute;
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   transition: transform 320ms var(--ease-out), opacity 200ms var(--ease-out);
 }
 .chip__icon--x { opacity: 0; transform: rotate(-90deg) scale(0.8); }
@@ -204,13 +208,13 @@ body::before {
   position: fixed;
   /* bottom-anchored above the chip, which stays put as the close */
   inset: auto max(12px, env(safe-area-inset-right))
-         calc(max(10px, env(safe-area-inset-bottom)) + 56px) max(12px, env(safe-area-inset-left));
-  max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 78px);
+         calc(max(12px, env(safe-area-inset-bottom)) + var(--chip) + 8px) max(12px, env(safe-area-inset-left));
+  max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 80px);
   z-index: 50;
   display: flex;
   flex-direction: column;
   color: var(--bone);
-  border-radius: 26px;
+  border-radius: var(--radius);
   overflow: hidden;
   background: rgba(14, 12, 10, 0.44);
   -webkit-backdrop-filter: blur(28px) saturate(1.6);
@@ -218,9 +222,9 @@ body::before {
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 24px 80px rgba(0, 0, 0, 0.35);
   /* the bloom grows out of the chip sitting just below the panel */
-  transform-origin: calc(100% - 24px) calc(100% + 33px);
+  transform-origin: calc(100% - 24px) calc(100% + 36px);
   transform: scale(0.04);
-  border-radius: 260px;
+  border-radius: 240px;
   opacity: 0;
   visibility: hidden;
   /* close is quicker than open: the system responds, it doesn't perform */
@@ -232,7 +236,7 @@ body::before {
 }
 .panel.is-open {
   transform: scale(1);
-  border-radius: 24px;
+  border-radius: var(--radius);
   opacity: 1;
   visibility: visible;
   transition:
@@ -243,7 +247,7 @@ body::before {
 }
 @media (min-width: 721px) {
   .panel {
-    inset: auto max(20px, env(safe-area-inset-right)) 74px auto;
+    inset: auto max(20px, env(safe-area-inset-right)) 76px auto;
     width: min(420px, calc(100vw - 40px));
     max-height: calc(100vh - 150px);
   }
@@ -280,7 +284,7 @@ body::before {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
   padding: 16px 20px 4px;
 }
 .panel__title { font-weight: 600; letter-spacing: 0.14em; }
@@ -291,10 +295,10 @@ body::before {
 
 .panel__body {
   overflow-y: auto;
-  padding: 2px 20px calc(14px + env(safe-area-inset-bottom));
+  padding: 2px 20px calc(16px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 .panel__group { display: flex; flex-direction: column; }
 .panel__label {
@@ -312,7 +316,7 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 46px;
+  min-height: 48px;
   padding: 0 2px;
   font: 500 var(--fs)/1 var(--mono);
   letter-spacing: 0.1em;
@@ -328,8 +332,8 @@ body::before {
 .tgl__track {
   position: relative;
   flex: none;
-  width: 34px;
-  height: 18px;
+  width: 36px;
+  height: 20px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.18);
   transition: background-color 280ms var(--ease-out);
@@ -338,7 +342,7 @@ body::before {
   content: "";
   position: absolute;
   top: 2px; left: 2px;
-  width: 14px; height: 14px;
+  width: 16px; height: 16px;
   border-radius: 999px;
   background: var(--bone);
   transition: translate 280ms cubic-bezier(0.32, 0.72, 0, 1), background-color 280ms var(--ease-out);
@@ -352,7 +356,7 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 46px;
+  min-height: 48px;
   padding: 0 2px;
   font: 500 var(--fs)/1 var(--mono);
   letter-spacing: 0.1em;
@@ -497,7 +501,7 @@ body.color-on .frag { filter: none; }
   color: var(--bone);
   white-space: pre-line;
   opacity: 0;
-  translate: 0 7px;
+  translate: 0 8px;
 }
 .cp.is-in {
   opacity: 1;
@@ -552,7 +556,6 @@ body.single-line .cp { white-space: nowrap; }
 /* ————— small screens ————— */
 
 @media (max-width: 720px) {
-  :root { --edge-y: 60px; }
   body { cursor: default; }
   .chrome--bc, .crosshair { display: none; }
 }
@@ -567,7 +570,7 @@ body.single-line .cp { white-space: nowrap; }
   .frag.is-out, .cp.is-out { translate: 0 0; }
   .panel, .panel.is-open {
     transform: none;
-    border-radius: 26px;
+    border-radius: var(--radius);
     transition: opacity 200ms linear, visibility 0s linear 200ms;
   }
   .panel.is-open { transition: opacity 200ms linear, visibility 0s; }
