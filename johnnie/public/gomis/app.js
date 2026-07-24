@@ -20,6 +20,7 @@
   const layoutNoEl = document.getElementById("layout-no");
   const gridSpecEl = document.getElementById("grid-spec");
   const frameCountEl = document.getElementById("frame-count");
+  const marksLayer = document.getElementById("marks");
   const negInfoEl = document.getElementById("neg-credit");
   const negLicEl = document.getElementById("neg-lic");
   const readoutEl = document.getElementById("cursor-readout");
@@ -265,11 +266,8 @@
     // one emphasized copy block per layout (full shade, heavier weight)
     if (copies.length) copies[(rng() * copies.length) | 0].strong = true;
 
-    const marks = new Set();
-    for (let t = 0; t < 10; t++) marks.add(irange(rng, cols + 1, cols * rows - 1));
-
     return {
-      cfg, rng, frags, copies, marks,
+      cfg, rng, frags, copies, anchorCols, anchorRows,
       seed: seedHex(seed),
       negative: pick(rng, NEGATIVES),
     };
@@ -422,8 +420,26 @@
       u.className = "ucell";
       if (i % cols === cols - 1) u.classList.add("ucell--edge-r");
       if (i >= cols * (rows - 1)) u.classList.add("ucell--edge-b");
-      if (layout.marks.has(i) && i % cols !== 0 && i >= cols) u.classList.add("ucell--mark");
       underlay.appendChild(u);
+    }
+  }
+
+  // registration crosses at the intersections of the deal's anchor lines
+  function buildMarks(layout) {
+    const { cols, rows } = layout.cfg;
+    marksLayer.innerHTML = "";
+    for (const ax of layout.anchorCols) {
+      if (ax === 0) continue;
+      for (const ay of layout.anchorRows) {
+        if (ay === 0) continue;
+        const s = document.createElement("span");
+        s.className = "mark";
+        s.textContent = "+";
+        s.style.left = `${(ax / cols) * 100}%`;
+        s.style.top = `${(ay / rows) * 100}%`;
+        s.style.setProperty("--d", `${reducedMotion ? 0 : ax * 22 + ay * 30 + 260}ms`);
+        marksLayer.appendChild(s);
+      }
     }
   }
 
@@ -432,7 +448,7 @@
 
   // ————— settings —————
 
-  const settings = { grid: false, grain: true, dither: false, singleLine: false };
+  const settings = { grid: false, marks: true, grain: true, dither: false, singleLine: false };
 
   // ordered 4x4 Bayer dithering in the sheet's own tones; cached per source
   const ditherCache = new Map();
@@ -543,14 +559,20 @@
         el.classList.remove("is-in");
         el.classList.add("is-out");
       });
+      [...marksLayer.children].forEach((el) => {
+        el.style.setProperty("--d", "0ms");
+        el.classList.remove("is-in");
+      });
       await wait(old.length * 10 + 480);
     }
 
     buildUnderlay(layout);
+    buildMarks(layout);
     grid.classList.remove("is-settled");
     grid.replaceChildren(frag);
     await nextFrame();
     cells.forEach((el) => el.classList.add("is-in"));
+    [...marksLayer.children].forEach((el) => el.classList.add("is-in"));
 
     layoutCount += 1;
     seedEl.textContent = layout.seed;
@@ -674,6 +696,26 @@
       }
     }
 
+    // registration crosses at the anchor intersections
+    if (settings.marks) {
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `400 ${10 * S}px "Geist Mono", monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const ax of current.layout.anchorCols) {
+        if (ax === 0) continue;
+        for (const ay of current.layout.anchorRows) {
+          if (ay === 0) continue;
+          ctx.fillText(
+            "+",
+            (stageBox.left + (stageBox.width * ax) / cols) * S,
+            (stageBox.top + (stageBox.height * ay) / rows) * S
+          );
+        }
+      }
+      ctx.textAlign = "start";
+    }
+
     // every piece of type, straight from the DOM
     const fs = 10 * S;
     ctx.textBaseline = "top";
@@ -756,6 +798,7 @@
   function applySetting(key, on) {
     settings[key] = on;
     if (key === "grid") document.body.classList.toggle("grid-on", on);
+    if (key === "marks") document.body.classList.toggle("marks-off", !on);
     if (key === "grain") document.body.classList.toggle("grain-off", !on);
     if (key === "singleLine") document.body.classList.toggle("single-line", on);
     if (key === "dither" && current.img) applyNegativeSrc();
