@@ -772,7 +772,7 @@
     }
 
     const a = document.createElement("a");
-    a.download = `gomis-${seedEl.textContent}.png`;
+    a.download = `barcelona-${seedEl.textContent}.png`;
     a.href = c.toDataURL("image/png");
     a.click();
   }

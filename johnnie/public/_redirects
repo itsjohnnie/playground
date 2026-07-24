@@ -1,0 +1,5 @@
+# Workers Static Assets redirects.
+# The Barcelona sheet moved from /gomis to /trips/barcelona.
+/gomis /trips/barcelona 301
+/gomis/ /trips/barcelona/ 301
+/gomis/* /trips/barcelona/:splat 301
