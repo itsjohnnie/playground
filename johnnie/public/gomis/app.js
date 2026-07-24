@@ -66,8 +66,8 @@
   const SPECS = ["F 2.8 · 1/250", "F 8 · 1/60", "F 1.8 · 1/1000", "F 11 · 1/125", "F 4 · 1/500", "F 5.6 · 1/250"];
   const FILM = ["PORTRA 400", "HP5+ PUSH +1", "TRI-X 400", "EKTAR 100", "GOLD 200", "DELTA 3200"];
   const LENSES = ["50MM", "35MM", "28MM", "85MM", "24MM"];
-  const NOTES = ["NO DOBLAR", "PROVA · NO IMPRIMIR", "SENSE ORDENAR", "MANTENIR PLA", "SEGONA PASSADA", "ESCANEJAT DOS COPS", "POLS AL NEGATIU", "FUGA DE LLUM, GUARDADA", "VORA CREMADA", "FIXAR VORA ESQUERRA"];
-  const MONTHS = ["GEN", "FEB", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OCT", "NOV", "DES"];
+  const NOTES = ["DO NOT BEND", "PROOF · DO NOT PRINT", "UNSORTED", "KEEP FLAT", "SECOND PASS", "SCANNED TWICE", "DUST ON NEG", "LIGHT LEAK, KEPT", "BURNED EDGE", "PIN LEFT EDGE"];
+  const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
   const fmtTime = (rng) => `${String(irange(rng, 6, 22)).padStart(2, "0")}:${String(irange(rng, 0, 59)).padStart(2, "0")}`;
   const fmtDate = (rng) => `${pick(rng, MONTHS)} ${String(irange(rng, 1, 28)).padStart(2, "0")}`;
@@ -84,11 +84,11 @@
     switch (kind) {
       case "place": return m ? `${m.place}\n${m.time}` : `${pick(rng, PLACES)}\n${fmtTime(rng)}`;
       case "spec": return m ? `${m.spec}\n${m.lens}` : `${pick(rng, SPECS)}\n${pick(rng, LENSES)}`;
-      case "film": return m ? `${m.film}\n${m.iso}` : `${pick(rng, FILM)}\nROTLLE ${String(irange(rng, 1, 24)).padStart(2, "0")}`;
+      case "film": return m ? `${m.film}\n${m.iso}` : `${pick(rng, FILM)}\nROLL ${String(irange(rng, 1, 24)).padStart(2, "0")}`;
       case "gps": return m ? m.gps : fmtGps(rng);
       case "note": return pick(rng, NOTES);
-      case "index": return `FT ${String(irange(rng, 1, 412)).padStart(3, "0")} →`;
-      case "contact": return `RETALL ${String(irange(rng, 1, ctx.frags)).padStart(2, "0")}/${ctx.frags}`;
+      case "index": return `FR ${String(irange(rng, 1, 412)).padStart(3, "0")} →`;
+      case "contact": return `CLIP ${String(irange(rng, 1, ctx.frags)).padStart(2, "0")}/${ctx.frags}`;
       case "date": return m ? m.date : `${fmtDate(rng)}\n${fmtTime(rng)}`;
       case "meter": return fmtEv(rng);
       default: return pick(rng, NOTES);
@@ -298,37 +298,37 @@
     { author: "EUGÈNE ATGET", title: "STEPS AT SAINT-CLOUD", year: 1906, lic: "CC0",
       src: "negatives/atget-steps-1906.jpg",
       page: COMMONS + "Eug%C3%A8ne_Atget,_The_Steps_at_Saint-Cloud,_1906,_NGA_106293.jpg" },
-    { author: "JOSEP BRANGULÍ", title: "SANT PERE MÉS ALT, BCN", year: 1913, lic: "DOMINI PÚBLIC",
+    { author: "JOSEP BRANGULÍ", title: "SANT PERE MÉS ALT, BCN", year: 1913, lic: "PUBLIC DOMAIN",
       src: "negatives/branguli-santpere-1913.jpg",
       page: COMMONS + "Sant_Pere_m%C3%A9s_alt-Via_Laietana.jpg" },
-    { author: "JOSEP BRANGULÍ", title: "AIGUAT DEL MASNOU", year: 1909, lic: "DOMINI PÚBLIC",
+    { author: "JOSEP BRANGULÍ", title: "AIGUAT DEL MASNOU", year: 1909, lic: "PUBLIC DOMAIN",
       src: "negatives/branguli-masnou-1909.jpg",
       page: COMMONS + "Aiguat_del_Masnou_1909_-_Carrer.jpg" },
-    { author: "JOSEP BRANGULÍ", title: "CARRER PINTOR FORTUNY, BCN", year: 1930, lic: "DOMINI PÚBLIC",
+    { author: "JOSEP BRANGULÍ", title: "CARRER PINTOR FORTUNY, BCN", year: 1930, lic: "PUBLIC DOMAIN",
       src: "negatives/branguli-fortuny-1930.jpg",
       page: COMMONS + "Carrer_Pintor_Fortuny.jpg" },
     // johnnie's own frames: real EXIF drives the micro-copy for these
-    { author: "JOHNNIE", title: "TOSSA DE MAR", year: 2026, lic: "ARXIU PROPI",
+    { author: "JOHNNIE", title: "TOSSA DE MAR", year: 2026, lic: "OWN ARCHIVE",
       src: "negatives/johnnie-tossa-2026.jpg", page: "https://johnnies.life",
       meta: { place: "TOSSA DE MAR", time: "12:07", date: "JUL 18\n12:07",
               gps: "41.7512° N\n2.9657° E", spec: "F 1.8 · 1/6400", lens: "24MM",
               film: "IPHONE 17 PRO", iso: "ISO 80" } },
-    { author: "JOHNNIE", title: "CALA FUTADERA", year: 2026, lic: "ARXIU PROPI",
+    { author: "JOHNNIE", title: "CALA FUTADERA", year: 2026, lic: "OWN ARCHIVE",
       src: "negatives/johnnie-futadera-2026.jpg", page: "https://johnnies.life",
       meta: { place: "CALA FUTADERA", time: "12:25", date: "JUL 18\n12:25",
               gps: "41.7614° N\n2.9784° E", spec: "F 1.8 · 1/3200", lens: "48MM",
               film: "IPHONE 17 PRO", iso: "ISO 100" } },
-    { author: "JOHNNIE", title: "CALA GIVEROLA I", year: 2026, lic: "ARXIU PROPI",
+    { author: "JOHNNIE", title: "CALA GIVEROLA I", year: 2026, lic: "OWN ARCHIVE",
       src: "negatives/johnnie-giverola-1-2026.jpg", page: "https://johnnies.life",
       meta: { place: "CALA GIVEROLA", time: "12:29", date: "JUL 18\n12:29",
               gps: "41.7597° N\n2.9819° E", spec: "F 1.8 · 1/8000", lens: "48MM",
               film: "IPHONE 17 PRO", iso: "ISO 64" } },
-    { author: "JOHNNIE", title: "CALA GIVEROLA II", year: 2026, lic: "ARXIU PROPI",
+    { author: "JOHNNIE", title: "CALA GIVEROLA II", year: 2026, lic: "OWN ARCHIVE",
       src: "negatives/johnnie-giverola-2-2026.jpg", page: "https://johnnies.life",
       meta: { place: "CALA GIVEROLA", time: "17:08", date: "JUL 18\n17:08",
               gps: "41.7598° N\n2.9812° E", spec: "F 1.8 · 1/6400", lens: "48MM",
               film: "IPHONE 17 PRO", iso: "ISO 64" } },
-    { author: "JOHNNIE", title: "EIXAMPLE, BCN", year: 2026, lic: "ARXIU PROPI",
+    { author: "JOHNNIE", title: "EIXAMPLE, BCN", year: 2026, lic: "OWN ARCHIVE",
       src: "negatives/johnnie-eixample-2026.jpg", page: "https://johnnies.life",
       meta: { place: "EIXAMPLE", time: "12:18", date: "JUL 23\n12:18",
               gps: "41.3917° N\n2.1649° E", spec: "F 2.8 · 1/800", lens: "100MM",
@@ -448,7 +448,7 @@
 
   // ————— settings —————
 
-  const settings = { grid: false, marks: true, grain: true, dither: false, singleLine: false };
+  const settings = { grid: false, marks: true, grain: true, dither: false, singleLine: false, color: false };
 
   // ordered 4x4 Bayer dithering in the sheet's own tones; cached per source
   const ditherCache = new Map();
@@ -657,7 +657,10 @@
     const sw = innerWidth / cover, sh = innerHeight / cover;
     const sx0 = (iw - sw) / 2, sy0 = (ih - sh) / 2;
     ctx.imageSmoothingQuality = "high";
+    const monoFilter = settings.color ? "none" : "grayscale(1) contrast(1.15)";
+    ctx.filter = monoFilter;
     ctx.drawImage(source, sx0, sy0, sw, sh, 0, 0, W, H);
+    ctx.filter = "none";
 
     const veil = "rgba(10, 9, 8, 0.32)";
     ctx.fillStyle = veil;
@@ -673,11 +676,13 @@
       const r = el.getBoundingClientRect();
       const srcVpX = stageBox.left + (stageBox.width * f.sx) / cols;
       const srcVpY = stageBox.top + (stageBox.height * f.sy) / rows;
+      ctx.filter = monoFilter;
       ctx.drawImage(
         source,
         sx0 + srcVpX / cover, sy0 + srcVpY / cover, r.width / cover, r.height / cover,
         r.left * S, r.top * S, r.width * S, r.height * S
       );
+      ctx.filter = "none";
       ctx.fillStyle = veil;
       ctx.fillRect(r.left * S, r.top * S, r.width * S, r.height * S);
     });
@@ -801,6 +806,7 @@
     if (key === "marks") document.body.classList.toggle("marks-off", !on);
     if (key === "grain") document.body.classList.toggle("grain-off", !on);
     if (key === "singleLine") document.body.classList.toggle("single-line", on);
+    if (key === "color") document.body.classList.toggle("color-on", on);
     if (key === "dither" && current.img) applyNegativeSrc();
     const tgl = panel.querySelector(`[data-setting="${key}"]`);
     if (tgl) tgl.setAttribute("aria-checked", String(on));

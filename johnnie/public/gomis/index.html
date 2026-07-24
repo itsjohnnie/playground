@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="ca">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>gomis — un negatiu, una graella</title>
-<meta name="description" content="Un negatiu, una graella. Retalls desplaçats del mateix fotograma i micro-copy sobre una graella amagada.">
+<title>gomis — one negative, one grid</title>
+<meta name="description" content="One negative, one grid. Displaced clippings of a single photograph and micro-copy on a hidden grid.">
 <meta name="theme-color" content="#0c0b0a">
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -13,22 +13,22 @@
   <!-- the negative: two layers for crossfade -->
   <div class="bg" id="bg-a" aria-hidden="true"></div>
   <div class="bg" id="bg-b" aria-hidden="true"></div>
-  <p class="sr-only">Una fotografia de domini públic (Eugène Atget o Josep Brangulí, via Wikimedia Commons) omple la pantalla; alguns retalls de la mateixa imatge es desplacen sobre una graella. El crèdit de cada negatiu apareix a la cantonada inferior esquerra.</p>
+  <p class="sr-only">A photograph fills the screen; a few clippings of the same image are displaced across a hidden grid. Each negative is credited in the bottom-left corner.</p>
 
   <!-- corner chrome -->
   <header class="chrome chrome--tl">
     <span class="chrome__strong">GOMIS&nbsp;·&nbsp;BARCELONA</span>
-    <span class="chrome__dim">un negatiu — una graella</span>
+    <span class="chrome__dim">one negative — one grid</span>
   </header>
 
   <div class="chrome chrome--tr">
-    <span class="chrome__dim">FULL&nbsp;<span id="layout-no">№ 001</span></span>
+    <span class="chrome__dim">SHEET&nbsp;<span id="layout-no">№ 001</span></span>
     <span class="chrome__dim">SEED&nbsp;<span id="seed" class="hi">——</span></span>
   </div>
 
   <div class="chrome chrome--bl">
     <a class="chrome__dim credit" id="neg-credit" href="https://commons.wikimedia.org/" target="_blank" rel="noopener">NEG — · —</a>
-    <span class="chrome__dim">GRAELLA <span id="grid-spec">6 × 10</span> · <span id="frame-count">6</span> RETALLS · <span id="neg-lic">—</span></span>
+    <span class="chrome__dim">GRID <span id="grid-spec">6 × 10</span> · <span id="frame-count">6</span> CLIPS · <span id="neg-lic">—</span></span>
   </div>
 
   <div class="chrome chrome--bc" aria-hidden="true">
@@ -36,7 +36,7 @@
   </div>
 
   <div class="chrome chrome--br">
-    <button id="settings" class="chip" type="button" aria-expanded="false" aria-controls="panel" aria-label="Ajustos">
+    <button id="settings" class="chip" type="button" aria-expanded="false" aria-controls="panel" aria-label="Settings">
       <svg class="chip__icon" viewBox="0 0 14 14" aria-hidden="true">
         <line x1="1.5" y1="4" x2="12.5" y2="4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
         <line x1="1.5" y1="10" x2="12.5" y2="10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
@@ -47,13 +47,13 @@
   </div>
 
   <!-- ajustos: blooms out of the chip -->
-  <div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="Ajustos">
+  <div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="Settings">
     <header class="panel__head">
-      <span class="panel__title">AJUSTOS</span>
+      <span class="panel__title">SETTINGS</span>
       <span class="panel__spin" id="panel-busy" aria-hidden="true">
         <svg viewBox="0 0 12 12"><path d="M6 1.5a4.5 4.5 0 1 0 4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
       </span>
-      <button class="panel__close" id="panel-close" type="button" aria-label="Tanca">
+      <button class="panel__close" id="panel-close" type="button" aria-label="Close">
         <svg viewBox="0 0 12 12" aria-hidden="true">
           <path d="M2.5 2.5 9.5 9.5 M9.5 2.5 2.5 9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
         </svg>
@@ -62,30 +62,33 @@
 
     <div class="panel__body">
       <section class="panel__group">
-        <h2 class="panel__label">VISTA</h2>
+        <h2 class="panel__label">VIEW</h2>
         <button class="tgl" type="button" role="switch" aria-checked="false" data-setting="grid">
-          <span>GRAELLA</span><span class="tgl__track" aria-hidden="true"></span>
+          <span>GRID</span><span class="tgl__track" aria-hidden="true"></span>
         </button>
         <button class="tgl" type="button" role="switch" aria-checked="true" data-setting="marks">
-          <span>CREUS DE REGISTRE</span><span class="tgl__track" aria-hidden="true"></span>
+          <span>REGISTRATION MARKS</span><span class="tgl__track" aria-hidden="true"></span>
         </button>
         <button class="tgl" type="button" role="switch" aria-checked="true" data-setting="grain">
-          <span>GRA</span><span class="tgl__track" aria-hidden="true"></span>
+          <span>GRAIN</span><span class="tgl__track" aria-hidden="true"></span>
         </button>
         <button class="tgl" type="button" role="switch" aria-checked="false" data-setting="dither">
-          <span>TRAMA DE PUNTS</span><span class="tgl__track" aria-hidden="true"></span>
+          <span>DITHER</span><span class="tgl__track" aria-hidden="true"></span>
         </button>
         <button class="tgl" type="button" role="switch" aria-checked="false" data-setting="singleLine">
-          <span>LÍNIA ÚNICA</span><span class="tgl__track" aria-hidden="true"></span>
+          <span>SINGLE LINE</span><span class="tgl__track" aria-hidden="true"></span>
+        </button>
+        <button class="tgl" type="button" role="switch" aria-checked="false" data-setting="color">
+          <span>COLOR</span><span class="tgl__track" aria-hidden="true"></span>
         </button>
       </section>
 
       <section class="panel__group">
-        <h2 class="panel__label">EL FULL</h2>
-        <button class="act" type="button" id="act-photo"><span>NOVA FOTO</span><em>mateix text</em></button>
-        <button class="act" type="button" id="act-copy"><span>NOU TEXT</span><em>mateixa foto</em></button>
-        <button class="act" type="button" id="act-all"><span>TOT NOU</span><em>tecla R</em></button>
-        <button class="act" type="button" id="act-export"><span>EXPORTA PNG</span><em>full actual</em></button>
+        <h2 class="panel__label">THE SHEET</h2>
+        <button class="act" type="button" id="act-photo"><span>NEW PHOTO</span><em>same text</em></button>
+        <button class="act" type="button" id="act-copy"><span>NEW TEXT</span><em>same photo</em></button>
+        <button class="act" type="button" id="act-all"><span>SHUFFLE ALL</span><em>key R</em></button>
+        <button class="act" type="button" id="act-export"><span>EXPORT PNG</span><em>current sheet</em></button>
       </section>
     </div>
   </div>
