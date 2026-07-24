@@ -36,20 +36,55 @@
   </div>
 
   <div class="chrome chrome--br">
-    <button id="grid-toggle" class="ctl" type="button" aria-pressed="false" aria-label="Mostra la graella (G)">
-      <svg class="ctl__icon ctl__icon--eye" viewBox="0 0 14 14" aria-hidden="true">
-        <path d="M1.2 7C2.6 4.4 4.7 3 7 3s4.4 1.4 5.8 4C11.4 9.6 9.3 11 7 11S2.6 9.6 1.2 7Z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>
-        <circle cx="7" cy="7" r="1.7" fill="none" stroke="currentColor" stroke-width="1.1"/>
-        <line class="ctl__slash" x1="2.4" y1="12" x2="11.6" y2="2" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+    <button id="settings" class="chip" type="button" aria-expanded="false" aria-controls="panel" aria-label="Ajustos">
+      <svg class="chip__icon" viewBox="0 0 14 14" aria-hidden="true">
+        <line x1="1.5" y1="4" x2="12.5" y2="4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+        <line x1="1.5" y1="10" x2="12.5" y2="10" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+        <circle cx="9" cy="4" r="1.9" fill="currentColor" stroke="none"/>
+        <circle cx="5" cy="10" r="1.9" fill="currentColor" stroke="none"/>
       </svg>
     </button>
-    <button id="regen" class="ctl ctl--wide" type="button" aria-label="Regenera el full (R)">
-      <svg class="ctl__icon" viewBox="0 0 12 12" aria-hidden="true">
-        <path d="M6 1.5a4.5 4.5 0 1 0 4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
-        <path d="M8.4 1.2 10.7 1.7 10.2 4" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <span class="ctl__label">REGENERA</span>
-    </button>
+  </div>
+
+  <!-- ajustos: blooms out of the chip -->
+  <div class="panel" id="panel" role="dialog" aria-modal="true" aria-label="Ajustos">
+    <header class="panel__head">
+      <span class="panel__title">AJUSTOS</span>
+      <span class="panel__spin" id="panel-busy" aria-hidden="true">
+        <svg viewBox="0 0 12 12"><path d="M6 1.5a4.5 4.5 0 1 0 4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+      </span>
+      <button class="panel__close" id="panel-close" type="button" aria-label="Tanca">
+        <svg viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M2.5 2.5 9.5 9.5 M9.5 2.5 2.5 9.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </header>
+
+    <div class="panel__body">
+      <section class="panel__group">
+        <h2 class="panel__label">VISTA</h2>
+        <button class="tgl" type="button" role="switch" aria-checked="false" data-setting="grid">
+          <span>GRAELLA</span><span class="tgl__track" aria-hidden="true"></span>
+        </button>
+        <button class="tgl" type="button" role="switch" aria-checked="true" data-setting="grain">
+          <span>GRA</span><span class="tgl__track" aria-hidden="true"></span>
+        </button>
+        <button class="tgl" type="button" role="switch" aria-checked="false" data-setting="dither">
+          <span>TRAMA DE PUNTS</span><span class="tgl__track" aria-hidden="true"></span>
+        </button>
+        <button class="tgl" type="button" role="switch" aria-checked="false" data-setting="singleLine">
+          <span>LÍNIA ÚNICA</span><span class="tgl__track" aria-hidden="true"></span>
+        </button>
+      </section>
+
+      <section class="panel__group">
+        <h2 class="panel__label">FULL</h2>
+        <button class="act" type="button" id="act-photo"><span>NOVA FOTO</span><em>mateix text</em></button>
+        <button class="act" type="button" id="act-copy"><span>NOU TEXT</span><em>mateixa foto</em></button>
+        <button class="act" type="button" id="act-all"><span>TOT NOU</span><em>tecla R</em></button>
+        <button class="act" type="button" id="act-export"><span>EXPORTA PNG</span><em>full actual</em></button>
+      </section>
+    </div>
   </div>
 
   <!-- the sheet -->
