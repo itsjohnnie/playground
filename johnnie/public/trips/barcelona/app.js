@@ -654,7 +654,7 @@
     ctx.drawImage(source, sx0, sy0, sw, sh, 0, 0, W, H);
     ctx.filter = "none";
 
-    const veil = "rgba(10, 9, 8, 0.32)";
+    const veil = "rgba(10, 9, 8, 0.26)";
     ctx.fillStyle = veil;
     ctx.fillRect(0, 0, W, H);
 
