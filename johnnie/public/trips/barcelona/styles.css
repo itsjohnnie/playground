@@ -611,6 +611,8 @@ body.color-on .frag { filter: none; }
 
 body.grain-off .grain { display: none; }
 body.single-line .cp { white-space: nowrap; }
+/* clippings are opt-in: latent until the toggle wipes them in */
+body:not(.clips-on) .frag { pointer-events: none; }
 
 /* ————— grain ————— */
 
