@@ -18,6 +18,11 @@ in `../app.js` and drives the factual micro-copy for each deal.
 | `johnnie-camironda-2-2026.jpg` | Camí de Ronda II, Jul 18 2026 |
 | `johnnie-gotic-2026.jpg` | El Gòtic, Barcelona, Jul 17 2026 |
 | `johnnie-futadera-2-2026.jpg` | Cala Futadera II, Jul 18 2026 |
+| `johnnie-sagrada-1-2026.jpg` | Sagrada Família I, Jul 24 2026 |
+| `johnnie-sagrada-2-2026.jpg` | Sagrada Família II, Jul 24 2026 |
+| `johnnie-sagrada-3-2026.jpg` | Sagrada Família III, Jul 24 2026 |
+| `johnnie-sagrada-4-2026.jpg` | Sagrada Família IV, Jul 24 2026 |
+| `johnnie-sagrada-5-2026.jpg` | Sagrada Família V, Jul 24 2026 |
 
 ## Adding new negatives
 
