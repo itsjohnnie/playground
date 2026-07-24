@@ -76,16 +76,19 @@
     return `EV ${v}`;
   };
 
+  // when the negative carries real EXIF (johnnie's own frames), the
+  // factual copy kinds print the truth; the archive fictions stay generative
   function copyText(rng, kind, ctx) {
+    const m = ctx.meta;
     switch (kind) {
-      case "place": return `${pick(rng, PLACES)}\n${fmtTime(rng)}`;
-      case "spec": return `${pick(rng, SPECS)}\n${pick(rng, LENSES)}`;
-      case "film": return `${pick(rng, FILM)}\nROTLLE ${String(irange(rng, 1, 24)).padStart(2, "0")}`;
-      case "gps": return fmtGps(rng);
+      case "place": return m ? `${m.place}\n${m.time}` : `${pick(rng, PLACES)}\n${fmtTime(rng)}`;
+      case "spec": return m ? `${m.spec}\n${m.lens}` : `${pick(rng, SPECS)}\n${pick(rng, LENSES)}`;
+      case "film": return m ? `${m.film}\n${m.iso}` : `${pick(rng, FILM)}\nROTLLE ${String(irange(rng, 1, 24)).padStart(2, "0")}`;
+      case "gps": return m ? m.gps : fmtGps(rng);
       case "note": return pick(rng, NOTES);
       case "index": return `FT ${String(irange(rng, 1, 412)).padStart(3, "0")} →`;
       case "contact": return `RETALL ${String(irange(rng, 1, ctx.frags)).padStart(2, "0")}/${ctx.frags}`;
-      case "date": return `${fmtDate(rng)}\n${fmtTime(rng)}`;
+      case "date": return m ? m.date : `${fmtDate(rng)}\n${fmtTime(rng)}`;
       case "meter": return fmtEv(rng);
       default: return pick(rng, NOTES);
     }
@@ -306,6 +309,32 @@
     { author: "JOSEP BRANGULÍ", title: "CARRER PINTOR FORTUNY, BCN", year: 1930, lic: "DOMINI PÚBLIC",
       src: "negatives/branguli-fortuny-1930.jpg",
       page: COMMONS + "Carrer_Pintor_Fortuny.jpg" },
+    // johnnie's own frames: real EXIF drives the micro-copy for these
+    { author: "JOHNNIE", title: "TOSSA DE MAR", year: 2026, lic: "ARXIU PROPI",
+      src: "negatives/johnnie-tossa-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "TOSSA DE MAR", time: "12:07", date: "JUL 18\n12:07",
+              gps: "41.7512° N\n2.9657° E", spec: "F 1.8 · 1/6400", lens: "24MM",
+              film: "IPHONE 17 PRO", iso: "ISO 80" } },
+    { author: "JOHNNIE", title: "CALA FUTADERA", year: 2026, lic: "ARXIU PROPI",
+      src: "negatives/johnnie-futadera-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "CALA FUTADERA", time: "12:25", date: "JUL 18\n12:25",
+              gps: "41.7614° N\n2.9784° E", spec: "F 1.8 · 1/3200", lens: "48MM",
+              film: "IPHONE 17 PRO", iso: "ISO 100" } },
+    { author: "JOHNNIE", title: "CALA GIVEROLA I", year: 2026, lic: "ARXIU PROPI",
+      src: "negatives/johnnie-giverola-1-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "CALA GIVEROLA", time: "12:29", date: "JUL 18\n12:29",
+              gps: "41.7597° N\n2.9819° E", spec: "F 1.8 · 1/8000", lens: "48MM",
+              film: "IPHONE 17 PRO", iso: "ISO 64" } },
+    { author: "JOHNNIE", title: "CALA GIVEROLA II", year: 2026, lic: "ARXIU PROPI",
+      src: "negatives/johnnie-giverola-2-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "CALA GIVEROLA", time: "17:08", date: "JUL 18\n17:08",
+              gps: "41.7598° N\n2.9812° E", spec: "F 1.8 · 1/6400", lens: "48MM",
+              film: "IPHONE 17 PRO", iso: "ISO 64" } },
+    { author: "JOHNNIE", title: "EIXAMPLE, BCN", year: 2026, lic: "ARXIU PROPI",
+      src: "negatives/johnnie-eixample-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "EIXAMPLE", time: "12:18", date: "JUL 23\n12:18",
+              gps: "41.3917° N\n2.1649° E", spec: "F 2.8 · 1/800", lens: "100MM",
+              film: "IPHONE 17 PRO", iso: "ISO 20" } },
   ];
 
   function loadNegative(url, timeout = 9000) {
@@ -377,7 +406,7 @@
       el.style.gridColumn = `${c.x + 1} / span ${c.w}`;
       el.style.gridRow = `${c.y + 1} / span ${c.h}`;
       el.style.setProperty("--d", `${enterDelay(c.x, c.y)}ms`);
-      el.textContent = copyText(layout.rng, c.kind, { frags: layout.frags.length });
+      el.textContent = copyText(layout.rng, c.kind, { frags: layout.frags.length, meta: layout.negative.meta });
       frag.appendChild(el);
       cells.push(el);
     });
