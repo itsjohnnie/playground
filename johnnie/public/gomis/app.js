@@ -373,8 +373,6 @@
       el.className = "cp";
       if (c.strong || layout.rng() < 0.3) el.classList.add("cp--strong");
       if (c.vert) el.classList.add("cp--vert");
-      if (layout.rng() < 0.25) el.classList.add("cp--end");
-      if (!c.vert && layout.rng() < 0.2) el.classList.add("cp--right");
       el.style.gridColumn = `${c.x + 1} / span ${c.w}`;
       el.style.gridRow = `${c.y + 1} / span ${c.h}`;
       el.style.setProperty("--d", `${enterDelay(c.x, c.y)}ms`);

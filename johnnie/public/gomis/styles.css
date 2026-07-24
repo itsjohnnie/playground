@@ -18,6 +18,9 @@
   --line: rgba(255, 255, 255, 0.16);
   --veil: rgba(10, 9, 8, 0.32);
   --fs: 10px;
+  /* every piece of type in a cell shares this inset */
+  --pad-y: 6px;
+  --pad-x: 7px;
   --edge-x: clamp(14px, 3vw, 40px);
   --edge-y: 64px;
   --vpw: 100vw;
@@ -262,8 +265,8 @@ body::before {
 .frag__no {
   position: absolute;
   z-index: 1;
-  top: 5px;
-  right: 6px;
+  top: var(--pad-y);
+  right: var(--pad-x);
   font-size: var(--fs);
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -276,7 +279,7 @@ body::before {
 
 .cp {
   position: relative;
-  padding: 6px 7px;
+  padding: var(--pad-y) var(--pad-x);
   font-size: var(--fs);
   line-height: 1.55;
   letter-spacing: 0.06em;
@@ -293,9 +296,7 @@ body::before {
   transition-delay: var(--d, 0ms);
 }
 .cp--strong { font-weight: 500; }
-.cp--end { display: flex; align-items: flex-end; }
-.cp--right { text-align: right; }
-.cp--vert { writing-mode: vertical-rl; padding: 6px 5px; }
+.cp--vert { writing-mode: vertical-rl; }
 
 /* exit: a soft clearing while the next negative fades in underneath */
 .frag.is-out, .cp.is-out {
