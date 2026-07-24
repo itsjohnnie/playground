@@ -564,11 +564,11 @@
 
   // ordered 4x4 Bayer dithering in the sheet's own tones; cached per source.
   // the working canvas is small on purpose: each dither cell lands on
-  // roughly 3 CSS pixels once cover-stretched, so the pattern reads as
-  // chunky retro halftone instead of dissolving into plain black and white
+  // roughly 2 CSS pixels once cover-stretched — legible as retro halftone,
+  // fine enough that the photograph still reads through it
   const ditherCache = new Map();
   function ditherize(img) {
-    const maxW = Math.max(96, Math.round(innerWidth / 3));
+    const maxW = Math.max(96, Math.round(innerWidth / 2));
     const key = `${img.src}@${maxW}`;
     if (ditherCache.has(key)) return ditherCache.get(key);
     try {
