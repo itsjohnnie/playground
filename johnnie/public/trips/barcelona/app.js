@@ -1026,7 +1026,7 @@
 
   const holdRing = document.getElementById("holdring");
   const ringProg = holdRing.querySelector(".holdring__progress");
-  const RING_LEN = 122.52;
+  const RING_LEN = 109.96;
   const HOLD_MS = 3000;
   let hold = null;
   let chipTimer = null;

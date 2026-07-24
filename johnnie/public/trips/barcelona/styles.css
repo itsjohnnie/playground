@@ -20,11 +20,11 @@
   --fs: 10px; /* type size: optical, the one deliberate off-grid value */
   /* ————— the spatial scale: every meaningful distance is a multiple
      of 4px — pad 8, margins 16-40 (fluid), chrome margin edge+pad
-     (24 phone / 48 desktop), stage 64, chip 48, radius 24 ————— */
+     (24 phone / 48 desktop), stage 64, chip 36, radius 24 ————— */
   --pad: 8px;
   --edge-x: clamp(16px, 3vw, 40px);
   --edge-y: 64px;
-  --chip: 40px;
+  --chip: 36px;
   --radius: 24px;
   --vpw: 100vw;
   --vph: 100vh;
@@ -168,7 +168,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
    backdrop-filter, which iOS Safari lacks - this is the optics the
    cross-browser recreations use. */
 
-/* the chip IS the hold ring, landed: the same 40px hairline circle in
+/* the chip IS the hold ring, landed: the same 36px hairline circle in
    the sheet's own ink. the glass optics stay on the panel — on an
    element this small they only read as smudge */
 .chip {
@@ -186,11 +186,11 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   background: none;
   transition: transform 160ms var(--ease-out), opacity 240ms var(--ease-out);
 }
-/* an unseen apron keeps the 48px touch target around the 40px circle */
+/* an unseen apron keeps the 48px touch target around the 36px circle */
 .chip::before {
   content: "";
   position: absolute;
-  inset: -4px;
+  inset: -6px;
   border-radius: inherit;
 }
 .chip__icon { z-index: 1; }
@@ -238,7 +238,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
     inset 0 16px 40px rgba(255, 255, 255, 0.045),
     0 24px 80px rgba(0, 0, 0, 0.4);
   /* the bloom grows out of the chip sitting just below the panel */
-  transform-origin: calc(100% - var(--edge-x)) calc(100% + 28px);
+  transform-origin: calc(100% - var(--edge-x) + 2px) calc(100% + 26px);
   transform: scale(0.04);
   border-radius: 240px;
   opacity: 0;
@@ -449,10 +449,10 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
    chip's own footprint, bottom right */
 .holdring {
   position: fixed;
-  right: calc(var(--edge-x) - 8px + (var(--chip) - 40px) / 2);
-  bottom: calc(max(12px, env(safe-area-inset-bottom)) + (var(--chip) - 40px) / 2);
-  width: 40px;
-  height: 40px;
+  right: calc(var(--edge-x) - 8px + (var(--chip) - 36px) / 2);
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + (var(--chip) - 36px) / 2);
+  width: 36px;
+  height: 36px;
   z-index: 45;
   pointer-events: none;
   opacity: 0;
@@ -460,15 +460,15 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
 }
 .holdring.is-on { opacity: 1; transition-delay: 280ms; } /* taps and swipes never see it */
 .holdring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-/* the ring traces the chip's exact outline (40px circle, 1px line), so
+/* the ring traces the chip's exact outline (36px circle, 1px line), so
    the filled ring and the arriving chip are one and the same element */
 .holdring circle { fill: none; stroke-width: 1; }
 .holdring__track { stroke: rgba(255, 255, 255, 0.25); }
 .holdring__progress {
   stroke: var(--bone);
   stroke-linecap: round;
-  stroke-dasharray: 122.52;
-  stroke-dashoffset: 122.52;
+  stroke-dasharray: 109.96;
+  stroke-dashoffset: 109.96;
 }
 
 .grid {
