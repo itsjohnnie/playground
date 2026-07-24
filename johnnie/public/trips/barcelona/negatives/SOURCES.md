@@ -25,6 +25,7 @@ length, exposure bias (EV), GPS altitude, and compass bearing.
 | `johnnie-sagrada-3-2026.jpg` | Sagrada Família III, Jul 24 2026 |
 | `johnnie-sagrada-4-2026.jpg` | Sagrada Família IV, Jul 24 2026 |
 | `johnnie-sagrada-5-2026.jpg` | Sagrada Família V, Jul 24 2026 |
+| `johnnie-santgervasi-2026.jpg` | Sant Gervasi, Barcelona, Jul 21 2026 |
 
 ## Adding new negatives
 
