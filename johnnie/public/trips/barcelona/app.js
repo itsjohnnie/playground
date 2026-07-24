@@ -851,7 +851,7 @@
     const dt = performance.now() - swipe.t;
     swipe = null;
     // a deliberate horizontal flick, not a stray tap or vertical drag
-    if (Math.abs(dx) > 70 && Math.abs(dx) > 1.6 * Math.abs(dy) && dt < 700) regenerate();
+    if (Math.abs(dx) > 72 && Math.abs(dx) > 1.6 * Math.abs(dy) && dt < 700) regenerate();
   });
   stage.addEventListener("pointercancel", () => { swipe = null; });
 
