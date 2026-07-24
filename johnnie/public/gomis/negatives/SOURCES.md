@@ -35,6 +35,22 @@ copyright.
 | `branguli-masnou-1909.jpg` | Aiguat del Masnou, 1909 | [Commons](https://commons.wikimedia.org/wiki/File:Aiguat_del_Masnou_1909_-_Carrer.jpg) |
 | `branguli-fortuny-1930.jpg` | Carrer Pintor Fortuny, c. 1930 | [Commons](https://commons.wikimedia.org/wiki/File:Carrer_Pintor_Fortuny.jpg) |
 
+## Johnnie (2026)
+
+Own photographs, all rights reserved by the site owner ("ARXIU PROPI"
+on the sheet). Served files are stripped of embedded EXIF; the real
+capture data (place, time, GPS, aperture, shutter, ISO, focal length)
+lives in the `meta` field of the manifest in `../app.js` and drives the
+factual micro-copy for these deals.
+
+| File | Work |
+|---|---|
+| `johnnie-tossa-2026.jpg` | Tossa de Mar, Jul 18 2026 |
+| `johnnie-futadera-2026.jpg` | Cala Futadera, Jul 18 2026 |
+| `johnnie-giverola-1-2026.jpg` | Cala Giverola I, Jul 18 2026 |
+| `johnnie-giverola-2-2026.jpg` | Cala Giverola II, Jul 18 2026 |
+| `johnnie-eixample-2026.jpg` | Eixample, Barcelona, Jul 23 2026 |
+
 ## Adding new negatives
 
 Add an entry to `NEGATIVES` in `../app.js` (src, author, title, year,
