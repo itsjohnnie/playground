@@ -502,30 +502,39 @@
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const nextFrame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-  // chrome values that persist in place never hard-swap: the old term
-  // is erased back to the shared stem and the new one keyed in, so one
-  // reading blends into the next
+  // chrome values that persist in place never hard-swap: the old
+  // reading decrypts into the new one — every character boils through
+  // stray glyphs and locks into place, so the line blends rather than
+  // visibly shortening and retyping
+  const CIPHER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789·—°×";
   function retype(el, next) {
     next = String(next);
     const prev = el.textContent;
     if (prev === next) return;
     if (reducedMotion) { el.textContent = next; return; }
     clearInterval(el._retype);
-    let stem = 0;
-    while (stem < prev.length && stem < next.length && prev[stem] === next[stem]) stem++;
-    let cur = prev;
-    let erasing = true;
+    // each position locks on its own frame: a loose left-to-right
+    // sweep with enough jitter that the resolve feels organic
+    const lock = [];
+    for (let i = 0; i < next.length; i++)
+      lock[i] = 2 + ((Math.random() * 6) | 0) + i * 0.35;
+    let frame = 0;
     el._retype = setInterval(() => {
-      if (erasing) {
-        if (cur.length > stem) cur = cur.slice(0, Math.max(stem, cur.length - 3));
-        else erasing = false;
+      frame++;
+      let out = "";
+      let done = true;
+      for (let i = 0; i < next.length; i++) {
+        if (frame >= lock[i]) { out += next[i]; continue; }
+        done = false;
+        const ch = next[i];
+        if (ch === " " || ch === "\u00a0") { out += ch; continue; }
+        // the first beats keep the old glyph where one exists, so the
+        // previous reading is what dissolves
+        out += frame < 2 && prev[i] ? prev[i] : CIPHER[(Math.random() * CIPHER.length) | 0];
       }
-      if (!erasing) {
-        if (cur.length < next.length) cur = next.slice(0, cur.length + 2);
-        else { clearInterval(el._retype); el._retype = null; }
-      }
-      el.textContent = cur;
-    }, 16);
+      el.textContent = out;
+      if (done) { clearInterval(el._retype); el._retype = null; }
+    }, 40);
   }
 
   // ————— settings —————
