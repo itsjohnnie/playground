@@ -263,12 +263,13 @@ body::before {
   border-radius: 240px;
   opacity: 0;
   visibility: hidden;
-  /* close is quicker than open: the system responds, it doesn't perform */
+  /* close is quicker than open, but the collapse must be SEEN:
+     the fade waits so the glass visibly retracts into the chip */
   transition:
-    transform 360ms cubic-bezier(0.32, 0.72, 0, 1),
-    border-radius 360ms cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 220ms var(--ease-out),
-    visibility 0s linear 360ms;
+    transform 380ms cubic-bezier(0.32, 0.72, 0, 1),
+    border-radius 380ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 220ms var(--ease-out) 160ms,
+    visibility 0s linear 380ms;
 }
 .panel.is-open {
   transform: scale(1);
