@@ -114,11 +114,12 @@ body::before {
   opacity: 0;
   animation: chrome-in 700ms var(--ease-out) forwards;
 }
-/* corner chrome shares the cells' text line: edge + the cell inset */
-.chrome--tl { top: max(16px, env(safe-area-inset-top)); left: calc(var(--edge-x) + var(--pad)); animation-delay: 120ms; }
-.chrome--tr { top: max(16px, env(safe-area-inset-top)); right: calc(var(--edge-x) + var(--pad)); text-align: right; animation-delay: 200ms; }
-.chrome--bl { bottom: max(16px, env(safe-area-inset-bottom)); left: calc(var(--edge-x) + var(--pad)); animation-delay: 280ms; }
-.chrome--bc { bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); animation-delay: 360ms; }
+/* corner chrome shares the cells' text line on ALL four sides:
+   edge + the cell inset, yielding one equal margin (safe areas still win) */
+.chrome--tl { top: max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-top)); left: calc(var(--edge-x) + var(--pad)); animation-delay: 120ms; }
+.chrome--tr { top: max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-top)); right: calc(var(--edge-x) + var(--pad)); text-align: right; animation-delay: 200ms; }
+.chrome--bl { bottom: max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom)); left: calc(var(--edge-x) + var(--pad)); animation-delay: 280ms; }
+.chrome--bc { bottom: max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); animation-delay: 360ms; }
 .chrome--br {
   bottom: max(10px, calc(env(safe-area-inset-bottom) - 2px));
   right: calc(var(--edge-x) - 8px);
@@ -382,6 +383,9 @@ body::before {
   position: fixed;
   inset: var(--edge-y) var(--edge-x);
   z-index: 10;
+  /* the sheet is gesture surface: no text selection on double-click/press */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .grid {

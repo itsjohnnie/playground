@@ -837,6 +837,28 @@
     if (k === "s") panel.classList.contains("is-open") ? closePanel() : openPanel();
   });
 
+  // ————— gestures: swipe shuffles on touch, double-click on desktop —————
+
+  let swipe = null;
+  stage.addEventListener("pointerdown", (e) => {
+    if (e.pointerType !== "touch" || !e.isPrimary || panel.classList.contains("is-open")) return;
+    swipe = { x: e.clientX, y: e.clientY, t: performance.now() };
+  });
+  stage.addEventListener("pointerup", (e) => {
+    if (!swipe || e.pointerType !== "touch") return;
+    const dx = e.clientX - swipe.x;
+    const dy = e.clientY - swipe.y;
+    const dt = performance.now() - swipe.t;
+    swipe = null;
+    // a deliberate horizontal flick, not a stray tap or vertical drag
+    if (Math.abs(dx) > 70 && Math.abs(dx) > 1.6 * Math.abs(dy) && dt < 700) regenerate();
+  });
+  stage.addEventListener("pointercancel", () => { swipe = null; });
+
+  stage.addEventListener("dblclick", () => {
+    if (matchMedia("(pointer: fine)").matches) regenerate();
+  });
+
   // ————— light-table cursor (fine pointers) —————
 
   if (matchMedia("(hover: hover) and (pointer: fine)").matches) {
