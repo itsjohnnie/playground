@@ -467,7 +467,7 @@
 
   // ————— settings —————
 
-  const settings = { grid: false, marks: true, grain: true, dither: false, singleLine: false, color: true };
+  const settings = { grid: false, marks: true, clips: false, grain: true, dither: false, singleLine: false, color: true };
 
   // ordered 4x4 Bayer dithering in the sheet's own tones; cached per source
   const ditherCache = new Map();
@@ -610,7 +610,9 @@
     grid.classList.remove("is-settled");
     grid.replaceChildren(frag);
     await nextFrame();
-    cells.forEach((el) => el.classList.add("is-in"));
+    cells.forEach((el) => {
+      if (settings.clips || !el.classList.contains("frag")) el.classList.add("is-in");
+    });
     [...marksLayer.children].forEach((el) => el.classList.add("is-in"));
 
     layoutCount += 1;
@@ -714,7 +716,7 @@
     const fragEls = [...grid.querySelectorAll(".frag")];
     const stageBox = stage.getBoundingClientRect();
     const { cols, rows } = current.layout.cfg;
-    current.layout.frags.forEach((f, i) => {
+    if (settings.clips) current.layout.frags.forEach((f, i) => {
       const el = fragEls[i];
       if (!el) return;
       const r = el.getBoundingClientRect();
@@ -879,6 +881,20 @@
   function applySetting(key, on) {
     settings[key] = on;
     if (key === "grid") document.body.classList.toggle("grid-on", on);
+    if (key === "clips") {
+      document.body.classList.toggle("clips-on", on);
+      [...grid.querySelectorAll(".frag")].forEach((el, i) => {
+        el.style.setProperty("--d", `${reducedMotion ? 0 : i * 70}ms`);
+        el.classList.remove("is-out");
+        if (on) {
+          el.classList.add("is-in");
+        } else {
+          el.classList.remove("is-in");
+          el.classList.add("is-out");
+          setTimeout(() => el.classList.remove("is-out"), 720);
+        }
+      });
+    }
     if (key === "marks") document.body.classList.toggle("marks-off", !on);
     if (key === "grain") document.body.classList.toggle("grain-off", !on);
     if (key === "singleLine") document.body.classList.toggle("single-line", on);
