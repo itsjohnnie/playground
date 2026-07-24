@@ -85,6 +85,8 @@ body {
   z-index: 0;
 }
 body.color-on .bg { filter: none; }
+/* the dithered plate upscales with hard pixel edges, never a blur */
+body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
 .bg.is-on { opacity: 1; }
 /* first arrival: a slow settle */
 .bg.is-first { transition: opacity 1400ms var(--ease-out), transform 2600ms var(--ease-out); transform: scale(1.03); }
