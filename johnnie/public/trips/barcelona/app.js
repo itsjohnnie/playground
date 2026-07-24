@@ -567,10 +567,24 @@
     }
   }
 
-  // ordered 4x4 Bayer dithering in the sheet's own tones; cached per source.
-  // the working canvas is small on purpose: each dither cell lands on
-  // roughly 2 CSS pixels once cover-stretched — legible as retro halftone,
-  // fine enough that the photograph still reads through it
+  // ordered Bayer dithering in the sheet's own tones; cached per source.
+  // the working canvas is small on purpose (each cell lands on roughly
+  // 2 CSS pixels once cover-stretched), and the tones are prepared
+  // before thresholding: a percentile stretch so every negative spans
+  // the full range, and an S-curve pushing midtones apart — without
+  // this, midtone-heavy frames collapse into one uniform checkerboard
+  // and nothing reads. the 8x8 matrix gives 64 tone steps, so what
+  // survives is structure rather than noise
+  const BAYER8 = [
+    [0, 32, 8, 40, 2, 34, 10, 42],
+    [48, 16, 56, 24, 50, 18, 58, 26],
+    [12, 44, 4, 36, 14, 46, 6, 38],
+    [60, 28, 52, 20, 62, 30, 54, 22],
+    [3, 35, 11, 43, 1, 33, 9, 41],
+    [51, 19, 59, 27, 49, 17, 57, 25],
+    [15, 47, 7, 39, 13, 45, 5, 37],
+    [63, 31, 55, 23, 61, 29, 53, 21],
+  ];
   const ditherCache = new Map();
   function ditherize(img) {
     const maxW = Math.max(96, Math.round(innerWidth / 2));
@@ -585,14 +599,31 @@
       const ctx = c.getContext("2d", { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, w, h);
       const d = ctx.getImageData(0, 0, w, h);
-      const B = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
-      for (let y = 0; y < h; y++) {
-        for (let x = 0; x < w; x++) {
-          const i = (y * w + x) * 4;
-          const lum = 0.2126 * d.data[i] + 0.7152 * d.data[i + 1] + 0.0722 * d.data[i + 2];
-          const v = lum > ((B[y & 3][x & 3] + 0.5) / 16) * 255 ? 236 : 18;
-          d.data[i] = d.data[i + 1] = d.data[i + 2] = v;
-        }
+      // pass 1: luminance and its histogram
+      const lum = new Float32Array(w * h);
+      const hist = new Uint32Array(256);
+      for (let p = 0; p < w * h; p++) {
+        const i = p * 4;
+        const l = 0.2126 * d.data[i] + 0.7152 * d.data[i + 1] + 0.0722 * d.data[i + 2];
+        lum[p] = l;
+        hist[l | 0]++;
+      }
+      // 2nd/98th percentile stretch: the plate earns its full range
+      const total = w * h;
+      let lo = 0, hi = 255, acc = 0;
+      for (let i = 0; i < 256; i++) { acc += hist[i]; if (acc >= total * 0.02) { lo = i; break; } }
+      acc = 0;
+      for (let i = 255; i >= 0; i--) { acc += hist[i]; if (acc >= total * 0.02) { hi = i; break; } }
+      const range = Math.max(1, hi - lo);
+      // pass 2: stretch, S-curve, threshold
+      for (let p = 0; p < w * h; p++) {
+        let v = (lum[p] - lo) / range;
+        v = v < 0 ? 0 : v > 1 ? 1 : v;
+        v = v * v * (3 - 2 * v); // smoothstep: midtones part ways
+        const x = p % w, y = (p / w) | 0;
+        const out = v > (BAYER8[y & 7][x & 7] + 0.5) / 64 ? 236 : 18;
+        const i = p * 4;
+        d.data[i] = d.data[i + 1] = d.data[i + 2] = out;
       }
       ctx.putImageData(d, 0, 0);
       const url = c.toDataURL("image/png");
