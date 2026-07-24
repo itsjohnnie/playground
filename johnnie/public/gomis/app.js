@@ -1,9 +1,8 @@
-/* gomis · un negatiu, una graella
+/* one negative, one grid
    one photograph fills the page; cells carry displaced crops of the SAME
-   image, resolved by a hidden grid. the negatives are real: public-domain
-   photographs by Eugène Atget (CC0 scans, National Gallery of Art) and
-   Josep Brangulí (pre-1930 Barcelona, public domain), self-hosted in
-   negatives/ (see SOURCES.md) and credited on the sheet. */
+   image, resolved by a hidden grid. the negatives are johnnie's own
+   frames, self-hosted in negatives/ (see SOURCES.md); their real EXIF
+   drives the factual micro-copy and each sheet credits its negative. */
 
 (() => {
   "use strict";
@@ -274,38 +273,7 @@
 
   // ————— the negatives: real photographs, public domain, credited —————
 
-  const COMMONS = "https://commons.wikimedia.org/wiki/File:";
   const NEGATIVES = [
-    { author: "EUGÈNE ATGET", title: "AU PETIT DUNKERQUE", year: 1900, lic: "CC0",
-      src: "negatives/atget-dunkerque-1900.jpg",
-      page: COMMONS + "Eug%C3%A8ne_Atget,_Au_Petit_Dunkerque,_3_quai_Conti,_1900,_NGA_124962.jpg" },
-    { author: "EUGÈNE ATGET", title: "MAGASIN, AV. DES GOBELINS", year: 1925, lic: "CC0",
-      src: "negatives/atget-gobelins-1925.jpg",
-      page: COMMONS + "Eug%C3%A8ne_Atget,_Magasin,_Avenue_des_Gobelins,_1925,_NGA_92719.jpg" },
-    { author: "EUGÈNE ATGET", title: "NOTRE-DAME", year: 1922, lic: "CC0",
-      src: "negatives/atget-notredame-1922.jpg",
-      page: COMMONS + "Eug%C3%A8ne_Atget,_Notre-Dame,_1922,_NGA_124979.jpg" },
-    { author: "EUGÈNE ATGET", title: "PARC DE SCEAUX", year: 1925, lic: "CC0",
-      src: "negatives/atget-sceaux-1925.jpg",
-      page: COMMONS + "Eug%C3%A8ne_Atget,_Parc_de_Sceaux,_1925,_NGA_124991.jpg" },
-    { author: "EUGÈNE ATGET", title: "PONT MARIE", year: 1926, lic: "CC0",
-      src: "negatives/atget-pontmarie-1926.jpg",
-      page: COMMONS + "Eug%C3%A8ne_Atget,_Pont_Marie,_1926,_NGA_124989.jpg" },
-    { author: "EUGÈNE ATGET", title: "SAINT-CLOUD", year: 1922, lic: "CC0",
-      src: "negatives/atget-saintcloud-1922.jpg",
-      page: COMMONS + "Eug%C3%A8ne_Atget,_Saint-Cloud,_1922,_NGA_124980.jpg" },
-    { author: "EUGÈNE ATGET", title: "STEPS AT SAINT-CLOUD", year: 1906, lic: "CC0",
-      src: "negatives/atget-steps-1906.jpg",
-      page: COMMONS + "Eug%C3%A8ne_Atget,_The_Steps_at_Saint-Cloud,_1906,_NGA_106293.jpg" },
-    { author: "JOSEP BRANGULÍ", title: "SANT PERE MÉS ALT, BCN", year: 1913, lic: "PUBLIC DOMAIN",
-      src: "negatives/branguli-santpere-1913.jpg",
-      page: COMMONS + "Sant_Pere_m%C3%A9s_alt-Via_Laietana.jpg" },
-    { author: "JOSEP BRANGULÍ", title: "AIGUAT DEL MASNOU", year: 1909, lic: "PUBLIC DOMAIN",
-      src: "negatives/branguli-masnou-1909.jpg",
-      page: COMMONS + "Aiguat_del_Masnou_1909_-_Carrer.jpg" },
-    { author: "JOSEP BRANGULÍ", title: "CARRER PINTOR FORTUNY, BCN", year: 1930, lic: "PUBLIC DOMAIN",
-      src: "negatives/branguli-fortuny-1930.jpg",
-      page: COMMONS + "Carrer_Pintor_Fortuny.jpg" },
     // johnnie's own frames: real EXIF drives the micro-copy for these
     { author: "JOHNNIE", title: "TOSSA DE MAR", year: 2026, lic: "OWN ARCHIVE",
       src: "negatives/johnnie-tossa-2026.jpg", page: "https://johnnies.life",
