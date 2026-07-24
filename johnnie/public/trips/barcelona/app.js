@@ -508,6 +508,12 @@
     root.style.setProperty("--rows", rows);
 
     let neg = layout.negative;
+    // a shuffle must never deal the negative already on the sheet
+    if (!keepNegative && current.neg && neg === current.neg && NEGATIVES.length > 1) {
+      const others = NEGATIVES.filter((n) => n !== current.neg);
+      neg = others[(layout.rng() * others.length) | 0];
+      layout.negative = neg;
+    }
 
     // the old sheet holds until the next negative is ready; the panel
     // spinner is the only sign that a new deal is coming
