@@ -440,7 +440,7 @@
 
   // ————— settings —————
 
-  const settings = { grid: false, marks: true, grain: true, dither: false, singleLine: false, color: false };
+  const settings = { grid: false, marks: true, grain: true, dither: false, singleLine: false, color: true };
 
   // ordered 4x4 Bayer dithering in the sheet's own tones; cached per source
   const ditherCache = new Map();
