@@ -771,10 +771,29 @@
       ctx.restore();
     }
 
+    // iOS Safari silently drops data-URL downloads; hand over a real
+    // blob — via the share sheet on touch (Save Image → Photos), via a
+    // blob-URL download everywhere else
+    const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+    if (!blob) return;
+    const name = `barcelona-${seedEl.textContent}.png`;
+    const file = new File([blob], name, { type: "image/png" });
+    if (matchMedia("(pointer: coarse)").matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+        return;
+      } catch (e) {
+        if (e.name === "AbortError") return; // user closed the sheet
+        // activation expired or share refused: fall through to download
+      }
+    }
     const a = document.createElement("a");
-    a.download = `barcelona-${seedEl.textContent}.png`;
-    a.href = c.toDataURL("image/png");
+    a.download = name;
+    a.href = URL.createObjectURL(blob);
+    document.body.appendChild(a);
     a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
 
   // ————— the panel —————
