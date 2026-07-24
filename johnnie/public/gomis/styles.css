@@ -73,7 +73,7 @@ body {
   background-position: calc(-1 * var(--ox)) calc(-1 * var(--oy));
   background-repeat: no-repeat;
   opacity: 0;
-  transition: opacity 900ms var(--ease-out);
+  transition: opacity 1300ms var(--ease-out);
   z-index: 0;
 }
 .bg.is-on { opacity: 1; }
@@ -276,9 +276,9 @@ body::before {
 
 .cp {
   position: relative;
-  padding: 5px 6px;
+  padding: 6px 7px;
   font-size: var(--fs);
-  line-height: 1.5;
+  line-height: 1.55;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--bone);
@@ -289,26 +289,20 @@ body::before {
 .cp.is-in {
   opacity: 1;
   translate: 0 0;
-  transition: opacity 600ms var(--ease-out), translate 600ms var(--ease-out);
+  transition: opacity 700ms var(--ease-out), translate 700ms var(--ease-out);
   transition-delay: var(--d, 0ms);
 }
 .cp--strong { font-weight: 500; }
 .cp--end { display: flex; align-items: flex-end; }
 .cp--right { text-align: right; }
 .cp--vert { writing-mode: vertical-rl; padding: 6px 5px; }
-.cp--rule::after {
-  content: "";
-  position: absolute;
-  left: 6px; right: 6px; top: 20px;
-  border-top: 1px solid currentColor;
-}
 
-/* exit */
+/* exit: a soft clearing while the next negative fades in underneath */
 .frag.is-out, .cp.is-out {
-  transition: opacity 240ms var(--ease-out), translate 240ms var(--ease-out) !important;
+  transition: opacity 460ms var(--ease-out), translate 460ms var(--ease-out) !important;
   transition-delay: var(--d, 0ms) !important;
   opacity: 0 !important;
-  translate: 0 -8px;
+  translate: 0 -4px;
 }
 
 /* ————— crosshair (fine pointers only) ————— */

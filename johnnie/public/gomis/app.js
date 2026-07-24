@@ -70,7 +70,10 @@
   const fmtTime = (rng) => `${String(irange(rng, 6, 22)).padStart(2, "0")}:${String(irange(rng, 0, 59)).padStart(2, "0")}`;
   const fmtDate = (rng) => `${pick(rng, MONTHS)} ${String(irange(rng, 1, 28)).padStart(2, "0")}`;
   const fmtGps = (rng) => `41.${irange(rng, 3500, 4200)}° N\n2.${irange(rng, 1200, 2100)}° E`;
-  const fmtMeter = (rng) => { const n = irange(rng, 1, 4); return "▮".repeat(n) + "▯".repeat(5 - n); };
+  const fmtEv = (rng) => {
+    const v = pick(rng, ["−2", "−1 1/3", "−2/3", "+2/3", "+1 1/3", "+2"]);
+    return `EV ${v}`;
+  };
 
   function copyText(rng, kind, ctx) {
     switch (kind) {
@@ -82,7 +85,7 @@
       case "index": return `FT ${String(irange(rng, 1, 412)).padStart(3, "0")} →`;
       case "contact": return `RETALL ${String(irange(rng, 1, ctx.frags)).padStart(2, "0")}/${ctx.frags}`;
       case "date": return `${fmtDate(rng)}\n${fmtTime(rng)}`;
-      case "meter": return `${fmtMeter(rng)} EV`;
+      case "meter": return fmtEv(rng);
       default: return pick(rng, NOTES);
     }
   }
@@ -145,12 +148,16 @@
       return [(x + 2) % (cols - w + 1), (y + 2) % (rows - h + 1)];
     };
     const fragCount = irange(rng, cfg.frags[0], cfg.frags[1]);
+    // clippings should spread across the sheet, not huddle
+    const farFromOthers = (x, y) =>
+      frags.every((f) => Math.abs(f.x - x) + Math.abs(f.y - y) >= 3);
     for (let i = 0; i < fragCount; i++) {
       let placed = false;
       for (let t = 0; t < 60 && !placed; t++) {
         const [w, h] = pick(rng, cfg.spans);
         const x = biased(rng, anchorCols, cols - w);
         const y = biased(rng, anchorRows, rows - h);
+        if (t < 40 && !farFromOthers(x, y)) continue;
         if (free(x, y, w, h)) {
           claim(x, y, w, h);
           const [sx, sy] = sourceFor(x, y, w, h);
@@ -171,8 +178,21 @@
         }
       }
     }
-    // micro-copy: a column stack on an anchor, a row run, then scatter
+    // micro-copy: sparser than before, and no kind repeats until the
+    // whole pool has been dealt (duplicate lines read as a glitch)
     const copies = [];
+    let kindBag = [];
+    const nextKind = () => {
+      if (!kindBag.length) {
+        kindBag = [...COPY_KINDS];
+        for (let i = kindBag.length - 1; i > 0; i--) {
+          const j = (rng() * (i + 1)) | 0;
+          [kindBag[i], kindBag[j]] = [kindBag[j], kindBag[i]];
+        }
+      }
+      return kindBag.pop();
+    };
+
     const freeCellsInCol = (c) => {
       const out = [];
       for (let r = 0; r < rows; r++) if (!occ[r * cols + c]) out.push(r);
@@ -184,48 +204,60 @@
       return out;
     };
 
-    // on narrow grids a single cell is too tight for a line of copy;
-    // widen into the right neighbor when it is free
-    const widen = (c) => {
-      if (!smallScreen.matches || c.vert) return;
-      if (c.x + 1 < cols && !occ[c.y * cols + c.x + 1]) {
-        c.w = 2;
-        occ[c.y * cols + c.x + 1] = 1;
+    // one cell is too tight for a clean line on phones: copy there must
+    // own two cells (vertical blocks excepted) or it is not placed at all
+    const tryCopy = (x, y, opts = {}) => {
+      if (occ[y * cols + x]) return false;
+      if (opts.vert) {
+        if (y + 1 >= rows || occ[(y + 1) * cols + x]) return false;
+        occ[y * cols + x] = 1;
+        occ[(y + 1) * cols + x] = 1;
+        copies.push({ x, y, w: 1, h: 2, kind: nextKind(), ...opts });
+        return true;
       }
+      const canWiden = x + 1 < cols && !occ[y * cols + x + 1];
+      if (smallScreen.matches && !canWiden) return false;
+      occ[y * cols + x] = 1;
+      const c = { x, y, w: 1, h: 1, kind: nextKind(), ...opts };
+      if (canWiden && (smallScreen.matches || rng() < 0.35)) {
+        c.w = 2;
+        occ[y * cols + x + 1] = 1;
+      }
+      copies.push(c);
+      return true;
     };
 
-    // the sheet is mostly text now: stack copy down every anchor column,
-    // run it along the anchor rows, then scatter generously
-    for (const stackCol of anchorCols) {
-      for (const r of freeCellsInCol(stackCol).slice(0, irange(rng, 3, 5))) {
-        if (occ[r * cols + stackCol]) continue;
-        const c = { x: stackCol, y: r, w: 1, h: 1, kind: pick(rng, COPY_KINDS) };
-        occ[r * cols + stackCol] = 1;
-        widen(c);
-        copies.push(c);
+    // two anchor columns get a short stack, one anchor row a short run,
+    // then a scatter balanced across the four quadrants of the sheet
+    for (const stackCol of anchorCols.slice(0, 2)) {
+      let placedInCol = 0;
+      for (const r of freeCellsInCol(stackCol)) {
+        if (placedInCol >= irange(rng, 2, 3)) break;
+        if (tryCopy(stackCol, r)) placedInCol++;
       }
     }
-    for (const runRow of anchorRows) {
-      for (const cx of freeCellsInRow(runRow).slice(0, irange(rng, 3, 4))) {
-        if (occ[runRow * cols + cx]) continue; // a widened neighbor may have claimed it
-        const c = { x: cx, y: runRow, w: 1, h: 1, kind: pick(rng, COPY_KINDS), rule: rng() < 0.5 };
-        occ[runRow * cols + cx] = 1;
-        widen(c);
-        copies.push(c);
-      }
+    let placedInRow = 0;
+    for (const cx of freeCellsInRow(anchorRows[0])) {
+      if (placedInRow >= 3) break;
+      if (tryCopy(cx, anchorRows[0])) placedInRow++;
     }
-    const scatterTarget = irange(rng, 6, 9);
-    for (let t = 0; t < 90 && copies.filter((c) => c.scatter).length < scatterTarget; t++) {
-      const x = irange(rng, 0, cols - 1);
-      const y = irange(rng, 0, rows - 1);
-      if (occ[y * cols + x]) continue;
-      const vert = rng() < 0.22 && y + 1 < rows && !occ[(y + 1) * cols + x];
-      const c = { x, y, w: 1, h: vert ? 2 : 1, kind: pick(rng, COPY_KINDS), vert, scatter: true };
-      occ[y * cols + x] = 1;
-      if (vert) occ[(y + 1) * cols + x] = 1;
-      widen(c);
-      copies.push(c);
+
+    const quads = [[0, 0], [1, 0], [0, 1], [1, 1]];
+    for (let i = quads.length - 1; i > 0; i--) {
+      const j = (rng() * (i + 1)) | 0;
+      [quads[i], quads[j]] = [quads[j], quads[i]];
     }
+    const halfC = cols >> 1, halfR = rows >> 1;
+    const scatterTarget = irange(rng, 4, 5);
+    let scattered = 0;
+    for (let t = 0; t < 140 && scattered < scatterTarget; t++) {
+      const [qx, qy] = quads[scattered % 4];
+      const x = qx * halfC + irange(rng, 0, halfC - 1);
+      const y = qy * halfR + irange(rng, 0, halfR - 1);
+      const vert = rng() < 0.18;
+      if (tryCopy(x, y, vert ? { vert } : {})) scattered++;
+    }
+
     // one emphasized copy block per layout (full shade, heavier weight)
     if (copies.length) copies[(rng() * copies.length) | 0].strong = true;
 
@@ -341,7 +373,6 @@
       el.className = "cp";
       if (c.strong || layout.rng() < 0.3) el.classList.add("cp--strong");
       if (c.vert) el.classList.add("cp--vert");
-      if (c.rule) el.classList.add("cp--rule");
       if (layout.rng() < 0.25) el.classList.add("cp--end");
       if (!c.vert && layout.rng() < 0.2) el.classList.add("cp--right");
       el.style.gridColumn = `${c.x + 1} / span ${c.w}`;
@@ -391,17 +422,8 @@
     let neg = layout.negative;
     const loading = loadNegative(neg.src);
 
-    // exit the old sheet, back-to-front
-    const old = [...grid.children];
-    if (old.length && !reducedMotion) {
-      old.forEach((el, i) => {
-        el.style.setProperty("--d", `${(old.length - i) * 12}ms`);
-        el.classList.remove("is-in");
-        el.classList.add("is-out");
-      });
-      await wait(old.length * 12 + 260);
-    }
-
+    // the old sheet holds until the next negative is ready; the busy
+    // spinner is the only sign that a new deal is coming
     let img = await loading;
     // a negative that will not load leaves the sheet black; fall through
     // the manifest until one arrives
@@ -419,7 +441,9 @@
 
     const { frag, cells } = buildCells(layout, neg.src);
 
-    // crossfade the negative
+    // one continuous dissolve: the next negative fades in WHILE the old
+    // sheet clears above it, and the new sheet lands on the tail of the
+    // crossfade rather than after a blank beat
     const back = frontBg === bgA ? bgB : bgA;
     back.style.backgroundImage = `url("${neg.src}")`;
     if (firstRun) back.classList.add("is-first");
@@ -427,6 +451,16 @@
     back.classList.add("is-on");
     frontBg.classList.remove("is-on");
     frontBg = back;
+
+    const old = [...grid.children];
+    if (old.length && !reducedMotion) {
+      old.forEach((el, i) => {
+        el.style.setProperty("--d", `${i * 10}ms`);
+        el.classList.remove("is-in");
+        el.classList.add("is-out");
+      });
+      await wait(old.length * 10 + 480);
+    }
 
     buildUnderlay(layout);
     grid.classList.remove("is-settled");
