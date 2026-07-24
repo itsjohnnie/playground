@@ -527,6 +527,17 @@
         img = await loadNegative(neg.src, 6000);
       }
     }
+    // the outgoing sheet must keep ITS geometry while it fades: freeze
+    // the front layer and the exiting clippings to their computed
+    // values before the new negative's cover math lands on the vars
+    const freeze = (el) => {
+      const cs = getComputedStyle(el);
+      el.style.backgroundSize = cs.backgroundSize;
+      el.style.backgroundPosition = cs.backgroundPosition;
+    };
+    freeze(frontBg);
+    grid.querySelectorAll(".frag").forEach(freeze);
+
     negDims = img
       ? { iw: img.naturalWidth, ih: img.naturalHeight }
       : { iw: innerWidth, ih: innerHeight };
@@ -542,6 +553,9 @@
     const sameImage = keepNegative && frontBg.style.backgroundImage.includes(src.slice(0, 80));
     if (!sameImage) {
       const back = frontBg === bgA ? bgB : bgA;
+      // the incoming layer follows the live cover vars again
+      back.style.backgroundSize = "";
+      back.style.backgroundPosition = "";
       back.style.backgroundImage = `url("${src}")`;
       if (firstRun) back.classList.add("is-first");
       await nextFrame();
@@ -609,6 +623,9 @@
       next = NEGATIVES[(Math.random() * NEGATIVES.length) | 0];
     const img = await loadNegative(next.src);
     if (img) {
+      const cs = getComputedStyle(frontBg);
+      frontBg.style.backgroundSize = cs.backgroundSize;
+      frontBg.style.backgroundPosition = cs.backgroundPosition;
       current.neg = next;
       current.img = img;
       current.layout.negative = next;
@@ -616,6 +633,8 @@
       applyCover();
       const src = displaySrc();
       const back = frontBg === bgA ? bgB : bgA;
+      back.style.backgroundSize = "";
+      back.style.backgroundPosition = "";
       back.style.backgroundImage = `url("${src}")`;
       await nextFrame();
       back.classList.add("is-on");
