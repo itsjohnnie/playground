@@ -79,6 +79,9 @@
         <button class="tgl" type="button" role="switch" aria-checked="false" data-setting="singleLine">
           <span>SINGLE LINE</span><span class="tgl__track" aria-hidden="true"></span>
         </button>
+        <button class="tgl" type="button" role="switch" aria-checked="false" data-setting="jitter">
+          <span>JITTER</span><span class="tgl__track" aria-hidden="true"></span>
+        </button>
         <button class="tgl" type="button" role="switch" aria-checked="true" data-setting="color">
           <span>COLOR</span><span class="tgl__track" aria-hidden="true"></span>
         </button>
@@ -105,6 +108,14 @@
       <span class="crosshair__h"></span>
     </div>
   </main>
+
+  <!-- boil: a hand-drawn wobble the type steps through, frame by frame -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <filter id="boil" x="-30%" y="-30%" width="160%" height="160%">
+      <feTurbulence id="boil-turb" type="fractalNoise" baseFrequency="0.08" numOctaves="2" seed="1" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
 
   <!-- press-and-hold reveal: the ring fills, then the chip appears -->
   <div class="holdring" id="holdring" aria-hidden="true">
