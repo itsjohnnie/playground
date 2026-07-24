@@ -436,6 +436,7 @@
     });
 
     let pillCount = 0;
+    const pillsAt = [];
     layout.copies.forEach((c) => {
       const el = document.createElement("div");
       el.className = "cp";
@@ -452,11 +453,15 @@
         el.dataset.rot = rot;
       }
       // short tokens sometimes sit inside a hairline pill — never more
-      // than two per sheet, or the device turns into decoration
+      // than two per sheet, or the device turns into decoration, and
+      // never two neighbouring each other: pills must keep their
+      // distance (4 cells, walking) so each reads alone
       const pillable = !c.vert && !text.includes("\n") && text.length <= 12 &&
         ["index", "contact", "meter", "alt", "dir", "note"].includes(c.kind);
-      if (pillable && pillCount < 2 && layout.rng() < 0.45) {
+      const nearPill = pillsAt.some((p) => Math.abs(p.x - c.x) + Math.abs(p.y - c.y) < 4);
+      if (pillable && pillCount < 2 && !nearPill && layout.rng() < 0.45) {
         pillCount++;
+        pillsAt.push({ x: c.x, y: c.y });
         el.classList.add("cp--pill");
         el.dataset.pill = "1";
         el.innerHTML = `<span class="cp__pill">${icon ? iconSvg(icon, rot) : ""}<span>${text}</span></span>`;
