@@ -502,9 +502,51 @@
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const nextFrame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
+  // chrome values that persist in place never hard-swap: the old term
+  // is erased back to the shared stem and the new one keyed in, so one
+  // reading blends into the next
+  function retype(el, next) {
+    next = String(next);
+    const prev = el.textContent;
+    if (prev === next) return;
+    if (reducedMotion) { el.textContent = next; return; }
+    clearInterval(el._retype);
+    let stem = 0;
+    while (stem < prev.length && stem < next.length && prev[stem] === next[stem]) stem++;
+    let cur = prev;
+    let erasing = true;
+    el._retype = setInterval(() => {
+      if (erasing) {
+        if (cur.length > stem) cur = cur.slice(0, Math.max(stem, cur.length - 3));
+        else erasing = false;
+      }
+      if (!erasing) {
+        if (cur.length < next.length) cur = next.slice(0, cur.length + 2);
+        else { clearInterval(el._retype); el._retype = null; }
+      }
+      el.textContent = cur;
+    }, 16);
+  }
+
   // ————— settings —————
 
-  const settings = { grid: false, marks: true, clips: false, grain: true, dither: false, singleLine: false, color: true };
+  const settings = { grid: false, marks: true, clips: false, grain: true, dither: false, singleLine: false, jitter: false, color: true };
+
+  // the boil: the type steps through turbulence frames at ~8fps, like
+  // lettering redrawn on every frame of a stop-motion film
+  const boilTurb = document.getElementById("boil-turb");
+  let boilTimer = null;
+  function setBoil(on) {
+    clearInterval(boilTimer);
+    boilTimer = null;
+    if (on && !reducedMotion) {
+      let frame = 1;
+      boilTimer = setInterval(() => {
+        frame = (frame % 12) + 1;
+        boilTurb.setAttribute("seed", frame);
+      }, 125);
+    }
+  }
 
   // ordered 4x4 Bayer dithering in the sheet's own tones; cached per source
   const ditherCache = new Map();
@@ -653,13 +695,13 @@
     [...marksLayer.children].forEach((el) => el.classList.add("is-in"));
 
     layoutCount += 1;
-    seedEl.textContent = layout.seed;
-    layoutNoEl.textContent = `№ ${String(layoutCount).padStart(3, "0")}`;
-    gridSpecEl.textContent = `${cols} × ${rows}`;
-    frameCountEl.textContent = layout.frags.length;
-    negInfoEl.textContent = `${neg.author} — ${neg.title}, ${neg.year}`;
+    retype(seedEl, layout.seed);
+    retype(layoutNoEl, `№ ${String(layoutCount).padStart(3, "0")}`);
+    retype(gridSpecEl, `${cols} × ${rows}`);
+    retype(frameCountEl, layout.frags.length);
+    retype(negInfoEl, `${neg.author} — ${neg.title}, ${neg.year}`);
     negInfoEl.href = neg.page;
-    negLicEl.textContent = neg.lic;
+    retype(negLicEl, neg.lic);
 
     const settleMs = reducedMotion ? 0 : cols * 22 + rows * 30 + 900;
     await wait(settleMs);
@@ -708,9 +750,9 @@
       frontBg = back;
       for (const el of grid.querySelectorAll(".frag"))
         el.style.setProperty("--img", `url("${src}")`);
-      negInfoEl.textContent = `${next.author} — ${next.title}, ${next.year}`;
+      retype(negInfoEl, `${next.author} — ${next.title}, ${next.year}`);
       negInfoEl.href = next.page;
-      negLicEl.textContent = next.lic;
+      retype(negLicEl, next.lic);
       await wait(reducedMotion ? 0 : 1300);
     }
     setBusy(false);
@@ -857,22 +899,24 @@
         lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), 0, k * lh));
         ctx.restore();
       } else if (el.dataset.pill) {
+        // the ring wraps the token without moving it: type keeps the
+        // bare-copy position and the outline reaches 8px past each end
         const text = (lines[0] || "").toUpperCase();
         const iconW = el.dataset.icon ? (12 + 6) * S : 0;
-        const w = ctx.measureText(text).width + iconW + 18 * S;
+        const w = ctx.measureText(text).width + iconW + 16 * S;
         const h = 20 * S;
-        const x0 = r.left * S + 8 * S, y0 = r.top * S + 8 * S;
+        const x0 = r.left * S, y0 = r.top * S + 3 * S;
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = S;
         ctx.beginPath();
         ctx.roundRect(x0 + S / 2, y0 + S / 2, w - S, h - S, h / 2);
         ctx.stroke();
-        let x = x0 + 9 * S;
+        let x = r.left * S + 8 * S;
         if (el.dataset.icon) {
           drawIcon(el.dataset.icon, x, y0 + (h - 12 * S) / 2, 12 * S, +el.dataset.rot || 0);
           x += iconW;
         }
-        ctx.fillText(text, x, y0 + (h - fs) / 2 + S);
+        ctx.fillText(text, x, r.top * S + 8 * S);
       } else {
         let x = r.left * S + 8 * S;
         if (el.dataset.icon) {
@@ -993,8 +1037,6 @@
   stage.addEventListener("pointerdown", (e) => {
     if (!e.isPrimary || panel.classList.contains("is-open")) return;
     if (document.body.classList.contains("chip-on")) return;
-    holdRing.style.left = `${e.clientX}px`;
-    holdRing.style.top = `${e.clientY}px`;
     ringProg.style.transition = "none";
     ringProg.style.strokeDashoffset = RING_LEN;
     holdRing.classList.add("is-on");
@@ -1067,6 +1109,10 @@
     if (key === "marks") document.body.classList.toggle("marks-off", !on);
     if (key === "grain") document.body.classList.toggle("grain-off", !on);
     if (key === "singleLine") document.body.classList.toggle("single-line", on);
+    if (key === "jitter") {
+      document.body.classList.toggle("jitter-on", on);
+      setBoil(on);
+    }
     if (key === "color") document.body.classList.toggle("color-on", on);
     if (key === "dither" && current.img) applyNegativeSrc();
     const tgl = panel.querySelector(`[data-setting="${key}"]`);

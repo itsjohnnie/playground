@@ -467,12 +467,14 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   -webkit-touch-callout: none;
 }
 
-/* the reveal ring: fills at the fingertip over the hold */
+/* the reveal ring fills where the chip will appear: centered on the
+   chip's own footprint, bottom right */
 .holdring {
   position: fixed;
+  right: calc(var(--edge-x) - 8px + (var(--chip) - 40px) / 2);
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + (var(--chip) - 40px) / 2);
   width: 40px;
   height: 40px;
-  margin: -20px 0 0 -20px;
   z-index: 45;
   pointer-events: none;
   opacity: 0;
@@ -611,21 +613,35 @@ body.color-on .frag { filter: none; }
 /* hairline iconography beside the factual copy */
 .cp--ic { display: flex; align-items: center; gap: 6px; height: max-content; }
 .cp__ic { width: 12px; height: 12px; flex: none; }
-/* short tokens occasionally wear a hairline pill (20px tall: 1px line,
-   4px breath, the 10px type; 8px sides — all on the 4px grid) */
+/* short tokens occasionally wear a hairline pill. the outline sits
+   absolutely AROUND the token, so pilled type keeps exactly the line
+   and column of its bare neighbours; the ring reaches 8px to the sides
+   (landing on the cell edge) and stands ~20px around the type */
 .cp--pill { height: max-content; }
 .cp__pill {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-sizing: border-box;
-  height: 20px;
-  padding: 0 8px;
-  border: 1px solid var(--bone);
-  border-radius: 999px;
-  line-height: 1;
   white-space: nowrap;
 }
+.cp__pill::before {
+  content: "";
+  position: absolute;
+  inset: -2px -8px;
+  border: 1px solid var(--bone);
+  border-radius: 999px;
+}
+
+/* boil: the type steps through displacement frames, stop-motion style;
+   only the typography wobbles — never the photograph or the glass */
+body.jitter-on .cp,
+body.jitter-on .frag__no,
+body.jitter-on .mark,
+body.jitter-on .chrome--tl,
+body.jitter-on .chrome--tr,
+body.jitter-on .chrome--bl,
+body.jitter-on .chrome--bc { filter: url(#boil); }
 
 /* exit: a soft clearing while the next negative fades in underneath */
 .frag.is-out, .cp.is-out {
