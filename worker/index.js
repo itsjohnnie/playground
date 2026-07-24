@@ -202,6 +202,14 @@ export default {
     if (url.pathname === "/auth") return handleAuthStart(url, env);
     if (url.pathname === "/callback") return handleAuthCallback(request, url, env);
 
+    // The Barcelona sheet moved from /gomis to /trips/barcelona. The old
+    // path no longer matches an asset, so these requests reach the worker;
+    // send them home permanently.
+    if (url.pathname === "/gomis" || url.pathname.startsWith("/gomis/")) {
+      const rest = url.pathname.slice("/gomis".length) || "/";
+      return Response.redirect(`${url.origin}/trips/barcelona${rest}${url.search}`, 301);
+    }
+
     if (staging && url.pathname === "/robots.txt") {
       return new Response("User-agent: *\nDisallow: /\n", {
         headers: { "Content-Type": "text/plain; charset=utf-8" },
