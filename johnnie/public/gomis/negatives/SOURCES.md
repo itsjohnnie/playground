@@ -13,6 +13,11 @@ in `../app.js` and drives the factual micro-copy for each deal.
 | `johnnie-giverola-1-2026.jpg` | Cala Giverola I, Jul 18 2026 |
 | `johnnie-giverola-2-2026.jpg` | Cala Giverola II, Jul 18 2026 |
 | `johnnie-eixample-2026.jpg` | Eixample, Barcelona, Jul 23 2026 |
+| `johnnie-giverola-3-2026.jpg` | Cala Giverola III, Jul 18 2026 |
+| `johnnie-camironda-1-2026.jpg` | Camí de Ronda I, Jul 18 2026 |
+| `johnnie-camironda-2-2026.jpg` | Camí de Ronda II, Jul 18 2026 |
+| `johnnie-gotic-2026.jpg` | El Gòtic, Barcelona, Jul 17 2026 |
+| `johnnie-futadera-2-2026.jpg` | Cala Futadera II, Jul 18 2026 |
 
 ## Adding new negatives
 
