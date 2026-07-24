@@ -367,6 +367,11 @@
       meta: { place: "SAGRADA FAMILIA", time: "13:00", date: "JUL 24\n13:00",
               gps: "41.4034° N\n2.1751° E", spec: "F 2.8 · 1/40", lens: "200MM",
               film: "IPHONE 17 PRO", iso: "ISO 1000" , ev: "EV 0", alt: "ALT 34M", dir: "332° NW" } },
+    { author: "JOHNNIE", title: "SANT GERVASI, BCN", year: 2026, lic: "OWN ARCHIVE",
+      src: "negatives/johnnie-santgervasi-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "SANT GERVASI", time: "12:33", date: "JUL 21\n12:33",
+              gps: "41.4001° N\n2.1471° E", spec: "F 1.8 · 1/2976", lens: "48MM",
+              film: "IPHONE 17 PRO", iso: "ISO 64" , ev: "EV 0", alt: "ALT 73M", dir: "83° E" } },
   ];
 
   function loadNegative(url, timeout = 9000) {
