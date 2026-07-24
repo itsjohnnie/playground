@@ -370,14 +370,25 @@ body::before {
 .ucell { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); position: relative; }
 .ucell--edge-r { border-right: none; }
 .ucell--edge-b { border-bottom: none; }
-.ucell { color: var(--bone); }
-.ucell--mark::before {
-  content: "+";
+/* registration crosses: pinned to the deal's anchor intersections */
+.marks {
   position: absolute;
-  top: 0; left: 0;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+.mark {
+  position: absolute;
   translate: -50% -50%;
   font-size: var(--fs);
+  line-height: 1;
+  color: var(--bone);
+  opacity: 0;
+  transition: opacity 700ms var(--ease-out);
+  transition-delay: var(--d, 0ms);
 }
+.mark.is-in { opacity: 1; }
+body.marks-off .marks { display: none; }
 
 .grid--live { pointer-events: none; }
 .grid--live > * { pointer-events: auto; }
