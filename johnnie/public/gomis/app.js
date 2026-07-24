@@ -13,8 +13,9 @@
   const underlay = document.getElementById("underlay");
   const bgA = document.getElementById("bg-a");
   const bgB = document.getElementById("bg-b");
-  const regenBtn = document.getElementById("regen");
-  const gridBtn = document.getElementById("grid-toggle");
+  const settingsBtn = document.getElementById("settings");
+  const panel = document.getElementById("panel");
+  const panelClose = document.getElementById("panel-close");
   const seedEl = document.getElementById("seed");
   const layoutNoEl = document.getElementById("layout-no");
   const gridSpecEl = document.getElementById("grid-spec");
@@ -400,29 +401,80 @@
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const nextFrame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
+  // ————— settings —————
+
+  const settings = { grid: false, grain: true, dither: false, singleLine: false };
+
+  // ordered 4x4 Bayer dithering in the sheet's own tones; cached per source
+  const ditherCache = new Map();
+  function ditherize(img) {
+    const key = img.src;
+    if (ditherCache.has(key)) return ditherCache.get(key);
+    try {
+      const maxW = 1400;
+      const s = Math.min(1, maxW / img.naturalWidth);
+      const w = Math.round(img.naturalWidth * s);
+      const h = Math.round(img.naturalHeight * s);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, w, h);
+      const d = ctx.getImageData(0, 0, w, h);
+      const B = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          const lum = 0.2126 * d.data[i] + 0.7152 * d.data[i + 1] + 0.0722 * d.data[i + 2];
+          const v = lum > ((B[y & 3][x & 3] + 0.5) / 16) * 255 ? 236 : 18;
+          d.data[i] = d.data[i + 1] = d.data[i + 2] = v;
+        }
+      }
+      ctx.putImageData(d, 0, 0);
+      const url = c.toDataURL("image/png");
+      ditherCache.set(key, url);
+      return url;
+    } catch { return img.src; }
+  }
+
+  // what the page should actually paint for the current negative
+  const displaySrc = () =>
+    settings.dither && current.img ? ditherize(current.img) : current.neg.src;
+
+  function applyNegativeSrc() {
+    const src = displaySrc();
+    frontBg.style.backgroundImage = `url("${src}")`;
+    for (const el of grid.querySelectorAll(".frag"))
+      el.style.setProperty("--img", `url("${src}")`);
+  }
+
   // ————— the regeneration choreography —————
 
   let busy = false;
   let layoutCount = 0;
   let currentSeed = newSeed();
   let frontBg = bgA;
+  let current = { layout: null, neg: null, img: null };
 
-  async function render(firstRun = false) {
+  function setBusy(on) {
+    busy = on;
+    panel.classList.toggle("is-busy", on);
+  }
+
+  async function render(firstRun = false, keepNegative = false) {
     if (busy) return;
-    busy = true;
-    regenBtn.classList.add("is-busy");
+    setBusy(true);
 
     const layout = generate(currentSeed);
+    if (keepNegative && current.neg) layout.negative = current.neg;
     const { cols, rows } = layout.cfg;
     root.style.setProperty("--cols", cols);
     root.style.setProperty("--rows", rows);
 
     let neg = layout.negative;
-    const loading = loadNegative(neg.src);
 
-    // the old sheet holds until the next negative is ready; the busy
+    // the old sheet holds until the next negative is ready; the panel
     // spinner is the only sign that a new deal is coming
-    let img = await loading;
+    let img = keepNegative && current.img ? current.img : await loadNegative(neg.src);
     // a negative that will not load leaves the sheet black; fall through
     // the manifest until one arrives
     if (!img) {
@@ -436,19 +488,24 @@
       ? { iw: img.naturalWidth, ih: img.naturalHeight }
       : { iw: innerWidth, ih: innerHeight };
     applyCover();
+    current = { layout, neg, img };
 
-    const { frag, cells } = buildCells(layout, neg.src);
+    const src = displaySrc();
+    const { frag, cells } = buildCells(layout, src);
 
     // one continuous dissolve: the next negative fades in WHILE the old
     // sheet clears above it, and the new sheet lands on the tail of the
     // crossfade rather than after a blank beat
-    const back = frontBg === bgA ? bgB : bgA;
-    back.style.backgroundImage = `url("${neg.src}")`;
-    if (firstRun) back.classList.add("is-first");
-    await nextFrame();
-    back.classList.add("is-on");
-    frontBg.classList.remove("is-on");
-    frontBg = back;
+    const sameImage = keepNegative && frontBg.style.backgroundImage.includes(src.slice(0, 80));
+    if (!sameImage) {
+      const back = frontBg === bgA ? bgB : bgA;
+      back.style.backgroundImage = `url("${src}")`;
+      if (firstRun) back.classList.add("is-first");
+      await nextFrame();
+      back.classList.add("is-on");
+      frontBg.classList.remove("is-on");
+      frontBg = back;
+    }
 
     const old = [...grid.children];
     if (old.length && !reducedMotion) {
@@ -479,8 +536,7 @@
     await wait(settleMs);
     grid.classList.add("is-settled");
 
-    regenBtn.classList.remove("is-busy");
-    busy = false;
+    setBusy(false);
   }
 
   function regenerate() {
@@ -489,22 +545,213 @@
     render();
   }
 
-  regenBtn.addEventListener("click", regenerate);
-
-  // ————— the secret grid —————
-
-  function toggleGrid() {
-    const on = gridBtn.getAttribute("aria-pressed") !== "true";
-    gridBtn.setAttribute("aria-pressed", String(on));
-    document.body.classList.toggle("grid-on", on);
+  function regenerateCopy() {
+    if (busy) return;
+    currentSeed = newSeed();
+    render(false, true);
   }
-  gridBtn.addEventListener("click", toggleGrid);
+
+  // a new negative under the SAME layout: crossfade only, cells stay
+  async function replacePhoto() {
+    if (busy || !current.layout) return;
+    setBusy(true);
+    let next = current.neg;
+    while (next === current.neg && NEGATIVES.length > 1)
+      next = NEGATIVES[(Math.random() * NEGATIVES.length) | 0];
+    const img = await loadNegative(next.src);
+    if (img) {
+      current.neg = next;
+      current.img = img;
+      current.layout.negative = next;
+      negDims = { iw: img.naturalWidth, ih: img.naturalHeight };
+      applyCover();
+      const src = displaySrc();
+      const back = frontBg === bgA ? bgB : bgA;
+      back.style.backgroundImage = `url("${src}")`;
+      await nextFrame();
+      back.classList.add("is-on");
+      frontBg.classList.remove("is-on");
+      frontBg = back;
+      for (const el of grid.querySelectorAll(".frag"))
+        el.style.setProperty("--img", `url("${src}")`);
+      negInfoEl.textContent = `${next.author} — ${next.title}, ${next.year}`;
+      negInfoEl.href = next.page;
+      negLicEl.textContent = next.lic;
+      await wait(reducedMotion ? 0 : 1300);
+    }
+    setBusy(false);
+  }
+
+  // ————— export: redraw the sheet onto a canvas, pixel for pixel —————
+
+  async function exportPng() {
+    if (!current.img || !current.layout) return;
+    await document.fonts.load(`500 ${parseFloat(getComputedStyle(root).getPropertyValue("--fs"))}px "Geist Mono"`).catch(() => {});
+    const S = Math.min(2, devicePixelRatio || 1) * 1.5;
+    const W = Math.round(innerWidth * S), H = Math.round(innerHeight * S);
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+
+    // source: the negative (or its dithered form), cover-cropped
+    let source = current.img;
+    if (settings.dither) {
+      const dimg = new Image();
+      dimg.src = ditherize(current.img);
+      await new Promise((r) => { dimg.onload = r; dimg.onerror = r; });
+      if (dimg.naturalWidth) source = dimg;
+    }
+    const iw = source.naturalWidth, ih = source.naturalHeight;
+    const cover = Math.max(innerWidth / iw, innerHeight / ih);
+    const sw = innerWidth / cover, sh = innerHeight / cover;
+    const sx0 = (iw - sw) / 2, sy0 = (ih - sh) / 2;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(source, sx0, sy0, sw, sh, 0, 0, W, H);
+
+    const veil = "rgba(10, 9, 8, 0.32)";
+    ctx.fillStyle = veil;
+    ctx.fillRect(0, 0, W, H);
+
+    // clippings: same crop math as the CSS, veil included
+    const fragEls = [...grid.querySelectorAll(".frag")];
+    const stageBox = stage.getBoundingClientRect();
+    const { cols, rows } = current.layout.cfg;
+    current.layout.frags.forEach((f, i) => {
+      const el = fragEls[i];
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const srcVpX = stageBox.left + (stageBox.width * f.sx) / cols;
+      const srcVpY = stageBox.top + (stageBox.height * f.sy) / rows;
+      ctx.drawImage(
+        source,
+        sx0 + srcVpX / cover, sy0 + srcVpY / cover, r.width / cover, r.height / cover,
+        r.left * S, r.top * S, r.width * S, r.height * S
+      );
+      ctx.fillStyle = veil;
+      ctx.fillRect(r.left * S, r.top * S, r.width * S, r.height * S);
+    });
+
+    // grid lines, if revealed
+    if (settings.grid) {
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
+      ctx.lineWidth = S;
+      for (let i = 0; i <= cols; i++) {
+        const x = (stageBox.left + (stageBox.width * i) / cols) * S;
+        ctx.beginPath(); ctx.moveTo(x, stageBox.top * S); ctx.lineTo(x, stageBox.bottom * S); ctx.stroke();
+      }
+      for (let j = 0; j <= rows; j++) {
+        const y = (stageBox.top + (stageBox.height * j) / rows) * S;
+        ctx.beginPath(); ctx.moveTo(stageBox.left * S, y); ctx.lineTo(stageBox.right * S, y); ctx.stroke();
+      }
+    }
+
+    // every piece of type, straight from the DOM
+    const fs = 10 * S;
+    ctx.textBaseline = "top";
+    const drawText = (el, vertical = false) => {
+      const cs = getComputedStyle(el);
+      if (cs.visibility === "hidden" || cs.display === "none") return;
+      const r = el.getBoundingClientRect();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `${cs.fontWeight} ${fs}px "Geist Mono", monospace`;
+      if ("letterSpacing" in ctx) ctx.letterSpacing = `${0.06 * fs}px`;
+      const lines = el.textContent.split("\n").map((l) => l.trim()).filter(Boolean);
+      const lh = fs * 1.55;
+      if (vertical) {
+        ctx.save();
+        ctx.translate(r.right * S - 6 * S, r.top * S + 6 * S);
+        ctx.rotate(Math.PI / 2);
+        lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), 0, k * lh));
+        ctx.restore();
+      } else {
+        lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), r.left * S + 7 * S, r.top * S + 6 * S + k * lh));
+      }
+    };
+    grid.querySelectorAll(".cp").forEach((el) => drawText(el, el.classList.contains("cp--vert")));
+    grid.querySelectorAll(".frag__no").forEach((el) => {
+      const r = el.getBoundingClientRect();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `500 ${fs}px "Geist Mono", monospace`;
+      ctx.fillText(el.textContent, r.left * S, r.top * S);
+    });
+    document.querySelectorAll(".chrome--tl span, .chrome--tr span, .chrome--bl span, .chrome--bl a").forEach((el) => {
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `${cs.fontWeight} ${fs}px "Geist Mono", monospace`;
+      if ("letterSpacing" in ctx) ctx.letterSpacing = `${0.05 * fs}px`;
+      ctx.fillText(el.textContent.toUpperCase(), r.left * S, r.top * S + 1 * S);
+    });
+
+    // grain, if on
+    if (settings.grain) {
+      const n = document.createElement("canvas");
+      n.width = 128; n.height = 128;
+      const nctx = n.getContext("2d");
+      const nd = nctx.createImageData(128, 128);
+      for (let i = 0; i < nd.data.length; i += 4) {
+        const v = (Math.random() * 255) | 0;
+        nd.data[i] = nd.data[i + 1] = nd.data[i + 2] = v;
+        nd.data[i + 3] = 255;
+      }
+      nctx.putImageData(nd, 0, 0);
+      ctx.save();
+      ctx.globalAlpha = 0.06;
+      ctx.globalCompositeOperation = "overlay";
+      ctx.fillStyle = ctx.createPattern(n, "repeat");
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    const a = document.createElement("a");
+    a.download = `gomis-${seedEl.textContent}.png`;
+    a.href = c.toDataURL("image/png");
+    a.click();
+  }
+
+  // ————— the panel —————
+
+  function openPanel() {
+    panel.classList.add("is-open");
+    settingsBtn.setAttribute("aria-expanded", "true");
+    panelClose.focus({ preventScroll: true });
+  }
+  function closePanel() {
+    panel.classList.remove("is-open");
+    settingsBtn.setAttribute("aria-expanded", "false");
+    settingsBtn.focus({ preventScroll: true });
+  }
+  settingsBtn.addEventListener("click", openPanel);
+  panelClose.addEventListener("click", closePanel);
+
+  function applySetting(key, on) {
+    settings[key] = on;
+    if (key === "grid") document.body.classList.toggle("grid-on", on);
+    if (key === "grain") document.body.classList.toggle("grain-off", !on);
+    if (key === "singleLine") document.body.classList.toggle("single-line", on);
+    if (key === "dither" && current.img) applyNegativeSrc();
+    const tgl = panel.querySelector(`[data-setting="${key}"]`);
+    if (tgl) tgl.setAttribute("aria-checked", String(on));
+  }
+  panel.querySelectorAll(".tgl").forEach((tgl) => {
+    tgl.addEventListener("click", () => {
+      const key = tgl.dataset.setting;
+      applySetting(key, tgl.getAttribute("aria-checked") !== "true");
+    });
+  });
+
+  document.getElementById("act-photo").addEventListener("click", replacePhoto);
+  document.getElementById("act-copy").addEventListener("click", regenerateCopy);
+  document.getElementById("act-all").addEventListener("click", regenerate);
+  document.getElementById("act-export").addEventListener("click", exportPng);
 
   addEventListener("keydown", (e) => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key.toLowerCase();
+    if (k === "escape") return closePanel();
     if (k === "r") regenerate();
-    if (k === "g") toggleGrid();
+    if (k === "g") applySetting("grid", !settings.grid);
+    if (k === "s") panel.classList.contains("is-open") ? closePanel() : openPanel();
   });
 
   // ————— light-table cursor (fine pointers) —————
