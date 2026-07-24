@@ -355,7 +355,7 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 20px 4px;
+  padding: 12px 20px 0;
 }
 .panel__title { font-weight: 600; letter-spacing: 0.14em; }
 .panel__spin { width: 12px; height: 12px; margin-left: auto; opacity: 0; transition: opacity 240ms var(--ease-out); }
@@ -367,10 +367,10 @@ body::before {
 
 .panel__body {
   overflow-y: auto;
-  padding: 2px 20px calc(16px + env(safe-area-inset-bottom));
+  padding: 2px 20px calc(12px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 .panel__group { display: flex; flex-direction: column; }
 .panel__label {
@@ -378,7 +378,7 @@ body::before {
   font-weight: 400;
   letter-spacing: 0.14em;
   color: rgba(255, 255, 255, 0.5);
-  padding: 8px 0;
+  padding: 4px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -388,7 +388,7 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 48px;
+  min-height: 40px;
   padding: 0 2px;
   font: 500 var(--fs)/1 var(--mono);
   letter-spacing: 0.1em;
@@ -428,7 +428,7 @@ body::before {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 48px;
+  min-height: 40px;
   padding: 0 2px;
   font: 500 var(--fs)/1 var(--mono);
   letter-spacing: 0.1em;
