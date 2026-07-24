@@ -2,9 +2,11 @@
 
 All photographs in this folder are Johnnie's own frames, all rights
 reserved ("OWN ARCHIVE" on the sheet). Served files are stripped of
-embedded EXIF; the real capture data (place, time, GPS, aperture,
-shutter, ISO, focal length) lives in the `meta` field of the manifest
-in `../app.js` and drives the factual micro-copy for each deal.
+embedded EXIF; the real capture data lives in the `meta` field of the
+manifest in `../app.js` and drives the factual micro-copy for each
+deal. Extract EVERYTHING the file offers: place (reverse-geocoded),
+time and date, GPS, aperture, shutter, ISO, 35mm-equivalent focal
+length, exposure bias (EV), GPS altitude, and compass bearing.
 
 | File | Work |
 |---|---|
