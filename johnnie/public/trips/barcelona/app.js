@@ -1021,7 +1021,7 @@
 
   const holdRing = document.getElementById("holdring");
   const ringProg = holdRing.querySelector(".holdring__progress");
-  const RING_LEN = 94.25;
+  const RING_LEN = 122.52;
   const HOLD_MS = 3000;
   let hold = null;
   let chipTimer = null;
@@ -1063,10 +1063,19 @@
     hold = {
       x: e.clientX, y: e.clientY,
       timer: setTimeout(() => {
-        cancelHold();
+        hold = null;
         showChip();
         scheduleChipHide(8000);
         suppressClick = true; // the release must not poke a clipping
+        // the filled ring IS the chip's outline: the chip fades in on
+        // top of it, and only then does the ring retire, unseen
+        setTimeout(() => {
+          holdRing.classList.remove("is-on");
+          setTimeout(() => {
+            ringProg.style.transition = "none";
+            ringProg.style.strokeDashoffset = RING_LEN;
+          }, 240);
+        }, 360);
       }, HOLD_MS),
     };
   });
