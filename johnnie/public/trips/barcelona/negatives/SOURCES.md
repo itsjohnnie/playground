@@ -26,6 +26,9 @@ length, exposure bias (EV), GPS altitude, and compass bearing.
 | `johnnie-sagrada-4-2026.jpg` | Sagrada Família IV, Jul 24 2026 |
 | `johnnie-sagrada-5-2026.jpg` | Sagrada Família V, Jul 24 2026 |
 | `johnnie-santgervasi-2026.jpg` | Sant Gervasi, Barcelona, Jul 21 2026 |
+| `johnnie-balmes-1-2026.jpg` | Ultramarinos I (Carrer de Balmes), Jul 25 2026 |
+| `johnnie-balmes-2-2026.jpg` | Ultramarinos II (Carrer de Balmes), Jul 25 2026 |
+| `johnnie-satuna-2026.jpg` | Sa Tuna, Begur, Jul 25 2026 |
 
 ## Adding new negatives
 
