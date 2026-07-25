@@ -372,6 +372,21 @@
       meta: { place: "SANT GERVASI", time: "12:33", date: "JUL 21\n12:33",
               gps: "41.4001° N\n2.1471° E", spec: "F 1.8 · 1/2976", lens: "48MM",
               film: "IPHONE 17 PRO", iso: "ISO 64" , ev: "EV 0", alt: "ALT 73M", dir: "83° E" } },
+    { author: "JOHNNIE", title: "ULTRAMARINOS I", year: 2026, lic: "OWN ARCHIVE",
+      src: "negatives/johnnie-balmes-1-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "CARRER DE BALMES", time: "21:32", date: "JUL 25\n21:32",
+              gps: "41.3967° N\n2.1528° E", spec: "F 1.8 · 1/51", lens: "24MM",
+              film: "IPHONE 17 PRO", iso: "ISO 320" , ev: "EV 0", alt: "ALT 60M", dir: "270° W" } },
+    { author: "JOHNNIE", title: "ULTRAMARINOS II", year: 2026, lic: "OWN ARCHIVE",
+      src: "negatives/johnnie-balmes-2-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "CARRER DE BALMES", time: "21:46", date: "JUL 25\n21:46",
+              gps: "41.3965° N\n2.1526° E", spec: "F 1.8 · 1/43", lens: "24MM",
+              film: "IPHONE 17 PRO", iso: "ISO 800" , ev: "EV 0", alt: "ALT 59M", dir: "210° SW" } },
+    { author: "JOHNNIE", title: "SA TUNA, BEGUR", year: 2026, lic: "OWN ARCHIVE",
+      src: "negatives/johnnie-satuna-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "SA TUNA", time: "17:01", date: "JUL 25\n17:01",
+              gps: "41.9610° N\n3.2301° E", spec: "F 1.8 · 1/1456", lens: "63MM",
+              film: "IPHONE 17 PRO", iso: "ISO 80" , ev: "EV 0", alt: "ALT 9M", dir: "193° S" } },
   ];
 
   function loadNegative(url, timeout = 9000) {
