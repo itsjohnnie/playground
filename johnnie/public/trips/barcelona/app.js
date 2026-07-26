@@ -389,6 +389,27 @@
               film: "IPHONE 17 PRO", iso: "ISO 80" , ev: "EV 0", alt: "ALT 9M", dir: "193° S" } },
   ];
 
+  // the deck: negatives deal like a shuffled stack of prints — every
+  // frame comes up once, in random order, before any frame repeats.
+  // when the stack runs out it reshuffles, and the fresh shuffle never
+  // opens with the print already on the sheet
+  let deck = [];
+  function nextNegative() {
+    if (!deck.length) {
+      deck = [...NEGATIVES];
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = (Math.random() * (i + 1)) | 0;
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      const top = deck.length - 1;
+      if (deck.length > 1 && current.neg && deck[top] === current.neg) {
+        const j = (Math.random() * top) | 0;
+        [deck[top], deck[j]] = [deck[j], deck[top]];
+      }
+    }
+    return deck.pop();
+  }
+
   function loadNegative(url, timeout = 9000) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -682,10 +703,10 @@
     root.style.setProperty("--rows", rows);
 
     let neg = layout.negative;
-    // a shuffle must never deal the negative already on the sheet
-    if (!keepNegative && current.neg && neg === current.neg && NEGATIVES.length > 1) {
-      const others = NEGATIVES.filter((n) => n !== current.neg);
-      neg = others[(layout.rng() * others.length) | 0];
+    // negatives deal from the shuffled deck: no repeats until the
+    // whole archive has been seen
+    if (!keepNegative) {
+      neg = nextNegative();
       layout.negative = neg;
     }
 
@@ -794,9 +815,7 @@
   async function replacePhoto() {
     if (busy || !current.layout) return;
     setBusy(true);
-    let next = current.neg;
-    while (next === current.neg && NEGATIVES.length > 1)
-      next = NEGATIVES[(Math.random() * NEGATIVES.length) | 0];
+    const next = nextNegative();
     const img = await loadNegative(next.src);
     if (img) {
       const cs = getComputedStyle(frontBg);
