@@ -392,6 +392,16 @@
       meta: { place: "LA CANUDA", time: "20:36", date: "JUL 26\n20:36",
               gps: "41.3851° N\n2.1736° E", spec: "F 2.8 · 1/82", lens: "100MM",
               film: "IPHONE 17 PRO", iso: "ISO 500" , ev: "EV 0", alt: "ALT 12M", dir: "243° SW" } },
+    { author: "JOHNNIE", title: "PLACA NOVA, BCN", year: 2026, lic: "OWN ARCHIVE",
+      src: "negatives/johnnie-placanova-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "PLACA NOVA", time: "17:55", date: "JUL 26\n17:55",
+              gps: "41.3843° N\n2.1749° E", spec: "F 2.8 · 1/121", lens: "174MM",
+              film: "IPHONE 17 PRO", iso: "ISO 100" , ev: "EV 0", alt: "ALT 13M", dir: "239° SW" } },
+    { author: "JOHNNIE", title: "LES AIGUES, BCN", year: 2026, lic: "OWN ARCHIVE",
+      src: "negatives/johnnie-lesaigues-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "LES AIGUES", time: "12:12", date: "JUL 26\n12:12",
+              gps: "41.4218° N\n2.1335° E", spec: "F 2.8 · 1/638", lens: "100MM",
+              film: "IPHONE 17 PRO", iso: "ISO 25" , ev: "EV 0", alt: "ALT 280M", dir: "202° S" } },
   ];
 
   // the deck: negatives deal like a shuffled stack of prints — every
