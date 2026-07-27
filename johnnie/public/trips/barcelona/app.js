@@ -387,6 +387,11 @@
       meta: { place: "SA TUNA", time: "17:01", date: "JUL 25\n17:01",
               gps: "41.9610° N\n3.2301° E", spec: "F 1.8 · 1/1456", lens: "63MM",
               film: "IPHONE 17 PRO", iso: "ISO 80" , ev: "EV 0", alt: "ALT 9M", dir: "193° S" } },
+    { author: "JOHNNIE", title: "LA CANUDA, BCN", year: 2026, lic: "OWN ARCHIVE",
+      src: "negatives/johnnie-canuda-2026.jpg", page: "https://johnnies.life",
+      meta: { place: "LA CANUDA", time: "20:36", date: "JUL 26\n20:36",
+              gps: "41.3851° N\n2.1736° E", spec: "F 2.8 · 1/82", lens: "100MM",
+              film: "IPHONE 17 PRO", iso: "ISO 500" , ev: "EV 0", alt: "ALT 12M", dir: "243° SW" } },
   ];
 
   // the deck: negatives deal like a shuffled stack of prints — every

@@ -29,6 +29,7 @@ length, exposure bias (EV), GPS altitude, and compass bearing.
 | `johnnie-balmes-1-2026.jpg` | Ultramarinos I (Carrer de Balmes), Jul 25 2026 |
 | `johnnie-balmes-2-2026.jpg` | Ultramarinos II (Carrer de Balmes), Jul 25 2026 |
 | `johnnie-satuna-2026.jpg` | Sa Tuna, Begur, Jul 25 2026 |
+| `johnnie-canuda-2026.jpg` | Carrer de la Canuda, Barcelona, Jul 26 2026 |
 
 ## Adding new negatives
 
