@@ -623,7 +623,7 @@ function drawBackText(g, label, num, anchor, sil){
     const build=(s2)=>{
       /* tight leading between name lines; the number sits in a pressed
          pill below — the pill floor sinks, the numerals stay at surface */
-      const lines=nameLines.map(t=>[t,'800',s2,s2*0.05]);
+      const lines=nameLines.map(t=>[t,'800',s2,s2*-0.08]);
       if(s2>=34){
         lines[lines.length-1][3]=s2*0.34;          // air between name and pill
         const ns=Math.max(36,Math.round(s2*0.62));
