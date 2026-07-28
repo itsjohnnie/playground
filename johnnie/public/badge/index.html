@@ -149,8 +149,8 @@ const BADGES = [
   ['\u{1F421}','Full Send'],        ['\u{1F98B}','Glow Up'],
   ['\u{1F42C}','Show Off'],         ['\u{1F988}','Closer'],
   ['\u{1F43A}','Lone Operator'],    ['\u{1F985}','Big Picture'],
-  ['\u{1F986}','Unbothered'],       ['\u{1F439}','Cheeky Saver'],
-  ['\u{1F430}','Fast Twitch'],      ['\u{1F99D}','Night Snacker'],
+  ['\u{1F986}','Unbothered'],       ['\u{1F430}','Fast Twitch'],
+  ['\u{1F99D}','Night Snacker'],
   ['\u{1F994}','Boundaries'],       ['\u{1F432}','Rare Drop'],
   ['\u{1F425}','Fresh Start'],      ['\u{1F999}','No Notes'],
   ['\u{1F9A9}','Standing Tall'],    ['\u{1F40C}','Shipped Anyway'],
@@ -175,6 +175,7 @@ const GOLD_FACE = [255, 199, 116];   // polished gold albedo (sRGB)
 const GOLD_BACK = [228, 176, 102];   // back-of-pin gold, a touch deeper
 
 const BLACK=[20,21,25];                    // gloss black enamel
+const PRESS=new URLSearchParams(location.search).get('press')||'color';
 
 function makeCanvas(n){ const c=document.createElement('canvas'); c.width=c.height=n; return c; }
 
@@ -350,10 +351,12 @@ function buildPinMaps(emoji, seed){
      the glyph's dominant pigment (most pixels x most chroma), deepen it
      into an enamel ink, mix a lighter accent of the same hue, and print
      on an ivory ground. Grayscale animals stay noir. */
-  /* the drawing is the gold: every fill is black enamel and the whole
-     animal reads in raised metal linework. The cells exist only to give
-     the walls their paths. */
-  const enamel=q.palette.map(()=>BLACK);
+  /* two finishes: 'noir' fills every cell with gloss black so the whole
+     animal reads in raised gold linework; 'color' lays the glyph's own
+     flat vector colours in as enamel */
+  const enamel=PRESS==='color'
+    ? q.palette.map(p=>[p[0],p[1],p[2]])
+    : q.palette.map(()=>BLACK);
 
   /* region map: 255 = off-pin, 254 = gold rim, else enamel cell */
   const region=new Uint8Array(TEX*TEX);
