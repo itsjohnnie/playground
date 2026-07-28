@@ -167,9 +167,9 @@ function earnedPct(emoji){ const h=hash32(emoji+'-earned'); return ((h%97)/10+0.
    hand-enamelled pin would need: flat enamel cells, raised gold walls
    along every cell boundary, a gold rim, and a sand-grained gold back. */
 
-const TEX = 512;              // texture resolution
-const RIM = 10;               // gold rim width around the glyph, px
-const GRID = 2;               // contour grid stride (512 -> 256 cells)
+const TEX = 1024;             // texture resolution
+const RIM = 20;               // gold rim width around the glyph, px
+const GRID = 4;               // contour grid stride (1024 -> 256 cells)
 
 const GOLD_FACE = [255, 199, 116];   // polished gold albedo (sRGB)
 const GOLD_BACK = [228, 176, 102];   // back-of-pin gold, a touch deeper
@@ -199,22 +199,29 @@ function hsl2rgb(h,s,l){
 
 function makeCanvas(n){ const c=document.createElement('canvas'); c.width=c.height=n; return c; }
 
+/* the glyphs are vendored Twemoji SVGs (see lib/twemoji/LICENSE): vector
+   sources rasterize perfectly smooth at any size and look identical on
+   every platform, unlike the system emoji font */
+const GLYPHS=new Map();
+function glyphUrl(emoji){
+  return '/badge/lib/twemoji/'+[...emoji].map(c=>c.codePointAt(0).toString(16)).join('-')+'.svg';
+}
+async function loadGlyphs(){
+  await Promise.all(BADGES.map(async ([e])=>{
+    const img=new Image();
+    img.src=glyphUrl(e);
+    try{ await img.decode(); GLYPHS.set(e,img); }catch{ /* skip missing */ }
+  }));
+}
+
 function rasterEmoji(emoji){
+  const img=GLYPHS.get(emoji);
+  if(!img||!img.width) return null;
   const c=makeCanvas(TEX), g=c.getContext('2d',{willReadFrequently:true});
-  const stack='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-  const target=TEX-2*(RIM+34);
-  let size=target;
-  g.font=size+'px '+stack;
-  const m=g.measureText(emoji);
-  const w=(m.actualBoundingBoxRight+m.actualBoundingBoxLeft)||size;
-  const h=(m.actualBoundingBoxAscent+m.actualBoundingBoxDescent)||size;
-  size=Math.floor(size*Math.min(target/w, target/h));
-  g.font=size+'px '+stack;
-  g.textAlign='center'; g.textBaseline='middle';
-  const mm=g.measureText(emoji);
-  const dy=(mm.actualBoundingBoxAscent-mm.actualBoundingBoxDescent)/2;
-  g.clearRect(0,0,TEX,TEX);
-  g.fillText(emoji, TEX/2, TEX/2+dy);
+  const target=TEX-2*(RIM+70);
+  const s=target/Math.max(img.width,img.height);
+  const w=img.width*s, h=img.height*s;
+  g.drawImage(img,(TEX-w)/2,(TEX-h)/2,w,h);
   return c;
 }
 
@@ -245,7 +252,10 @@ function distanceOutside(inside, W){
 /* median-cut palette + nearest assignment: the enamel colours */
 function quantize(px, alpha, W, K){
   const pts=[];
-  for(let i=0;i<W*W;i++) if(alpha[i]) pts.push([px[i*4],px[i*4+1],px[i*4+2]]);
+  for(let y=0;y<W;y+=2) for(let x=0;x<W;x+=2){   // stride-2 sample for the palette
+    const i=y*W+x;
+    if(alpha[i]) pts.push([px[i*4],px[i*4+1],px[i*4+2]]);
+  }
   if(!pts.length) return { palette:[[128,128,128]], idx:new Uint8Array(W*W).fill(255) };
   let boxes=[pts];
   while(boxes.length<K){
@@ -410,7 +420,7 @@ function buildPinMaps(emoji, seed){
     if(a0===255&&a1===255&&a2===255) continue;
     if(a0!==a1||a0!==a2){ ridge[i]=1; }
   }
-  for(let p=0;p<2;p++){                            // widen to ~5px walls
+  for(let p=0;p<4;p++){                            // widen to ~9px walls
     const d2=new Uint8Array(TEX*TEX);
     for(let y=1;y<TEX-1;y++) for(let x=1;x<TEX-1;x++){
       const i=y*TEX+x;
@@ -427,7 +437,7 @@ function buildPinMaps(emoji, seed){
   }
   /* orange-peel: real enamel is poured, not perfect */
   for(let i=0;i<TEX*TEX;i++) if(region[i]!==255 && !ridge[i] && region[i]!==254) height[i]+=(rng()-0.5)*0.05;
-  const hsm=boxBlur(height, TEX, 2, 2);
+  const hsm=boxBlur(height, TEX, 4, 2);
 
   /* ---- front maps ---- */
   const albedo=makeCanvas(TEX), ag=albedo.getContext('2d');
@@ -461,7 +471,7 @@ function buildPinMaps(emoji, seed){
     /* normal from height (v points up, canvas y points down) */
     const xm=Math.max(0,x-1), xp=Math.min(TEX-1,x+1);
     const ym=Math.max(0,y-1), yp=Math.min(TEX-1,y+1);
-    const s=2.6;
+    const s=5.2;
     const dhx=(hsm[y*TEX+xp]-hsm[y*TEX+xm])*s;
     const dhy=(hsm[yp*TEX+x]-hsm[ym*TEX+x])*s;
     const inv=1/Math.hypot(dhx,dhy,1);
@@ -479,7 +489,7 @@ function buildPinMaps(emoji, seed){
   const bimg=bg2.createImageData(TEX,TEX), bd2=bimg.data;
   const brough=makeCanvas(TEX), rg2=brough.getContext('2d');
   const rimg=rg2.createImageData(TEX,TEX), rd2=rimg.data;
-  const mott=boxBlur(Float32Array.from({length:TEX*TEX},()=>rng()), TEX, 7, 2);
+  const mott=boxBlur(Float32Array.from({length:TEX*TEX},()=>rng()), TEX, 14, 2);
   for(let i=0;i<TEX*TEX;i++){
     const o=i*4;
     const fine=rng();                              // per-pixel sand
@@ -496,7 +506,7 @@ function buildPinMaps(emoji, seed){
   /* maker's mark, mirrored so it reads correctly from behind */
   bg2.save();
   bg2.translate(TEX/2,TEX/2); bg2.scale(-1,1);
-  bg2.font='600 21px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  bg2.font='600 42px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   bg2.textAlign='center'; bg2.textBaseline='middle';
   bg2.fillStyle='rgba(96,66,20,0.55)';
   bg2.fillText('JOHNNIES.LIFE', 0, 2);
@@ -784,11 +794,11 @@ function texture(canvas, srgb){
   return t;
 }
 
-function mint(emoji){
+function buildBadge(emoji){
   const maps=buildPinMaps(emoji, hash32(emoji+'-mint'));
-  if(!maps) return false;
+  if(!maps) return null;
   const shapes=silhouetteToShapes(maps.sil);
-  if(!shapes.length) return false;
+  if(!shapes.length) return null;
   const geo=buildGeometry(shapes);
 
   const mrcT=texture(maps.mrc,false);
@@ -812,10 +822,15 @@ function mint(emoji){
     color:0xf0c070, metalness:1, roughness:0.3, envMapIntensity:theme.envSide,
   });
 
-  const mesh=new THREE.Mesh(geo,[front,gold,side]);
+  return new THREE.Mesh(geo,[front,gold,side]);
+}
+
+function attach(mesh){
   const old=current;
   current=mesh;
   pin.add(mesh);
+  const [f,g,s]=mesh.material;
+  f.envMapIntensity=theme.envFront; g.envMapIntensity=theme.envBack; s.envMapIntensity=theme.envSide;
   if(old){
     pin.remove(old);
     old.geometry.dispose();
@@ -824,7 +839,26 @@ function mint(emoji){
       m.dispose();
     }
   }
+}
+
+function mint(emoji){
+  const mesh=buildBadge(emoji);
+  if(!mesh) return false;
+  attach(mesh);
   return true;
+}
+
+/* the 1024px press takes a beat — strike the next badge ahead of time so
+   a tap swaps instantly */
+let prepared=null;
+function prepareNext(){
+  if(prepared) return;
+  let steps=0;
+  while(steps<BADGES.length){
+    const i=order[(cursor+steps)%order.length]; steps++;
+    const mesh=buildBadge(BADGES[i][0]);
+    if(mesh){ prepared={mesh,i,steps}; return; }
+  }
 }
 
 /* ============================ motion + input ============================ */
@@ -851,17 +885,24 @@ function setPlate(i){
 }
 
 function mintNext(animate){
-  let tries=0;
-  while(tries<BADGES.length){
-    const i=order[cursor%order.length]; cursor++; tries++;
-    if(mint(BADGES[i][0])){
-      if(animate){
-        plate.classList.add('swap');
-        setTimeout(()=>{ setPlate(i); plate.classList.remove('swap'); },200);
-      } else setPlate(i);
-      return;
+  let mesh=null, badge=-1;
+  if(prepared){
+    mesh=prepared.mesh; badge=prepared.i; cursor+=prepared.steps; prepared=null;
+  } else {
+    let tries=0;
+    while(tries<BADGES.length){
+      const i=order[cursor%order.length]; cursor++; tries++;
+      const m=buildBadge(BADGES[i][0]);
+      if(m){ mesh=m; badge=i; break; }
     }
   }
+  if(!mesh) return;
+  attach(mesh);
+  if(animate){
+    plate.classList.add('swap');
+    setTimeout(()=>{ setPlate(badge); plate.classList.remove('swap'); },200);
+  } else setPlate(badge);
+  setTimeout(()=>{ try{ prepareNext(); }catch{} },350);
 }
 
 function popMint(){
@@ -963,14 +1004,13 @@ document.addEventListener('visibilitychange',()=>{
 
 applyTheme();
 
-/* first mint may race the emoji font on cold caches: retry a few frames */
-let bootTries=0;
-(function boot(){
+loadGlyphs().then(()=>{
   const i=order[0];
-  if(mint(BADGES[i][0])){ cursor=1; setPlate(i); start(); }
-  else if(++bootTries<24) requestAnimationFrame(boot);
-  else { cursor=1; setPlate(i); start(); }        // give up gracefully
-})();
+  if(mint(BADGES[i][0])){ cursor=1; setPlate(i); }
+  else mintNext(false);                            // first glyph missing: walk on
+  start();
+  setTimeout(()=>{ try{ prepareNext(); }catch{} },400);
+});
 </script>
 </body>
 </html>
