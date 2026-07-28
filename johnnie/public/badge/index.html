@@ -682,6 +682,16 @@ function buildGeometry(shapes){
     }
   }
   if(runMat>=0) geo.addGroup(runStart*3,(tri-runStart)*3,runMat);
+
+  /* every badge lands the same size: centre it and record the scale that
+     normalizes its largest half-extent to 1 — wide glyphs used to overflow
+     the frame and clip at the canvas edge */
+  geo.computeBoundingBox();
+  const bb=geo.boundingBox;
+  const cx=(bb.min.x+bb.max.x)/2, cy=(bb.min.y+bb.max.y)/2;
+  geo.translate(-cx,-cy,0);
+  geo.userData.fit=1/Math.max(bb.max.x-cx, cx-bb.min.x, bb.max.y-cy, cy-bb.min.y);
+
   geo.computeVertexNormals();
 
   /* weld normals across shared positions: the wall of a struck pin is one
@@ -796,6 +806,7 @@ function buildBadge(emoji){
 function attach(mesh){
   const old=current;
   current=mesh;
+  mesh.scale.setScalar(mesh.geometry.userData.fit||1);
   pin.add(mesh);
   const [f,g,s]=mesh.material;
   f.envMapIntensity=theme.envFront; g.envMapIntensity=theme.envBack; s.envMapIntensity=theme.envSide;
@@ -873,28 +884,34 @@ function mintNext(animate){
   setTimeout(()=>{ try{ prepareNext(); }catch{} },350);
 }
 
+let minting=false;
 function popMint(){
+  if(minting) return;
   taps++;
   if(taps===1) hint.classList.add('gone');
+  if(reduced){ mintNext(true); return; }
+  minting=true;
+  if(!prepared){ try{ prepareNext(); }catch{} }    // press now, before any motion
   const t0=performance.now();
   const shrink=()=>{
-    const k=Math.min(1,(performance.now()-t0)/130);
-    scaleAnim.v=1-0.22*(k*k);
+    const k=Math.min(1,(performance.now()-t0)/140);
+    scaleAnim.v=1-0.24*k*k;
     if(k<1) requestAnimationFrame(shrink);
     else {
       mintNext(true);
-      spinVel+=2.6;                                // the new one arrives spinning
+      spinVel+=1.6;                                // the new one arrives with a nudge
       const t1=performance.now();
       const grow=()=>{
-        const k2=Math.min(1,(performance.now()-t1)/460);
-        const e=1+2.7*Math.pow(1-k2,3)*Math.sin(k2*9)*0.12 - Math.pow(1-k2,2)*0.22;
-        scaleAnim.v=0.78+(e-0.78)*k2 + (k2===1?0:0);
-        if(k2<1) requestAnimationFrame(grow); else scaleAnim.v=1;
+        const k2=Math.min(1,(performance.now()-t1)/420);
+        const u=k2-1;
+        const back=1+2.70158*u*u*u+1.70158*u*u;    // ease-out-back: settles with a soft overshoot
+        scaleAnim.v=0.76+0.24*back;
+        if(k2<1) requestAnimationFrame(grow);
+        else { scaleAnim.v=1; minting=false; }
       };
       requestAnimationFrame(grow);
     }
   };
-  if(reduced){ mintNext(true); return; }
   requestAnimationFrame(shrink);
 }
 
@@ -944,7 +961,7 @@ function frame(t){
     }
   }
   pin.rotation.set(rotX,rotY,0);
-  const s=1.62*scaleAnim.v;
+  const s=1.0*scaleAnim.v;
   pin.scale.set(s,s,s);
   renderer.render(scene,camera);
 }
