@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>the darkroom — negative intake</title>
+<script src="exifr-lite.js"></script>
+<style>
+/* the darkroom speaks the sheet's language: one font, one size,
+   white ink on night, hairline pills */
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/art/lib/fonts/GeistMono-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+:root {
+  --night: #0c0b0a;
+  --bone: #ffffff;
+  --dim: rgba(255, 255, 255, 0.55);
+  --line: rgba(255, 255, 255, 0.18);
+  --fs: 11px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--night);
+  color: var(--bone);
+  font: 400 var(--fs)/1.55 "Geist Mono", ui-monospace, Menlo, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  -webkit-font-smoothing: antialiased;
+  padding: 24px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+h1 { font-size: var(--fs); font-weight: 600; letter-spacing: 0.12em; }
+.sub { color: var(--dim); margin-top: 4px; }
+a { color: inherit; }
+
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+
+.pillbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 12px;
+  border: 1px solid var(--bone);
+  border-radius: 999px;
+  background: none;
+  color: var(--bone);
+  font: inherit;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: none;
+}
+.pillbtn:disabled { opacity: 0.35; cursor: default; }
+.pillbtn--solid { background: var(--bone); color: var(--night); }
+
+.drop {
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--dim);
+  cursor: pointer;
+  margin-bottom: 24px;
+}
+.drop.is-over { border-color: var(--bone); color: var(--bone); }
+.drop input { display: none; }
+
+label { display: block; color: var(--dim); margin-bottom: 2px; }
+input[type="text"], textarea, select {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  color: var(--bone);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  padding: 2px 0 4px;
+  border-radius: 0;
+}
+input:focus, textarea:focus, select:focus { outline: none; border-bottom-color: var(--bone); }
+textarea { resize: none; height: 40px; }
+select { text-transform: uppercase; }
+select option { background: var(--night); }
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+}
+.card img { width: 120px; border-radius: 2px; display: block; }
+.card .plate-note { color: var(--dim); margin-top: 6px; font-size: 10px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+.fields .wide { grid-column: 1 / -1; }
+.card .remove {
+  background: none; border: none; color: var(--dim); font: inherit;
+  text-transform: uppercase; cursor: pointer; padding: 0; margin-top: 8px;
+  letter-spacing: 0.06em;
+}
+.card .remove:hover { color: var(--bone); }
+
+.foot { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 24px; }
+.status { color: var(--dim); white-space: pre-line; text-align: right; }
+.status.is-err { color: #ff6b5e; }
+.hidden { display: none; }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div>
+    <h1>THE DARKROOM</h1>
+    <div class="sub">drop a photo. exif is read, the place resolved, the plate<br>
+    resized to 1920px and stripped. review, then commit.</div>
+  </div>
+  <div class="row">
+    <label for="trip" style="margin:0">TRIP</label>
+    <select id="trip" style="width:auto; min-width:120px"><option value="barcelona">barcelona</option></select>
+    <a class="pillbtn" href="/admin/" style="border-color: var(--line); color: var(--dim)">CMS</a>
+  </div>
+</div>
+
+<div class="drop" id="drop">
+  DROP NEGATIVES HERE — OR TAP TO CHOOSE
+  <input type="file" id="file" accept="image/jpeg,image/heic,image/png" multiple>
+</div>
+
+<div id="cards"></div>
+
+<div class="foot">
+  <button class="pillbtn pillbtn--solid" id="commit" disabled>SIGN IN &amp; COMMIT</button>
+  <div class="status" id="status">NO NEGATIVES YET</div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const REPO = "itsjohnnie/playground";
+  const BRANCH = "main";
+  const PLATES_DIR = "johnnie/public/trips/plates";
+  const MANIFESTS_DIR = "johnnie/public/trips/manifests";
+  const MONTHS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  const WINDS = ["N","NE","E","SE","S","SW","W","NW","N"];
+
+  const drop = document.getElementById("drop");
+  const fileInput = document.getElementById("file");
+  const cardsEl = document.getElementById("cards");
+  const commitBtn = document.getElementById("commit");
+  const statusEl = document.getElementById("status");
+  const tripSel = document.getElementById("trip");
+
+  const cards = []; // { blob, filename, entry, el }
+  let token = sessionStorage.getItem("darkroom_token") || null;
+
+  const say = (msg, err = false) => {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle("is-err", !!err);
+  };
+  // the sheet's house style drops diacritics: GRÀCIA -> GRACIA, Ç -> C
+  const flatten = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const wind = (deg) => WINDS[Math.round(deg / 45)];
+
+  // ————— reading one negative —————
+
+  async function ingest(file) {
+    const ex = await exifr.parse(file, { gps: true, translateValues: true }).catch(() => null) || {};
+    const dt = ex.DateTimeOriginal instanceof Date ? ex.DateTimeOriginal : null;
+    const hhmm = dt ? `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}` : "";
+    const monDay = dt ? `${MONTHS[dt.getMonth()]} ${String(dt.getDate()).padStart(2, "0")}` : "";
+
+    // place: reverse-geocode the GPS against OpenStreetMap
+    let place = "";
+    let gpsBlock = "";
+    if (typeof ex.latitude === "number") {
+      const ns = ex.latitude >= 0 ? "N" : "S";
+      const ew = ex.longitude >= 0 ? "E" : "W";
+      gpsBlock = `${Math.abs(ex.latitude).toFixed(4)}° ${ns}\n${Math.abs(ex.longitude).toFixed(4)}° ${ew}`;
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${ex.latitude}&lon=${ex.longitude}&format=json&zoom=16`);
+        const a = (await r.json()).address || {};
+        place = flatten((a.neighbourhood || a.quarter || a.suburb || a.village || a.town || a.city || "").toUpperCase());
+      } catch {}
+    }
+
+    // the plate: EXIF-oriented, 1920px long edge, re-encoded clean
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const s = Math.min(1, 1920 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * s);
+    c.height = Math.round(bmp.height * s);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise((res) => c.toBlob(res, "image/jpeg", 0.85));
+
+    const year = dt ? dt.getFullYear() : new Date().getFullYear();
+    const stamp = dt
+      ? `${year}${String(dt.getMonth() + 1).padStart(2, "0")}${String(dt.getDate()).padStart(2, "0")}-${String(dt.getHours()).padStart(2, "0")}${String(dt.getMinutes()).padStart(2, "0")}`
+      : String(Date.now());
+    const placeSlug = (place || "frame").toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 18) || "frame";
+    const filename = `johnnie-${placeSlug}-${stamp}.jpg`;
+
+    const fnum = ex.FNumber ? `F ${Math.round(ex.FNumber * 10) / 10}` : "";
+    const shutter = ex.ExposureTime ? `1/${Math.round(1 / ex.ExposureTime)}` : "";
+    const evNum = typeof ex.ExposureCompensation === "number" ? ex.ExposureCompensation : 0;
+    const entry = {
+      author: "JOHNNIE",
+      title: place ? `${place}, BCN` : "UNTITLED",
+      year,
+      lic: "OWN ARCHIVE",
+      src: `/trips/plates/${filename}`,
+      page: "https://johnnies.life",
+      meta: {
+        place: place || "",
+        time: hhmm,
+        date: monDay ? `${monDay}\n${hhmm}` : "",
+        gps: gpsBlock,
+        spec: fnum && shutter ? `${fnum} · ${shutter}` : "",
+        lens: ex.FocalLengthIn35mmFormat ? `${ex.FocalLengthIn35mmFormat}MM` : "",
+        film: "IPHONE 17 PRO",
+        iso: ex.ISO ? `ISO ${ex.ISO}` : "",
+        ev: evNum ? `EV ${evNum > 0 ? "+" : "−"}${Math.abs(Math.round(evNum * 10) / 10)}` : "EV 0",
+        alt: typeof ex.GPSAltitude === "number" ? `ALT ${Math.round(ex.GPSAltitude)}M` : "",
+        dir: typeof ex.GPSImgDirection === "number" ? `${Math.round(ex.GPSImgDirection)}° ${wind(ex.GPSImgDirection)}` : "",
+      },
+    };
+    addCard(blob, filename, entry, c.width, c.height);
+  }
+
+  // ————— the review card —————
+
+  const F = (id, label, value, wide = false, tall = false) =>
+    `<div class="${wide ? "wide" : ""}"><label>${label}</label>${
+      tall ? `<textarea data-f="${id}">${value}</textarea>` : `<input type="text" data-f="${id}" value="${value.replace(/"/g, "&quot;")}">`
+    }</div>`;
+
+  function addCard(blob, filename, entry, w, h) {
+    const el = document.createElement("div");
+    el.className = "card";
+    el.innerHTML = `
+      <div>
+        <img src="${URL.createObjectURL(blob)}" alt="">
+        <div class="plate-note">${w} × ${h} · ${(blob.size / 1024 / 1024).toFixed(1)}MB · EXIF CLEAN</div>
+        <button class="remove" type="button">REMOVE</button>
+      </div>
+      <div class="fields">
+        ${F("title", "TITLE (CREDIT LINE)", entry.title)}
+        ${F("place", "PLACE", entry.meta.place)}
+        ${F("spec", "EXPOSURE", entry.meta.spec)}
+        ${F("lens", "LENS", entry.meta.lens)}
+        ${F("iso", "ISO", entry.meta.iso)}
+        ${F("ev", "EV", entry.meta.ev)}
+        ${F("alt", "ALTITUDE", entry.meta.alt)}
+        ${F("dir", "BEARING", entry.meta.dir)}
+        ${F("date", "DATE BLOCK", entry.meta.date, false, true)}
+        ${F("gps", "GPS BLOCK", entry.meta.gps, false, true)}
+      </div>`;
+    const card = { blob, filename, entry, el };
+    el.querySelector(".remove").addEventListener("click", () => {
+      cards.splice(cards.indexOf(card), 1);
+      el.remove();
+      refresh();
+    });
+    el.addEventListener("input", (e) => {
+      const f = e.target.dataset.f;
+      if (!f) return;
+      const v = e.target.value;
+      if (f === "title") entry.title = v;
+      else entry.meta[f] = v;
+    });
+    cards.push(card);
+    cardsEl.appendChild(el);
+    refresh();
+  }
+
+  function refresh() {
+    commitBtn.disabled = !cards.length;
+    say(cards.length
+      ? `${cards.length} NEGATIVE${cards.length > 1 ? "S" : ""} READY FOR /trips/${tripSel.value}`
+      : "NO NEGATIVES YET");
+  }
+
+  // ————— intake events —————
+
+  drop.addEventListener("click", () => fileInput.click());
+  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("is-over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("is-over"));
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    drop.classList.remove("is-over");
+    [...e.dataTransfer.files].forEach((f) => ingest(f).catch((err) => say(`READ FAILED: ${err.message}`, true)));
+  });
+  fileInput.addEventListener("change", () => {
+    [...fileInput.files].forEach((f) => ingest(f).catch((err) => say(`READ FAILED: ${err.message}`, true)));
+    fileInput.value = "";
+  });
+
+  // ————— github: the same oauth door the cms uses —————
+
+  function authorize() {
+    return new Promise((resolve, reject) => {
+      const popup = open("/auth", "darkroom-auth", "width=680,height=760");
+      if (!popup) return reject(new Error("popup blocked"));
+      const recv = (e) => {
+        if (e.origin !== location.origin) return;
+        if (e.data === "authorizing:github") { popup.postMessage("ready", e.origin); return; }
+        if (typeof e.data === "string" && e.data.startsWith("authorization:github:")) {
+          removeEventListener("message", recv);
+          const ok = e.data.startsWith("authorization:github:success:");
+          if (!ok) return reject(new Error("auth failed"));
+          const payload = JSON.parse(e.data.slice("authorization:github:success:".length));
+          resolve(payload.token);
+        }
+      };
+      addEventListener("message", recv);
+    });
+  }
+
+  const gh = (path, opts = {}) =>
+    fetch(`https://api.github.com/repos/${REPO}/${path}`, {
+      ...opts,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        ...(opts.headers || {}),
+      },
+    });
+
+  const b64 = (buf) => {
+    const bytes = new Uint8Array(buf);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000)
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  };
+  // manifest JSON is UTF-8 (degree signs, accents): encode before btoa
+  const b64utf8 = (s) => b64(new TextEncoder().encode(s));
+
+  async function loadTrips() {
+    try {
+      const r = await gh(`contents/${MANIFESTS_DIR}?ref=${BRANCH}`);
+      if (!r.ok) return;
+      const list = await r.json();
+      const slugs = list.filter((f) => f.name.endsWith(".json")).map((f) => f.name.replace(/\.json$/, ""));
+      const cur = tripSel.value;
+      tripSel.innerHTML = slugs.map((s) => `<option value="${s}">${s}</option>`).join("");
+      if (slugs.includes(cur)) tripSel.value = cur;
+    } catch {}
+  }
+
+  async function commit() {
+    commitBtn.disabled = true;
+    try {
+      if (!token) {
+        say("SIGNING IN…");
+        token = await authorize();
+        sessionStorage.setItem("darkroom_token", token);
+        commitBtn.textContent = "COMMIT TO THE ARCHIVE";
+        await loadTrips();
+      }
+      const slug = tripSel.value;
+
+      // plates first: each is its own commit through the contents api
+      for (const card of cards) {
+        say(`UPLOADING ${card.filename}…`);
+        const put = await gh(`contents/${PLATES_DIR}/${card.filename}`, {
+          method: "PUT",
+          body: JSON.stringify({
+            message: `Darkroom: plate ${card.filename}`,
+            content: b64(await card.blob.arrayBuffer()),
+            branch: BRANCH,
+          }),
+        });
+        if (!put.ok && put.status !== 422) throw new Error(`plate upload ${put.status}`);
+        // 422 = already exists: keep going, the manifest is what matters
+      }
+
+      say("UPDATING THE MANIFEST…");
+      const cur = await gh(`contents/${MANIFESTS_DIR}/${slug}.json?ref=${BRANCH}`);
+      if (!cur.ok) throw new Error(`manifest read ${cur.status}`);
+      const doc = await cur.json();
+      const manifest = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(doc.content.replace(/\n/g, "")), (ch) => ch.charCodeAt(0))));
+      manifest.negatives.push(...cards.map((c) => c.entry));
+      const write = await gh(`contents/${MANIFESTS_DIR}/${slug}.json`, {
+        method: "PUT",
+        body: JSON.stringify({
+          message: `Darkroom: ${cards.length} negative${cards.length > 1 ? "s" : ""} for ${slug}`,
+          content: b64utf8(JSON.stringify(manifest, null, 2) + "\n"),
+          sha: doc.sha,
+          branch: BRANCH,
+        }),
+      });
+      if (!write.ok) throw new Error(`manifest write ${write.status}`);
+
+      cardsEl.innerHTML = "";
+      cards.length = 0;
+      commitBtn.disabled = true;
+      say(`DONE — ${manifest.negatives.length} NEGATIVES ON /trips/${slug}\nTHE DEPLOY TAKES A FEW MINUTES`);
+    } catch (err) {
+      if (String(err.message).includes("401")) { token = null; sessionStorage.removeItem("darkroom_token"); }
+      say(`FAILED: ${err.message}`, true);
+      commitBtn.disabled = !cards.length;
+    }
+  }
+  commitBtn.addEventListener("click", commit);
+
+  if (token) {
+    commitBtn.textContent = "COMMIT TO THE ARCHIVE";
+    loadTrips();
+  }
+})();
+</script>
+</body>
+</html>
