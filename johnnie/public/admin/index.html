@@ -7,6 +7,11 @@
     <title>Johnnie's Life — Content Admin</title>
   </head>
   <body>
+    <!-- The darkroom shim develops photos BEFORE the CMS sees them:
+         EXIF read, place resolved, plate resized + stripped in the
+         browser, so raw originals never reach the repo. -->
+    <script src="darkroom/exifr-lite.js"></script>
+    <script src="darkroom-shim.js"></script>
     <!-- Sveltia CMS: a modern, drop-in Decap/Netlify CMS replacement.
          Free, commits content + uploaded media straight to your GitHub repo. -->
     <script src="https://unpkg.com/@sveltia/cms/dist/sveltia-cms.js"></script>
