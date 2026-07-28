@@ -143,20 +143,28 @@ import { RoomEnvironment } from '/badge/lib/RoomEnvironment.js';
 
 /* ============================== the roster ============================== */
 
-/* Font Awesome solid glyphs (see lib/icons/LICENSE); each badge carries
-   its number on the reverse, so the order here is permanent — append,
+/* Twemoji glyphs (see lib/twemoji/LICENSE); each badge carries its
+   number on the reverse, so the order here is permanent — append,
    never reorder */
 const BADGES = [
-  ['cow','Grass Fed'],         ['otter','Multitasker'],
-  ['frog','Prince, Maybe'],    ['cat','Nine Lives'],
-  ['dog','Good Boy'],          ['ghost','Left on Read'],
-  ['dragon','Rare Drop'],      ['horse','Workhorse'],
-  ['hippo','Soft Launch'],     ['fish-fins','Show Off'],
-  ['crow','Night Shift'],      ['dove','Fresh Start'],
-  ['shrimp','Sideways Progress'], ['spider','Busy Season'],
-  ['worm','Early Riser'],      ['mosquito','Night Snacker'],
-  ['kiwi-bird','Grounded'],    ['paw','Best Friend'],
-  ['bug','Known Issue'],       ['feather','Light Touch'],
+  ['\u{1F98A}','Sly One'],          ['\u{1F42F}','Stripes Earned'],
+  ['\u{1F438}','Prince, Maybe'],    ['\u{1F419}','Multitasker'],
+  ['\u{1F981}','Main Character'],   ['\u{1F43B}','Soft Launch'],
+  ['\u{1F43C}','Balanced Diet'],    ['\u{1F428}','Slow Morning'],
+  ['\u{1F437}','Comfort First'],    ['\u{1F42E}','Grass Fed'],
+  ['\u{1F435}','Chaos Agent'],      ['\u{1F414}','Early Riser'],
+  ['\u{1F427}','Formal Wear'],      ['\u{1F989}','Night Shift'],
+  ['\u{1F984}','One of One'],       ['\u{1F41D}','Busy Season'],
+  ['\u{1F422}','On My Own Time'],   ['\u{1F980}','Sideways Progress'],
+  ['\u{1F421}','Full Send'],        ['\u{1F98B}','Glow Up'],
+  ['\u{1F42C}','Show Off'],         ['\u{1F988}','Closer'],
+  ['\u{1F43A}','Lone Operator'],    ['\u{1F985}','Big Picture'],
+  ['\u{1F986}','Unbothered'],       ['\u{1F430}','Fast Twitch'],
+  ['\u{1F99D}','Night Snacker'],
+  ['\u{1F994}','Boundaries'],       ['\u{1F432}','Rare Drop'],
+  ['\u{1F425}','Fresh Start'],      ['\u{1F999}','No Notes'],
+  ['\u{1F9A9}','Standing Tall'],    ['\u{1F40C}','Shipped Anyway'],
+  ['\u{1F41E}','Good Luck'],        ['\u{1F433}','Deep Work'],
 ];
 
 /* seeded rng — grain and percentages must not shimmer between frames */
@@ -181,12 +189,12 @@ const PRESS=new URLSearchParams(location.search).get('press')||'color';
 
 function makeCanvas(n){ const c=document.createElement('canvas'); c.width=c.height=n; return c; }
 
-/* the glyphs are vendored Font Awesome solid SVGs (see lib/icons/LICENSE):
-   bold filled silhouettes with punched-out negative space — the native
-   grammar of a die-struck pin */
+/* the glyphs are vendored Twemoji SVGs (see lib/twemoji/LICENSE): vector
+   sources rasterize perfectly smooth at any size and look identical on
+   every platform */
 const GLYPHS=new Map();
-function glyphUrl(slug){
-  return '/badge/lib/icons/'+slug+'.svg';
+function glyphUrl(emoji){
+  return '/badge/lib/twemoji/'+[...emoji].map(c=>c.codePointAt(0).toString(16)).join('-')+'.svg';
 }
 function loadGlyph(e){
   if(GLYPHS.has(e)) return Promise.resolve();
@@ -1145,9 +1153,9 @@ applyTheme();
    roster loads behind it */
 (async()=>{
   let i=order[0];
-  const forced=params.get('b');                    // ?b=cow pins the first strike
+  const forced=params.get('b');                    // ?b=1f98a pins the first strike
   if(forced){
-    const fi=BADGES.findIndex(([s])=>s===forced);
+    const fi=BADGES.findIndex(([e])=>[...e].map(c=>c.codePointAt(0).toString(16)).join('-')===forced);
     if(fi>=0) i=fi;
   }
   setPlate(i);                                     // the name reads while the pin is struck
