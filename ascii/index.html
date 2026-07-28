@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#060509">
+    <title>Terminal animation — an ASCII odyssey</title>
+    <meta name="description" content="A scroll-driven odyssey rendered entirely in characters: warp fields, a galaxy, a burning star, a supernova you scrub with your thumb, and a ray-traced black hole.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gloock&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="fable-experience.css">
+</head>
+<body>
+    <!-- The stage: one full-screen ASCII canvas behind everything -->
+    <canvas id="stage" aria-hidden="true"></canvas>
+
+    <!-- HUD -->
+    <div class="hud" aria-hidden="true">
+        <div class="hud-bar" id="hud-progress"></div>
+        <div class="hud-row">
+            <span class="hud-title">~/odyssey</span>
+            <span class="hud-act" id="hud-act">✦</span>
+        </div>
+    </div>
+
+    <!-- The title, floating over the stage during the first act -->
+    <header class="title" id="title">
+        <p class="title-eyebrow" id="title-eyebrow">$ odyssey --in characters</p>
+        <h1>Terminal <em>animation</em></h1>
+        <p class="title-sub">the fable edition</p>
+    </header>
+
+    <!-- One caption line, crossfading per act -->
+    <p class="caption" id="caption" aria-live="polite"></p>
+
+    <!-- Screen-reader narrative -->
+    <p class="sr-only">A scroll-driven animation rendered in ASCII characters: a title decodes from static, a starfield accelerates to warp speed, a spiral galaxy turns, a nebula drifts, a planet rotates through sunrise, a star burns and goes supernova, and its debris falls into a ray-traced black hole. Scroll to advance; the content below the animation has links and interactive pieces.</p>
+
+    <!-- Scroll acts: transparent spacers that drive the scenes -->
+    <main>
+        <section class="act" data-scene="arrival"></section>
+        <section class="act" data-scene="velocity"></section>
+        <section class="act" data-scene="galaxy"></section>
+        <section class="act" data-scene="nebula"></section>
+        <section class="act" data-scene="worldfall"></section>
+        <section class="act" data-scene="forge"></section>
+        <section class="act" data-scene="supernova"></section>
+        <section class="act act-tall" data-scene="gravity"></section>
+
+        <!-- Epilogue: past the event horizon -->
+        <section class="epilogue" id="epilogue">
+            <div class="epi-inner">
+                <p class="epi-path">$ singularity --crossed</p>
+                <h2>Past the event horizon</h2>
+                <p class="epi-lead">Everything you just fell through was computed live from characters: no video, no images, twenty simulations in one grid. Two of them are yours to keep playing with.</p>
+
+                <div class="epi-card">
+                    <h3>Write in fire</h3>
+                    <div class="epi-window">
+                        <canvas class="ascii" id="d-firetext" aria-label="Text rendered as living fire; type below to change it"></canvas>
+                        <div class="epi-input-row">
+                            <label class="epi-prompt" for="firetext-input">&gt;</label>
+                            <input id="firetext-input" class="epi-input" type="text" value="FABLE"
+                                   maxlength="12" autocomplete="off" autocapitalize="characters"
+                                   spellcheck="false" aria-label="Text to render in fire">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="epi-card">
+                    <h3>The mirror</h3>
+                    <p class="epi-note">Your camera, spent on the same luminance ramp as the black hole. Frames never leave this page.</p>
+                    <div class="epi-window">
+                        <canvas class="ascii" id="d-mirror" aria-label="Live camera feed rendered as ASCII characters, processed entirely on this device"></canvas>
+                        <button class="epi-button" id="mirror-btn">start camera</button>
+                    </div>
+                </div>
+
+                <nav class="epi-links">
+                    <a href="guide.html">the field guide <span>how every scene is built, plus the donut, the Lorenz attractor, Life, and more →</span></a>
+                    <a href="terminal-animation.html">the first edition <span>where this all started →</span></a>
+                </nav>
+
+                <p class="epi-sig">rendered by fable · <span id="epi-stars">✦ ✦ ✦</span></p>
+            </div>
+        </section>
+    </main>
+
+    <script src="fable-experience.js"></script>
+</body>
+</html>
