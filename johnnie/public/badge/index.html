@@ -175,7 +175,6 @@ const GOLD_FACE = [255, 199, 116];   // polished gold albedo (sRGB)
 const GOLD_BACK = [228, 176, 102];   // back-of-pin gold, a touch deeper
 
 const BLACK=[20,21,25];                    // gloss black enamel
-const NOIR=[BLACK,[52,54,60],BLACK];       // grayscale animals: black on black, gold lines only
 
 function rgb2hsl(r,g,b){
   r/=255; g/=255; b/=255;
@@ -378,25 +377,24 @@ function buildPinMaps(emoji, seed){
     if(score>doms){ doms=score; domi=p; }
   }
   /* the drawing is the gold: every fill is black enamel and the linework
-     between cells reads in metal. The animal keeps one deep jewel tone,
-     laid only into its mid cells. */
-  let way;
-  if(domi<0) way=NOIR;
-  else {
+     between cells reads in metal. One deep jewel tone of the animal's
+     own colour goes wherever the glyph itself is coloured — neutral
+     cells (outlines, whites, grays) stay black, so truly monochrome
+     animals run pure black on gold. */
+  let accent=null;
+  if(domi>=0){
     const dom=q.palette[domi];
     const [h,s]=rgb2hsl(dom[0],dom[1],dom[2]);
     let S=Math.max(0.45,Math.min(0.68,s)), A=0.42;
     /* amber accents would vanish into the gold itself — push them toward
        rust so pigment and metal stay two different things */
     if(h>0.05&&h<0.17){ S=Math.min(0.75,S+0.12); A=0.38; }
-    way=[ BLACK, hsl2rgb(h,S,A), BLACK ];
+    accent=hsl2rgb(h,S,A);
   }
   const lumOf=p=>(0.299*p[0]+0.587*p[1]+0.114*p[2])/255;
-  const ls=q.palette.map(lumOf);
-  const lo=Math.min(...ls), hi=Math.max(...ls);
-  const enamel=q.palette.map((p,i)=>{
-    const t=(hi-lo)<0.22 ? ls[i] : (ls[i]-lo)/(hi-lo);   // low-contrast glyphs place absolutely
-    return way[t<0.38 ? 0 : t>0.7 ? 2 : 1];
+  const enamel=q.palette.map(p=>{
+    const chroma=(Math.max(p[0],p[1],p[2])-Math.min(p[0],p[1],p[2]))/255;
+    return (accent && chroma>0.15 && lumOf(p)>0.18) ? accent : BLACK;
   });
 
   /* region map: 255 = off-pin, 254 = gold rim, else enamel cell */
