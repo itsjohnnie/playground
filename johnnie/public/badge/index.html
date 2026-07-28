@@ -621,9 +621,13 @@ function drawBackText(g, label, num, anchor, sil){
   const layout=(nameLines)=>{
     let s=Math.min(...nameLines.map(fitSize));
     const build=(s2)=>{
-      const lines=nameLines.map(t=>[t,'800',s2,s2*0.16]);
-      if(s2>=34) lines.push(['Nº '+String(num).padStart(2,'0'),'700',Math.max(28,Math.round(s2*0.5)),s2*0.36]);
-      if(s2>=48) lines.push(['JOHNNIES.LIFE','700',34,s2*0.36]);
+      /* tight leading between name lines; the number sits in a pressed
+         pill below — the pill floor sinks, the numerals stay at surface */
+      const lines=nameLines.map(t=>[t,'800',s2,s2*0.05]);
+      if(s2>=34){
+        const ns=Math.max(28,Math.round(s2*0.45));
+        lines.push(['Nº '+String(num).padStart(2,'0'),'pill',ns*1.7,s2*0.3,ns]);
+      }
       let h=-lines[0][3];
       for(const l of lines) h+=l[2]+l[3];
       return { lines, h };
@@ -644,9 +648,22 @@ function drawBackText(g, label, num, anchor, sil){
     g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
     const ox=TEX/2-anchor.x, oy=anchor.y-TEX/2;
     let y=oy-(pick.plan.h*k)/2;
-    for(const [txt,w,size,gap] of pick.plan.lines){
-      g.font=w+' '+Math.max(20,Math.round(size*k))+'px '+F;
-      g.fillText(txt, ox, y+(size*k)/2);
+    for(const [txt,w,size,gap,pfs] of pick.plan.lines){
+      if(w==='pill'){
+        const ns2=Math.max(18,Math.round(pfs*k));
+        g.font='800 '+ns2+'px '+F;
+        const tw=g.measureText(txt).width;
+        const pw=tw+ns2*1.3, ph=size*k, cy=y+ph/2;
+        g.beginPath();
+        g.roundRect(ox-pw/2, cy-ph/2, pw, ph, ph/2);
+        g.fill();
+        g.globalCompositeOperation='destination-out';
+        g.fillText(txt, ox, cy+ns2*0.04);
+        g.globalCompositeOperation='source-over';
+      } else {
+        g.font=w+' '+Math.max(20,Math.round(size*k))+'px '+F;
+        g.fillText(txt, ox, y+(size*k)/2);
+      }
       y+=(size+gap)*k;
     }
     g.restore();
