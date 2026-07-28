@@ -889,7 +889,9 @@ function silhouetteToShapes(sil){
     for(const j of comps[ci]) cmask[j]=1;
     let poly=traceBoundary(cmask, W, sx, sy);
     if(poly.length<12) continue;
-    poly=smoothResample(poly, 3.0, 240);
+    /* smooth enough to kill the staircase, gentle enough to keep ears
+       and tails — heavy smoothing was erasing thin anatomy outright */
+    poly=smoothResample(poly, 1.7, 340);
     outers.push({ id:ci, pts:poly.map(toShapePt), holes:[] });
   }
 
@@ -901,7 +903,7 @@ function silhouetteToShapes(sil){
     for(const j of holes[hi]) hmask[j]=1;
     let poly=traceBoundary(hmask, W, sx, sy);
     if(poly.length<12) continue;
-    poly=smoothResample(poly, 2.2, 120);
+    poly=smoothResample(poly, 1.5, 160);
     const spts=poly.map(toShapePt);
     const owner=outers.find(o=>pointInPoly(spts[0], o.pts));
     if(owner) owner.holes.push(spts);
