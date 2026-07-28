@@ -143,25 +143,20 @@ import { RoomEnvironment } from '/badge/lib/RoomEnvironment.js';
 
 /* ============================== the roster ============================== */
 
+/* Font Awesome solid glyphs (see lib/icons/LICENSE); each badge carries
+   its number on the reverse, so the order here is permanent — append,
+   never reorder */
 const BADGES = [
-  ['\u{1F98A}','Sly One'],          ['\u{1F42F}','Stripes Earned'],
-  ['\u{1F438}','Prince, Maybe'],    ['\u{1F419}','Multitasker'],
-  ['\u{1F981}','Main Character'],   ['\u{1F43B}','Soft Launch'],
-  ['\u{1F43C}','Balanced Diet'],    ['\u{1F428}','Slow Morning'],
-  ['\u{1F437}','Comfort First'],    ['\u{1F42E}','Grass Fed'],
-  ['\u{1F435}','Chaos Agent'],      ['\u{1F414}','Early Riser'],
-  ['\u{1F427}','Formal Wear'],      ['\u{1F989}','Night Shift'],
-  ['\u{1F984}','One of One'],       ['\u{1F41D}','Busy Season'],
-  ['\u{1F422}','On My Own Time'],   ['\u{1F980}','Sideways Progress'],
-  ['\u{1F421}','Full Send'],        ['\u{1F98B}','Glow Up'],
-  ['\u{1F42C}','Show Off'],         ['\u{1F988}','Closer'],
-  ['\u{1F43A}','Lone Operator'],    ['\u{1F985}','Big Picture'],
-  ['\u{1F986}','Unbothered'],       ['\u{1F430}','Fast Twitch'],
-  ['\u{1F99D}','Night Snacker'],
-  ['\u{1F994}','Boundaries'],       ['\u{1F432}','Rare Drop'],
-  ['\u{1F425}','Fresh Start'],      ['\u{1F999}','No Notes'],
-  ['\u{1F9A9}','Standing Tall'],    ['\u{1F40C}','Shipped Anyway'],
-  ['\u{1F41E}','Good Luck'],        ['\u{1F433}','Deep Work'],
+  ['cow','Grass Fed'],         ['otter','Multitasker'],
+  ['frog','Prince, Maybe'],    ['cat','Nine Lives'],
+  ['dog','Good Boy'],          ['ghost','Left on Read'],
+  ['dragon','Rare Drop'],      ['horse','Workhorse'],
+  ['hippo','Soft Launch'],     ['fish-fins','Show Off'],
+  ['crow','Night Shift'],      ['dove','Fresh Start'],
+  ['shrimp','Sideways Progress'], ['spider','Busy Season'],
+  ['worm','Early Riser'],      ['mosquito','Night Snacker'],
+  ['kiwi-bird','Grounded'],    ['paw','Best Friend'],
+  ['bug','Known Issue'],       ['feather','Light Touch'],
 ];
 
 /* seeded rng — grain and percentages must not shimmer between frames */
@@ -186,12 +181,12 @@ const PRESS=new URLSearchParams(location.search).get('press')||'color';
 
 function makeCanvas(n){ const c=document.createElement('canvas'); c.width=c.height=n; return c; }
 
-/* the glyphs are vendored Twemoji SVGs (see lib/twemoji/LICENSE): vector
-   sources rasterize perfectly smooth at any size and look identical on
-   every platform, unlike the system emoji font */
+/* the glyphs are vendored Font Awesome solid SVGs (see lib/icons/LICENSE):
+   bold filled silhouettes with punched-out negative space — the native
+   grammar of a die-struck pin */
 const GLYPHS=new Map();
-function glyphUrl(emoji){
-  return '/badge/lib/twemoji/'+[...emoji].map(c=>c.codePointAt(0).toString(16)).join('-')+'.svg';
+function glyphUrl(slug){
+  return '/badge/lib/icons/'+slug+'.svg';
 }
 function loadGlyph(e){
   if(GLYPHS.has(e)) return Promise.resolve();
@@ -464,41 +459,91 @@ function KITCHEN(){
       nd[o+3]=255;
     }
 
-    /* back: sand-grained gold */
-    const back=new ImageData(TEX,TEX), bd2=back.data;
-    const brough=new ImageData(TEX,TEX), rd2=brough.data;
-    const mott=boxBlur(Float32Array.from({length:N},()=>rng()), TEX, 14, 2);
-    for(let i=0;i<N;i++){
-      const o=i*4;
-      const fine=rng();
-      const tone=0.90 + (mott[i]-0.5)*0.22 + (fine-0.5)*0.10;
-      bd2[o]  =Math.min(255, GOLD_BACK[0]*tone);
-      bd2[o+1]=Math.min(255, GOLD_BACK[1]*tone);
-      bd2[o+2]=Math.min(255, GOLD_BACK[2]*tone);
-      bd2[o+3]=255;
-      const rr=Math.max(0,Math.min(255, 132 + (fine-0.5)*150 + (mott[i]-0.5)*60));
-      rd2[o]=rr; rd2[o+1]=rr; rd2[o+2]=rr; rd2[o+3]=255;
+    /* how wide the reverse can print: the tightest silhouette span
+       through the middle band */
+    let fitW=TEX*0.5;
+    {
+      const spans=[];
+      for(let y=TEX/2-120;y<=TEX/2+120;y+=12){
+        let a=-1,b=-1;
+        for(let x=0;x<TEX;x++) if(sil[y*TEX+x]){ if(a<0)a=x; b=x; }
+        if(a>=0) spans.push(b-a);
+      }
+      spans.sort((p,q)=>p-q);
+      if(spans.length) fitW=Math.max(240, spans[Math.floor(spans.length*0.25)]-RIM*3);
     }
 
-    return { sil, maps:{albedo, mrc, nrm, back, brough} };
+    return { sil, maps:{albedo, mrc, nrm}, fitW };
   }
 
-  /* maker's mark, mirrored so it reads correctly from behind */
-  function mark(g){
-    g.save();
-    g.translate(TEX/2,TEX/2); g.scale(-1,1);
-    g.font='600 42px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-    g.textAlign='center'; g.textBaseline='middle';
-    g.fillStyle='rgba(96,66,20,0.55)';
-    g.fillText('JOHNNIES.LIFE', 0, 2);
-    g.fillStyle='rgba(255,232,180,0.5)';
-    g.fillText('JOHNNIES.LIFE', 0, 0);
-    g.restore();
+  /* the reverse: sand-grained gold with the badge struck into it — name,
+     number, maker — a real deboss with its own normal map, not painted
+     shading */
+  function finishBack(text, seed){
+    const rng=mulberry32(seed);
+    const N=TEX*TEX;
+    const td=text.data;
+    const mott=boxBlur(Float32Array.from({length:N},()=>rng()), TEX, 14, 2);
+    const fine=new Float32Array(N);
+    for(let i=0;i<N;i++) fine[i]=rng();
+    const back=new ImageData(TEX,TEX), bd=back.data;
+    const brough=new ImageData(TEX,TEX), rd=brough.data;
+    const h=new Float32Array(N);
+    for(let i=0;i<N;i++){
+      const o=i*4;
+      const t=td[o+3]/255;
+      const tone=(0.90+(mott[i]-0.5)*0.22+(fine[i]-0.5)*0.10)*(1-0.15*t);
+      bd[o]  =Math.min(255, GOLD_BACK[0]*tone);
+      bd[o+1]=Math.min(255, GOLD_BACK[1]*tone);
+      bd[o+2]=Math.min(255, GOLD_BACK[2]*tone);
+      bd[o+3]=255;
+      const rr=Math.max(0,Math.min(255, 132+(fine[i]-0.5)*150+(mott[i]-0.5)*60-t*70));
+      rd[o]=rr; rd[o+1]=rr; rd[o+2]=rr; rd[o+3]=255;
+      h[i]=(mott[i]-0.5)*0.10+(fine[i]-0.5)*0.05 - t*1.0;
+    }
+    const hs=boxBlur(h, TEX, 1, 1);
+    const bnrm=new ImageData(TEX,TEX), nd=bnrm.data;
+    for(let y=0;y<TEX;y++) for(let x=0;x<TEX;x++){
+      const i=y*TEX+x, o=i*4;
+      const xm=Math.max(0,x-1), xp=Math.min(TEX-1,x+1);
+      const ym=Math.max(0,y-1), yp=Math.min(TEX-1,y+1);
+      const s=7.0;
+      const dhx=(hs[y*TEX+xp]-hs[y*TEX+xm])*s;
+      const dhy=(hs[yp*TEX+x]-hs[ym*TEX+x])*s;
+      const inv=1/Math.hypot(dhx,dhy,1);
+      nd[o]  =Math.round(255*(0.5-0.5*dhx*inv));
+      nd[o+1]=Math.round(255*(0.5+0.5*dhy*inv));
+      nd[o+2]=Math.round(255*(0.5+0.5*inv));
+      nd[o+3]=255;
+    }
+    return { back, brough, bnrm };
   }
 
-  return { press, mark };
+  return { press, finishBack };
 }
 const PRESSKIT=KITCHEN();
+
+/* the reverse text, mirrored so it reads correctly from behind. Pure
+   function: it is stringified into the worker alongside the kitchen. */
+function drawBackText(g, label, num, fitW){
+  const TEX=1024;
+  g.save();
+  g.translate(TEX/2,TEX/2); g.scale(-1,1);
+  g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
+  const F='-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  const name=String(label).toUpperCase();
+  let fs=118;
+  g.font='800 '+fs+'px '+F;
+  const maxW=fitW*0.72;
+  while(fs>34 && g.measureText(name).width>maxW){ fs-=4; g.font='800 '+fs+'px '+F; }
+  g.fillText(name, 0, -fs*0.42);
+  const ns=Math.max(38,Math.round(fs*0.52));
+  g.font='700 '+ns+'px '+F;
+  g.fillText('Nº '+String(num).padStart(2,'0'), 0, fs*0.6);
+  g.font='700 36px '+F;
+  g.fillText('JOHNNIES.LIFE', 0, fs*0.6+ns*1.8);
+  g.restore();
+}
 
 /* the worker: the same kitchen on another thread */
 let PRESS_WORKER=null;
@@ -506,17 +551,21 @@ const PRESS_JOBS=new Map();
 let PRESS_SEQ=0;
 try{
   if(window.Worker && window.OffscreenCanvas){
-    const glue='const {press,mark}=('+KITCHEN.toString()+')();\n'+
+    const glue='const {press,finishBack}=('+KITCHEN.toString()+')();\n'+
+      'const drawBackText='+drawBackText.toString()+';\n'+
       'onmessage=async(e)=>{\n'+
-      '  const {id,buf,seed,mode}=e.data;\n'+
+      '  const {id,buf,seed,mode,label,num}=e.data;\n'+
       '  try{\n'+
       '    const r=press(new Uint8ClampedArray(buf), seed, mode);\n'+
       '    if(!r){ postMessage({id,ok:false}); return; }\n'+
+      '    const tc=new OffscreenCanvas(1024,1024), tg=tc.getContext("2d");\n'+
+      '    drawBackText(tg, label, num, r.fitW);\n'+
+      '    const bk=finishBack(tg.getImageData(0,0,1024,1024), seed^0x9e3779b9);\n'+
+      '    const all={albedo:r.maps.albedo, mrc:r.maps.mrc, nrm:r.maps.nrm, back:bk.back, brough:bk.brough, bnrm:bk.bnrm};\n'+
       '    const out={}, transfer=[];\n'+
-      '    for(const k of ["albedo","mrc","nrm","back","brough"]){\n'+
+      '    for(const k of ["albedo","mrc","nrm","back","brough","bnrm"]){\n'+
       '      const c=new OffscreenCanvas(1024,1024), g=c.getContext("2d");\n'+
-      '      g.putImageData(r.maps[k],0,0);\n'+
-      '      if(k==="back") mark(g);\n'+
+      '      g.putImageData(all[k],0,0);\n'+
       '      out[k]=await createImageBitmap(c,{imageOrientation:"flipY"});\n'+
       '      transfer.push(out[k]);\n'+
       '    }\n'+
@@ -529,21 +578,24 @@ try{
   }
 }catch(err){ PRESS_WORKER=null; }
 
-function pressGlyph(img, seed){
+function pressGlyph(img, seed, label, num){
   if(PRESS_WORKER){
     return new Promise(res=>{
       const id=++PRESS_SEQ;
       PRESS_JOBS.set(id,res);
-      PRESS_WORKER.postMessage({id, buf:img.data.buffer, seed, mode:PRESS}, [img.data.buffer]);
+      PRESS_WORKER.postMessage({id, buf:img.data.buffer, seed, mode:PRESS, label, num}, [img.data.buffer]);
     }).then(d=>d.ok ? { sil:new Uint8Array(d.sil), maps:d.maps, bitmap:true } : null);
   }
   const r=PRESSKIT.press(img.data, seed, PRESS);
   if(!r) return Promise.resolve(null);
+  const tc=makeCanvas(TEX), tg=tc.getContext('2d');
+  drawBackText(tg, label, num, r.fitW);
+  const bk=PRESSKIT.finishBack(tg.getImageData(0,0,TEX,TEX), seed^0x9e3779b9);
+  const all={albedo:r.maps.albedo, mrc:r.maps.mrc, nrm:r.maps.nrm, back:bk.back, brough:bk.brough, bnrm:bk.bnrm};
   const maps={};
-  for(const k of ['albedo','mrc','nrm','back','brough']){
+  for(const k of ['albedo','mrc','nrm','back','brough','bnrm']){
     const c=makeCanvas(TEX), g=c.getContext('2d');
-    g.putImageData(r.maps[k],0,0);
-    if(k==='back') PRESSKIT.mark(g);
+    g.putImageData(all[k],0,0);
     maps[k]=c;
   }
   return Promise.resolve({ sil:r.sil, maps, bitmap:false });
@@ -773,6 +825,12 @@ function buildGeometry(shapes){
     const l=Math.hypot(e[0],e[1],e[2])||1;
     nrm.setXYZ(i, e[0]/l, e[1]/l, e[2]/l);
   }
+  /* the faces of a struck pin are dead flat: welded normals bending
+     across the big lid triangles read as facet sheen on plain gold */
+  for(let i=0;i<pos.count;i++){
+    const nz=nrm.getZ(i);
+    if(Math.abs(nz)>0.72) nrm.setXYZ(i,0,0,Math.sign(nz));
+  }
   return geo;
 }
 
@@ -843,14 +901,15 @@ function texture(src, srgb, bitmap){
 
 function nextFrame(){ return new Promise(r=>requestAnimationFrame(r)); }
 
-async function buildBadge(emoji){
+async function buildBadge(bi){
   /* the few main-thread steps each take their own frame, so background
      preparation never costs the case a beat */
-  const c=rasterEmoji(emoji);
+  const [slug,label]=BADGES[bi];
+  const c=rasterEmoji(slug);
   if(!c) return null;
   await nextFrame();
   const img=c.getContext('2d').getImageData(0,0,TEX,TEX);
-  const res=await pressGlyph(img, hash32(emoji+'-mint'));
+  const res=await pressGlyph(img, hash32(slug+'-mint'), label, bi+1);
   if(!res) return null;
   await nextFrame();
   const shapes=silhouetteToShapes(res.sil);
@@ -874,7 +933,7 @@ async function buildBadge(emoji){
     map:texture(res.maps.back,true,B),
     color:0xffffff, metalness:1,
     roughnessMap:roughT, roughness:1,
-    bumpMap:roughT, bumpScale:0.6,
+    normalMap:texture(res.maps.bnrm,false,B), normalScale:new THREE.Vector2(1,1),
     envMapIntensity:theme.envBack,
   });
   const side=new THREE.MeshPhysicalMaterial({
@@ -884,7 +943,7 @@ async function buildBadge(emoji){
   const mesh=new THREE.Mesh(geo,[front,gold,side]);
   /* upload textures to the GPU one frame at a time, so the swap frame
      itself never carries the cost */
-  for(const t of [front.map, front.normalMap, mrcT, gold.map, roughT]){
+  for(const t of [front.map, front.normalMap, mrcT, gold.map, gold.normalMap, roughT]){
     renderer.initTexture(t);
     await nextFrame();
   }
@@ -925,7 +984,7 @@ function kickPrepare(){
       while(steps<BADGES.length){
         const i=order[(cursor+steps)%order.length]; steps++;
         await loadGlyph(BADGES[i][0]);
-        const mesh=await buildBadge(BADGES[i][0]);
+        const mesh=await buildBadge(i);
         if(mesh){ prepared={mesh,i,steps}; return; }
       }
     } finally { preparingP=null; }
@@ -1042,6 +1101,7 @@ function frame(t){
   renderer.render(scene,camera);
 }
 function start(){
+  pin.scale.setScalar(0.94);
   if(reduced&&!posed){ rotY=-0.5; rotX=0.06; }
   /* entrance: full size from the first frame, fading in — a scale-up here
      reads as the page resizing itself */
@@ -1060,14 +1120,14 @@ applyTheme();
    roster loads behind it */
 (async()=>{
   let i=order[0];
-  const forced=params.get('b');                    // ?b=1f98b pins the first strike
+  const forced=params.get('b');                    // ?b=cow pins the first strike
   if(forced){
-    const fi=BADGES.findIndex(([e])=>[...e].map(c=>c.codePointAt(0).toString(16)).join('-')===forced);
+    const fi=BADGES.findIndex(([s])=>s===forced);
     if(fi>=0) i=fi;
   }
   setPlate(i);                                     // the name reads while the pin is struck
   await loadGlyph(BADGES[i][0]);
-  const mesh=await buildBadge(BADGES[i][0]);
+  const mesh=await buildBadge(i);
   if(mesh){ attach(mesh); if(i===order[0]) cursor=1; }
   start();
   Promise.all(BADGES.map(([e])=>loadGlyph(e))).then(async()=>{
