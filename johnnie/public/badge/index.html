@@ -68,16 +68,16 @@
   .pinbox .shadow { opacity:0; transition:opacity .45s ease .1s; }
   .pinbox.on .shadow { opacity:1; }
   .shadow {
-    position:absolute; left:50%; bottom:-4%;
-    width:46%; height:7%;
+    position:absolute; left:50%; bottom:-5%;
+    width:54%; height:8%;
     transform:translateX(-50%);
-    background:radial-gradient(ellipse at center, rgba(30,24,12,.30), rgba(30,24,12,0) 68%);
-    filter:blur(6px);
+    background:radial-gradient(ellipse at center, rgba(30,24,12,.13), rgba(30,24,12,0) 72%);
+    filter:blur(14px);
     pointer-events:none;
   }
   @media (prefers-color-scheme: dark) {
     /* on black there is no shadow to cast — the pin pools a little light instead */
-    .shadow { background:radial-gradient(ellipse at center, rgba(255,196,110,.14), rgba(255,196,110,0) 68%); }
+    .shadow { background:radial-gradient(ellipse at center, rgba(255,196,110,.07), rgba(255,196,110,0) 72%); }
   }
 
   .plate { margin-top:clamp(10px, 3vh, 28px); text-align:center; padding:0 24px; }
