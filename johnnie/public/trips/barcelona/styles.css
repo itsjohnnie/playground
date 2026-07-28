@@ -594,22 +594,23 @@ body.color-on .frag { filter: none; }
 /* hairline iconography beside the factual copy */
 .cp--ic { display: flex; align-items: center; gap: 6px; height: max-content; }
 .cp__ic { width: 12px; height: 12px; flex: none; }
-/* short tokens occasionally wear a hairline pill. the outline sits
-   absolutely AROUND the token, so pilled type keeps exactly the line
-   and column of its bare neighbours; the ring reaches 8px to the sides
-   (landing on the cell edge) and stands ~20px around the type */
+/* short tokens occasionally wear a hairline pill. vertically the
+   outline overlays the line (no displacement); horizontally the
+   BORDER sits on the column line where bare type starts, and the
+   token indents 8px inside it — the ring aligns with the grid */
 .cp--pill { height: max-content; }
 .cp__pill {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 0 8px;
   white-space: nowrap;
 }
 .cp__pill::before {
   content: "";
   position: absolute;
-  inset: -2px -8px;
+  inset: -2px 0;
   border: 1px solid var(--bone);
   border-radius: 999px;
 }

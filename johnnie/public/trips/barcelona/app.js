@@ -502,7 +502,7 @@
 
   // ————— settings —————
 
-  const settings = { grid: false, marks: true, clips: false, grain: true, dither: false, singleLine: false, jitter: false, color: true };
+  const settings = { grid: false, marks: true, clips: false, grain: true, dither: false, singleLine: false, jitter: true, color: true };
 
   // the boil: the type steps through turbulence frames at ~8fps, like
   // lettering redrawn on every frame of a stop-motion film
@@ -905,19 +905,19 @@
         lines.forEach((l, k) => ctx.fillText(l.toUpperCase(), 0, k * lh));
         ctx.restore();
       } else if (el.dataset.pill) {
-        // the ring wraps the token without moving it: type keeps the
-        // bare-copy position and the outline reaches 8px past each end
+        // the ring's border sits on the column line where bare type
+        // starts; the token indents 8px inside it on both ends
         const text = (lines[0] || "").toUpperCase();
         const iconW = el.dataset.icon ? (12 + 6) * S : 0;
         const w = ctx.measureText(text).width + iconW + 16 * S;
         const h = 20 * S;
-        const x0 = r.left * S, y0 = r.top * S + 3 * S;
+        const x0 = r.left * S + 8 * S, y0 = r.top * S + 3 * S;
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = S;
         ctx.beginPath();
         ctx.roundRect(x0 + S / 2, y0 + S / 2, w - S, h - S, h / 2);
         ctx.stroke();
-        let x = r.left * S + 8 * S;
+        let x = r.left * S + 16 * S;
         if (el.dataset.icon) {
           drawIcon(el.dataset.icon, x, y0 + (h - 12 * S) / 2, 12 * S, +el.dataset.rot || 0);
           x += iconW;
@@ -1220,6 +1220,9 @@
   });
 
   smallScreen.addEventListener("change", () => { if (!busy) render(); });
+
+  // the boil is part of the sheet's voice: on from the first frame
+  applySetting("jitter", true);
 
   loadManifest().then(
     () => render(true),

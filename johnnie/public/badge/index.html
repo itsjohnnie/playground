@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>badge</title>
+<meta name="description" content="A hyper-real enamel pin, minted from an emoji. Tap the badge for a new one.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/images/favicon.png">
+<meta property="og:title" content="badge">
+<meta property="og:description" content="A hyper-real enamel pin, minted from an emoji. Tap the badge for a new one.">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#ffffff;
+    --ink:#111;
+    --sub:#8f8b85;
+    --chip-bg:#efedea;
+    --chip-ink:#6f6b64;
+    --hint:#b9b5ae;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#000000;
+      --ink:#f2f0ec;
+      --sub:#8d8a84;
+      --chip-bg:#1a1a1a;
+      --chip-ink:#a39e96;
+      --hint:#57544f;
+    }
+  }
+  html, body { height:100%; }
+  body {
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+  }
+  a { color:inherit; text-decoration:none; }
+
+  .crumb {
+    position:fixed; top:calc(env(safe-area-inset-top, 0px) + 18px); left:20px;
+    font-size:14px; font-weight:500; color:var(--ink);
+    display:flex; align-items:center; gap:8px; z-index:3;
+    opacity:0; animation:fadein .6s ease .15s forwards;
+  }
+  .crumb .arrow { font-size:16px; line-height:1; transform:translateY(-.5px); }
+
+  .stage {
+    position:fixed; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:0;
+  }
+  .pinbox {
+    position:relative;
+    width:min(88vw, 58vh, 560px);
+    height:min(88vw, 58vh, 560px);
+    touch-action:none;
+    cursor:grab;
+  }
+  .pinbox:active { cursor:grabbing; }
+  .pinbox canvas { position:absolute; inset:0; width:100%; height:100%; display:block;
+    opacity:0; transition:opacity .45s ease; }
+  .pinbox.on canvas { opacity:1; }
+  .pinbox .shadow { opacity:0; transition:opacity .45s ease .1s; }
+  .pinbox.on .shadow { opacity:1; }
+  .shadow {
+    position:absolute; left:50%; bottom:-5%;
+    width:54%; height:8%;
+    transform:translateX(-50%);
+    background:radial-gradient(ellipse at center, rgba(30,24,12,.13), rgba(30,24,12,0) 72%);
+    filter:blur(14px);
+    pointer-events:none;
+  }
+  @media (prefers-color-scheme: dark) {
+    /* on black there is no shadow to cast — the pin pools a little light instead */
+    .shadow { background:radial-gradient(ellipse at center, rgba(255,196,110,.07), rgba(255,196,110,0) 72%); }
+  }
+
+  .plate { margin-top:clamp(10px, 3vh, 28px); text-align:center; padding:0 24px; }
+  .plate .name {
+    font-size:clamp(21px, 5.6vw, 26px); font-weight:700; letter-spacing:-.02em;
+    transition:opacity .28s ease, filter .28s ease, transform .28s ease;
+  }
+  .plate .earned {
+    margin-top:7px; font-size:13px; color:var(--sub); font-weight:450;
+    transition:opacity .28s ease .04s, filter .28s ease .04s;
+  }
+  .plate .chip {
+    display:inline-block; margin-top:16px;
+    font-size:11px; font-weight:600; letter-spacing:.08em;
+    color:var(--chip-ink); background:var(--chip-bg);
+    padding:6px 11px 5px; border-radius:6px;
+  }
+  .plate.swap .name, .plate.swap .earned { opacity:0; filter:blur(6px); }
+  .plate .name { transform:translateY(0); }
+  .plate.swap .name { transform:translateY(3px); }
+
+  .hint {
+    position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 20px); left:0; right:0;
+    text-align:center; font-size:12px; color:var(--hint);
+    opacity:0; animation:fadein .8s ease 1.6s forwards;
+    transition:opacity .5s ease;
+    pointer-events:none;
+  }
+  .hint.gone { opacity:0 !important; }
+
+  @keyframes fadein { to { opacity:1; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .crumb, .hint { animation-duration:.01s; animation-delay:0s; }
+    .plate .name, .plate .earned { transition-duration:.01s; }
+  }
+</style>
+<script type="importmap">
+  { "imports": { "three": "/badge/lib/three.module.min.js" } }
+</script>
+<link rel="modulepreload" href="/badge/lib/three.module.min.js">
+<link rel="modulepreload" href="/badge/lib/three.core.min.js">
+<link rel="modulepreload" href="/badge/lib/RoomEnvironment.js">
+</head>
+<body>
+
+<a class="crumb" href="/"><span class="arrow">&#8592;</span> johnnies.life</a>
+
+<div class="stage">
+  <div class="pinbox" id="pinbox"><div class="shadow"></div></div>
+  <div class="plate" id="plate">
+    <div class="name" id="name">&nbsp;</div>
+    <div class="earned" id="earned">&nbsp;</div>
+    <div class="chip">UNLOCKED</div>
+  </div>
+</div>
+
+<div class="hint" id="hint">tap the badge to mint another &#183; drag to spin</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from '/badge/lib/RoomEnvironment.js';
+
+/* ============================== the roster ============================== */
+
+/* Twemoji glyphs (see lib/twemoji/LICENSE); each badge carries its
+   number on the reverse, so the order here is permanent — append,
+   never reorder */
+const BADGES = [
+  ['\u{1F98A}','Sly One'],          ['\u{1F42F}','Stripes Earned'],
+  ['\u{1F438}','Prince, Maybe'],    ['\u{1F419}','Multitasker'],
+  ['\u{1F981}','Main Character'],   ['\u{1F43B}','Soft Launch'],
+  ['\u{1F43C}','Balanced Diet'],    ['\u{1F428}','Slow Morning'],
+  ['\u{1F437}','Comfort First'],    ['\u{1F42E}','Grass Fed'],
+  ['\u{1F435}','Chaos Agent'],      ['\u{1F414}','Early Riser'],
+  ['\u{1F427}','Formal Wear'],      ['\u{1F989}','Night Shift'],
+  ['\u{1F984}','One of One'],       ['\u{1F41D}','Busy Season'],
+  ['\u{1F422}','On My Own Time'],   ['\u{1F980}','Sideways Progress'],
+  ['\u{1F421}','Full Send'],        ['\u{1F98B}','Glow Up'],
+  ['\u{1F42C}','Show Off'],         ['\u{1F988}','Closer'],
+  ['\u{1F43A}','Lone Operator'],    ['\u{1F985}','Big Picture'],
+  ['\u{1F986}','Unbothered'],       ['\u{1F430}','Fast Twitch'],
+  ['\u{1F99D}','Night Snacker'],
+  ['\u{1F994}','Boundaries'],       ['\u{1F432}','Rare Drop'],
+  ['\u{1F425}','Fresh Start'],      ['\u{1F999}','No Notes'],
+  ['\u{1F9A9}','Standing Tall'],    ['\u{1F40C}','Shipped Anyway'],
+  ['\u{1F41E}','Good Luck'],        ['\u{1F433}','Deep Work'],
+];
+
+/* seeded rng — grain and percentages must not shimmer between frames */
+function hash32(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+function earnedPct(emoji){ const h=hash32(emoji+'-earned'); return ((h%97)/10+0.3).toFixed(1); }
+
+/* ============================ texture kitchen ===========================
+   Everything below turns one emoji glyph into the maps a die-struck,
+   hand-enamelled pin would need: flat enamel cells, raised gold walls
+   along every cell boundary, a gold rim, and a sand-grained gold back. */
+
+const TEX = 1024;             // texture resolution
+const RIM = 20;               // gold rim width around the glyph, px
+const GRID = 4;               // contour grid stride (1024 -> 256 cells)
+
+const GOLD_FACE = [255, 199, 116];   // polished gold albedo (sRGB)
+const GOLD_BACK = [228, 176, 102];   // back-of-pin gold, a touch deeper
+
+const BLACK=[13,14,18];                    // piano-black enamel
+const PRESS=new URLSearchParams(location.search).get('press')||'color';
+
+function makeCanvas(n){ const c=document.createElement('canvas'); c.width=c.height=n; return c; }
+
+/* the glyphs are vendored Twemoji SVGs (see lib/twemoji/LICENSE): vector
+   sources rasterize perfectly smooth at any size and look identical on
+   every platform */
+const GLYPHS=new Map();
+function glyphUrl(emoji){
+  return '/badge/lib/twemoji/'+[...emoji].map(c=>c.codePointAt(0).toString(16)).join('-')+'.svg';
+}
+function loadGlyph(e){
+  if(GLYPHS.has(e)) return Promise.resolve();
+  const img=new Image();
+  img.src=glyphUrl(e);
+  return img.decode().then(()=>{ GLYPHS.set(e,img); }).catch(()=>{});
+}
+
+function rasterEmoji(emoji){
+  const img=GLYPHS.get(emoji);
+  if(!img||!img.width) return null;
+  const c=makeCanvas(TEX), g=c.getContext('2d',{willReadFrequently:true});
+  const target=TEX-2*(RIM+70);
+  const s=target/Math.max(img.width,img.height);
+  const w=img.width*s, h=img.height*s;
+  g.drawImage(img,(TEX-w)/2,(TEX-h)/2,w,h);
+  return c;
+}
+
+/* ---- the press kitchen ------------------------------------------------
+   Every pixel-heavy stage lives inside this one function so it can be
+   stringified into a Web Worker: the whole 1024px press runs off the
+   main thread and the case never stutters while the next badge is
+   struck. The same code runs synchronously on the main thread if
+   Workers or OffscreenCanvas are unavailable. */
+function KITCHEN(){
+  const TEX=1024, RIM=20;
+  const GOLD_FACE=[255,199,116], GOLD_BACK=[228,176,102], BLACK=[13,14,18];
+
+  function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
+
+  /* chamfer distance transform: distance (in px*3) from each pixel to the
+     nearest "inside" pixel. two passes, 3-4 weights. */
+  function distanceOutside(inside, W){
+    const INF=1e7, d=new Float32Array(W*W).fill(INF);
+    for(let i=0;i<W*W;i++) if(inside[i]) d[i]=0;
+    for(let y=0;y<W;y++) for(let x=0;x<W;x++){
+      const i=y*W+x; let v=d[i];
+      if(x>0) v=Math.min(v,d[i-1]+3);
+      if(y>0){ v=Math.min(v,d[i-W]+3);
+        if(x>0) v=Math.min(v,d[i-W-1]+4);
+        if(x<W-1) v=Math.min(v,d[i-W+1]+4); }
+      d[i]=v;
+    }
+    for(let y=W-1;y>=0;y--) for(let x=W-1;x>=0;x--){
+      const i=y*W+x; let v=d[i];
+      if(x<W-1) v=Math.min(v,d[i+1]+3);
+      if(y<W-1){ v=Math.min(v,d[i+W]+3);
+        if(x<W-1) v=Math.min(v,d[i+W+1]+4);
+        if(x>0) v=Math.min(v,d[i+W-1]+4); }
+      d[i]=v;
+    }
+    return d;
+  }
+
+  /* median-cut palette + nearest assignment: the enamel colours */
+  function quantize(px, alpha, W, K){
+    const pts=[];
+    for(let y=0;y<W;y+=2) for(let x=0;x<W;x+=2){
+      const i=y*W+x;
+      if(alpha[i]) pts.push([px[i*4],px[i*4+1],px[i*4+2]]);
+    }
+    if(!pts.length) return { palette:[[128,128,128]], idx:new Uint8Array(W*W).fill(255) };
+    let boxes=[pts];
+    while(boxes.length<K){
+      let bi=-1,bs=-1;
+      for(let b=0;b<boxes.length;b++){
+        if(boxes[b].length<2) continue;
+        const r=[0,1,2].map(ch=>{ let lo=255,hi=0; for(const p of boxes[b]){ lo=Math.min(lo,p[ch]); hi=Math.max(hi,p[ch]); } return hi-lo; });
+        const s=Math.max(...r)*Math.log(boxes[b].length+1);
+        if(s>bs){ bs=s; bi=b; }
+      }
+      if(bi<0) break;
+      const box=boxes[bi];
+      const r=[0,1,2].map(ch=>{ let lo=255,hi=0; for(const p of box){ lo=Math.min(lo,p[ch]); hi=Math.max(hi,p[ch]); } return hi-lo; });
+      const ch=r.indexOf(Math.max(...r));
+      box.sort((a,b)=>a[ch]-b[ch]);
+      const mid=box.length>>1;
+      boxes.splice(bi,1,box.slice(0,mid),box.slice(mid));
+    }
+    let palette=boxes.map(b=>{
+      const s=[0,0,0]; for(const p of b){ s[0]+=p[0]; s[1]+=p[1]; s[2]+=p[2]; }
+      return s.map(v=>Math.round(v/b.length));
+    });
+    const merged=[];
+    for(const p of palette){
+      const twin=merged.find(q=>Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2])<30);
+      if(!twin) merged.push(p);
+    }
+    palette=merged;
+    const idx=new Uint8Array(W*W).fill(255);
+    const assign=()=>{
+      for(let i=0;i<W*W;i++){
+        if(!alpha[i]) continue;
+        let best=0,bd=1e9;
+        for(let p=0;p<palette.length;p++){
+          const dr=px[i*4]-palette[p][0], dg=px[i*4+1]-palette[p][1], db=px[i*4+2]-palette[p][2];
+          const d=dr*dr+dg*dg+db*db;
+          if(d<bd){ bd=d; best=p; }
+        }
+        idx[i]=best;
+      }
+    };
+    assign();
+    /* rescue rare colours the median cut never boxed — a shark's eye is a
+       few hundred pixels of navy that would otherwise dissolve into the
+       body gray */
+    for(let pass=0;pass<3;pass++){
+      let n=0,sr=0,sg=0,sb=0;
+      for(let y=0;y<W;y+=2) for(let x=0;x<W;x+=2){
+        const i=y*W+x;
+        if(!alpha[i]) continue;
+        const p=palette[idx[i]];
+        const dr=px[i*4]-p[0], dg=px[i*4+1]-p[1], db=px[i*4+2]-p[2];
+        if(dr*dr+dg*dg+db*db>3600){ n++; sr+=px[i*4]; sg+=px[i*4+1]; sb+=px[i*4+2]; }
+      }
+      if(n<120) break;
+      palette.push([Math.round(sr/n),Math.round(sg/n),Math.round(sb/n)]);
+      assign();
+    }
+    return { palette, idx };
+  }
+
+  /* 3x3 majority filter: eats the anti-aliasing crumbs so the enamel
+     cells have clean die-cut borders */
+  function modeFilter(idx, W, passes, K){
+    let src=idx;
+    const counts=new Uint8Array(K+1);
+    for(let p=0;p<passes;p++){
+      const dst=new Uint8Array(W*W);
+      for(let y=0;y<W;y++){
+        const ym=Math.max(0,y-1)*W, y0=y*W, yp=Math.min(W-1,y+1)*W;
+        for(let x=0;x<W;x++){
+          counts.fill(0);
+          const xm=Math.max(0,x-1), xp=Math.min(W-1,x+1);
+          for(const row of [ym,y0,yp]){
+            let v=src[row+xm]; counts[v===255?K:v]++;
+            v=src[row+x];  counts[v===255?K:v]++;
+            v=src[row+xp]; counts[v===255?K:v]++;
+          }
+          let bi=0,bc=-1;
+          for(let k=0;k<=K;k++) if(counts[k]>bc){ bc=counts[k]; bi=k; }
+          dst[y0+x]=bi===K?255:bi;
+        }
+      }
+      src=dst;
+    }
+    return src;
+  }
+
+  function boxBlur(src, W, r, passes){
+    let a=Float32Array.from(src), b=new Float32Array(W*W);
+    for(let p=0;p<passes;p++){
+      for(let y=0;y<W;y++){
+        let acc=0;
+        for(let x=-r;x<=r;x++) acc+=a[y*W+Math.min(W-1,Math.max(0,x))];
+        for(let x=0;x<W;x++){
+          b[y*W+x]=acc/(2*r+1);
+          const xo=Math.max(0,x-r), xi=Math.min(W-1,x+r+1);
+          acc+=a[y*W+xi]-a[y*W+xo];
+        }
+      }
+      for(let x=0;x<W;x++){
+        let acc=0;
+        for(let y=-r;y<=r;y++) acc+=b[Math.min(W-1,Math.max(0,y))*W+x];
+        for(let y=0;y<W;y++){
+          a[y*W+x]=acc/(2*r+1);
+          const yo=Math.max(0,y-r), yi=Math.min(W-1,y+r+1);
+          acc+=b[yi*W+x]-b[yo*W+x];
+        }
+      }
+    }
+    return a;
+  }
+
+  /* the full press: glyph pixels in, enamel maps out */
+  function press(px, seed, mode){
+    const rng=mulberry32(seed);
+    const N=TEX*TEX;
+    const alpha=new Uint8Array(N);
+    let solid=0;
+    for(let i=0;i<N;i++){ if(px[i*4+3]>140){ alpha[i]=1; solid++; } }
+    if(solid<1600) return null;
+
+    const dist=distanceOutside(alpha, TEX);
+    const sil=new Uint8Array(N);
+    for(let i=0;i<N;i++) sil[i]=dist[i]<RIM*3 ? 1:0;
+
+    /* small windows fill and print as solid gold — a cow's mouth-gap is
+       an accident of the drawing — but large enclosed pockets are
+       structural negative space (a flamingo's legs) and stay real holes */
+    {
+      let silArea=0;
+      for(let i=0;i<N;i++) silArea+=sil[i];
+      const seen=new Uint8Array(N), st=[];
+      for(let x=0;x<TEX;x++){ st.push(x, (TEX-1)*TEX+x); }
+      for(let y=0;y<TEX;y++){ st.push(y*TEX, y*TEX+TEX-1); }
+      while(st.length){
+        const j=st.pop();
+        if(sil[j]||seen[j]) continue;
+        seen[j]=1;
+        const x=j%TEX, y=(j/TEX)|0;
+        if(x>0) st.push(j-1);
+        if(x<TEX-1) st.push(j+1);
+        if(y>0) st.push(j-TEX);
+        if(y<TEX-1) st.push(j+TEX);
+      }
+      for(let i=0;i<N;i++){
+        if(sil[i]||seen[i]) continue;
+        const px2=[]; st.push(i); seen[i]=1;
+        while(st.length){
+          const j=st.pop(); px2.push(j);
+          const x=j%TEX, y=(j/TEX)|0;
+          if(x>0&&!sil[j-1]&&!seen[j-1]){ seen[j-1]=1; st.push(j-1); }
+          if(x<TEX-1&&!sil[j+1]&&!seen[j+1]){ seen[j+1]=1; st.push(j+1); }
+          if(y>0&&!sil[j-TEX]&&!seen[j-TEX]){ seen[j-TEX]=1; st.push(j-TEX); }
+          if(y<TEX-1&&!sil[j+TEX]&&!seen[j+TEX]){ seen[j+TEX]=1; st.push(j+TEX); }
+        }
+        if(px2.length<silArea*0.01) for(const j of px2) sil[j]=1;
+      }
+    }
+
+    const q=quantize(px, alpha, TEX, 10);
+    const idx=modeFilter(q.idx, TEX, 2, q.palette.length);
+
+    /* two finishes: 'noir' fills every cell with gloss black; 'color'
+       lays the glyph's own flat colours in as enamel, dark neutrals
+       snapped to piano black */
+    const enamel = mode==='color'
+      ? q.palette.map(p=>{
+          const lum=(0.299*p[0]+0.587*p[1]+0.114*p[2])/255;
+          const chroma=(Math.max(p[0],p[1],p[2])-Math.min(p[0],p[1],p[2]))/255;
+          return (lum<0.32&&chroma<0.18) ? BLACK : [p[0],p[1],p[2]];
+        })
+      : q.palette.map(()=>BLACK);
+
+    const region=new Uint8Array(N);
+    for(let i=0;i<N;i++)
+      region[i]=!sil[i] ? 255 : (idx[i]===255 ? 254 : idx[i]);
+
+    /* the linework: every cell boundary grows a wall of constant width —
+       distance-field, so lines come out round and even instead of blocky —
+       and any cell too thin to hold enamel (the glyph's painted strokes:
+       whiskers, face lines) becomes solid raised metal. The drawing then
+       carries one consistent line weight; only real blobs stay enamel. */
+    const edge=new Uint8Array(N);
+    for(let y=0;y<TEX-1;y++) for(let x=0;x<TEX-1;x++){
+      const i=y*TEX+x;
+      const a0=region[i], a1=region[i+1], a2=region[i+TEX];
+      if(a0===255&&a1===255&&a2===255) continue;
+      if(a0!==a1||a0!==a2) edge[i]=1;
+    }
+    const dE=distanceOutside(edge, TEX);
+
+    const comp=new Int32Array(N).fill(-1);
+    const compMax=[];
+    const st=[];
+    for(let i=0;i<N;i++){
+      if(region[i]>=254||comp[i]>=0) continue;
+      const id=compMax.length; let mx=0;
+      st.push(i); comp[i]=id;
+      while(st.length){
+        const j=st.pop();
+        if(dE[j]>mx) mx=dE[j];
+        const x=j%TEX, y=(j/TEX)|0, r=region[j];
+        if(x>0&&comp[j-1]<0&&region[j-1]===r){ comp[j-1]=id; st.push(j-1); }
+        if(x<TEX-1&&comp[j+1]<0&&region[j+1]===r){ comp[j+1]=id; st.push(j+1); }
+        if(y>0&&comp[j-TEX]<0&&region[j-TEX]===r){ comp[j-TEX]=id; st.push(j-TEX); }
+        if(y<TEX-1&&comp[j+TEX]<0&&region[j+TEX]===r){ comp[j+TEX]=id; st.push(j+TEX); }
+      }
+      compMax.push(mx);
+    }
+    const WALL=16.5, THIN=27;      // chamfer px*3: ~5.5px half-width lines; <9px-inradius cells go metal
+    const goldM=new Uint8Array(N);
+    for(let i=0;i<N;i++){
+      if(region[i]===255) continue;
+      if(region[i]===254){ goldM[i]=1; continue; }
+      if(dE[i]<WALL || compMax[comp[i]]<THIN) goldM[i]=1;
+    }
+
+    const height=new Float32Array(N);
+    for(let i=0;i<N;i++){
+      if(region[i]===255){ height[i]=0; continue; }
+      /* the rim sits clearly below the drawing, so the inner walls read
+         over it at grazing angles */
+      height[i]= region[i]===254 ? 0.70 : (goldM[i] ? 1.0 : 0.42);
+    }
+    for(let i=0;i<N;i++) if(region[i]<254 && !goldM[i]) height[i]+=(rng()-0.5)*0.05;
+    const hsm=boxBlur(height, TEX, 4, 2);
+
+    const albedo=new ImageData(TEX,TEX), ad=albedo.data;
+    const mrc=new ImageData(TEX,TEX), md=mrc.data;   /* R=clearcoat G=rough B=metal */
+    const nrm=new ImageData(TEX,TEX), nd=nrm.data;
+
+    for(let y=0;y<TEX;y++) for(let x=0;x<TEX;x++){
+      const i=y*TEX+x, o=i*4;
+      const gold = goldM[i]===1;
+      const off  = region[i]===255;
+      let r,gc,b;
+      if(off || gold){ r=GOLD_FACE[0]; gc=GOLD_FACE[1]; b=GOLD_FACE[2]; }
+      else { const e=enamel[region[i]]; r=e[0]; gc=e[1]; b=e[2]; }
+      ad[o]=r; ad[o+1]=gc; ad[o+2]=b; ad[o+3]=255;
+
+      const grain=(rng()-0.5);
+      if(off || gold){
+        md[o]=40;
+        md[o+1]=Math.max(0,Math.min(255, 78+grain*46));
+        md[o+2]=255;
+      } else {
+        md[o]=255;
+        md[o+1]=26;
+        md[o+2]=0;
+      }
+      md[o+3]=255;
+
+      const xm=Math.max(0,x-1), xp=Math.min(TEX-1,x+1);
+      const ym=Math.max(0,y-1), yp=Math.min(TEX-1,y+1);
+      const s=5.2;
+      const dhx=(hsm[y*TEX+xp]-hsm[y*TEX+xm])*s;
+      const dhy=(hsm[yp*TEX+x]-hsm[ym*TEX+x])*s;
+      const inv=1/Math.hypot(dhx,dhy,1);
+      nd[o]  =Math.round(255*(0.5-0.5*dhx*inv));
+      nd[o+1]=Math.round(255*(0.5+0.5*dhy*inv));
+      nd[o+2]=Math.round(255*(0.5+0.5*inv));
+      nd[o+3]=255;
+    }
+
+    /* where the reverse can print: the deepest point inside the
+       silhouette, and how much room it has around it */
+    const anchor={x:TEX/2, y:TEX/2, r:TEX*0.25};
+    {
+      const inv=new Uint8Array(N);
+      for(let i=0;i<N;i++) inv[i]=sil[i]?0:1;
+      const dIn=distanceOutside(inv, TEX);
+      let best=0;
+      for(let y=0;y<TEX;y+=2) for(let x=0;x<TEX;x+=2){
+        const v=dIn[y*TEX+x];
+        if(v>best){ best=v; anchor.x=x; anchor.y=y; }
+      }
+      anchor.r=best/3;
+    }
+
+    /* the relief field travels with the maps so the front face can be
+       built as real geometry — the walls physically stand proud */
+    const hq=new Uint8Array(N);
+    for(let i=0;i<N;i++) hq[i]=Math.max(0,Math.min(255,Math.round(hsm[i]*255)));
+
+    return { sil, maps:{albedo, mrc, nrm}, anchor, height:hq };
+  }
+
+  /* the reverse: sand-grained gold with the badge struck into it — name,
+     number, maker — a real deboss with its own normal map, not painted
+     shading */
+  function finishBack(text, seed){
+    const rng=mulberry32(seed);
+    const N=TEX*TEX;
+    const td=text.data;
+    const mott=boxBlur(Float32Array.from({length:N},()=>rng()), TEX, 14, 2);
+    const fine=new Float32Array(N);
+    for(let i=0;i<N;i++) fine[i]=rng();
+    const back=new ImageData(TEX,TEX), bd=back.data;
+    const brough=new ImageData(TEX,TEX), rd=brough.data;
+    const h=new Float32Array(N);
+    for(let i=0;i<N;i++){
+      const o=i*4;
+      const t=td[o+3]/255;
+      const tone=(0.90+(mott[i]-0.5)*0.22+(fine[i]-0.5)*0.10)*(1-0.12*t);
+      bd[o]  =Math.min(255, GOLD_BACK[0]*tone);
+      bd[o+1]=Math.min(255, GOLD_BACK[1]*tone);
+      bd[o+2]=Math.min(255, GOLD_BACK[2]*tone);
+      bd[o+3]=255;
+      const rr=Math.max(0,Math.min(255, 132+(fine[i]-0.5)*150+(mott[i]-0.5)*60-t*55));
+      rd[o]=rr; rd[o+1]=rr; rd[o+2]=rr; rd[o+3]=255;
+      /* the grain quiets inside the groove, so the letterforms stay clean */
+      h[i]=((mott[i]-0.5)*0.10+(fine[i]-0.5)*0.05)*(1-t*0.7) - t*0.55;
+    }
+    const hs=boxBlur(h, TEX, 1, 1);
+    const bnrm=new ImageData(TEX,TEX), nd=bnrm.data;
+    for(let y=0;y<TEX;y++) for(let x=0;x<TEX;x++){
+      const i=y*TEX+x, o=i*4;
+      const xm=Math.max(0,x-1), xp=Math.min(TEX-1,x+1);
+      const ym=Math.max(0,y-1), yp=Math.min(TEX-1,y+1);
+      const s=5.4;
+      const dhx=(hs[y*TEX+xp]-hs[y*TEX+xm])*s;
+      const dhy=(hs[yp*TEX+x]-hs[ym*TEX+x])*s;
+      const inv=1/Math.hypot(dhx,dhy,1);
+      nd[o]  =Math.round(255*(0.5-0.5*dhx*inv));
+      nd[o+1]=Math.round(255*(0.5+0.5*dhy*inv));
+      nd[o+2]=Math.round(255*(0.5+0.5*inv));
+      nd[o+3]=255;
+    }
+    return { back, brough, bnrm };
+  }
+
+  return { press, finishBack };
+}
+const PRESSKIT=KITCHEN();
+
+/* the reverse text, mirrored so it reads correctly from behind. Pure
+   function: it is stringified into the worker alongside the kitchen. */
+function drawBackText(g, label, num, anchor, sil){
+  const TEX=1024;
+  const F='-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  const name=String(label).toUpperCase();
+  const maxW=anchor.r*1.65, maxH=anchor.r*1.35;
+  const fitSize=(txt)=>{
+    let s=84;
+    g.font='800 '+s+'px '+F;
+    while(s>24 && g.measureText(txt).width>maxW){ s-=4; g.font='800 '+s+'px '+F; }
+    return s;
+  };
+  /* the name takes one line or two, whichever the surface strikes larger */
+  const options=[[name]];
+  const words=name.split(' ');
+  if(words.length>1){
+    let best=null;
+    for(let i=1;i<words.length;i++){
+      const l1=words.slice(0,i).join(' '), l2=words.slice(i).join(' ');
+      const s=Math.min(fitSize(l1), fitSize(l2));
+      if(!best||s>best.s) best={s,l:[l1,l2]};
+    }
+    if(best) options.push(best.l);
+  }
+  const layout=(nameLines)=>{
+    let s=Math.min(...nameLines.map(fitSize));
+    const build=(s2)=>{
+      /* tight leading between name lines; the number sits in a pressed
+         pill below — the pill floor sinks, the numerals stay at surface */
+      const lines=nameLines.map(t=>[t,'800',s2,s2*-0.08]);
+      if(s2>=34){
+        lines[lines.length-1][3]=s2*0.34;          // air between name and pill
+        const ns=Math.max(36,Math.round(s2*0.62));
+        lines.push(['Nº '+String(num).padStart(2,'0'),'pill',ns*1.7,s2*0.3,ns]);
+      }
+      let h=-lines[0][3];
+      for(const l of lines) h+=l[2]+l[3];
+      return { lines, h };
+    };
+    let plan=build(s);
+    if(plan.h>maxH){ s=Math.max(24,Math.floor(s*maxH/plan.h)); plan=build(s); }
+    return { s, plan };
+  };
+  let pick=layout(options[0]);
+  if(options[1]){
+    const two=layout(options[1]);
+    if(two.s>pick.s*1.22) pick=two;              // two lines must earn their room
+  }
+  const render=(k)=>{
+    g.clearRect(0,0,TEX,TEX);
+    g.save();
+    g.translate(TEX/2,TEX/2); g.scale(-1,1);
+    g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
+    const ox=TEX/2-anchor.x, oy=anchor.y-TEX/2;
+    let y=oy-(pick.plan.h*k)/2;
+    for(const [txt,w,size,gap,pfs] of pick.plan.lines){
+      if(w==='pill'){
+        const ns2=Math.max(18,Math.round(pfs*k));
+        g.font='800 '+ns2+'px '+F;
+        const tw=g.measureText(txt).width;
+        const pw=tw+ns2*1.3, ph=size*k, cy=y+ph/2;
+        g.beginPath();
+        g.roundRect(ox-pw/2, cy-ph/2, pw, ph, ph/2);
+        g.fill();
+        g.globalCompositeOperation='destination-out';
+        g.fillText(txt, ox, cy+ns2*0.04);
+        g.globalCompositeOperation='source-over';
+      } else {
+        g.font=w+' '+Math.max(20,Math.round(size*k))+'px '+F;
+        g.fillText(txt, ox, y+(size*k)/2);
+      }
+      y+=(size+gap)*k;
+    }
+    g.restore();
+  };
+  /* the die never strikes off the metal: draw, check every struck pixel
+     against the silhouette with a margin, shrink until clean */
+  let k=1;
+  for(let it=0;it<7;it++){
+    render(k);
+    if(!sil) return;
+    const td=g.getImageData(0,0,TEX,TEX).data;
+    const M=12;
+    let out=false;
+    for(let y=M;y<TEX-M&&!out;y+=3) for(let x=M;x<TEX-M;x+=3){
+      const i=y*TEX+x;
+      if(td[i*4+3]>40 &&
+         (!sil[i]||!sil[i-M]||!sil[i+M]||!sil[i-M*TEX]||!sil[i+M*TEX])){ out=true; break; }
+    }
+    if(!out) return;
+    k*=0.9;
+  }
+}
+
+/* the worker: the same kitchen on another thread */
+let PRESS_WORKER=null;
+const PRESS_JOBS=new Map();
+let PRESS_SEQ=0;
+try{
+  if(window.Worker && window.OffscreenCanvas){
+    const glue='const {press,finishBack}=('+KITCHEN.toString()+')();\n'+
+      'const drawBackText='+drawBackText.toString()+';\n'+
+      'onmessage=async(e)=>{\n'+
+      '  const {id,buf,seed,mode,label,num}=e.data;\n'+
+      '  try{\n'+
+      '    const r=press(new Uint8ClampedArray(buf), seed, mode);\n'+
+      '    if(!r){ postMessage({id,ok:false}); return; }\n'+
+      '    const tc=new OffscreenCanvas(1024,1024), tg=tc.getContext("2d");\n'+
+      '    drawBackText(tg, label, num, r.anchor, r.sil);\n'+
+      '    const bk=finishBack(tg.getImageData(0,0,1024,1024), seed^0x9e3779b9);\n'+
+      '    const all={albedo:r.maps.albedo, mrc:r.maps.mrc, nrm:r.maps.nrm, back:bk.back, brough:bk.brough, bnrm:bk.bnrm};\n'+
+      '    const out={}, transfer=[];\n'+
+      '    for(const k of ["albedo","mrc","nrm","back","brough","bnrm"]){\n'+
+      '      const c=new OffscreenCanvas(1024,1024), g=c.getContext("2d");\n'+
+      '      g.putImageData(all[k],0,0);\n'+
+      '      out[k]=await createImageBitmap(c,{imageOrientation:"flipY"});\n'+
+      '      transfer.push(out[k]);\n'+
+      '    }\n'+
+      '    transfer.push(r.sil.buffer); transfer.push(r.height.buffer);\n'+
+      '    postMessage({id,ok:true,sil:r.sil.buffer,height:r.height.buffer,maps:out}, transfer);\n'+
+      '  }catch(err){ postMessage({id,ok:false}); }\n'+
+      '};';
+    PRESS_WORKER=new Worker(URL.createObjectURL(new Blob([glue],{type:'text/javascript'})));
+    PRESS_WORKER.onmessage=e=>{ const j=PRESS_JOBS.get(e.data.id); if(j){ PRESS_JOBS.delete(e.data.id); j(e.data); } };
+  }
+}catch(err){ PRESS_WORKER=null; }
+
+function pressGlyph(img, seed, label, num){
+  if(PRESS_WORKER){
+    return new Promise(res=>{
+      const id=++PRESS_SEQ;
+      PRESS_JOBS.set(id,res);
+      PRESS_WORKER.postMessage({id, buf:img.data.buffer, seed, mode:PRESS, label, num}, [img.data.buffer]);
+    }).then(d=>d.ok ? { sil:new Uint8Array(d.sil), height:new Uint8Array(d.height), maps:d.maps, bitmap:true } : null);
+  }
+  const r=PRESSKIT.press(img.data, seed, PRESS);
+  if(!r) return Promise.resolve(null);
+  const tc=makeCanvas(TEX), tg=tc.getContext('2d');
+  drawBackText(tg, label, num, r.anchor, r.sil);
+  const bk=PRESSKIT.finishBack(tg.getImageData(0,0,TEX,TEX), seed^0x9e3779b9);
+  const all={albedo:r.maps.albedo, mrc:r.maps.mrc, nrm:r.maps.nrm, back:bk.back, brough:bk.brough, bnrm:bk.bnrm};
+  const maps={};
+  for(const k of ['albedo','mrc','nrm','back','brough','bnrm']){
+    const c=makeCanvas(TEX), g=c.getContext('2d');
+    g.putImageData(all[k],0,0);
+    maps[k]=c;
+  }
+  return Promise.resolve({ sil:r.sil, height:r.height, maps, bitmap:false });
+}
+
+/* ========================= silhouette -> geometry ======================= */
+
+/* moore boundary trace of a labelled blob */
+function traceBoundary(mask, W, sx, sy){
+  const dirs=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
+  const pts=[]; let x=sx,y=sy,dir=6, guard=W*W*4;
+  do{
+    pts.push([x,y]);
+    let found=false;
+    for(let k=0;k<8;k++){
+      const d=(dir+6+k)%8;                          // start looking backwards-left
+      const nx=x+dirs[d][0], ny=y+dirs[d][1];
+      if(nx>=0&&ny>=0&&nx<W&&ny<W&&mask[ny*W+nx]){ x=nx; y=ny; dir=d; found=true; break; }
+    }
+    if(!found) break;                               // isolated pixel
+  } while((x!==sx||y!==sy)&&--guard>0);
+  return pts;
+}
+
+/* a die does not cut in staircases: gaussian-smooth the traced boundary
+   (circular, so the seam disappears) then resample it at uniform arc
+   length — one continuous curve, no visible segments */
+function smoothResample(pts, sigma, targetN){
+  const n=pts.length;
+  if(n<8) return pts;
+  const r=Math.max(1,Math.ceil(sigma*2.5)), w=[];
+  let ws=0;
+  for(let k=-r;k<=r;k++){ const v=Math.exp(-(k*k)/(2*sigma*sigma)); w.push(v); ws+=v; }
+  const sm=new Array(n);
+  for(let i=0;i<n;i++){
+    let x=0,y=0;
+    for(let k=-r;k<=r;k++){ const p=pts[(i+k+n)%n]; x+=p[0]*w[k+r]; y+=p[1]*w[k+r]; }
+    sm[i]=[x/ws,y/ws];
+  }
+  const L=[0];
+  for(let i=1;i<=n;i++){ const a=sm[i-1], b=sm[i%n]; L.push(L[i-1]+Math.hypot(b[0]-a[0],b[1]-a[1])); }
+  const total=L[n];
+  if(total<1e-6) return sm;
+  const out=[];
+  let i=1;
+  for(let j=0;j<targetN;j++){
+    const t=total*j/targetN;
+    while(i<=n&&L[i]<t) i++;
+    const a=sm[i-1], b=sm[i%n], seg=L[i]-L[i-1]||1;
+    const f=(t-L[i-1])/seg;
+    out.push([a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f]);
+  }
+  return out;
+}
+
+function signedArea(pts){
+  let a=0;
+  for(let i=0;i<pts.length;i++){ const p=pts[i], q=pts[(i+1)%pts.length]; a+=p[0]*q[1]-q[0]*p[1]; }
+  return a/2;
+}
+
+function pointInPoly(pt, poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i][0], yi=poly[i][1], xj=poly[j][0], yj=poly[j][1];
+    if(((yi>pt[1])!==(yj>pt[1])) && (pt[0]<(xj-xi)*(pt[1]-yi)/(yj-yi)+xi)) inside=true;
+  }
+  return inside;
+}
+
+/* silhouette bitmap -> THREE.Shape list (outers with their holes) */
+function silhouetteToShapes(sil){
+  const W=TEX/GRID;
+  const grid=new Uint8Array(W*W);
+  for(let y=0;y<W;y++) for(let x=0;x<W;x++)
+    grid[y*W+x]=sil[(y*GRID)*TEX+(x*GRID)];
+
+  /* label components (4-conn flood) */
+  const label=new Int32Array(W*W).fill(-1);
+  const comps=[];
+  const stack=[];
+  for(let i=0;i<W*W;i++){
+    if(!grid[i]||label[i]>=0) continue;
+    const id=comps.length; const px=[];
+    stack.push(i); label[i]=id;
+    while(stack.length){
+      const j=stack.pop(); px.push(j);
+      const x=j%W, y=(j/W)|0;
+      if(x>0&&grid[j-1]&&label[j-1]<0){ label[j-1]=id; stack.push(j-1); }
+      if(x<W-1&&grid[j+1]&&label[j+1]<0){ label[j+1]=id; stack.push(j+1); }
+      if(y>0&&grid[j-W]&&label[j-W]<0){ label[j-W]=id; stack.push(j-W); }
+      if(y<W-1&&grid[j+W]&&label[j+W]<0){ label[j+W]=id; stack.push(j+W); }
+    }
+    comps.push(px);
+  }
+  const total=comps.reduce((s,c)=>s+c.length,0);
+
+  /* holes: flood background from the border; unreached empty pixels are holes */
+  const bgv=new Uint8Array(W*W);
+  for(let x=0;x<W;x++){ stack.push(x); stack.push((W-1)*W+x); }
+  for(let y=0;y<W;y++){ stack.push(y*W); stack.push(y*W+W-1); }
+  while(stack.length){
+    const j=stack.pop();
+    if(grid[j]||bgv[j]) continue;
+    bgv[j]=1;
+    const x=j%W, y=(j/W)|0;
+    if(x>0) stack.push(j-1);
+    if(x<W-1) stack.push(j+1);
+    if(y>0) stack.push(j-W);
+    if(y<W-1) stack.push(j+W);
+  }
+  const holeLabel=new Int32Array(W*W).fill(-1);
+  const holes=[];
+  for(let i=0;i<W*W;i++){
+    if(grid[i]||bgv[i]||holeLabel[i]>=0) continue;
+    const id=holes.length; const px=[];
+    stack.push(i); holeLabel[i]=id;
+    while(stack.length){
+      const j=stack.pop(); px.push(j);
+      const x=j%W, y=(j/W)|0;
+      const nb=[];
+      if(x>0) nb.push(j-1);
+      if(x<W-1) nb.push(j+1);
+      if(y>0) nb.push(j-W);
+      if(y<W-1) nb.push(j+W);
+      for(const k of nb) if(!grid[k]&&!bgv[k]&&holeLabel[k]<0){ holeLabel[k]=id; stack.push(k); }
+    }
+    holes.push(px);
+  }
+
+  const toShapePt=([x,y])=>[ (x*GRID-TEX/2)/(TEX/2), (TEX/2-y*GRID)/(TEX/2) ];
+
+  const outers=[];
+  for(let ci=0;ci<comps.length;ci++){
+    if(comps[ci].length < total*0.01) continue;
+    let sx=W,sy=W;                                  // topmost-leftmost pixel
+    for(const j of comps[ci]){ const x=j%W, y=(j/W)|0; if(y<sy||(y===sy&&x<sx)){ sx=x; sy=y; } }
+    const cmask=new Uint8Array(W*W);
+    for(const j of comps[ci]) cmask[j]=1;
+    let poly=traceBoundary(cmask, W, sx, sy);
+    if(poly.length<12) continue;
+    poly=smoothResample(poly, 3.0, 240);
+    outers.push({ id:ci, pts:poly.map(toShapePt), holes:[] });
+  }
+
+  for(let hi=0;hi<holes.length;hi++){
+    if(holes[hi].length < total*0.004) continue;
+    let sx=W,sy=W;
+    for(const j of holes[hi]){ const x=j%W, y=(j/W)|0; if(y<sy||(y===sy&&x<sx)){ sx=x; sy=y; } }
+    const hmask=new Uint8Array(W*W);
+    for(const j of holes[hi]) hmask[j]=1;
+    let poly=traceBoundary(hmask, W, sx, sy);
+    if(poly.length<12) continue;
+    poly=smoothResample(poly, 2.2, 120);
+    const spts=poly.map(toShapePt);
+    const owner=outers.find(o=>pointInPoly(spts[0], o.pts));
+    if(owner) owner.holes.push(spts);
+  }
+
+  return outers.map(o=>{
+    const shape=new THREE.Shape(o.pts.map(p=>new THREE.Vector2(p[0],p[1])));
+    for(let h of o.holes){
+      if(Math.sign(signedArea(h))===Math.sign(signedArea(o.pts))) h=h.slice().reverse();
+      shape.holes.push(new THREE.Path(h.map(p=>new THREE.Vector2(p[0],p[1]))));
+    }
+    return shape;
+  });
+}
+
+function buildGeometry(shapes){
+  const geo=new THREE.ExtrudeGeometry(shapes, {
+    depth:0.072, steps:1,
+    bevelEnabled:true, bevelThickness:0.026, bevelSize:0.019, bevelSegments:5,
+  });
+  geo.translate(0,0,-0.072/2);
+
+  /* uv = texture space, projected through the front face */
+  const pos=geo.attributes.position;
+  const uv=new Float32Array(pos.count*2);
+  for(let i=0;i<pos.count;i++){
+    uv[i*2]  =pos.getX(i)*0.5+0.5;
+    uv[i*2+1]=pos.getY(i)*0.5+0.5;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv,2));
+
+  /* regroup triangles: front lid -> enamel, back lid -> grained gold,
+     side walls -> polished gold (projected textures smear across them) */
+  geo.clearGroups();
+  const a=new THREE.Vector3(), b=new THREE.Vector3(), c2=new THREE.Vector3(),
+        e1=new THREE.Vector3(), e2=new THREE.Vector3(), n=new THREE.Vector3();
+  const tri=pos.count/3;
+  let runStart=0, runMat=-1;
+  for(let t=0;t<tri;t++){
+    a.fromBufferAttribute(pos,t*3); b.fromBufferAttribute(pos,t*3+1); c2.fromBufferAttribute(pos,t*3+2);
+    n.crossVectors(e1.subVectors(b,a), e2.subVectors(c2,a)).normalize();
+    const mat=n.z>0.35 ? 0 : (n.z<-0.35 ? 1 : 2);
+    if(mat!==runMat){
+      if(runMat>=0) geo.addGroup(runStart*3,(t-runStart)*3,runMat);
+      runStart=t; runMat=mat;
+    }
+  }
+  if(runMat>=0) geo.addGroup(runStart*3,(tri-runStart)*3,runMat);
+
+  /* every badge lands the same size: centre it and record the scale that
+     normalizes its largest half-extent to 1 — wide glyphs used to overflow
+     the frame and clip at the canvas edge */
+  geo.computeBoundingBox();
+  const bb=geo.boundingBox;
+  const cx=(bb.min.x+bb.max.x)/2, cy=(bb.min.y+bb.max.y)/2;
+  geo.translate(-cx,-cy,0);
+  geo.userData.fit=1/Math.max(bb.max.x-cx, cx-bb.min.x, bb.max.y-cy, cy-bb.min.y);
+  geo.userData.center=[cx,cy];
+
+  geo.computeVertexNormals();
+
+  /* weld normals across shared positions: the wall of a struck pin is one
+     continuous rounded surface, not a run of flat facets */
+  const nrm=geo.attributes.normal;
+  const acc=new Map();
+  const keyOf=i=>(Math.round(pos.getX(i)*8192))+'_'+(Math.round(pos.getY(i)*8192))+'_'+(Math.round(pos.getZ(i)*8192));
+  for(let i=0;i<pos.count;i++){
+    const k=keyOf(i);
+    let e=acc.get(k); if(!e){ e=[0,0,0]; acc.set(k,e); }
+    e[0]+=nrm.getX(i); e[1]+=nrm.getY(i); e[2]+=nrm.getZ(i);
+  }
+  for(let i=0;i<pos.count;i++){
+    const e=acc.get(keyOf(i));
+    const l=Math.hypot(e[0],e[1],e[2])||1;
+    nrm.setXYZ(i, e[0]/l, e[1]/l, e[2]/l);
+  }
+  /* the faces of a struck pin are dead flat: welded normals bending
+     across the big lid triangles read as facet sheen on plain gold */
+  for(let i=0;i<pos.count;i++){
+    const nz=nrm.getZ(i);
+    if(Math.abs(nz)>0.72) nrm.setXYZ(i,0,0,Math.sign(nz));
+  }
+  return geo;
+}
+
+/* ============================== the scene =============================== */
+
+const box=document.getElementById('pinbox');
+const renderer=new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+box.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+/* telephoto, pulled back: near-orthographic product-shot perspective —
+   a wide lens up close reads fish-eyed and pushes tilted pins into the
+   frame edges */
+const camera=new THREE.PerspectiveCamera(14,1,0.1,60);
+camera.position.set(0,0,13);
+
+const pmrem=new THREE.PMREMGenerator(renderer);
+scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+
+const key=new THREE.DirectionalLight(0xffffff,1.6); key.position.set(2.6,4,3.2); scene.add(key);
+const rim=new THREE.DirectionalLight(0xffe2b0,0.9); rim.position.set(-3,-1.5,-2.5); scene.add(rim);
+const edge=new THREE.DirectionalLight(0xbcd2ff,0); edge.position.set(-1.5,3,-3.5); scene.add(edge);
+/* the case light: a soft beam from above, the way a counter spots a jewel */
+const beam=new THREE.SpotLight(0xfff2df, 0, 0, 0.42, 1, 0);
+beam.position.set(0.5, 7, 2.4);
+beam.target.position.set(0,-0.4,0);
+scene.add(beam); scene.add(beam.target);
+
+/* two lighting setups: daylight vitrine on white, jewellery case on black —
+   the room reflections dim and the point lights carry the sparkle */
+const THEMES={
+  light:{ exposure:1.12, envFront:1.25, envBack:1.05, envSide:1.10, key:1.3, rim:0.9, edge:0,   beam:1.1 },
+  dark: { exposure:1.04, envFront:0.55, envBack:0.42, envSide:0.50, key:1.5, rim:1.2, edge:0.9, beam:3.0 },
+};
+const darkMq=matchMedia('(prefers-color-scheme: dark)');
+let theme=darkMq.matches?THEMES.dark:THEMES.light;
+function applyTheme(){
+  theme=darkMq.matches?THEMES.dark:THEMES.light;
+  renderer.toneMappingExposure=theme.exposure;
+  key.intensity=theme.key; rim.intensity=theme.rim; edge.intensity=theme.edge;
+  beam.intensity=theme.beam;
+  if(current){
+    const [f,g,s]=current.material;
+    f.envMapIntensity=theme.envFront;
+    g.envMapIntensity=theme.envBack;
+    s.envMapIntensity=theme.envSide;
+  }
+}
+darkMq.addEventListener('change',applyTheme);
+
+const pin=new THREE.Group();
+scene.add(pin);
+
+function fit(){
+  const w=box.clientWidth, h=box.clientHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+}
+fit();
+addEventListener('resize',fit);
+
+/* materials are rebuilt per mint; geometry too */
+let current=null;
+function texture(src, srgb, bitmap){
+  const t=new THREE.Texture(src);
+  t.needsUpdate=true;
+  if(bitmap) t.flipY=false;      // worker bitmaps arrive pre-flipped
+  if(srgb) t.colorSpace=THREE.SRGBColorSpace;
+  t.anisotropy=Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+
+function nextFrame(){ return new Promise(r=>requestAnimationFrame(r)); }
+
+/* the relief cap: the front face rebuilt as a dense grid displaced by the
+   press's height field, so the gold walls physically stand proud of the
+   enamel — the bulge survives every viewing angle instead of living only
+   in the normal map */
+function buildCap(sil, hq){
+  const G=240, step=TEX/G, M=5;
+  const vidx=new Int32Array((G+1)*(G+1)).fill(-1);
+  const pos=[], uvs=[];
+  const POP=0.062;                                 // how far the walls rise, world units
+  const ok=(px,py)=>{
+    if(px<M||py<M||px>=TEX-M||py>=TEX-M) return false;
+    return sil[py*TEX+px]&&sil[py*TEX+px-M]&&sil[py*TEX+px+M]&&sil[(py-M)*TEX+px]&&sil[(py+M)*TEX+px];
+  };
+  for(let gy=0;gy<=G;gy++) for(let gx=0;gx<=G;gx++){
+    const px=Math.min(TEX-1,Math.round(gx*step)), py=Math.min(TEX-1,Math.round(gy*step));
+    if(!ok(px,py)) continue;
+    const h=hq[py*TEX+px]/255;
+    const sx=(px-TEX/2)/(TEX/2), sy=(TEX/2-py)/(TEX/2);
+    vidx[gy*(G+1)+gx]=pos.length/3;
+    pos.push(sx, sy, 0.0015+Math.max(0,(h-0.45)/0.55)*POP);
+    uvs.push(sx*0.5+0.5, sy*0.5+0.5);
+  }
+  if(pos.length<9) return null;
+  const idx=[];
+  for(let gy=0;gy<G;gy++) for(let gx=0;gx<G;gx++){
+    const a=vidx[gy*(G+1)+gx], b=vidx[gy*(G+1)+gx+1],
+          c=vidx[(gy+1)*(G+1)+gx+1], d=vidx[(gy+1)*(G+1)+gx];
+    if(a<0||b<0||c<0||d<0) continue;
+    idx.push(a,d,b, b,d,c);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs,2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+async function buildBadge(bi){
+  /* the few main-thread steps each take their own frame, so background
+     preparation never costs the case a beat */
+  const [slug,label]=BADGES[bi];
+  const c=rasterEmoji(slug);
+  if(!c) return null;
+  await nextFrame();
+  const img=c.getContext('2d').getImageData(0,0,TEX,TEX);
+  const res=await pressGlyph(img, hash32(slug+'-mint'), label, bi+1);
+  if(!res) return null;
+  await nextFrame();
+  const shapes=silhouetteToShapes(res.sil);
+  if(!shapes.length) return null;
+  await nextFrame();
+  const geo=buildGeometry(shapes);
+  await nextFrame();
+
+  const B=res.bitmap;
+  const mrcT=texture(res.maps.mrc,false,B);
+  const roughT=texture(res.maps.brough,false,B);
+  const front=new THREE.MeshPhysicalMaterial({
+    map:texture(res.maps.albedo,true,B),
+    normalMap:texture(res.maps.nrm,false,B), normalScale:new THREE.Vector2(1,1),
+    roughnessMap:mrcT, roughness:1,
+    metalnessMap:mrcT, metalness:1,
+    clearcoatMap:mrcT, clearcoat:1, clearcoatRoughness:0.11,
+    envMapIntensity:theme.envFront,
+  });
+  const gold=new THREE.MeshPhysicalMaterial({
+    map:texture(res.maps.back,true,B),
+    color:0xffffff, metalness:1,
+    roughnessMap:roughT, roughness:1,
+    normalMap:texture(res.maps.bnrm,false,B), normalScale:new THREE.Vector2(1,1),
+    envMapIntensity:theme.envBack,
+  });
+  const side=new THREE.MeshPhysicalMaterial({
+    color:0xf0c070, metalness:1, roughness:0.3, envMapIntensity:theme.envSide,
+  });
+
+  const mesh=new THREE.Mesh(geo,[front,gold,side]);
+  await nextFrame();
+  const capGeo=buildCap(res.sil, res.height);
+  if(capGeo){
+    const [ccx,ccy]=geo.userData.center;
+    capGeo.translate(-ccx,-ccy, 0.072/2);
+    mesh.add(new THREE.Mesh(capGeo, front));
+  }
+  /* upload textures to the GPU one frame at a time, so the swap frame
+     itself never carries the cost */
+  for(const t of [front.map, front.normalMap, mrcT, gold.map, gold.normalMap, roughT]){
+    renderer.initTexture(t);
+    await nextFrame();
+  }
+  return mesh;
+}
+
+function attach(mesh){
+  const old=current;
+  current=mesh;
+  mesh.scale.setScalar(mesh.geometry.userData.fit||1);
+  pin.add(mesh);
+  const [f,g,s]=mesh.material;
+  f.envMapIntensity=theme.envFront; g.envMapIntensity=theme.envBack; s.envMapIntensity=theme.envSide;
+  if(old){
+    pin.remove(old);
+    old.geometry.dispose();
+    for(const ch of old.children) ch.geometry&&ch.geometry.dispose();
+    for(const m of old.material){
+      for(const k of ['map','normalMap','roughnessMap','metalnessMap','clearcoatMap','bumpMap']){
+        if(!m[k]) continue;
+        const img=m[k].image;
+        m[k].dispose();
+        if(img&&img.close) img.close();            // free worker bitmaps
+      }
+      m.dispose();
+    }
+  }
+}
+
+/* the next badge is always being struck in the worker; the main thread
+   only ever swaps a finished mesh in */
+let prepared=null, preparingP=null;
+function kickPrepare(){
+  if(prepared) return Promise.resolve();
+  if(preparingP) return preparingP;
+  preparingP=(async()=>{
+    try{
+      let steps=0;
+      while(steps<BADGES.length){
+        const i=order[(cursor+steps)%order.length]; steps++;
+        await loadGlyph(BADGES[i][0]);
+        const mesh=await buildBadge(i);
+        if(mesh){ prepared={mesh,i,steps}; return; }
+      }
+    } finally { preparingP=null; }
+  })();
+  return preparingP;
+}
+
+function swapToPrepared(){
+  const p=prepared; prepared=null;
+  cursor+=p.steps;
+  attach(p.mesh);
+  plate.classList.add('swap');
+  setTimeout(()=>{ setPlate(p.i); plate.classList.remove('swap'); },200);
+  kickPrepare();
+}
+
+/* ============================ motion + input ============================ */
+
+const params=new URLSearchParams(location.search);
+const posed=params.has('a');                       // ?a=<deg>: hold a fixed angle
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches || posed;
+const BASE_SPIN=(2*Math.PI)/6.5;
+let rotY=posed?(+params.get('a')||0)*Math.PI/180:-0.55, rotX=0.04, spinVel=0, dragging=false, lastT=0, idleAt=0;
+
+const nameEl=document.getElementById('name');
+const earnedEl=document.getElementById('earned');
+const plate=document.getElementById('plate');
+const hint=document.getElementById('hint');
+
+const order=BADGES.map((_,i)=>i);
+for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; }
+let cursor=0, taps=0;
+
+function setPlate(i){
+  nameEl.textContent=BADGES[i][1];
+  earnedEl.textContent='Earned by '+earnedPct(BADGES[i][0])+'% of collectors';
+}
+
+/* the swap is a spin, never a pause: a tap accelerates the turn and the
+   badge exchanges faces the next time it passes edge-on — nothing here
+   can block, because the press is already running on the worker */
+let pendingSwap=false;
+function popMint(){
+  taps++;
+  if(taps===1) hint.classList.add('gone');
+  if(pendingSwap) return;
+  pendingSwap=true;
+  if(!reduced) spinVel=Math.max(spinVel,3.2);      // the spin answers on the next frame
+  const p=kickPrepare();
+  p.then(()=>{
+    if(reduced){
+      if(prepared) swapToPrepared();
+      pendingSwap=false;
+    } else if(!prepared&&!preparingP){
+      pendingSwap=false;                           // nothing could be struck
+    }
+  });
+}
+
+let pStart=null, pLast=null, moved=0;
+box.addEventListener('pointerdown',e=>{
+  box.setPointerCapture(e.pointerId);
+  dragging=true; moved=0;
+  pStart={x:e.clientX,y:e.clientY,t:performance.now()};
+  pLast={x:e.clientX,y:e.clientY,t:performance.now()};
+  spinVel=0;
+});
+box.addEventListener('pointermove',e=>{
+  if(!dragging) return;
+  const now=performance.now();
+  const dx=e.clientX-pLast.x, dy=e.clientY-pLast.y;
+  moved+=Math.abs(dx)+Math.abs(dy);
+  rotY+=dx*0.011;
+  rotX=Math.max(-0.6,Math.min(0.6,rotX+dy*0.006));
+  const dt=Math.max(8,now-pLast.t);
+  spinVel=dx*0.011/(dt/1000);
+  pLast={x:e.clientX,y:e.clientY,t:now};
+});
+function endDrag(e){
+  if(!dragging) return;
+  dragging=false; idleAt=performance.now();
+  const quick=performance.now()-pStart.t<350;
+  if(moved<8&&quick) { spinVel=0; popMint(); }
+  spinVel=Math.max(-14,Math.min(14,spinVel));
+}
+box.addEventListener('pointerup',endDrag);
+box.addEventListener('pointercancel',endDrag);
+
+let raf=0;
+function frame(t){
+  raf=requestAnimationFrame(frame);
+  const dt=Math.min(0.05,(t-lastT)/1000)||0.016;
+  lastT=t;
+  if(!dragging){
+    if(!reduced){
+      /* inertia decays home to the display-case spin; a pending swap
+         holds the turn faster until the exchange happens */
+      const goal=pendingSwap ? 8.0 : BASE_SPIN;
+      spinVel+=(goal-spinVel)*Math.min(1,dt*(pendingSwap?12:1.4));
+      const prev=rotY;
+      rotY+=spinVel*dt;
+      rotX+=(0.04+Math.sin(t*0.00042)*0.05-rotX)*Math.min(1,dt*2);
+      if(pendingSwap&&prepared&&
+         Math.floor((prev-Math.PI/2)/Math.PI)!==Math.floor((rotY-Math.PI/2)/Math.PI)){
+        swapToPrepared();                          // exchanged while edge-on
+        pendingSwap=false;
+      }
+    } else {
+      spinVel*=Math.pow(0.06,dt);
+      rotY+=spinVel*dt;
+    }
+  }
+  pin.rotation.set(rotX,rotY,0);
+  renderer.render(scene,camera);
+}
+function start(){
+  pin.scale.setScalar(0.94);
+  if(reduced&&!posed){ rotY=-0.5; rotX=0.06; }
+  /* entrance: full size from the first frame, fading in — a scale-up here
+     reads as the page resizing itself */
+  lastT=performance.now();
+  raf=requestAnimationFrame(frame);
+  requestAnimationFrame(()=>box.classList.add('on'));
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){ cancelAnimationFrame(raf); raf=0; }
+  else if(!raf&&current){ lastT=performance.now(); raf=requestAnimationFrame(frame); }
+});
+
+applyTheme();
+
+/* strike the first badge as soon as ITS glyph is ready; the rest of the
+   roster loads behind it */
+(async()=>{
+  let i=order[0];
+  const forced=params.get('b');                    // ?b=1f98a pins the first strike
+  if(forced){
+    const fi=BADGES.findIndex(([e])=>[...e].map(c=>c.codePointAt(0).toString(16)).join('-')===forced);
+    if(fi>=0) i=fi;
+  }
+  setPlate(i);                                     // the name reads while the pin is struck
+  await loadGlyph(BADGES[i][0]);
+  const mesh=await buildBadge(i);
+  if(mesh){ attach(mesh); if(i===order[0]) cursor=1; }
+  start();
+  Promise.all(BADGES.map(([e])=>loadGlyph(e))).then(async()=>{
+    if(!current){                                  // first glyph had failed: walk on
+      await kickPrepare();
+      if(prepared) swapToPrepared();
+    } else kickPrepare();
+  });
+})();
+</script>
+</body>
+</html>
