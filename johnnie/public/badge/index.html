@@ -174,8 +174,8 @@ const GRID = 2;               // contour grid stride (512 -> 256 cells)
 const GOLD_FACE = [255, 199, 116];   // polished gold albedo (sRGB)
 const GOLD_BACK = [228, 176, 102];   // back-of-pin gold, a touch deeper
 
-const IVORY=[246,240,228];
-const NOIR=[[26,27,31],[138,138,134],IVORY];   // ink set for grayscale animals
+const BLACK=[20,21,25];                    // gloss black enamel
+const NOIR=[BLACK,[52,54,60],BLACK];       // grayscale animals: black on black, gold lines only
 
 function rgb2hsl(r,g,b){
   r/=255; g/=255; b/=255;
@@ -377,16 +377,19 @@ function buildPinMaps(emoji, seed){
     const score=share*Math.pow(chroma,1.5);
     if(score>doms){ doms=score; domi=p; }
   }
+  /* the drawing is the gold: every fill is black enamel and the linework
+     between cells reads in metal. The animal keeps one deep jewel tone,
+     laid only into its mid cells. */
   let way;
   if(domi<0) way=NOIR;
   else {
     const dom=q.palette[domi];
     const [h,s]=rgb2hsl(dom[0],dom[1],dom[2]);
-    let S=Math.max(0.4,Math.min(0.68,s)), L=0.28, A=0.52, As=0.85;
-    /* amber animals would vanish into the gold itself — push their ink
-       deeper toward rust so pigment and metal stay two different things */
-    if(h>0.05&&h<0.17){ S=Math.min(0.72,S+0.12); L=0.23; A=0.44; As=0.78; }
-    way=[ hsl2rgb(h,S,L), hsl2rgb(h,S*As,A), IVORY ];
+    let S=Math.max(0.45,Math.min(0.68,s)), A=0.42;
+    /* amber accents would vanish into the gold itself — push them toward
+       rust so pigment and metal stay two different things */
+    if(h>0.05&&h<0.17){ S=Math.min(0.75,S+0.12); A=0.38; }
+    way=[ BLACK, hsl2rgb(h,S,A), BLACK ];
   }
   const lumOf=p=>(0.299*p[0]+0.587*p[1]+0.114*p[2])/255;
   const ls=q.palette.map(lumOf);
@@ -525,18 +528,35 @@ function traceBoundary(mask, W, sx, sy){
   return pts;
 }
 
-function chaikin(pts, passes){
-  let p=pts;
-  for(let k=0;k<passes;k++){
-    const out=[];
-    for(let i=0;i<p.length;i++){
-      const a=p[i], b=p[(i+1)%p.length];
-      out.push([a[0]*0.75+b[0]*0.25, a[1]*0.75+b[1]*0.25]);
-      out.push([a[0]*0.25+b[0]*0.75, a[1]*0.25+b[1]*0.75]);
-    }
-    p=out;
+/* a die does not cut in staircases: gaussian-smooth the traced boundary
+   (circular, so the seam disappears) then resample it at uniform arc
+   length — one continuous curve, no visible segments */
+function smoothResample(pts, sigma, targetN){
+  const n=pts.length;
+  if(n<8) return pts;
+  const r=Math.max(1,Math.ceil(sigma*2.5)), w=[];
+  let ws=0;
+  for(let k=-r;k<=r;k++){ const v=Math.exp(-(k*k)/(2*sigma*sigma)); w.push(v); ws+=v; }
+  const sm=new Array(n);
+  for(let i=0;i<n;i++){
+    let x=0,y=0;
+    for(let k=-r;k<=r;k++){ const p=pts[(i+k+n)%n]; x+=p[0]*w[k+r]; y+=p[1]*w[k+r]; }
+    sm[i]=[x/ws,y/ws];
   }
-  return p;
+  const L=[0];
+  for(let i=1;i<=n;i++){ const a=sm[i-1], b=sm[i%n]; L.push(L[i-1]+Math.hypot(b[0]-a[0],b[1]-a[1])); }
+  const total=L[n];
+  if(total<1e-6) return sm;
+  const out=[];
+  let i=1;
+  for(let j=0;j<targetN;j++){
+    const t=total*j/targetN;
+    while(i<=n&&L[i]<t) i++;
+    const a=sm[i-1], b=sm[i%n], seg=L[i]-L[i-1]||1;
+    const f=(t-L[i-1])/seg;
+    out.push([a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f]);
+  }
+  return out;
 }
 
 function signedArea(pts){
@@ -625,9 +645,7 @@ function silhouetteToShapes(sil){
     for(const j of comps[ci]) cmask[j]=1;
     let poly=traceBoundary(cmask, W, sx, sy);
     if(poly.length<12) continue;
-    poly=chaikin(poly,2);
-    const step=Math.max(1, Math.floor(poly.length/260));
-    poly=poly.filter((_,i)=>i%step===0);
+    poly=smoothResample(poly, 3.0, 240);
     outers.push({ id:ci, pts:poly.map(toShapePt), holes:[] });
   }
 
@@ -639,9 +657,7 @@ function silhouetteToShapes(sil){
     for(const j of holes[hi]) hmask[j]=1;
     let poly=traceBoundary(hmask, W, sx, sy);
     if(poly.length<12) continue;
-    poly=chaikin(poly,2);
-    const step=Math.max(1, Math.floor(poly.length/140));
-    poly=poly.filter((_,i)=>i%step===0);
+    poly=smoothResample(poly, 2.2, 120);
     const spts=poly.map(toShapePt);
     const owner=outers.find(o=>pointInPoly(spts[0], o.pts));
     if(owner) owner.holes.push(spts);
