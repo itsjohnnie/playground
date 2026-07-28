@@ -288,121 +288,18 @@
     };
   }
 
-  // ————— the negatives: real photographs, public domain, credited —————
-
-  const NEGATIVES = [
-    // johnnie's own frames: real EXIF drives the micro-copy for these
-    { author: "JOHNNIE", title: "TOSSA DE MAR", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-tossa-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "TOSSA DE MAR", time: "12:07", date: "JUL 18\n12:07",
-              gps: "41.7512° N\n2.9657° E", spec: "F 1.8 · 1/6400", lens: "24MM",
-              film: "IPHONE 17 PRO", iso: "ISO 80" , ev: "EV 0", alt: "ALT 126M", dir: "101° E" } },
-    { author: "JOHNNIE", title: "CALA FUTADERA", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-futadera-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "CALA FUTADERA", time: "12:25", date: "JUL 18\n12:25",
-              gps: "41.7614° N\n2.9784° E", spec: "F 1.8 · 1/3200", lens: "48MM",
-              film: "IPHONE 17 PRO", iso: "ISO 100" , ev: "EV 0", alt: "ALT 26M", dir: "91° E" } },
-    { author: "JOHNNIE", title: "CALA GIVEROLA I", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-giverola-1-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "CALA GIVEROLA", time: "12:29", date: "JUL 18\n12:29",
-              gps: "41.7597° N\n2.9819° E", spec: "F 1.8 · 1/8000", lens: "48MM",
-              film: "IPHONE 17 PRO", iso: "ISO 64" , ev: "EV 0", alt: "ALT 11M", dir: "145° SE" } },
-    { author: "JOHNNIE", title: "CALA GIVEROLA II", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-giverola-2-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "CALA GIVEROLA", time: "17:08", date: "JUL 18\n17:08",
-              gps: "41.7598° N\n2.9812° E", spec: "F 1.8 · 1/6400", lens: "48MM",
-              film: "IPHONE 17 PRO", iso: "ISO 64" , ev: "EV 0", alt: "ALT 13M", dir: "191° S" } },
-    { author: "JOHNNIE", title: "EIXAMPLE, BCN", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-eixample-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "EIXAMPLE", time: "12:18", date: "JUL 23\n12:18",
-              gps: "41.3917° N\n2.1649° E", spec: "F 2.8 · 1/800", lens: "100MM",
-              film: "IPHONE 17 PRO", iso: "ISO 20" , ev: "EV 0", alt: "ALT 35M", dir: "35° NE" } },
-    { author: "JOHNNIE", title: "CALA GIVEROLA III", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-giverola-3-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "CALA GIVEROLA", time: "16:44", date: "JUL 18\n16:44",
-              gps: "41.7596° N\n2.9809° E", spec: "F 2.8 · 1/1000", lens: "100MM",
-              film: "IPHONE 17 PRO", iso: "ISO 20" , ev: "EV 0", alt: "ALT 1M", dir: "185° S" } },
-    { author: "JOHNNIE", title: "CAMI DE RONDA I", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-camironda-1-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "CAMI DE RONDA", time: "12:13", date: "JUL 18\n12:13",
-              gps: "41.7583° N\n2.9758° E", spec: "F 1.8 · 1/16000", lens: "24MM",
-              film: "IPHONE 17 PRO", iso: "ISO 80" , ev: "EV 0", alt: "ALT 113M", dir: "92° E" } },
-    { author: "JOHNNIE", title: "CAMI DE RONDA II", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-camironda-2-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "CAMI DE RONDA", time: "12:11", date: "JUL 18\n12:11",
-              gps: "41.7565° N\n2.9734° E", spec: "F 1.8 · 1/10000", lens: "48MM",
-              film: "IPHONE 17 PRO", iso: "ISO 64" , ev: "EV 0", alt: "ALT 88M", dir: "343° N" } },
-    { author: "JOHNNIE", title: "EL GOTIC, BCN", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-gotic-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "EL GOTIC", time: "19:29", date: "JUL 17\n19:29",
-              gps: "41.3825° N\n2.1742° E", spec: "F 2.8 · 1/250", lens: "100MM",
-              film: "IPHONE 17 PRO", iso: "ISO 50" , ev: "EV 0", alt: "ALT 12M", dir: "118° SE" } },
-    { author: "JOHNNIE", title: "CALA FUTADERA II", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-futadera-2-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "CALA FUTADERA", time: "18:08", date: "JUL 18\n18:08",
-              gps: "41.7643° N\n2.9746° E", spec: "F 1.8 · 1/12800", lens: "48MM",
-              film: "IPHONE 17 PRO", iso: "ISO 80" , ev: "EV 0", alt: "ALT 59M", dir: "316° NW" } },
-    { author: "JOHNNIE", title: "SAGRADA FAMILIA I", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-sagrada-1-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "SAGRADA FAMILIA", time: "12:25", date: "JUL 24\n12:25",
-              gps: "41.4040° N\n2.1748° E", spec: "F 1.8 · 1/1250", lens: "48MM",
-              film: "IPHONE 17 PRO", iso: "ISO 64" , ev: "EV 0", alt: "ALT 34M", dir: "218° SW" } },
-    { author: "JOHNNIE", title: "SAGRADA FAMILIA II", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-sagrada-2-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "SAGRADA FAMILIA", time: "12:31", date: "JUL 24\n12:31",
-              gps: "41.4035° N\n2.1746° E", spec: "F 2.8 · 1/125", lens: "100MM",
-              film: "IPHONE 17 PRO", iso: "ISO 80" , ev: "EV −2.1", alt: "ALT 34M", dir: "61° NE" } },
-    { author: "JOHNNIE", title: "SAGRADA FAMILIA III", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-sagrada-3-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "SAGRADA FAMILIA", time: "12:42", date: "JUL 24\n12:42",
-              gps: "41.4035° N\n2.1746° E", spec: "F 2.8 · 1/80", lens: "100MM",
-              film: "IPHONE 17 PRO", iso: "ISO 400" , ev: "EV 0", alt: "ALT 37M", dir: "337° NW" } },
-    { author: "JOHNNIE", title: "SAGRADA FAMILIA IV", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-sagrada-4-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "SAGRADA FAMILIA", time: "12:56", date: "JUL 24\n12:56",
-              gps: "41.4038° N\n2.1747° E", spec: "F 2.8 · 1/640", lens: "100MM",
-              film: "IPHONE 17 PRO", iso: "ISO 32" , ev: "EV 0", alt: "ALT 91M", dir: "195° S" } },
-    { author: "JOHNNIE", title: "SAGRADA FAMILIA V", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-sagrada-5-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "SAGRADA FAMILIA", time: "13:00", date: "JUL 24\n13:00",
-              gps: "41.4034° N\n2.1751° E", spec: "F 2.8 · 1/40", lens: "200MM",
-              film: "IPHONE 17 PRO", iso: "ISO 1000" , ev: "EV 0", alt: "ALT 34M", dir: "332° NW" } },
-    { author: "JOHNNIE", title: "SANT GERVASI, BCN", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-santgervasi-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "SANT GERVASI", time: "12:33", date: "JUL 21\n12:33",
-              gps: "41.4001° N\n2.1471° E", spec: "F 1.8 · 1/2976", lens: "48MM",
-              film: "IPHONE 17 PRO", iso: "ISO 64" , ev: "EV 0", alt: "ALT 73M", dir: "83° E" } },
-    { author: "JOHNNIE", title: "ULTRAMARINOS I", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-balmes-1-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "CARRER DE BALMES", time: "21:32", date: "JUL 25\n21:32",
-              gps: "41.3967° N\n2.1528° E", spec: "F 1.8 · 1/51", lens: "24MM",
-              film: "IPHONE 17 PRO", iso: "ISO 320" , ev: "EV 0", alt: "ALT 60M", dir: "270° W" } },
-    { author: "JOHNNIE", title: "ULTRAMARINOS II", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-balmes-2-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "CARRER DE BALMES", time: "21:46", date: "JUL 25\n21:46",
-              gps: "41.3965° N\n2.1526° E", spec: "F 1.8 · 1/43", lens: "24MM",
-              film: "IPHONE 17 PRO", iso: "ISO 800" , ev: "EV 0", alt: "ALT 59M", dir: "210° SW" } },
-    { author: "JOHNNIE", title: "SA TUNA, BEGUR", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-satuna-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "SA TUNA", time: "17:01", date: "JUL 25\n17:01",
-              gps: "41.9610° N\n3.2301° E", spec: "F 1.8 · 1/1456", lens: "63MM",
-              film: "IPHONE 17 PRO", iso: "ISO 80" , ev: "EV 0", alt: "ALT 9M", dir: "193° S" } },
-    { author: "JOHNNIE", title: "LA CANUDA, BCN", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-canuda-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "LA CANUDA", time: "20:36", date: "JUL 26\n20:36",
-              gps: "41.3851° N\n2.1736° E", spec: "F 2.8 · 1/82", lens: "100MM",
-              film: "IPHONE 17 PRO", iso: "ISO 500" , ev: "EV 0", alt: "ALT 12M", dir: "243° SW" } },
-    { author: "JOHNNIE", title: "PLACA NOVA, BCN", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-placanova-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "PLACA NOVA", time: "17:55", date: "JUL 26\n17:55",
-              gps: "41.3843° N\n2.1749° E", spec: "F 2.8 · 1/121", lens: "174MM",
-              film: "IPHONE 17 PRO", iso: "ISO 100" , ev: "EV 0", alt: "ALT 13M", dir: "239° SW" } },
-    { author: "JOHNNIE", title: "LES AIGUES, BCN", year: 2026, lic: "OWN ARCHIVE",
-      src: "negatives/johnnie-lesaigues-2026.jpg", page: "https://johnnies.life",
-      meta: { place: "LES AIGUES", time: "12:12", date: "JUL 26\n12:12",
-              gps: "41.4218° N\n2.1335° E", spec: "F 2.8 · 1/638", lens: "100MM",
-              film: "IPHONE 17 PRO", iso: "ISO 25" , ev: "EV 0", alt: "ALT 280M", dir: "202° S" } },
-  ];
+  // ————— the negatives: johnnie's own frames, loaded from the manifest —————
+  // negatives/manifest.json is the single source of truth — the CMS at
+  // /admin edits it (Barcelona collection), and each entry carries the
+  // real EXIF transcribed for the factual micro-copy
+  let NEGATIVES = [];
+  async function loadManifest() {
+    const res = await fetch("negatives/manifest.json", { cache: "no-cache" });
+    const data = await res.json();
+    if (!Array.isArray(data.negatives) || !data.negatives.length)
+      throw new Error("empty manifest");
+    NEGATIVES = data.negatives;
+  }
 
   // the deck: negatives deal like a shuffled stack of prints — every
   // frame comes up once, in random order, before any frame repeats.
@@ -708,7 +605,7 @@
   }
 
   async function render(firstRun = false, keepNegative = false) {
-    if (busy) return;
+    if (busy || !NEGATIVES.length) return;
     setBusy(true);
 
     const layout = generate(currentSeed);
@@ -828,7 +725,7 @@
 
   // a new negative under the SAME layout: crossfade only, cells stay
   async function replacePhoto() {
-    if (busy || !current.layout) return;
+    if (busy || !current.layout || !NEGATIVES.length) return;
     setBusy(true);
     const next = nextNegative();
     const img = await loadNegative(next.src);
@@ -1319,5 +1216,8 @@
 
   smallScreen.addEventListener("change", () => { if (!busy) render(); });
 
-  render(true);
+  loadManifest().then(
+    () => render(true),
+    (e) => console.error("barcelona: manifest failed to load", e)
+  );
 })();

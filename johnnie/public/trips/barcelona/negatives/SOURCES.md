@@ -2,11 +2,12 @@
 
 All photographs in this folder are Johnnie's own frames, all rights
 reserved ("OWN ARCHIVE" on the sheet). Served files are stripped of
-embedded EXIF; the real capture data lives in the `meta` field of the
-manifest in `../app.js` and drives the factual micro-copy for each
-deal. Extract EVERYTHING the file offers: place (reverse-geocoded),
-time and date, GPS, aperture, shutter, ISO, 35mm-equivalent focal
-length, exposure bias (EV), GPS altitude, and compass bearing.
+embedded EXIF; the real capture data lives in the `meta` field of
+`manifest.json` in this folder (editable in the CMS at /admin →
+Barcelona Sheet) and drives the factual micro-copy for each deal.
+Extract EVERYTHING the file offers: place (reverse-geocoded), time
+and date, GPS, aperture, shutter, ISO, 35mm-equivalent focal length,
+exposure bias (EV), GPS altitude, and compass bearing.
 
 | File | Work |
 |---|---|
@@ -35,8 +36,9 @@ length, exposure bias (EV), GPS altitude, and compass bearing.
 
 ## Adding new negatives
 
-Process to ~1920px long edge, strip EXIF, drop the file here, and add
-an entry to `NEGATIVES` in `../app.js` (src, author, title, year, lic,
-page, meta). Only add photographs you own or have written permission
-to use; third-party work additionally needs a license that permits
-cropping (the clippings are derivatives).
+Process to ~1920px long edge, strip EXIF, then add the entry in the
+CMS (/admin → Barcelona Sheet → Negatives), uploading the plate and
+transcribing the capture data — or edit `manifest.json` here directly
+(src, author, title, year, lic, page, meta). Only add photographs you
+own or have written permission to use; third-party work additionally
+needs a license that permits cropping (the clippings are derivatives).
