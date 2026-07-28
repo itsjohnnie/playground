@@ -176,27 +176,6 @@ const GOLD_BACK = [228, 176, 102];   // back-of-pin gold, a touch deeper
 
 const BLACK=[20,21,25];                    // gloss black enamel
 
-function rgb2hsl(r,g,b){
-  r/=255; g/=255; b/=255;
-  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), l=(mx+mn)/2;
-  if(mx===mn) return [0,0,l];
-  const d=mx-mn;
-  const s=l>0.5 ? d/(2-mx-mn) : d/(mx+mn);
-  let h;
-  if(mx===r) h=((g-b)/d+(g<b?6:0))/6;
-  else if(mx===g) h=((b-r)/d+2)/6;
-  else h=((r-g)/d+4)/6;
-  return [h,s,l];
-}
-function hsl2rgb(h,s,l){
-  const f=(n)=>{
-    const k=(n+h*12)%12;
-    const a=s*Math.min(l,1-l);
-    return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))));
-  };
-  return [f(0),f(8),f(4)];
-}
-
 function makeCanvas(n){ const c=document.createElement('canvas'); c.width=c.height=n; return c; }
 
 /* the glyphs are vendored Twemoji SVGs (see lib/twemoji/LICENSE): vector
@@ -371,41 +350,10 @@ function buildPinMaps(emoji, seed){
      the glyph's dominant pigment (most pixels x most chroma), deepen it
      into an enamel ink, mix a lighter accent of the same hue, and print
      on an ivory ground. Grayscale animals stay noir. */
-  const counts=new Uint32Array(q.palette.length);
-  let solidN=0;
-  for(let i=0;i<TEX*TEX;i++) if(alpha[i]&&idx[i]<q.palette.length){ counts[idx[i]]++; solidN++; }
-  /* a pigment only qualifies if it covers a real share of the coat — a
-     koala's pink inner ears must not out-vote its gray */
-  let domi=-1, doms=0;
-  for(let p=0;p<q.palette.length;p++){
-    const share=counts[p]/solidN;
-    if(share<0.08) continue;
-    const c=q.palette[p];
-    const chroma=(Math.max(c[0],c[1],c[2])-Math.min(c[0],c[1],c[2]))/255;
-    if(chroma<0.12) continue;
-    const score=share*Math.pow(chroma,1.5);
-    if(score>doms){ doms=score; domi=p; }
-  }
-  /* the drawing is the gold: every fill is black enamel and the linework
-     between cells reads in metal. One deep jewel tone of the animal's
-     own colour goes wherever the glyph itself is coloured — neutral
-     cells (outlines, whites, grays) stay black, so truly monochrome
-     animals run pure black on gold. */
-  let accent=null;
-  if(domi>=0){
-    const dom=q.palette[domi];
-    const [h,s]=rgb2hsl(dom[0],dom[1],dom[2]);
-    let S=Math.max(0.45,Math.min(0.68,s)), A=0.42;
-    /* amber accents would vanish into the gold itself — push them toward
-       rust so pigment and metal stay two different things */
-    if(h>0.05&&h<0.17){ S=Math.min(0.75,S+0.12); A=0.38; }
-    accent=hsl2rgb(h,S,A);
-  }
-  const lumOf=p=>(0.299*p[0]+0.587*p[1]+0.114*p[2])/255;
-  const enamel=q.palette.map(p=>{
-    const chroma=(Math.max(p[0],p[1],p[2])-Math.min(p[0],p[1],p[2]))/255;
-    return (accent && chroma>0.15 && lumOf(p)>0.18) ? accent : BLACK;
-  });
+  /* the drawing is the gold: every fill is black enamel and the whole
+     animal reads in raised metal linework. The cells exist only to give
+     the walls their paths. */
+  const enamel=q.palette.map(()=>BLACK);
 
   /* region map: 255 = off-pin, 254 = gold rim, else enamel cell */
   const region=new Uint8Array(TEX*TEX);
