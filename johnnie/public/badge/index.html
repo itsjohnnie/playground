@@ -286,15 +286,34 @@ function KITCHEN(){
     }
     palette=merged;
     const idx=new Uint8Array(W*W).fill(255);
-    for(let i=0;i<W*W;i++){
-      if(!alpha[i]) continue;
-      let best=0,bd=1e9;
-      for(let p=0;p<palette.length;p++){
-        const dr=px[i*4]-palette[p][0], dg=px[i*4+1]-palette[p][1], db=px[i*4+2]-palette[p][2];
-        const d=dr*dr+dg*dg+db*db;
-        if(d<bd){ bd=d; best=p; }
+    const assign=()=>{
+      for(let i=0;i<W*W;i++){
+        if(!alpha[i]) continue;
+        let best=0,bd=1e9;
+        for(let p=0;p<palette.length;p++){
+          const dr=px[i*4]-palette[p][0], dg=px[i*4+1]-palette[p][1], db=px[i*4+2]-palette[p][2];
+          const d=dr*dr+dg*dg+db*db;
+          if(d<bd){ bd=d; best=p; }
+        }
+        idx[i]=best;
       }
-      idx[i]=best;
+    };
+    assign();
+    /* rescue rare colours the median cut never boxed — a shark's eye is a
+       few hundred pixels of navy that would otherwise dissolve into the
+       body gray */
+    for(let pass=0;pass<3;pass++){
+      let n=0,sr=0,sg=0,sb=0;
+      for(let y=0;y<W;y+=2) for(let x=0;x<W;x+=2){
+        const i=y*W+x;
+        if(!alpha[i]) continue;
+        const p=palette[idx[i]];
+        const dr=px[i*4]-p[0], dg=px[i*4+1]-p[1], db=px[i*4+2]-p[2];
+        if(dr*dr+dg*dg+db*db>3600){ n++; sr+=px[i*4]; sg+=px[i*4+1]; sb+=px[i*4+2]; }
+      }
+      if(n<120) break;
+      palette.push([Math.round(sr/n),Math.round(sg/n),Math.round(sb/n)]);
+      assign();
     }
     return { palette, idx };
   }
@@ -535,22 +554,23 @@ function KITCHEN(){
     for(let i=0;i<N;i++){
       const o=i*4;
       const t=td[o+3]/255;
-      const tone=(0.90+(mott[i]-0.5)*0.22+(fine[i]-0.5)*0.10)*(1-0.08*t);
+      const tone=(0.90+(mott[i]-0.5)*0.22+(fine[i]-0.5)*0.10)*(1-0.12*t);
       bd[o]  =Math.min(255, GOLD_BACK[0]*tone);
       bd[o+1]=Math.min(255, GOLD_BACK[1]*tone);
       bd[o+2]=Math.min(255, GOLD_BACK[2]*tone);
       bd[o+3]=255;
-      const rr=Math.max(0,Math.min(255, 132+(fine[i]-0.5)*150+(mott[i]-0.5)*60-t*40));
+      const rr=Math.max(0,Math.min(255, 132+(fine[i]-0.5)*150+(mott[i]-0.5)*60-t*55));
       rd[o]=rr; rd[o+1]=rr; rd[o+2]=rr; rd[o+3]=255;
-      h[i]=(mott[i]-0.5)*0.10+(fine[i]-0.5)*0.05 - t*0.55;
+      /* the grain quiets inside the groove, so the letterforms stay clean */
+      h[i]=((mott[i]-0.5)*0.10+(fine[i]-0.5)*0.05)*(1-t*0.7) - t*0.55;
     }
-    const hs=boxBlur(h, TEX, 2, 1);
+    const hs=boxBlur(h, TEX, 1, 1);
     const bnrm=new ImageData(TEX,TEX), nd=bnrm.data;
     for(let y=0;y<TEX;y++) for(let x=0;x<TEX;x++){
       const i=y*TEX+x, o=i*4;
       const xm=Math.max(0,x-1), xp=Math.min(TEX-1,x+1);
       const ym=Math.max(0,y-1), yp=Math.min(TEX-1,y+1);
-      const s=4.5;
+      const s=5.4;
       const dhx=(hs[y*TEX+xp]-hs[y*TEX+xm])*s;
       const dhy=(hs[yp*TEX+x]-hs[ym*TEX+x])*s;
       const inv=1/Math.hypot(dhx,dhy,1);
