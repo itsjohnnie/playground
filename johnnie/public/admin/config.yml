@@ -80,8 +80,10 @@ collections:
   # of them, reading /trips/manifests/<slug>.json. Each negative carries
   # the real capture data (EXIF) that drives the sheet's factual
   # micro-copy. Uploaded plates land in /trips/plates.
-  # Before adding a frame, prepare it like the others: ~1920px long
-  # edge and EXIF stripped (see trips/barcelona/negatives/SOURCES.md).
+  # To add a frame, prefer /admin/darkroom/ — it reads the EXIF,
+  # resolves the place, resizes to 1920px, strips the metadata, and
+  # commits here. Adding manually instead? Prepare the plate the same
+  # way first (see trips/barcelona/negatives/SOURCES.md).
   - name: trips
     label: "Trips"
     label_singular: "Trip"

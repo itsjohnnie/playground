@@ -37,9 +37,11 @@ exposure bias (EV), GPS altitude, and compass bearing.
 
 ## Adding new negatives
 
-Process to ~1920px long edge, strip EXIF, then add the entry in the
-CMS (/admin → Trips → the trip → Negatives), uploading the plate and
-transcribing the capture data — or edit `../manifests/<slug>.json`
+The easy way: drop the original into `/admin/darkroom/` — it reads
+the EXIF, reverse-geocodes the place, resizes to 1920px, strips the
+metadata, and commits the plate plus the manifest entry in one go.
+Manually: process to ~1920px long edge, strip EXIF, then add the
+entry in the CMS (/admin → Trips) or edit `../manifests/<slug>.json`
 directly (src, author, title, year, lic, page, meta). Only add photographs you
 own or have written permission to use; third-party work additionally
 needs a license that permits cropping (the clippings are derivatives).
