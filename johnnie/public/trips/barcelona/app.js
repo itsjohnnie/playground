@@ -289,16 +289,21 @@
   }
 
   // ————— the negatives: johnnie's own frames, loaded from the manifest —————
-  // negatives/manifest.json is the single source of truth — the CMS at
-  // /admin edits it (Barcelona collection), and each entry carries the
-  // real EXIF transcribed for the factual micro-copy
+  // this engine serves EVERY trip: the slug in the URL picks the
+  // manifest (/trips/manifests/<slug>.json), the single source of
+  // truth edited in the CMS at /admin (Trips collection). each entry
+  // carries the real EXIF transcribed for the factual micro-copy
+  const TRIP = (location.pathname.match(/\/trips\/([^/]+)/) || [, "barcelona"])[1];
   let NEGATIVES = [];
   async function loadManifest() {
-    const res = await fetch("negatives/manifest.json", { cache: "no-cache" });
+    const res = await fetch(`/trips/manifests/${TRIP}.json`, { cache: "no-cache" });
     const data = await res.json();
     if (!Array.isArray(data.negatives) || !data.negatives.length)
       throw new Error("empty manifest");
     NEGATIVES = data.negatives;
+    const label = `${data.title || TRIP} ${data.year || ""}`.trim();
+    document.getElementById("trip-label").textContent = label;
+    document.title = `johnnie gomez — ${label}`;
   }
 
   // the deck: negatives deal like a shuffled stack of prints — every
@@ -972,7 +977,7 @@
     // blob-URL download everywhere else
     const blob = await new Promise((r) => c.toBlob(r, "image/png"));
     if (!blob) return;
-    const name = `barcelona-${seedEl.textContent}.png`;
+    const name = `${TRIP}-${seedEl.textContent}.png`;
     const file = new File([blob], name, { type: "image/png" });
     if (matchMedia("(pointer: coarse)").matches && navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
