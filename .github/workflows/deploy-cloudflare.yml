@@ -23,8 +23,29 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # the darkroom bot pushes developed plates back
     steps:
       - uses: actions/checkout@v4
+
+      # The darkroom bot: a CMS upload commits the RAW photo. Before
+      # anything builds, extract its EXIF (capture data -> manifest),
+      # reverse-geocode the place, then re-encode the plate at 1920px
+      # with the metadata stripped. The build below uses the developed
+      # tree, so production never serves a raw plate; the bot's push
+      # (GITHUB_TOKEN) does not retrigger this workflow.
+      - name: Darkroom bot
+        run: |
+          pip install --quiet pillow requests
+          python3 scripts/darkroom_bot.py
+          if ! git diff --quiet; then
+            git config user.name "darkroom-bot"
+            git config user.email "noreply@johnnies.life"
+            git add johnnie/public/trips
+            git commit -m "Darkroom bot: develop CMS-uploaded plates"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
 
       - uses: actions/setup-node@v4
         with:
