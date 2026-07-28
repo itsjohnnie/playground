@@ -1,10 +1,4 @@
 # Workers Static Assets redirects.
-# The playground index (the terminal view of every experiment) lives on
-# GitHub Pages. It dropped off johnnies.life when the domain moved to this
-# Worker (Jul 2026) — send the old URL home, deep links included.
-/playground https://itsjohnnie.github.io/playground/ 301
-/playground/ https://itsjohnnie.github.io/playground/ 301
-/playground/* https://itsjohnnie.github.io/playground/:splat 301
 # The Barcelona sheet moved from /gomis to /trips/barcelona.
 /gomis /trips/barcelona 301
 /gomis/ /trips/barcelona/ 301

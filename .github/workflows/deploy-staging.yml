@@ -37,6 +37,27 @@ jobs:
           npm ci
           npm run build
 
+      # Same playground staging as production (deploy-cloudflare.yml), so
+      # staging.johnnies.life/playground/ mirrors the real thing.
+      - name: Build truco
+        working-directory: truco
+        run: |
+          npm ci
+          npm run build
+
+      - name: Stage playground
+        run: |
+          mkdir -p johnnie/out/playground/truco
+          cp index.html styles.css script.js johnnie/out/playground/
+          cp -r truco/dist/. johnnie/out/playground/truco/
+          for d in ascii cc dithered dots dott flyy generative-ui haiku jitter \
+                   liquid liquid-glass-icon mask orb os poetry pretext sizzle \
+                   toaster tyme waves; do
+            if [ -d "$d" ]; then
+              cp -r "$d" "johnnie/out/playground/$d"
+            fi
+          done
+
       - name: Deploy Worker (staging)
         uses: cloudflare/wrangler-action@v3
         with:
