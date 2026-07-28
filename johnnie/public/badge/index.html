@@ -364,9 +364,12 @@ function KITCHEN(){
     const sil=new Uint8Array(N);
     for(let i=0;i<N;i++) sil[i]=dist[i]<RIM*3 ? 1:0;
 
-    /* a pin has no windows: any pocket the silhouette encloses gets
-       filled, and prints as solid gold on both faces */
+    /* small windows fill and print as solid gold — a cow's mouth-gap is
+       an accident of the drawing — but large enclosed pockets are
+       structural negative space (a flamingo's legs) and stay real holes */
     {
+      let silArea=0;
+      for(let i=0;i<N;i++) silArea+=sil[i];
       const seen=new Uint8Array(N), st=[];
       for(let x=0;x<TEX;x++){ st.push(x, (TEX-1)*TEX+x); }
       for(let y=0;y<TEX;y++){ st.push(y*TEX, y*TEX+TEX-1); }
@@ -380,7 +383,19 @@ function KITCHEN(){
         if(y>0) st.push(j-TEX);
         if(y<TEX-1) st.push(j+TEX);
       }
-      for(let i=0;i<N;i++) if(!sil[i]&&!seen[i]) sil[i]=1;
+      for(let i=0;i<N;i++){
+        if(sil[i]||seen[i]) continue;
+        const px2=[]; st.push(i); seen[i]=1;
+        while(st.length){
+          const j=st.pop(); px2.push(j);
+          const x=j%TEX, y=(j/TEX)|0;
+          if(x>0&&!sil[j-1]&&!seen[j-1]){ seen[j-1]=1; st.push(j-1); }
+          if(x<TEX-1&&!sil[j+1]&&!seen[j+1]){ seen[j+1]=1; st.push(j+1); }
+          if(y>0&&!sil[j-TEX]&&!seen[j-TEX]){ seen[j-TEX]=1; st.push(j-TEX); }
+          if(y<TEX-1&&!sil[j+TEX]&&!seen[j+TEX]){ seen[j+TEX]=1; st.push(j+TEX); }
+        }
+        if(px2.length<silArea*0.01) for(const j of px2) sil[j]=1;
+      }
     }
 
     const q=quantize(px, alpha, TEX, 10);
@@ -486,21 +501,22 @@ function KITCHEN(){
       nd[o+3]=255;
     }
 
-    /* how wide the reverse can print: the tightest silhouette span
-       through the middle band */
-    let fitW=TEX*0.5;
+    /* where the reverse can print: the deepest point inside the
+       silhouette, and how much room it has around it */
+    const anchor={x:TEX/2, y:TEX/2, r:TEX*0.25};
     {
-      const spans=[];
-      for(let y=TEX/2-120;y<=TEX/2+120;y+=12){
-        let a=-1,b=-1;
-        for(let x=0;x<TEX;x++) if(sil[y*TEX+x]){ if(a<0)a=x; b=x; }
-        if(a>=0) spans.push(b-a);
+      const inv=new Uint8Array(N);
+      for(let i=0;i<N;i++) inv[i]=sil[i]?0:1;
+      const dIn=distanceOutside(inv, TEX);
+      let best=0;
+      for(let y=0;y<TEX;y+=2) for(let x=0;x<TEX;x+=2){
+        const v=dIn[y*TEX+x];
+        if(v>best){ best=v; anchor.x=x; anchor.y=y; }
       }
-      spans.sort((p,q)=>p-q);
-      if(spans.length) fitW=Math.max(240, spans[Math.floor(spans.length*0.25)]-RIM*3);
+      anchor.r=best/3;
     }
 
-    return { sil, maps:{albedo, mrc, nrm}, fitW };
+    return { sil, maps:{albedo, mrc, nrm}, anchor };
   }
 
   /* the reverse: sand-grained gold with the badge struck into it — name,
@@ -552,23 +568,36 @@ const PRESSKIT=KITCHEN();
 
 /* the reverse text, mirrored so it reads correctly from behind. Pure
    function: it is stringified into the worker alongside the kitchen. */
-function drawBackText(g, label, num, fitW){
+function drawBackText(g, label, num, anchor){
   const TEX=1024;
   g.save();
   g.translate(TEX/2,TEX/2); g.scale(-1,1);
+  const ox=TEX/2-anchor.x, oy=anchor.y-TEX/2;     // the anchor, mirrored
   g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
   const F='-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   const name=String(label).toUpperCase();
+  const maxW=anchor.r*1.9, maxH=anchor.r*1.5;
   let fs=118;
   g.font='800 '+fs+'px '+F;
-  const maxW=fitW*0.72;
-  while(fs>34 && g.measureText(name).width>maxW){ fs-=4; g.font='800 '+fs+'px '+F; }
-  g.fillText(name, 0, -fs*0.42);
-  const ns=Math.max(38,Math.round(fs*0.52));
-  g.font='700 '+ns+'px '+F;
-  g.fillText('Nº '+String(num).padStart(2,'0'), 0, fs*0.6);
-  g.font='700 36px '+F;
-  g.fillText('JOHNNIES.LIFE', 0, fs*0.6+ns*1.8);
+  while(fs>26 && g.measureText(name).width>maxW){ fs-=4; g.font='800 '+fs+'px '+F; }
+  const build=(s)=>{
+    const lines=[[name,'800',s]];
+    if(s>=34) lines.push(['Nº '+String(num).padStart(2,'0'),'700',Math.max(30,Math.round(s*0.5))]);
+    if(s>=48) lines.push(['JOHNNIES.LIFE','700',34]);
+    const gap=s*0.36;
+    return { lines, gap, h:lines.reduce((t,l)=>t+l[2],0)+gap*(lines.length-1) };
+  };
+  let plan=build(fs);
+  if(plan.h>maxH){
+    fs=Math.max(26,Math.floor(fs*maxH/plan.h));
+    plan=build(fs);
+  }
+  let y=oy-plan.h/2;
+  for(const [txt,w,size] of plan.lines){
+    g.font=w+' '+size+'px '+F;
+    g.fillText(txt, ox, y+size/2);
+    y+=size+plan.gap;
+  }
   g.restore();
 }
 
@@ -586,7 +615,7 @@ try{
       '    const r=press(new Uint8ClampedArray(buf), seed, mode);\n'+
       '    if(!r){ postMessage({id,ok:false}); return; }\n'+
       '    const tc=new OffscreenCanvas(1024,1024), tg=tc.getContext("2d");\n'+
-      '    drawBackText(tg, label, num, r.fitW);\n'+
+      '    drawBackText(tg, label, num, r.anchor);\n'+
       '    const bk=finishBack(tg.getImageData(0,0,1024,1024), seed^0x9e3779b9);\n'+
       '    const all={albedo:r.maps.albedo, mrc:r.maps.mrc, nrm:r.maps.nrm, back:bk.back, brough:bk.brough, bnrm:bk.bnrm};\n'+
       '    const out={}, transfer=[];\n'+
@@ -616,7 +645,7 @@ function pressGlyph(img, seed, label, num){
   const r=PRESSKIT.press(img.data, seed, PRESS);
   if(!r) return Promise.resolve(null);
   const tc=makeCanvas(TEX), tg=tc.getContext('2d');
-  drawBackText(tg, label, num, r.fitW);
+  drawBackText(tg, label, num, r.anchor);
   const bk=PRESSKIT.finishBack(tg.getImageData(0,0,TEX,TEX), seed^0x9e3779b9);
   const all={albedo:r.maps.albedo, mrc:r.maps.mrc, nrm:r.maps.nrm, back:bk.back, brough:bk.brough, bnrm:bk.bnrm};
   const maps={};
