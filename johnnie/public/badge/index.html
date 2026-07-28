@@ -211,278 +211,318 @@ function rasterEmoji(emoji){
   return c;
 }
 
-/* chamfer distance transform: distance (in px*3) from each pixel to the
-   nearest "inside" pixel. two passes, 3-4 weights. */
-function distanceOutside(inside, W){
-  const INF=1e7, d=new Float32Array(W*W).fill(INF);
-  for(let i=0;i<W*W;i++) if(inside[i]) d[i]=0;
-  for(let y=0;y<W;y++) for(let x=0;x<W;x++){
-    const i=y*W+x; let v=d[i];
-    if(x>0) v=Math.min(v,d[i-1]+3);
-    if(y>0){ v=Math.min(v,d[i-W]+3);
-      if(x>0) v=Math.min(v,d[i-W-1]+4);
-      if(x<W-1) v=Math.min(v,d[i-W+1]+4); }
-    d[i]=v;
-  }
-  for(let y=W-1;y>=0;y--) for(let x=W-1;x>=0;x--){
-    const i=y*W+x; let v=d[i];
-    if(x<W-1) v=Math.min(v,d[i+1]+3);
-    if(y<W-1){ v=Math.min(v,d[i+W]+3);
-      if(x<W-1) v=Math.min(v,d[i+W+1]+4);
-      if(x>0) v=Math.min(v,d[i+W-1]+4); }
-    d[i]=v;
-  }
-  return d;
-}
+/* ---- the press kitchen ------------------------------------------------
+   Every pixel-heavy stage lives inside this one function so it can be
+   stringified into a Web Worker: the whole 1024px press runs off the
+   main thread and the case never stutters while the next badge is
+   struck. The same code runs synchronously on the main thread if
+   Workers or OffscreenCanvas are unavailable. */
+function KITCHEN(){
+  const TEX=1024, RIM=20;
+  const GOLD_FACE=[255,199,116], GOLD_BACK=[228,176,102], BLACK=[13,14,18];
 
-/* median-cut palette + nearest assignment: the enamel colours */
-function quantize(px, alpha, W, K){
-  const pts=[];
-  for(let y=0;y<W;y+=2) for(let x=0;x<W;x+=2){   // stride-2 sample for the palette
-    const i=y*W+x;
-    if(alpha[i]) pts.push([px[i*4],px[i*4+1],px[i*4+2]]);
-  }
-  if(!pts.length) return { palette:[[128,128,128]], idx:new Uint8Array(W*W).fill(255) };
-  let boxes=[pts];
-  while(boxes.length<K){
-    let bi=-1,bs=-1;
-    for(let b=0;b<boxes.length;b++){
-      if(boxes[b].length<2) continue;
-      const r=[0,1,2].map(ch=>{ let lo=255,hi=0; for(const p of boxes[b]){ lo=Math.min(lo,p[ch]); hi=Math.max(hi,p[ch]); } return hi-lo; });
-      const s=Math.max(...r)*Math.log(boxes[b].length+1);
-      if(s>bs){ bs=s; bi=b; }
-    }
-    if(bi<0) break;
-    const box=boxes[bi];
-    const r=[0,1,2].map(ch=>{ let lo=255,hi=0; for(const p of box){ lo=Math.min(lo,p[ch]); hi=Math.max(hi,p[ch]); } return hi-lo; });
-    const ch=r.indexOf(Math.max(...r));
-    box.sort((a,b)=>a[ch]-b[ch]);
-    const mid=box.length>>1;
-    boxes.splice(bi,1,box.slice(0,mid),box.slice(mid));
-  }
-  let palette=boxes.map(b=>{
-    const s=[0,0,0]; for(const p of b){ s[0]+=p[0]; s[1]+=p[1]; s[2]+=p[2]; }
-    return s.map(v=>Math.round(v/b.length));
-  });
-  /* merge near-duplicates so cells stay bold */
-  const merged=[];
-  for(const p of palette){
-    const twin=merged.find(q=>Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2])<44);
-    if(!twin) merged.push(p);
-  }
-  palette=merged;
-  const idx=new Uint8Array(W*W).fill(255);
-  for(let i=0;i<W*W;i++){
-    if(!alpha[i]) continue;
-    let best=0,bd=1e9;
-    for(let p=0;p<palette.length;p++){
-      const dr=px[i*4]-palette[p][0], dg=px[i*4+1]-palette[p][1], db=px[i*4+2]-palette[p][2];
-      const d=dr*dr+dg*dg+db*db;
-      if(d<bd){ bd=d; best=p; }
-    }
-    idx[i]=best;
-  }
-  return { palette, idx };
-}
+  function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
 
-/* 3x3 majority filter, run twice: eats the anti-aliasing crumbs so the
-   enamel cells have clean die-cut borders. K is the palette size; index
-   255 (off-glyph) rides along as slot K. */
-function modeFilter(idx, W, passes, K){
-  let src=idx;
-  const counts=new Uint8Array(K+1);
-  for(let p=0;p<passes;p++){
-    const dst=new Uint8Array(W*W);
-    for(let y=0;y<W;y++){
-      const ym=Math.max(0,y-1)*W, y0=y*W, yp=Math.min(W-1,y+1)*W;
-      for(let x=0;x<W;x++){
-        counts.fill(0);
-        const xm=Math.max(0,x-1), xp=Math.min(W-1,x+1);
-        for(const row of [ym,y0,yp]){
-          let v=src[row+xm]; counts[v===255?K:v]++;
-          v=src[row+x];  counts[v===255?K:v]++;
-          v=src[row+xp]; counts[v===255?K:v]++;
-        }
-        let bi=0,bc=-1;
-        for(let k=0;k<=K;k++) if(counts[k]>bc){ bc=counts[k]; bi=k; }
-        dst[y0+x]=bi===K?255:bi;
+  /* chamfer distance transform: distance (in px*3) from each pixel to the
+     nearest "inside" pixel. two passes, 3-4 weights. */
+  function distanceOutside(inside, W){
+    const INF=1e7, d=new Float32Array(W*W).fill(INF);
+    for(let i=0;i<W*W;i++) if(inside[i]) d[i]=0;
+    for(let y=0;y<W;y++) for(let x=0;x<W;x++){
+      const i=y*W+x; let v=d[i];
+      if(x>0) v=Math.min(v,d[i-1]+3);
+      if(y>0){ v=Math.min(v,d[i-W]+3);
+        if(x>0) v=Math.min(v,d[i-W-1]+4);
+        if(x<W-1) v=Math.min(v,d[i-W+1]+4); }
+      d[i]=v;
+    }
+    for(let y=W-1;y>=0;y--) for(let x=W-1;x>=0;x--){
+      const i=y*W+x; let v=d[i];
+      if(x<W-1) v=Math.min(v,d[i+1]+3);
+      if(y<W-1){ v=Math.min(v,d[i+W]+3);
+        if(x<W-1) v=Math.min(v,d[i+W+1]+4);
+        if(x>0) v=Math.min(v,d[i+W-1]+4); }
+      d[i]=v;
+    }
+    return d;
+  }
+
+  /* median-cut palette + nearest assignment: the enamel colours */
+  function quantize(px, alpha, W, K){
+    const pts=[];
+    for(let y=0;y<W;y+=2) for(let x=0;x<W;x+=2){
+      const i=y*W+x;
+      if(alpha[i]) pts.push([px[i*4],px[i*4+1],px[i*4+2]]);
+    }
+    if(!pts.length) return { palette:[[128,128,128]], idx:new Uint8Array(W*W).fill(255) };
+    let boxes=[pts];
+    while(boxes.length<K){
+      let bi=-1,bs=-1;
+      for(let b=0;b<boxes.length;b++){
+        if(boxes[b].length<2) continue;
+        const r=[0,1,2].map(ch=>{ let lo=255,hi=0; for(const p of boxes[b]){ lo=Math.min(lo,p[ch]); hi=Math.max(hi,p[ch]); } return hi-lo; });
+        const s=Math.max(...r)*Math.log(boxes[b].length+1);
+        if(s>bs){ bs=s; bi=b; }
       }
+      if(bi<0) break;
+      const box=boxes[bi];
+      const r=[0,1,2].map(ch=>{ let lo=255,hi=0; for(const p of box){ lo=Math.min(lo,p[ch]); hi=Math.max(hi,p[ch]); } return hi-lo; });
+      const ch=r.indexOf(Math.max(...r));
+      box.sort((a,b)=>a[ch]-b[ch]);
+      const mid=box.length>>1;
+      boxes.splice(bi,1,box.slice(0,mid),box.slice(mid));
     }
-    src=dst;
-  }
-  return src;
-}
-
-function boxBlur(src, W, r, passes){
-  let a=Float32Array.from(src), b=new Float32Array(W*W);
-  for(let p=0;p<passes;p++){
-    for(let y=0;y<W;y++){            // horizontal
-      let acc=0;
-      for(let x=-r;x<=r;x++) acc+=a[y*W+Math.min(W-1,Math.max(0,x))];
-      for(let x=0;x<W;x++){
-        b[y*W+x]=acc/(2*r+1);
-        const xo=Math.max(0,x-r), xi=Math.min(W-1,x+r+1);
-        acc+=a[y*W+xi]-a[y*W+xo];
+    let palette=boxes.map(b=>{
+      const s=[0,0,0]; for(const p of b){ s[0]+=p[0]; s[1]+=p[1]; s[2]+=p[2]; }
+      return s.map(v=>Math.round(v/b.length));
+    });
+    const merged=[];
+    for(const p of palette){
+      const twin=merged.find(q=>Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2])<44);
+      if(!twin) merged.push(p);
+    }
+    palette=merged;
+    const idx=new Uint8Array(W*W).fill(255);
+    for(let i=0;i<W*W;i++){
+      if(!alpha[i]) continue;
+      let best=0,bd=1e9;
+      for(let p=0;p<palette.length;p++){
+        const dr=px[i*4]-palette[p][0], dg=px[i*4+1]-palette[p][1], db=px[i*4+2]-palette[p][2];
+        const d=dr*dr+dg*dg+db*db;
+        if(d<bd){ bd=d; best=p; }
       }
+      idx[i]=best;
     }
-    for(let x=0;x<W;x++){            // vertical
-      let acc=0;
-      for(let y=-r;y<=r;y++) acc+=b[Math.min(W-1,Math.max(0,y))*W+x];
+    return { palette, idx };
+  }
+
+  /* 3x3 majority filter: eats the anti-aliasing crumbs so the enamel
+     cells have clean die-cut borders */
+  function modeFilter(idx, W, passes, K){
+    let src=idx;
+    const counts=new Uint8Array(K+1);
+    for(let p=0;p<passes;p++){
+      const dst=new Uint8Array(W*W);
       for(let y=0;y<W;y++){
-        a[y*W+x]=acc/(2*r+1);
-        const yo=Math.max(0,y-r), yi=Math.min(W-1,y+r+1);
-        acc+=b[yi*W+x]-b[yo*W+x];
+        const ym=Math.max(0,y-1)*W, y0=y*W, yp=Math.min(W-1,y+1)*W;
+        for(let x=0;x<W;x++){
+          counts.fill(0);
+          const xm=Math.max(0,x-1), xp=Math.min(W-1,x+1);
+          for(const row of [ym,y0,yp]){
+            let v=src[row+xm]; counts[v===255?K:v]++;
+            v=src[row+x];  counts[v===255?K:v]++;
+            v=src[row+xp]; counts[v===255?K:v]++;
+          }
+          let bi=0,bc=-1;
+          for(let k=0;k<=K;k++) if(counts[k]>bc){ bc=counts[k]; bi=k; }
+          dst[y0+x]=bi===K?255:bi;
+        }
+      }
+      src=dst;
+    }
+    return src;
+  }
+
+  function boxBlur(src, W, r, passes){
+    let a=Float32Array.from(src), b=new Float32Array(W*W);
+    for(let p=0;p<passes;p++){
+      for(let y=0;y<W;y++){
+        let acc=0;
+        for(let x=-r;x<=r;x++) acc+=a[y*W+Math.min(W-1,Math.max(0,x))];
+        for(let x=0;x<W;x++){
+          b[y*W+x]=acc/(2*r+1);
+          const xo=Math.max(0,x-r), xi=Math.min(W-1,x+r+1);
+          acc+=a[y*W+xi]-a[y*W+xo];
+        }
+      }
+      for(let x=0;x<W;x++){
+        let acc=0;
+        for(let y=-r;y<=r;y++) acc+=b[Math.min(W-1,Math.max(0,y))*W+x];
+        for(let y=0;y<W;y++){
+          a[y*W+x]=acc/(2*r+1);
+          const yo=Math.max(0,y-r), yi=Math.min(W-1,y+r+1);
+          acc+=b[yi*W+x]-b[yo*W+x];
+        }
       }
     }
+    return a;
   }
-  return a;
-}
 
-/* build every texture a pin needs from one glyph */
-function buildPinMaps(emoji, seed){
-  const rng=mulberry32(seed);
-  const c=rasterEmoji(emoji);
-  const g=c.getContext('2d',{willReadFrequently:true});
-  const img=g.getImageData(0,0,TEX,TEX), px=img.data;
+  /* the full press: glyph pixels in, enamel maps out */
+  function press(px, seed, mode){
+    const rng=mulberry32(seed);
+    const N=TEX*TEX;
+    const alpha=new Uint8Array(N);
+    let solid=0;
+    for(let i=0;i<N;i++){ if(px[i*4+3]>140){ alpha[i]=1; solid++; } }
+    if(solid<1600) return null;
 
-  const alpha=new Uint8Array(TEX*TEX);
-  let solid=0;
-  for(let i=0;i<TEX*TEX;i++){ if(px[i*4+3]>140){ alpha[i]=1; solid++; } }
-  if(solid<400) return null;                       // glyph didn't render
+    const dist=distanceOutside(alpha, TEX);
+    const sil=new Uint8Array(N);
+    for(let i=0;i<N;i++) sil[i]=dist[i]<RIM*3 ? 1:0;
 
-  /* pin silhouette = glyph dilated by the rim width */
-  const dist=distanceOutside(alpha, TEX);
-  const sil=new Uint8Array(TEX*TEX);
-  for(let i=0;i<TEX*TEX;i++) sil[i]=dist[i]<RIM*3 ? 1:0;
+    const q=quantize(px, alpha, TEX, 8);
+    const idx=modeFilter(q.idx, TEX, 2, q.palette.length);
 
-  /* enamel cells */
-  const q=quantize(px, alpha, TEX, 8);
-  const idx=modeFilter(q.idx, TEX, 2, q.palette.length);
+    /* two finishes: 'noir' fills every cell with gloss black; 'color'
+       lays the glyph's own flat colours in as enamel, dark neutrals
+       snapped to piano black */
+    const enamel = mode==='color'
+      ? q.palette.map(p=>{
+          const lum=(0.299*p[0]+0.587*p[1]+0.114*p[2])/255;
+          const chroma=(Math.max(p[0],p[1],p[2])-Math.min(p[0],p[1],p[2]))/255;
+          return (lum<0.32&&chroma<0.18) ? BLACK : [p[0],p[1],p[2]];
+        })
+      : q.palette.map(()=>BLACK);
 
-  /* the ink press: the pin is monotone in the animal's own colour. Find
-     the glyph's dominant pigment (most pixels x most chroma), deepen it
-     into an enamel ink, mix a lighter accent of the same hue, and print
-     on an ivory ground. Grayscale animals stay noir. */
-  /* two finishes: 'noir' fills every cell with gloss black so the whole
-     animal reads in raised gold linework; 'color' lays the glyph's own
-     flat vector colours in as enamel, with every dark neutral cell —
-     eyes, stripes, outlines — snapped to true piano black */
-  const enamel=PRESS==='color'
-    ? q.palette.map(p=>{
-        const lum=(0.299*p[0]+0.587*p[1]+0.114*p[2])/255;
-        const chroma=(Math.max(p[0],p[1],p[2])-Math.min(p[0],p[1],p[2]))/255;
-        return (lum<0.32&&chroma<0.18) ? BLACK : [p[0],p[1],p[2]];
-      })
-    : q.palette.map(()=>BLACK);
+    const region=new Uint8Array(N);
+    for(let i=0;i<N;i++)
+      region[i]=!sil[i] ? 255 : (idx[i]===255 ? 254 : idx[i]);
 
-  /* region map: 255 = off-pin, 254 = gold rim, else enamel cell */
-  const region=new Uint8Array(TEX*TEX);
-  for(let i=0;i<TEX*TEX;i++)
-    region[i]=!sil[i] ? 255 : (idx[i]===255 ? 254 : idx[i]);
-
-  /* the walls: every boundary between two regions becomes a gold ridge */
-  const ridge=new Uint8Array(TEX*TEX);
-  for(let y=0;y<TEX-1;y++) for(let x=0;x<TEX-1;x++){
-    const i=y*TEX+x;
-    const a0=region[i], a1=region[i+1], a2=region[i+TEX];
-    if(a0===255&&a1===255&&a2===255) continue;
-    if(a0!==a1||a0!==a2){ ridge[i]=1; }
-  }
-  for(let p=0;p<4;p++){                            // widen to ~9px walls
-    const d2=new Uint8Array(TEX*TEX);
-    for(let y=1;y<TEX-1;y++) for(let x=1;x<TEX-1;x++){
+    const ridge=new Uint8Array(N);
+    for(let y=0;y<TEX-1;y++) for(let x=0;x<TEX-1;x++){
       const i=y*TEX+x;
-      d2[i]=ridge[i]||ridge[i-1]||ridge[i+1]||ridge[i-TEX]||ridge[i+TEX] ? 1:0;
+      const a0=region[i], a1=region[i+1], a2=region[i+TEX];
+      if(a0===255&&a1===255&&a2===255) continue;
+      if(a0!==a1||a0!==a2){ ridge[i]=1; }
     }
-    ridge.set(d2);
-  }
-
-  /* height field: enamel sits low in its cells, walls stand proud */
-  const height=new Float32Array(TEX*TEX);
-  for(let i=0;i<TEX*TEX;i++){
-    if(region[i]===255){ height[i]=0; continue; }
-    height[i]= ridge[i] ? 1.0 : (region[i]===254 ? 0.86 : 0.42);
-  }
-  /* orange-peel: real enamel is poured, not perfect */
-  for(let i=0;i<TEX*TEX;i++) if(region[i]!==255 && !ridge[i] && region[i]!==254) height[i]+=(rng()-0.5)*0.05;
-  const hsm=boxBlur(height, TEX, 4, 2);
-
-  /* ---- front maps ---- */
-  const albedo=makeCanvas(TEX), ag=albedo.getContext('2d');
-  const aimg=ag.createImageData(TEX,TEX), ad=aimg.data;
-  const mrc=makeCanvas(TEX), mg=mrc.getContext('2d');   // R=clearcoat G=rough B=metal
-  const mimg=mg.createImageData(TEX,TEX), md=mimg.data;
-  const nrm=makeCanvas(TEX), ng=nrm.getContext('2d');
-  const nimg=ng.createImageData(TEX,TEX), nd=nimg.data;
-
-  for(let y=0;y<TEX;y++) for(let x=0;x<TEX;x++){
-    const i=y*TEX+x, o=i*4;
-    const gold = ridge[i] || region[i]===254;
-    const off  = region[i]===255;
-    let r,gc,b;
-    if(off || gold){ [r,gc,b]=GOLD_FACE; }
-    else { [r,gc,b]=enamel[region[i]]; }
-    ad[o]=r; ad[o+1]=gc; ad[o+2]=b; ad[o+3]=255;
-
-    const grain=(rng()-0.5);
-    if(off || gold){
-      md[o]=40;                                    // little clearcoat on metal
-      md[o+1]=Math.max(0,Math.min(255, 78+grain*46));  // brushed-ish gold
-      md[o+2]=255;                                 // metal
-    } else {
-      md[o]=255;                                   // glassy clearcoat
-      md[o+1]=26;                                  // wet-gloss enamel
-      md[o+2]=0;                                   // dielectric
+    for(let p=0;p<4;p++){
+      const d2=new Uint8Array(N);
+      for(let y=1;y<TEX-1;y++) for(let x=1;x<TEX-1;x++){
+        const i=y*TEX+x;
+        d2[i]=ridge[i]||ridge[i-1]||ridge[i+1]||ridge[i-TEX]||ridge[i+TEX] ? 1:0;
+      }
+      ridge.set(d2);
     }
-    md[o+3]=255;
 
-    /* normal from height (v points up, canvas y points down) */
-    const xm=Math.max(0,x-1), xp=Math.min(TEX-1,x+1);
-    const ym=Math.max(0,y-1), yp=Math.min(TEX-1,y+1);
-    const s=5.2;
-    const dhx=(hsm[y*TEX+xp]-hsm[y*TEX+xm])*s;
-    const dhy=(hsm[yp*TEX+x]-hsm[ym*TEX+x])*s;
-    const inv=1/Math.hypot(dhx,dhy,1);
-    nd[o]  =Math.round(255*(0.5-0.5*dhx*inv));
-    nd[o+1]=Math.round(255*(0.5+0.5*dhy*inv));
-    nd[o+2]=Math.round(255*(0.5+0.5*inv));
-    nd[o+3]=255;
-  }
-  ag.putImageData(aimg,0,0);
-  mg.putImageData(mimg,0,0);
-  ng.putImageData(nimg,0,0);
+    const height=new Float32Array(N);
+    for(let i=0;i<N;i++){
+      if(region[i]===255){ height[i]=0; continue; }
+      height[i]= ridge[i] ? 1.0 : (region[i]===254 ? 0.86 : 0.42);
+    }
+    for(let i=0;i<N;i++) if(region[i]!==255 && !ridge[i] && region[i]!==254) height[i]+=(rng()-0.5)*0.05;
+    const hsm=boxBlur(height, TEX, 4, 2);
 
-  /* ---- back maps: sand-grained gold with a struck maker's mark ---- */
-  const back=makeCanvas(TEX), bg2=back.getContext('2d');
-  const bimg=bg2.createImageData(TEX,TEX), bd2=bimg.data;
-  const brough=makeCanvas(TEX), rg2=brough.getContext('2d');
-  const rimg=rg2.createImageData(TEX,TEX), rd2=rimg.data;
-  const mott=boxBlur(Float32Array.from({length:TEX*TEX},()=>rng()), TEX, 14, 2);
-  for(let i=0;i<TEX*TEX;i++){
-    const o=i*4;
-    const fine=rng();                              // per-pixel sand
-    const tone=0.90 + (mott[i]-0.5)*0.22 + (fine-0.5)*0.10;
-    bd2[o]  =Math.min(255, GOLD_BACK[0]*tone);
-    bd2[o+1]=Math.min(255, GOLD_BACK[1]*tone);
-    bd2[o+2]=Math.min(255, GOLD_BACK[2]*tone);
-    bd2[o+3]=255;
-    const rr=Math.max(0,Math.min(255, 132 + (fine-0.5)*150 + (mott[i]-0.5)*60));
-    rd2[o]=rr; rd2[o+1]=rr; rd2[o+2]=rr; rd2[o+3]=255;
+    const albedo=new ImageData(TEX,TEX), ad=albedo.data;
+    const mrc=new ImageData(TEX,TEX), md=mrc.data;   /* R=clearcoat G=rough B=metal */
+    const nrm=new ImageData(TEX,TEX), nd=nrm.data;
+
+    for(let y=0;y<TEX;y++) for(let x=0;x<TEX;x++){
+      const i=y*TEX+x, o=i*4;
+      const gold = ridge[i] || region[i]===254;
+      const off  = region[i]===255;
+      let r,gc,b;
+      if(off || gold){ r=GOLD_FACE[0]; gc=GOLD_FACE[1]; b=GOLD_FACE[2]; }
+      else { const e=enamel[region[i]]; r=e[0]; gc=e[1]; b=e[2]; }
+      ad[o]=r; ad[o+1]=gc; ad[o+2]=b; ad[o+3]=255;
+
+      const grain=(rng()-0.5);
+      if(off || gold){
+        md[o]=40;
+        md[o+1]=Math.max(0,Math.min(255, 78+grain*46));
+        md[o+2]=255;
+      } else {
+        md[o]=255;
+        md[o+1]=26;
+        md[o+2]=0;
+      }
+      md[o+3]=255;
+
+      const xm=Math.max(0,x-1), xp=Math.min(TEX-1,x+1);
+      const ym=Math.max(0,y-1), yp=Math.min(TEX-1,y+1);
+      const s=5.2;
+      const dhx=(hsm[y*TEX+xp]-hsm[y*TEX+xm])*s;
+      const dhy=(hsm[yp*TEX+x]-hsm[ym*TEX+x])*s;
+      const inv=1/Math.hypot(dhx,dhy,1);
+      nd[o]  =Math.round(255*(0.5-0.5*dhx*inv));
+      nd[o+1]=Math.round(255*(0.5+0.5*dhy*inv));
+      nd[o+2]=Math.round(255*(0.5+0.5*inv));
+      nd[o+3]=255;
+    }
+
+    /* back: sand-grained gold */
+    const back=new ImageData(TEX,TEX), bd2=back.data;
+    const brough=new ImageData(TEX,TEX), rd2=brough.data;
+    const mott=boxBlur(Float32Array.from({length:N},()=>rng()), TEX, 14, 2);
+    for(let i=0;i<N;i++){
+      const o=i*4;
+      const fine=rng();
+      const tone=0.90 + (mott[i]-0.5)*0.22 + (fine-0.5)*0.10;
+      bd2[o]  =Math.min(255, GOLD_BACK[0]*tone);
+      bd2[o+1]=Math.min(255, GOLD_BACK[1]*tone);
+      bd2[o+2]=Math.min(255, GOLD_BACK[2]*tone);
+      bd2[o+3]=255;
+      const rr=Math.max(0,Math.min(255, 132 + (fine-0.5)*150 + (mott[i]-0.5)*60));
+      rd2[o]=rr; rd2[o+1]=rr; rd2[o+2]=rr; rd2[o+3]=255;
+    }
+
+    return { sil, maps:{albedo, mrc, nrm, back, brough} };
   }
-  bg2.putImageData(bimg,0,0);
-  rg2.putImageData(rimg,0,0);
+
   /* maker's mark, mirrored so it reads correctly from behind */
-  bg2.save();
-  bg2.translate(TEX/2,TEX/2); bg2.scale(-1,1);
-  bg2.font='600 42px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-  bg2.textAlign='center'; bg2.textBaseline='middle';
-  bg2.fillStyle='rgba(96,66,20,0.55)';
-  bg2.fillText('JOHNNIES.LIFE', 0, 2);
-  bg2.fillStyle='rgba(255,232,180,0.5)';
-  bg2.fillText('JOHNNIES.LIFE', 0, 0);
-  bg2.restore();
+  function mark(g){
+    g.save();
+    g.translate(TEX/2,TEX/2); g.scale(-1,1);
+    g.font='600 42px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+    g.textAlign='center'; g.textBaseline='middle';
+    g.fillStyle='rgba(96,66,20,0.55)';
+    g.fillText('JOHNNIES.LIFE', 0, 2);
+    g.fillStyle='rgba(255,232,180,0.5)';
+    g.fillText('JOHNNIES.LIFE', 0, 0);
+    g.restore();
+  }
 
-  return { albedo, mrc, nrm, back, brough, sil };
+  return { press, mark };
+}
+const PRESSKIT=KITCHEN();
+
+/* the worker: the same kitchen on another thread */
+let PRESS_WORKER=null;
+const PRESS_JOBS=new Map();
+let PRESS_SEQ=0;
+try{
+  if(window.Worker && window.OffscreenCanvas){
+    const glue='const {press,mark}=('+KITCHEN.toString()+')();\n'+
+      'onmessage=async(e)=>{\n'+
+      '  const {id,buf,seed,mode}=e.data;\n'+
+      '  try{\n'+
+      '    const r=press(new Uint8ClampedArray(buf), seed, mode);\n'+
+      '    if(!r){ postMessage({id,ok:false}); return; }\n'+
+      '    const out={}, transfer=[];\n'+
+      '    for(const k of ["albedo","mrc","nrm","back","brough"]){\n'+
+      '      const c=new OffscreenCanvas(1024,1024), g=c.getContext("2d");\n'+
+      '      g.putImageData(r.maps[k],0,0);\n'+
+      '      if(k==="back") mark(g);\n'+
+      '      out[k]=await createImageBitmap(c,{imageOrientation:"flipY"});\n'+
+      '      transfer.push(out[k]);\n'+
+      '    }\n'+
+      '    transfer.push(r.sil.buffer);\n'+
+      '    postMessage({id,ok:true,sil:r.sil.buffer,maps:out}, transfer);\n'+
+      '  }catch(err){ postMessage({id,ok:false}); }\n'+
+      '};';
+    PRESS_WORKER=new Worker(URL.createObjectURL(new Blob([glue],{type:'text/javascript'})));
+    PRESS_WORKER.onmessage=e=>{ const j=PRESS_JOBS.get(e.data.id); if(j){ PRESS_JOBS.delete(e.data.id); j(e.data); } };
+  }
+}catch(err){ PRESS_WORKER=null; }
+
+function pressGlyph(img, seed){
+  if(PRESS_WORKER){
+    return new Promise(res=>{
+      const id=++PRESS_SEQ;
+      PRESS_JOBS.set(id,res);
+      PRESS_WORKER.postMessage({id, buf:img.data.buffer, seed, mode:PRESS}, [img.data.buffer]);
+    }).then(d=>d.ok ? { sil:new Uint8Array(d.sil), maps:d.maps, bitmap:true } : null);
+  }
+  const r=PRESSKIT.press(img.data, seed, PRESS);
+  if(!r) return Promise.resolve(null);
+  const maps={};
+  for(const k of ['albedo','mrc','nrm','back','brough']){
+    const c=makeCanvas(TEX), g=c.getContext('2d');
+    g.putImageData(r.maps[k],0,0);
+    if(k==='back') PRESSKIT.mark(g);
+    maps[k]=c;
+  }
+  return Promise.resolve({ sil:r.sil, maps, bitmap:false });
 }
 
 /* ========================= silhouette -> geometry ======================= */
@@ -768,42 +808,57 @@ addEventListener('resize',fit);
 
 /* materials are rebuilt per mint; geometry too */
 let current=null;
-function texture(canvas, srgb){
-  const t=new THREE.CanvasTexture(canvas);
+function texture(src, srgb, bitmap){
+  const t=new THREE.Texture(src);
+  t.needsUpdate=true;
+  if(bitmap) t.flipY=false;      // worker bitmaps arrive pre-flipped
   if(srgb) t.colorSpace=THREE.SRGBColorSpace;
   t.anisotropy=Math.min(8, renderer.capabilities.getMaxAnisotropy());
   return t;
 }
 
-function buildBadge(emoji){
-  const maps=buildPinMaps(emoji, hash32(emoji+'-mint'));
-  if(!maps) return null;
-  const shapes=silhouetteToShapes(maps.sil);
+function nextFrame(){ return new Promise(r=>requestAnimationFrame(r)); }
+
+async function buildBadge(emoji){
+  const c=rasterEmoji(emoji);
+  if(!c) return null;
+  const img=c.getContext('2d').getImageData(0,0,TEX,TEX);
+  const res=await pressGlyph(img, hash32(emoji+'-mint'));
+  if(!res) return null;
+  const shapes=silhouetteToShapes(res.sil);
   if(!shapes.length) return null;
   const geo=buildGeometry(shapes);
 
-  const mrcT=texture(maps.mrc,false);
+  const B=res.bitmap;
+  const mrcT=texture(res.maps.mrc,false,B);
+  const roughT=texture(res.maps.brough,false,B);
   const front=new THREE.MeshPhysicalMaterial({
-    map:texture(maps.albedo,true),
-    normalMap:texture(maps.nrm,false), normalScale:new THREE.Vector2(1,1),
+    map:texture(res.maps.albedo,true,B),
+    normalMap:texture(res.maps.nrm,false,B), normalScale:new THREE.Vector2(1,1),
     roughnessMap:mrcT, roughness:1,
     metalnessMap:mrcT, metalness:1,
     clearcoatMap:mrcT, clearcoat:1, clearcoatRoughness:0.11,
     envMapIntensity:theme.envFront,
   });
   const gold=new THREE.MeshPhysicalMaterial({
-    map:texture(maps.back,true),
+    map:texture(res.maps.back,true,B),
     color:0xffffff, metalness:1,
-    roughnessMap:texture(maps.brough,false), roughness:1,
-    bumpMap:texture(maps.brough,false), bumpScale:0.6,
+    roughnessMap:roughT, roughness:1,
+    bumpMap:roughT, bumpScale:0.6,
     envMapIntensity:theme.envBack,
   });
-
   const side=new THREE.MeshPhysicalMaterial({
     color:0xf0c070, metalness:1, roughness:0.3, envMapIntensity:theme.envSide,
   });
 
-  return new THREE.Mesh(geo,[front,gold,side]);
+  const mesh=new THREE.Mesh(geo,[front,gold,side]);
+  /* upload textures to the GPU one frame at a time, so the swap frame
+     itself never carries the cost */
+  for(const t of [front.map, front.normalMap, mrcT, gold.map, roughT]){
+    renderer.initTexture(t);
+    await nextFrame();
+  }
+  return mesh;
 }
 
 function attach(mesh){
@@ -817,30 +872,44 @@ function attach(mesh){
     pin.remove(old);
     old.geometry.dispose();
     for(const m of old.material){
-      for(const k of ['map','normalMap','roughnessMap','metalnessMap','clearcoatMap','bumpMap']) m[k]&&m[k].dispose();
+      for(const k of ['map','normalMap','roughnessMap','metalnessMap','clearcoatMap','bumpMap']){
+        if(!m[k]) continue;
+        const img=m[k].image;
+        m[k].dispose();
+        if(img&&img.close) img.close();            // free worker bitmaps
+      }
       m.dispose();
     }
   }
 }
 
-function mint(emoji){
-  const mesh=buildBadge(emoji);
-  if(!mesh) return false;
-  attach(mesh);
-  return true;
+/* the next badge is always being struck in the worker; the main thread
+   only ever swaps a finished mesh in */
+let prepared=null, preparingP=null;
+function kickPrepare(){
+  if(prepared) return Promise.resolve();
+  if(preparingP) return preparingP;
+  preparingP=(async()=>{
+    try{
+      let steps=0;
+      while(steps<BADGES.length){
+        const i=order[(cursor+steps)%order.length]; steps++;
+        await loadGlyph(BADGES[i][0]);
+        const mesh=await buildBadge(BADGES[i][0]);
+        if(mesh){ prepared={mesh,i,steps}; return; }
+      }
+    } finally { preparingP=null; }
+  })();
+  return preparingP;
 }
 
-/* the 1024px press takes a beat — strike the next badge ahead of time so
-   a tap swaps instantly */
-let prepared=null;
-function prepareNext(){
-  if(prepared) return;
-  let steps=0;
-  while(steps<BADGES.length){
-    const i=order[(cursor+steps)%order.length]; steps++;
-    const mesh=buildBadge(BADGES[i][0]);
-    if(mesh){ prepared={mesh,i,steps}; return; }
-  }
+function swapToPrepared(){
+  const p=prepared; prepared=null;
+  cursor+=p.steps;
+  attach(p.mesh);
+  plate.classList.add('swap');
+  setTimeout(()=>{ setPlate(p.i); plate.classList.remove('swap'); },200);
+  kickPrepare();
 }
 
 /* ============================ motion + input ============================ */
@@ -865,56 +934,24 @@ function setPlate(i){
   earnedEl.textContent='Earned by '+earnedPct(BADGES[i][0])+'% of collectors';
 }
 
-function mintNext(animate){
-  let mesh=null, badge=-1;
-  if(prepared){
-    mesh=prepared.mesh; badge=prepared.i; cursor+=prepared.steps; prepared=null;
-  } else {
-    let tries=0;
-    while(tries<BADGES.length){
-      const i=order[cursor%order.length]; cursor++; tries++;
-      const m=buildBadge(BADGES[i][0]);
-      if(m){ mesh=m; badge=i; break; }
-    }
-  }
-  if(!mesh) return;
-  attach(mesh);
-  if(animate){
-    plate.classList.add('swap');
-    setTimeout(()=>{ setPlate(badge); plate.classList.remove('swap'); },200);
-  } else setPlate(badge);
-  setTimeout(()=>{ try{ prepareNext(); }catch{} },350);
-}
-
-/* the swap is a spin, never a resize: the pin turns on through its own
-   edge, changes while it is edge-on, and settles with the new face toward
-   the viewer */
-let minting=false;
+/* the swap is a spin, never a pause: a tap accelerates the turn and the
+   badge exchanges faces the next time it passes edge-on — nothing here
+   can block, because the press is already running on the worker */
+let pendingSwap=false;
 function popMint(){
-  if(minting) return;
   taps++;
   if(taps===1) hint.classList.add('gone');
-  if(reduced){ mintNext(true); return; }
-  minting=true;
-  if(!prepared){ try{ prepareNext(); }catch{} }    // press now, before any motion
-  const startY=rotY, FACE=-0.45;
-  let target=startY+Math.PI;
-  const m=((FACE-target)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
-  target+=m<Math.PI ? m : m-2*Math.PI;             // land facing the viewer
-  if(target<startY+Math.PI*0.6) target+=2*Math.PI;
-  const span=target-startY;
-  const D=Math.max(320,Math.min(820,420*span/Math.PI));
-  const t0=performance.now();
-  let swapped=false;
-  const step=()=>{
-    const k=Math.min(1,(performance.now()-t0)/D);
-    const e=k<0.5 ? 4*k*k*k : 1-Math.pow(-2*k+2,3)/2;   // ease-in-out cubic
-    rotY=startY+span*e;
-    if(!swapped&&e>=0.5){ swapped=true; mintNext(true); }
-    if(k<1) requestAnimationFrame(step);
-    else { minting=false; spinVel=BASE_SPIN; }
-  };
-  requestAnimationFrame(step);
+  if(pendingSwap) return;
+  pendingSwap=true;
+  const p=kickPrepare();
+  p.then(()=>{
+    if(reduced){
+      if(prepared) swapToPrepared();
+      pendingSwap=false;
+    } else if(!prepared&&!preparingP){
+      pendingSwap=false;                           // nothing could be struck
+    }
+  });
 }
 
 let pStart=null, pLast=null, moved=0;
@@ -951,12 +988,20 @@ function frame(t){
   raf=requestAnimationFrame(frame);
   const dt=Math.min(0.05,(t-lastT)/1000)||0.016;
   lastT=t;
-  if(!dragging&&!minting){
+  if(!dragging){
     if(!reduced){
-      /* inertia decays home to the display-case spin */
-      spinVel+=(BASE_SPIN-spinVel)*Math.min(1,dt*1.4);
+      /* inertia decays home to the display-case spin; a pending swap
+         holds the turn faster until the exchange happens */
+      const goal=pendingSwap ? 8.0 : BASE_SPIN;
+      spinVel+=(goal-spinVel)*Math.min(1,dt*(pendingSwap?12:1.4));
+      const prev=rotY;
       rotY+=spinVel*dt;
       rotX+=(0.04+Math.sin(t*0.00042)*0.05-rotX)*Math.min(1,dt*2);
+      if(pendingSwap&&prepared&&
+         Math.floor((prev-Math.PI/2)/Math.PI)!==Math.floor((rotY-Math.PI/2)/Math.PI)){
+        swapToPrepared();                          // exchanged while edge-on
+        pendingSwap=false;
+      }
     } else {
       spinVel*=Math.pow(0.06,dt);
       rotY+=spinVel*dt;
@@ -991,11 +1036,14 @@ applyTheme();
   }
   setPlate(i);                                     // the name reads while the pin is struck
   await loadGlyph(BADGES[i][0]);
-  if(mint(BADGES[i][0])) cursor=1;
+  const mesh=await buildBadge(BADGES[i][0]);
+  if(mesh){ attach(mesh); if(i===order[0]) cursor=1; }
   start();
-  Promise.all(BADGES.map(([e])=>loadGlyph(e))).then(()=>{
-    if(!current) mintNext(false);                  // first glyph had failed
-    setTimeout(()=>{ try{ prepareNext(); }catch{} },200);
+  Promise.all(BADGES.map(([e])=>loadGlyph(e))).then(async()=>{
+    if(!current){                                  // first glyph had failed: walk on
+      await kickPrepare();
+      if(prepared) swapToPrepared();
+    } else kickPrepare();
   });
 })();
 </script>
