@@ -721,8 +721,11 @@ renderer.toneMapping=THREE.ACESFilmicToneMapping;
 box.appendChild(renderer.domElement);
 
 const scene=new THREE.Scene();
-const camera=new THREE.PerspectiveCamera(28,1,0.1,50);
-camera.position.set(0,0,5.6);
+/* telephoto, pulled back: near-orthographic product-shot perspective —
+   a wide lens up close reads fish-eyed and pushes tilted pins into the
+   frame edges */
+const camera=new THREE.PerspectiveCamera(14,1,0.1,60);
+camera.position.set(0,0,13);
 
 const pmrem=new THREE.PMREMGenerator(renderer);
 scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
@@ -847,7 +850,6 @@ const posed=params.has('a');                       // ?a=<deg>: hold a fixed ang
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches || posed;
 const BASE_SPIN=(2*Math.PI)/6.5;
 let rotY=posed?(+params.get('a')||0)*Math.PI/180:-0.55, rotX=0.04, spinVel=0, dragging=false, lastT=0, idleAt=0;
-let scaleAnim={ v:1 };
 
 const nameEl=document.getElementById('name');
 const earnedEl=document.getElementById('earned');
@@ -884,6 +886,9 @@ function mintNext(animate){
   setTimeout(()=>{ try{ prepareNext(); }catch{} },350);
 }
 
+/* the swap is a spin, never a resize: the pin turns on through its own
+   edge, changes while it is edge-on, and settles with the new face toward
+   the viewer */
 let minting=false;
 function popMint(){
   if(minting) return;
@@ -892,27 +897,24 @@ function popMint(){
   if(reduced){ mintNext(true); return; }
   minting=true;
   if(!prepared){ try{ prepareNext(); }catch{} }    // press now, before any motion
+  const startY=rotY, FACE=-0.45;
+  let target=startY+Math.PI;
+  const m=((FACE-target)%(2*Math.PI)+2*Math.PI)%(2*Math.PI);
+  target+=m<Math.PI ? m : m-2*Math.PI;             // land facing the viewer
+  if(target<startY+Math.PI*0.6) target+=2*Math.PI;
+  const span=target-startY;
+  const D=Math.max(320,Math.min(820,420*span/Math.PI));
   const t0=performance.now();
-  const shrink=()=>{
-    const k=Math.min(1,(performance.now()-t0)/140);
-    scaleAnim.v=1-0.24*k*k;
-    if(k<1) requestAnimationFrame(shrink);
-    else {
-      mintNext(true);
-      spinVel+=1.6;                                // the new one arrives with a nudge
-      const t1=performance.now();
-      const grow=()=>{
-        const k2=Math.min(1,(performance.now()-t1)/420);
-        const u=k2-1;
-        const back=1+2.70158*u*u*u+1.70158*u*u;    // ease-out-back: settles with a soft overshoot
-        scaleAnim.v=0.76+0.24*back;
-        if(k2<1) requestAnimationFrame(grow);
-        else { scaleAnim.v=1; minting=false; }
-      };
-      requestAnimationFrame(grow);
-    }
+  let swapped=false;
+  const step=()=>{
+    const k=Math.min(1,(performance.now()-t0)/D);
+    const e=k<0.5 ? 4*k*k*k : 1-Math.pow(-2*k+2,3)/2;   // ease-in-out cubic
+    rotY=startY+span*e;
+    if(!swapped&&e>=0.5){ swapped=true; mintNext(true); }
+    if(k<1) requestAnimationFrame(step);
+    else { minting=false; spinVel=BASE_SPIN; }
   };
-  requestAnimationFrame(shrink);
+  requestAnimationFrame(step);
 }
 
 let pStart=null, pLast=null, moved=0;
@@ -949,7 +951,7 @@ function frame(t){
   raf=requestAnimationFrame(frame);
   const dt=Math.min(0.05,(t-lastT)/1000)||0.016;
   lastT=t;
-  if(!dragging){
+  if(!dragging&&!minting){
     if(!reduced){
       /* inertia decays home to the display-case spin */
       spinVel+=(BASE_SPIN-spinVel)*Math.min(1,dt*1.4);
@@ -961,8 +963,6 @@ function frame(t){
     }
   }
   pin.rotation.set(rotX,rotY,0);
-  const s=1.0*scaleAnim.v;
-  pin.scale.set(s,s,s);
   renderer.render(scene,camera);
 }
 function start(){
@@ -983,7 +983,12 @@ applyTheme();
 /* strike the first badge as soon as ITS glyph is ready; the rest of the
    roster loads behind it */
 (async()=>{
-  const i=order[0];
+  let i=order[0];
+  const forced=params.get('b');                    // ?b=1f98b pins the first strike
+  if(forced){
+    const fi=BADGES.findIndex(([e])=>[...e].map(c=>c.codePointAt(0).toString(16)).join('-')===forced);
+    if(fi>=0) i=fi;
+  }
   setPlate(i);                                     // the name reads while the pin is struck
   await loadGlyph(BADGES[i][0]);
   if(mint(BADGES[i][0])) cursor=1;
