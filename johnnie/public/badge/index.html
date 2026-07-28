@@ -356,6 +356,25 @@ function KITCHEN(){
     const sil=new Uint8Array(N);
     for(let i=0;i<N;i++) sil[i]=dist[i]<RIM*3 ? 1:0;
 
+    /* a pin has no windows: any pocket the silhouette encloses gets
+       filled, and prints as solid gold on both faces */
+    {
+      const seen=new Uint8Array(N), st=[];
+      for(let x=0;x<TEX;x++){ st.push(x, (TEX-1)*TEX+x); }
+      for(let y=0;y<TEX;y++){ st.push(y*TEX, y*TEX+TEX-1); }
+      while(st.length){
+        const j=st.pop();
+        if(sil[j]||seen[j]) continue;
+        seen[j]=1;
+        const x=j%TEX, y=(j/TEX)|0;
+        if(x>0) st.push(j-1);
+        if(x<TEX-1) st.push(j+1);
+        if(y>0) st.push(j-TEX);
+        if(y<TEX-1) st.push(j+TEX);
+      }
+      for(let i=0;i<N;i++) if(!sil[i]&&!seen[i]) sil[i]=1;
+    }
+
     const q=quantize(px, alpha, TEX, 10);
     const idx=modeFilter(q.idx, TEX, 2, q.palette.length);
 
@@ -492,22 +511,22 @@ function KITCHEN(){
     for(let i=0;i<N;i++){
       const o=i*4;
       const t=td[o+3]/255;
-      const tone=(0.90+(mott[i]-0.5)*0.22+(fine[i]-0.5)*0.10)*(1-0.15*t);
+      const tone=(0.90+(mott[i]-0.5)*0.22+(fine[i]-0.5)*0.10)*(1-0.08*t);
       bd[o]  =Math.min(255, GOLD_BACK[0]*tone);
       bd[o+1]=Math.min(255, GOLD_BACK[1]*tone);
       bd[o+2]=Math.min(255, GOLD_BACK[2]*tone);
       bd[o+3]=255;
-      const rr=Math.max(0,Math.min(255, 132+(fine[i]-0.5)*150+(mott[i]-0.5)*60-t*70));
+      const rr=Math.max(0,Math.min(255, 132+(fine[i]-0.5)*150+(mott[i]-0.5)*60-t*40));
       rd[o]=rr; rd[o+1]=rr; rd[o+2]=rr; rd[o+3]=255;
-      h[i]=(mott[i]-0.5)*0.10+(fine[i]-0.5)*0.05 - t*1.0;
+      h[i]=(mott[i]-0.5)*0.10+(fine[i]-0.5)*0.05 - t*0.55;
     }
-    const hs=boxBlur(h, TEX, 1, 1);
+    const hs=boxBlur(h, TEX, 2, 1);
     const bnrm=new ImageData(TEX,TEX), nd=bnrm.data;
     for(let y=0;y<TEX;y++) for(let x=0;x<TEX;x++){
       const i=y*TEX+x, o=i*4;
       const xm=Math.max(0,x-1), xp=Math.min(TEX-1,x+1);
       const ym=Math.max(0,y-1), yp=Math.min(TEX-1,y+1);
-      const s=7.0;
+      const s=4.5;
       const dhx=(hs[y*TEX+xp]-hs[y*TEX+xm])*s;
       const dhy=(hs[yp*TEX+x]-hs[ym*TEX+x])*s;
       const inv=1/Math.hypot(dhx,dhy,1);
@@ -855,12 +874,17 @@ scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
 const key=new THREE.DirectionalLight(0xffffff,1.6); key.position.set(2.6,4,3.2); scene.add(key);
 const rim=new THREE.DirectionalLight(0xffe2b0,0.9); rim.position.set(-3,-1.5,-2.5); scene.add(rim);
 const edge=new THREE.DirectionalLight(0xbcd2ff,0); edge.position.set(-1.5,3,-3.5); scene.add(edge);
+/* the case light: a soft beam from above, the way a counter spots a jewel */
+const beam=new THREE.SpotLight(0xfff2df, 0, 0, 0.42, 1, 0);
+beam.position.set(0.5, 7, 2.4);
+beam.target.position.set(0,-0.4,0);
+scene.add(beam); scene.add(beam.target);
 
 /* two lighting setups: daylight vitrine on white, jewellery case on black —
    the room reflections dim and the point lights carry the sparkle */
 const THEMES={
-  light:{ exposure:1.12, envFront:1.25, envBack:1.05, envSide:1.10, key:1.6, rim:0.9, edge:0 },
-  dark: { exposure:1.04, envFront:0.55, envBack:0.42, envSide:0.50, key:2.4, rim:1.7, edge:1.1 },
+  light:{ exposure:1.12, envFront:1.25, envBack:1.05, envSide:1.10, key:1.3, rim:0.9, edge:0,   beam:1.1 },
+  dark: { exposure:1.04, envFront:0.55, envBack:0.42, envSide:0.50, key:1.5, rim:1.2, edge:0.9, beam:3.0 },
 };
 const darkMq=matchMedia('(prefers-color-scheme: dark)');
 let theme=darkMq.matches?THEMES.dark:THEMES.light;
@@ -868,6 +892,7 @@ function applyTheme(){
   theme=darkMq.matches?THEMES.dark:THEMES.light;
   renderer.toneMappingExposure=theme.exposure;
   key.intensity=theme.key; rim.intensity=theme.rim; edge.intensity=theme.edge;
+  beam.intensity=theme.beam;
   if(current){
     const [f,g,s]=current.material;
     f.envMapIntensity=theme.envFront;
