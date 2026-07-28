@@ -592,9 +592,9 @@ function drawBackText(g, label, num, anchor, sil){
   const TEX=1024;
   const F='-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   const name=String(label).toUpperCase();
-  const maxW=anchor.r*1.9, maxH=anchor.r*1.5;
+  const maxW=anchor.r*1.65, maxH=anchor.r*1.35;
   const fitSize=(txt)=>{
-    let s=118;
+    let s=84;
     g.font='800 '+s+'px '+F;
     while(s>24 && g.measureText(txt).width>maxW){ s-=4; g.font='800 '+s+'px '+F; }
     return s;
