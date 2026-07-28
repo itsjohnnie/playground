@@ -820,14 +820,20 @@ function texture(src, srgb, bitmap){
 function nextFrame(){ return new Promise(r=>requestAnimationFrame(r)); }
 
 async function buildBadge(emoji){
+  /* the few main-thread steps each take their own frame, so background
+     preparation never costs the case a beat */
   const c=rasterEmoji(emoji);
   if(!c) return null;
+  await nextFrame();
   const img=c.getContext('2d').getImageData(0,0,TEX,TEX);
   const res=await pressGlyph(img, hash32(emoji+'-mint'));
   if(!res) return null;
+  await nextFrame();
   const shapes=silhouetteToShapes(res.sil);
   if(!shapes.length) return null;
+  await nextFrame();
   const geo=buildGeometry(shapes);
+  await nextFrame();
 
   const B=res.bitmap;
   const mrcT=texture(res.maps.mrc,false,B);
@@ -943,6 +949,7 @@ function popMint(){
   if(taps===1) hint.classList.add('gone');
   if(pendingSwap) return;
   pendingSwap=true;
+  if(!reduced) spinVel=Math.max(spinVel,3.2);      // the spin answers on the next frame
   const p=kickPrepare();
   p.then(()=>{
     if(reduced){
