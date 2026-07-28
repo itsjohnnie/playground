@@ -5,16 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>badge</title>
 <meta name="description" content="A hyper-real enamel pin, minted from an emoji. Tap the badge for a new one.">
-<meta name="theme-color" content="#f4f3f1">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/images/favicon.png">
 <meta property="og:title" content="badge">
 <meta property="og:description" content="A hyper-real enamel pin, minted from an emoji. Tap the badge for a new one.">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+    --bg:#ffffff;
+    --ink:#111;
+    --sub:#8f8b85;
+    --chip-bg:#efedea;
+    --chip-ink:#6f6b64;
+    --hint:#b9b5ae;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#000000;
+      --ink:#f2f0ec;
+      --sub:#8d8a84;
+      --chip-bg:#1a1a1a;
+      --chip-ink:#a39e96;
+      --hint:#57544f;
+    }
+  }
   html, body { height:100%; }
   body {
-    background:#f4f3f1;
-    color:#111;
+    background:var(--bg);
+    color:var(--ink);
     font-family:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
     -webkit-font-smoothing:antialiased;
     overflow:hidden;
@@ -24,7 +43,7 @@
 
   .crumb {
     position:fixed; top:calc(env(safe-area-inset-top, 0px) + 18px); left:20px;
-    font-size:14px; font-weight:500; color:#111;
+    font-size:14px; font-weight:500; color:var(--ink);
     display:flex; align-items:center; gap:8px; z-index:3;
     opacity:0; animation:fadein .6s ease .15s forwards;
   }
@@ -52,6 +71,10 @@
     filter:blur(6px);
     pointer-events:none;
   }
+  @media (prefers-color-scheme: dark) {
+    /* on black there is no shadow to cast — the pin pools a little light instead */
+    .shadow { background:radial-gradient(ellipse at center, rgba(255,196,110,.14), rgba(255,196,110,0) 68%); }
+  }
 
   .plate { margin-top:clamp(10px, 3vh, 28px); text-align:center; padding:0 24px; }
   .plate .name {
@@ -59,13 +82,13 @@
     transition:opacity .28s ease, filter .28s ease, transform .28s ease;
   }
   .plate .earned {
-    margin-top:7px; font-size:13px; color:#8f8b85; font-weight:450;
+    margin-top:7px; font-size:13px; color:var(--sub); font-weight:450;
     transition:opacity .28s ease .04s, filter .28s ease .04s;
   }
   .plate .chip {
     display:inline-block; margin-top:16px;
     font-size:11px; font-weight:600; letter-spacing:.08em;
-    color:#6f6b64; background:#e9e7e3;
+    color:var(--chip-ink); background:var(--chip-bg);
     padding:6px 11px 5px; border-radius:6px;
   }
   .plate.swap .name, .plate.swap .earned { opacity:0; filter:blur(6px); }
@@ -74,7 +97,7 @@
 
   .hint {
     position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 20px); left:0; right:0;
-    text-align:center; font-size:12px; color:#b4b0a9;
+    text-align:center; font-size:12px; color:var(--hint);
     opacity:0; animation:fadein .8s ease 1.6s forwards;
     transition:opacity .5s ease;
     pointer-events:none;
@@ -638,7 +661,6 @@ const box=document.getElementById('pinbox');
 const renderer=new THREE.WebGLRenderer({ antialias:true, alpha:true });
 renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure=1.12;
 box.appendChild(renderer.domElement);
 
 const scene=new THREE.Scene();
@@ -650,6 +672,28 @@ scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
 
 const key=new THREE.DirectionalLight(0xffffff,1.6); key.position.set(2.6,4,3.2); scene.add(key);
 const rim=new THREE.DirectionalLight(0xffe2b0,0.9); rim.position.set(-3,-1.5,-2.5); scene.add(rim);
+const edge=new THREE.DirectionalLight(0xbcd2ff,0); edge.position.set(-1.5,3,-3.5); scene.add(edge);
+
+/* two lighting setups: daylight vitrine on white, jewellery case on black —
+   the room reflections dim and the point lights carry the sparkle */
+const THEMES={
+  light:{ exposure:1.12, envFront:1.25, envBack:1.05, envSide:1.10, key:1.6, rim:0.9, edge:0 },
+  dark: { exposure:1.04, envFront:0.55, envBack:0.42, envSide:0.50, key:2.4, rim:1.7, edge:1.1 },
+};
+const darkMq=matchMedia('(prefers-color-scheme: dark)');
+let theme=darkMq.matches?THEMES.dark:THEMES.light;
+function applyTheme(){
+  theme=darkMq.matches?THEMES.dark:THEMES.light;
+  renderer.toneMappingExposure=theme.exposure;
+  key.intensity=theme.key; rim.intensity=theme.rim; edge.intensity=theme.edge;
+  if(current){
+    const [f,g,s]=current.material;
+    f.envMapIntensity=theme.envFront;
+    g.envMapIntensity=theme.envBack;
+    s.envMapIntensity=theme.envSide;
+  }
+}
+darkMq.addEventListener('change',applyTheme);
 
 const pin=new THREE.Group();
 scene.add(pin);
@@ -685,18 +729,18 @@ function mint(emoji){
     roughnessMap:mrcT, roughness:1,
     metalnessMap:mrcT, metalness:1,
     clearcoatMap:mrcT, clearcoat:1, clearcoatRoughness:0.22,
-    envMapIntensity:1.25,
+    envMapIntensity:theme.envFront,
   });
   const gold=new THREE.MeshPhysicalMaterial({
     map:texture(maps.back,true),
     color:0xffffff, metalness:1,
     roughnessMap:texture(maps.brough,false), roughness:1,
     bumpMap:texture(maps.brough,false), bumpScale:0.6,
-    envMapIntensity:1.05,
+    envMapIntensity:theme.envBack,
   });
 
   const side=new THREE.MeshPhysicalMaterial({
-    color:0xf0c070, metalness:1, roughness:0.3, envMapIntensity:1.1,
+    color:0xf0c070, metalness:1, roughness:0.3, envMapIntensity:theme.envSide,
   });
 
   const mesh=new THREE.Mesh(geo,[front,gold,side]);
@@ -847,6 +891,8 @@ document.addEventListener('visibilitychange',()=>{
   if(document.hidden){ cancelAnimationFrame(raf); raf=0; }
   else if(!raf&&current){ lastT=performance.now(); raf=requestAnimationFrame(frame); }
 });
+
+applyTheme();
 
 /* first mint may race the emoji font on cold caches: retry a few frames */
 let bootTries=0;
