@@ -60,6 +60,29 @@ jobs:
           npm ci
           npm run build
 
+      # The playground: the terminal-view index at the repo root plus every
+      # experiment, restored at johnnies.life/playground/ (it dropped off the
+      # domain when it moved onto this Worker). Mirrors the GitHub Pages
+      # staging list in deploy.yml, so deep links match the Pages site.
+      - name: Build truco
+        working-directory: truco
+        run: |
+          npm ci
+          npm run build
+
+      - name: Stage playground
+        run: |
+          mkdir -p johnnie/out/playground/truco
+          cp index.html styles.css script.js johnnie/out/playground/
+          cp -r truco/dist/. johnnie/out/playground/truco/
+          for d in ascii cc dithered dots dott flyy generative-ui haiku jitter \
+                   liquid liquid-glass-icon mask orb os poetry pretext sizzle \
+                   toaster tyme waves; do
+            if [ -d "$d" ]; then
+              cp -r "$d" "johnnie/out/playground/$d"
+            fi
+          done
+
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
