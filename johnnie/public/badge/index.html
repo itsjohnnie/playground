@@ -168,7 +168,7 @@ function earnedPct(emoji){ const h=hash32(emoji+'-earned'); return ((h%97)/10+0.
    along every cell boundary, a gold rim, and a sand-grained gold back. */
 
 const TEX = 512;              // texture resolution
-const RIM = 16;               // gold rim width around the glyph, px
+const RIM = 10;               // gold rim width around the glyph, px
 const GRID = 2;               // contour grid stride (512 -> 256 cells)
 
 const GOLD_FACE = [255, 199, 116];   // polished gold albedo (sRGB)
@@ -675,10 +675,10 @@ function silhouetteToShapes(sil){
 
 function buildGeometry(shapes){
   const geo=new THREE.ExtrudeGeometry(shapes, {
-    depth:0.07, steps:1,
-    bevelEnabled:true, bevelThickness:0.028, bevelSize:0.022, bevelSegments:5,
+    depth:0.055, steps:1,
+    bevelEnabled:true, bevelThickness:0.022, bevelSize:0.017, bevelSegments:5,
   });
-  geo.translate(0,0,-0.07/2);
+  geo.translate(0,0,-0.055/2);
 
   /* uv = texture space, projected through the front face */
   const pos=geo.attributes.position;
