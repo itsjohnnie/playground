@@ -278,7 +278,7 @@ function KITCHEN(){
     });
     const merged=[];
     for(const p of palette){
-      const twin=merged.find(q=>Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2])<44);
+      const twin=merged.find(q=>Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2])<30);
       if(!twin) merged.push(p);
     }
     palette=merged;
@@ -361,7 +361,7 @@ function KITCHEN(){
     const sil=new Uint8Array(N);
     for(let i=0;i<N;i++) sil[i]=dist[i]<RIM*3 ? 1:0;
 
-    const q=quantize(px, alpha, TEX, 8);
+    const q=quantize(px, alpha, TEX, 10);
     const idx=modeFilter(q.idx, TEX, 2, q.palette.length);
 
     /* two finishes: 'noir' fills every cell with gloss black; 'color'
@@ -379,28 +379,52 @@ function KITCHEN(){
     for(let i=0;i<N;i++)
       region[i]=!sil[i] ? 255 : (idx[i]===255 ? 254 : idx[i]);
 
-    const ridge=new Uint8Array(N);
+    /* the linework: every cell boundary grows a wall of constant width —
+       distance-field, so lines come out round and even instead of blocky —
+       and any cell too thin to hold enamel (the glyph's painted strokes:
+       whiskers, face lines) becomes solid raised metal. The drawing then
+       carries one consistent line weight; only real blobs stay enamel. */
+    const edge=new Uint8Array(N);
     for(let y=0;y<TEX-1;y++) for(let x=0;x<TEX-1;x++){
       const i=y*TEX+x;
       const a0=region[i], a1=region[i+1], a2=region[i+TEX];
       if(a0===255&&a1===255&&a2===255) continue;
-      if(a0!==a1||a0!==a2){ ridge[i]=1; }
+      if(a0!==a1||a0!==a2) edge[i]=1;
     }
-    for(let p=0;p<4;p++){
-      const d2=new Uint8Array(N);
-      for(let y=1;y<TEX-1;y++) for(let x=1;x<TEX-1;x++){
-        const i=y*TEX+x;
-        d2[i]=ridge[i]||ridge[i-1]||ridge[i+1]||ridge[i-TEX]||ridge[i+TEX] ? 1:0;
+    const dE=distanceOutside(edge, TEX);
+
+    const comp=new Int32Array(N).fill(-1);
+    const compMax=[];
+    const st=[];
+    for(let i=0;i<N;i++){
+      if(region[i]>=254||comp[i]>=0) continue;
+      const id=compMax.length; let mx=0;
+      st.push(i); comp[i]=id;
+      while(st.length){
+        const j=st.pop();
+        if(dE[j]>mx) mx=dE[j];
+        const x=j%TEX, y=(j/TEX)|0, r=region[j];
+        if(x>0&&comp[j-1]<0&&region[j-1]===r){ comp[j-1]=id; st.push(j-1); }
+        if(x<TEX-1&&comp[j+1]<0&&region[j+1]===r){ comp[j+1]=id; st.push(j+1); }
+        if(y>0&&comp[j-TEX]<0&&region[j-TEX]===r){ comp[j-TEX]=id; st.push(j-TEX); }
+        if(y<TEX-1&&comp[j+TEX]<0&&region[j+TEX]===r){ comp[j+TEX]=id; st.push(j+TEX); }
       }
-      ridge.set(d2);
+      compMax.push(mx);
+    }
+    const WALL=16.5, THIN=27;      // chamfer px*3: ~5.5px half-width lines; <9px-inradius cells go metal
+    const goldM=new Uint8Array(N);
+    for(let i=0;i<N;i++){
+      if(region[i]===255) continue;
+      if(region[i]===254){ goldM[i]=1; continue; }
+      if(dE[i]<WALL || compMax[comp[i]]<THIN) goldM[i]=1;
     }
 
     const height=new Float32Array(N);
     for(let i=0;i<N;i++){
       if(region[i]===255){ height[i]=0; continue; }
-      height[i]= ridge[i] ? 1.0 : (region[i]===254 ? 0.86 : 0.42);
+      height[i]= region[i]===254 ? 0.86 : (goldM[i] ? 1.0 : 0.42);
     }
-    for(let i=0;i<N;i++) if(region[i]!==255 && !ridge[i] && region[i]!==254) height[i]+=(rng()-0.5)*0.05;
+    for(let i=0;i<N;i++) if(region[i]<254 && !goldM[i]) height[i]+=(rng()-0.5)*0.05;
     const hsm=boxBlur(height, TEX, 4, 2);
 
     const albedo=new ImageData(TEX,TEX), ad=albedo.data;
@@ -409,7 +433,7 @@ function KITCHEN(){
 
     for(let y=0;y<TEX;y++) for(let x=0;x<TEX;x++){
       const i=y*TEX+x, o=i*4;
-      const gold = ridge[i] || region[i]===254;
+      const gold = goldM[i]===1;
       const off  = region[i]===255;
       let r,gc,b;
       if(off || gold){ r=GOLD_FACE[0]; gc=GOLD_FACE[1]; b=GOLD_FACE[2]; }
