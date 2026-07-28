@@ -568,12 +568,8 @@ const PRESSKIT=KITCHEN();
 
 /* the reverse text, mirrored so it reads correctly from behind. Pure
    function: it is stringified into the worker alongside the kitchen. */
-function drawBackText(g, label, num, anchor){
+function drawBackText(g, label, num, anchor, sil){
   const TEX=1024;
-  g.save();
-  g.translate(TEX/2,TEX/2); g.scale(-1,1);
-  const ox=TEX/2-anchor.x, oy=anchor.y-TEX/2;     // the anchor, mirrored
-  g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
   const F='-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   const name=String(label).toUpperCase();
   const maxW=anchor.r*1.9, maxH=anchor.r*1.5;
@@ -614,13 +610,37 @@ function drawBackText(g, label, num, anchor){
     const two=layout(options[1]);
     if(two.s>pick.s*1.22) pick=two;              // two lines must earn their room
   }
-  let y=oy-pick.plan.h/2;
-  for(const [txt,w,size,gap] of pick.plan.lines){
-    g.font=w+' '+size+'px '+F;
-    g.fillText(txt, ox, y+size/2);
-    y+=size+gap;
+  const render=(k)=>{
+    g.clearRect(0,0,TEX,TEX);
+    g.save();
+    g.translate(TEX/2,TEX/2); g.scale(-1,1);
+    g.fillStyle='#fff'; g.textAlign='center'; g.textBaseline='middle';
+    const ox=TEX/2-anchor.x, oy=anchor.y-TEX/2;
+    let y=oy-(pick.plan.h*k)/2;
+    for(const [txt,w,size,gap] of pick.plan.lines){
+      g.font=w+' '+Math.max(20,Math.round(size*k))+'px '+F;
+      g.fillText(txt, ox, y+(size*k)/2);
+      y+=(size+gap)*k;
+    }
+    g.restore();
+  };
+  /* the die never strikes off the metal: draw, check every struck pixel
+     against the silhouette with a margin, shrink until clean */
+  let k=1;
+  for(let it=0;it<7;it++){
+    render(k);
+    if(!sil) return;
+    const td=g.getImageData(0,0,TEX,TEX).data;
+    const M=12;
+    let out=false;
+    for(let y=M;y<TEX-M&&!out;y+=3) for(let x=M;x<TEX-M;x+=3){
+      const i=y*TEX+x;
+      if(td[i*4+3]>40 &&
+         (!sil[i]||!sil[i-M]||!sil[i+M]||!sil[i-M*TEX]||!sil[i+M*TEX])){ out=true; break; }
+    }
+    if(!out) return;
+    k*=0.9;
   }
-  g.restore();
 }
 
 /* the worker: the same kitchen on another thread */
@@ -637,7 +657,7 @@ try{
       '    const r=press(new Uint8ClampedArray(buf), seed, mode);\n'+
       '    if(!r){ postMessage({id,ok:false}); return; }\n'+
       '    const tc=new OffscreenCanvas(1024,1024), tg=tc.getContext("2d");\n'+
-      '    drawBackText(tg, label, num, r.anchor);\n'+
+      '    drawBackText(tg, label, num, r.anchor, r.sil);\n'+
       '    const bk=finishBack(tg.getImageData(0,0,1024,1024), seed^0x9e3779b9);\n'+
       '    const all={albedo:r.maps.albedo, mrc:r.maps.mrc, nrm:r.maps.nrm, back:bk.back, brough:bk.brough, bnrm:bk.bnrm};\n'+
       '    const out={}, transfer=[];\n'+
@@ -667,7 +687,7 @@ function pressGlyph(img, seed, label, num){
   const r=PRESSKIT.press(img.data, seed, PRESS);
   if(!r) return Promise.resolve(null);
   const tc=makeCanvas(TEX), tg=tc.getContext('2d');
-  drawBackText(tg, label, num, r.anchor);
+  drawBackText(tg, label, num, r.anchor, r.sil);
   const bk=PRESSKIT.finishBack(tg.getImageData(0,0,TEX,TEX), seed^0x9e3779b9);
   const all={albedo:r.maps.albedo, mrc:r.maps.mrc, nrm:r.maps.nrm, back:bk.back, brough:bk.brough, bnrm:bk.bnrm};
   const maps={};
