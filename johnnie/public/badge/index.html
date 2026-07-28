@@ -890,10 +890,10 @@ function silhouetteToShapes(sil){
 
 function buildGeometry(shapes){
   const geo=new THREE.ExtrudeGeometry(shapes, {
-    depth:0.055, steps:1,
-    bevelEnabled:true, bevelThickness:0.022, bevelSize:0.017, bevelSegments:5,
+    depth:0.072, steps:1,
+    bevelEnabled:true, bevelThickness:0.026, bevelSize:0.019, bevelSegments:5,
   });
-  geo.translate(0,0,-0.055/2);
+  geo.translate(0,0,-0.072/2);
 
   /* uv = texture space, projected through the front face */
   const pos=geo.attributes.position;
@@ -1113,7 +1113,7 @@ async function buildBadge(bi){
   const capGeo=buildCap(res.sil, res.height);
   if(capGeo){
     const [ccx,ccy]=geo.userData.center;
-    capGeo.translate(-ccx,-ccy, 0.055/2);
+    capGeo.translate(-ccx,-ccy, 0.072/2);
     mesh.add(new THREE.Mesh(capGeo, front));
   }
   /* upload textures to the GPU one frame at a time, so the swap frame
