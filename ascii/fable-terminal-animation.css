@@ -546,6 +546,85 @@ canvas.ascii {
     width: 100%;
 }
 
+/* interactive canvases: horizontal gestures belong to the demo,
+   vertical swipes keep scrolling the page */
+#d-blackhole, #d-torus, #d-ripple, #d-life {
+    touch-action: pan-y;
+}
+
+#d-blackhole, #d-torus { cursor: grab; }
+#d-blackhole.dragging, #d-torus.dragging { cursor: grabbing; }
+#d-ripple, #d-life { cursor: crosshair; }
+
+/* === INTERACTIVE CONTROLS === */
+.demo-input-row {
+    display: flex;
+    align-items: center;
+    gap: var(--s-2);
+    margin-top: var(--s-3);
+    padding-top: var(--s-3);
+    border-top: 1px solid var(--line-soft);
+}
+
+.demo-prompt {
+    font-family: var(--font-mono);
+    color: var(--amber);
+    font-size: 0.9375rem;
+}
+
+.demo-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    letter-spacing: 0.12em;
+    color: var(--ink-bright);
+    caret-color: var(--amber);
+    padding: var(--s-1) 0;
+}
+
+.demo-input::placeholder { color: var(--ink-faint); }
+
+.term-button {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    color: var(--amber);
+    background: transparent;
+    border: 1px solid var(--amber-dim);
+    border-radius: 4px;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color var(--fast) var(--ease), background var(--fast) var(--ease);
+}
+
+.term-button:hover {
+    border-color: var(--amber);
+    background: rgba(245, 165, 66, 0.08);
+}
+
+.duo-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-4);
+    margin: var(--s-4) 0;
+}
+
+.duo-item h4 { margin-bottom: var(--s-2); }
+
+.duo-note {
+    font-size: 1rem;
+    color: var(--ink-soft);
+}
+
+@media (min-width: 720px) {
+    .duo-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* === CODE BLOCKS === */
 .code-block {
     background: var(--bg-code);

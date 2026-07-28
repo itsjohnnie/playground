@@ -33,6 +33,7 @@
             <li><a href="#light"      class="nav-link">light</a></li>
             <li><a href="#resolution" class="nav-link">resolution</a></li>
             <li><a href="#chaos"      class="nav-link">chaos</a></li>
+            <li><a href="#touch"      class="nav-link">hands on</a></li>
             <li><a href="#patterns"   class="nav-link">small rituals</a></li>
             <li><a href="#craft"      class="nav-link">craft</a></li>
         </ul>
@@ -56,13 +57,13 @@
                     <div class="terminal-header">
                         <span class="term-dot"></span>
                         <span class="terminal-title">~/gargantua · 3,904 geodesics · live</span>
-                        <span class="term-status" id="hero-hud">● rendering</span>
+                        <span class="term-status" id="hero-hud">● drag to orbit</span>
                     </div>
                     <div class="terminal-body">
                         <canvas class="ascii" id="d-blackhole" aria-label="Live ASCII rendering of a black hole with a glowing accretion disk bent by gravitational lensing"></canvas>
                     </div>
                 </div>
-                <p class="hero-caption">A Schwarzschild black hole. Each cell fires a photon backwards through curved spacetime; where it lands on the accretion disk decides the character. The arcs above and below the shadow are the far side of the disk, lensed over the top.</p>
+                <p class="hero-caption">A Schwarzschild black hole. Each cell fires a photon backwards through curved spacetime; where it lands on the accretion disk decides the character. The arcs above and below the shadow are the far side of the disk, lensed over the top. <strong>Drag the window to orbit the camera</strong>: every geodesic is re-traced live as you move.</p>
             </div>
             <div class="scroll-indicator" aria-label="Scroll down"></div>
         </section>
@@ -202,7 +203,7 @@ brightness = heat * turb * beam</code></div>
                     <article class="technique">
                         <div class="technique-text">
                             <h3>The torus, paid in full</h3>
-                            <p>The most famous piece of terminal animation ever written is a donut. This one honors it properly: a parametric torus, spun through two rotation matrices, z-buffered, and lit with a Lambert term against a moving light, so the shading rolls across the surface as it tumbles.</p>
+                            <p>The most famous piece of terminal animation ever written is a donut. This one honors it properly: a parametric torus, spun through two rotation matrices, z-buffered, and lit with a Lambert term against a moving light, so the shading rolls across the surface as it tumbles. It's also yours to play with: <strong>flick it</strong> and it keeps your spin, bleeding momentum back into its idle tumble.</p>
                             <div class="code-block"><code>// sweep the surface: θ around the tube, φ around the ring
 const cx = (R + r * cosθ)
 const x = cx * (cosB * cosφ + sinA * sinB * sinφ)
@@ -417,6 +418,79 @@ for (const p of particles) {
             </div>
         </section>
 
+        <!-- ============ HANDS ON ============ -->
+        <section class="section" id="touch">
+            <div class="container-narrow">
+                <p class="section-path">$ guide/hands-on</p>
+                <h2>Hands on</h2>
+                <p class="section-intro">The terminal was an input device before it was a display. Everything below listens back.</p>
+
+                <article class="subsection">
+                    <h3>Write in fire</h3>
+                    <p>The DOOM fire from earlier, given something to burn. Your text is rasterized to the cell grid and every glyph cell becomes a standing heat source, so the letters hold their shape while flames tear upward off their edges. Type anything.</p>
+                    <div class="terminal-window">
+                        <div class="terminal-header">
+                            <span class="term-dot"></span>
+                            <span class="terminal-title">~/pyroglyph · type below</span>
+                        </div>
+                        <div class="terminal-body">
+                            <canvas class="ascii" id="d-firetext" aria-label="Text rendered as living fire, flames rising from the letters you type"></canvas>
+                            <div class="demo-input-row">
+                                <label class="demo-prompt" for="firetext-input">&gt;</label>
+                                <input id="firetext-input" class="demo-input" type="text" value="FABLE"
+                                       maxlength="12" autocomplete="off" autocapitalize="characters"
+                                       spellcheck="false" aria-label="Text to render in fire">
+                            </div>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Disturb the water</h3>
+                    <p>A basin governed by the discrete wave equation: each cell accelerates toward the average of its neighbors, ripples reflect off the walls, and crossing wavefronts interfere. Tap it, or sweep across it. Left alone, it rains.</p>
+                    <div class="code-block"><code>// the wave equation, discretized
+next[i] = 2 * u[i] - prev[i]
+        + c2 * (u[i-1] + u[i+1]
+              + u[i-W] + u[i+W] - 4 * u[i])
+next[i] *= DAMPING          // ripples die like ripples do</code></div>
+                    <div class="duo-grid">
+                        <div class="duo-item">
+                            <h4>Wave basin · tap, sweep</h4>
+                            <div class="terminal-window small">
+                                <div class="terminal-body">
+                                    <canvas class="ascii" id="d-ripple" aria-label="Interactive water surface: tapping creates expanding ripples that reflect and interfere"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="duo-item">
+                            <h4>Life · paint cells</h4>
+                            <div class="terminal-window small">
+                                <div class="terminal-body">
+                                    <canvas class="ascii" id="d-life" aria-label="Conway's Game of Life: drag to paint living cells and watch them evolve"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="duo-note">On the right, Conway's Game of Life: three rules, no exceptions, since 1970. Paint cells with your finger; gliders are seeded when things go quiet. Cells brighten with age, from newborn ember to elder white.</p>
+                </article>
+
+                <article class="subsection">
+                    <h3>The mirror</h3>
+                    <p>The oldest trick in the book pointed at the newest subject: you. Camera frames are downsampled to the cell grid, and each cell's luminance is spent on the ramp, exactly like every other demo on this page. Nothing is uploaded anywhere; the frames never leave this page.</p>
+                    <div class="terminal-window">
+                        <div class="terminal-header">
+                            <span class="term-dot"></span>
+                            <span class="terminal-title">~/mirror · runs entirely on-device</span>
+                            <button class="term-button" id="mirror-btn">start camera</button>
+                        </div>
+                        <div class="terminal-body">
+                            <canvas class="ascii" id="d-mirror" aria-label="Live camera feed rendered as ASCII characters, processed entirely on this device"></canvas>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
         <!-- ============ SMALL RITUALS ============ -->
         <section class="section" id="patterns">
             <div class="container">
@@ -527,7 +601,7 @@ process.on('SIGINT', () => { restore(); process.exit(0) })</code></div>
                     <canvas class="ascii" id="d-signature" aria-label="Small animated starfield signature"></canvas>
                 </div>
                 <p>Terminal animation: the Fable edition.</p>
-                <p class="footer-note">Written and rendered by Fable. Sixteen live simulations, zero images.<br>View source; all of it fits in one file each of HTML, CSS and JavaScript.<br><a href="terminal-animation.html">Read the first edition →</a></p>
+                <p class="footer-note">Written and rendered by Fable. Twenty live simulations, zero images.<br>View source; all of it fits in one file each of HTML, CSS and JavaScript.<br><a href="terminal-animation.html">Read the first edition →</a></p>
             </div>
         </footer>
     </main>

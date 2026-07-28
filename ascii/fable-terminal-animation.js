@@ -1,6 +1,6 @@
 // ============================================================
 // Terminal Animation — The Fable Edition
-// Sixteen live ASCII simulations. One engine. Zero images.
+// Twenty live ASCII simulations. One engine. Zero images.
 // ============================================================
 (() => {
 'use strict';
@@ -196,6 +196,10 @@ const MOBILE_DIMS = {
     'd-galaxy': [40, 22],
     'd-supernova': [58, 20],
     'd-signature': [42, 5],
+    'd-firetext': [48, 17],
+    'd-ripple': [42, 16],
+    'd-life': [42, 16],
+    'd-mirror': [44, 20],
 };
 
 // Narrow containers get a coarser grid: fewer columns means larger,
@@ -242,29 +246,38 @@ function mainLoop(now) {
 // ============================================================
 demo('d-blackhole', 122, 32, 24, (s) => {
     const COLS = s.cols, ROWS = s.rows;
-    const R_IN = 2.55, R_OUT = 7.6;
-    // camera slightly above the disk plane, looking at the hole
-    const cam = [0, 1.55, -13.5];
-    const fwd = normalize([-cam[0], -cam[1], -cam[2]]);
-    const right = normalize(crossV([0, 1, 0], fwd) ? cross3(fwd, [0, 1, 0]) : [1, 0, 0]);
-    const up = cross3(right, fwd);
+    const R_IN = 2.55, R_OUT = 7.6, DIST = 13.6;
     // field of view scaled so the disk fills the frame; x compressed by cell aspect
     const SU = 0.62, SV = SU * (ROWS / (COLS * CELL_ASPECT));
 
     function cross3(a, b) {
         return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
     }
-    function crossV(a, b) { const c = cross3(a, b); return c[0] || c[1] || c[2]; }
     function normalize(v) {
         const l = Math.hypot(v[0], v[1], v[2]) || 1;
         return [v[0] / l, v[1] / l, v[2] / l];
     }
 
-    // per-cell result of the one-time trace
+    // the camera orbits the hole: azimuth + elevation, user-driven
+    let az = 0, el = 0.114;
+    let cam, fwd, right, up, camXZ;
+
+    function buildCamera() {
+        cam = [DIST * Math.cos(el) * Math.sin(az),
+               DIST * Math.sin(el),
+              -DIST * Math.cos(el) * Math.cos(az)];
+        fwd = normalize([-cam[0], -cam[1], -cam[2]]);
+        right = normalize(cross3(fwd, [0, 1, 0]));
+        up = cross3(right, fwd);
+        const l = Math.hypot(cam[0], cam[2]) || 1;
+        camXZ = [cam[0] / l, cam[2] / l];   // for doppler beaming
+    }
+
+    // per-cell result of a trace
     // kind: 0 captured · 1 escaped(starfield) · 2 disk hit(s)
     const cells = new Array(COLS * ROWS);
 
-    function trace(u, v) {
+    function trace(u, v, maxSteps, dtScale) {
         let px = cam[0], py = cam[1], pz = cam[2];
         let d = normalize([
             fwd[0] + right[0] * u + up[0] * v,
@@ -275,12 +288,12 @@ demo('d-blackhole', 122, 32, 24, (s) => {
         const h2 = hx * hx + hy * hy + hz * hz;
         const hits = [];
         let minR2 = 1e9;
-        for (let step = 0; step < 160; step++) {
+        for (let step = 0; step < maxSteps; step++) {
             const r2 = px * px + py * py + pz * pz;
             if (r2 < minR2) minR2 = r2;
             if (r2 < 1) return { kind: 0, minR2 };
             if (r2 > 280) return { kind: hits.length ? 2 : 1, hits, dir: [vx, vy, vz], minR2 };
-            const dt = clamp(Math.sqrt(r2) * 0.055, 0.035, 0.32);
+            const dt = clamp(Math.sqrt(r2) * 0.055, 0.035, 0.32) * dtScale;
             const a = -1.5 * h2 / Math.pow(r2, 2.5);
             vx += px * a * dt; vy += py * a * dt; vz += pz * a * dt;
             const ny = py + vy * dt;
@@ -289,25 +302,72 @@ demo('d-blackhole', 122, 32, 24, (s) => {
                 const f = py / (py - ny);
                 const ix = px + vx * dt * f, iz = pz + vz * dt * f;
                 const r = Math.hypot(ix, iz);
-                if (r >= R_IN && r <= R_OUT) hits.push({ r, phi: Math.atan2(iz, ix), x: ix });
+                if (r >= R_IN && r <= R_OUT) {
+                    // beaming: orbital velocity projected toward the camera
+                    const bd = (-iz / r) * camXZ[0] + (ix / r) * camXZ[1];
+                    hits.push({ r, phi: Math.atan2(iz, ix), bd });
+                }
             }
             px += vx * dt; py = ny; pz += vz * dt;
         }
         return { kind: hits.length ? 2 : 0, hits, minR2 }; // trapped near photon sphere
     }
 
-    for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
-            const u = (x - COLS / 2) / (COLS / 2) * SU;
-            const v = -(y - ROWS / 2) / (ROWS / 2) * SV;
-            cells[y * COLS + x] = trace(u, v);
+    function retrace(quality) {
+        buildCamera();
+        const steps = quality ? 160 : 96;
+        const dts = quality ? 1 : 1.5;
+        for (let y = 0; y < ROWS; y++) {
+            for (let x = 0; x < COLS; x++) {
+                const u = (x - COLS / 2) / (COLS / 2) * SU;
+                const v = -(y - ROWS / 2) / (ROWS / 2) * SV;
+                cells[y * COLS + x] = trace(u, v, steps, dts);
+            }
         }
     }
+    retrace(true);
+
+    // ---- drag to orbit ----
+    const cv = s.canvas;
+    let dragging = false, lx = 0, ly = 0, everDragged = false;
+    let needTrace = 0, lastTraceMs = 0;   // 1 = fast, 2 = final quality
+
+    cv.addEventListener('pointerdown', (e) => {
+        dragging = true; lx = e.clientX; ly = e.clientY;
+        cv.classList.add('dragging');
+        try { cv.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+    });
+    cv.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - lx, dy = e.clientY - ly;
+        lx = e.clientX; ly = e.clientY;
+        if (!dx && !dy) return;
+        az += dx * 0.005;
+        // touch keeps vertical for scrolling (touch-action: pan-y);
+        // mouse gets both axes
+        if (e.pointerType !== 'touch') el = clamp(el - dy * 0.0035, 0.05, 0.55);
+        needTrace = 1;
+        everDragged = true;
+    });
+    const endDrag = () => {
+        if (!dragging) return;
+        dragging = false;
+        cv.classList.remove('dragging');
+        needTrace = 2;   // settle at full quality
+    };
+    cv.addEventListener('pointerup', endDrag);
+    cv.addEventListener('pointercancel', endDrag);
 
     const hud = document.getElementById('hero-hud');
     let frames = 0, hudLast = 0, hudTime = 0;
 
     return (t) => {
+        const nowMs = t * 1000;
+        if (needTrace && nowMs - lastTraceMs > 45) {
+            retrace(needTrace === 2);
+            needTrace = 0;
+            lastTraceMs = nowMs;
+        }
         s.clear();
         for (let y = 0; y < ROWS; y++) {
             for (let x = 0; x < COLS; x++) {
@@ -319,12 +379,12 @@ demo('d-blackhole', 122, 32, 24, (s) => {
                     const st = hash3((d[0] * 47) | 0, (d[1] * 47) | 0, (d[2] * 47) | 0);
                     if (st > 0.982) {
                         const tw = 0.5 + 0.5 * Math.sin(t * (1 + st * 4) + st * 40);
-                        if (tw > 0.35) s.set(x, y, tw > 0.8 ? '·' : '·', 'rgba(143,216,232,' + (0.25 + tw * 0.4).toFixed(2) + ')');
+                        if (tw > 0.35) s.set(x, y, '·', 'rgba(143,216,232,' + (0.25 + tw * 0.4).toFixed(2) + ')');
                     }
                     continue;
                 }
                 // disk: shade every cached crossing, front image dominant
-                let b = 0, rHit = 0;
+                let b = 0;
                 for (let k = 0; k < c.hits.length; k++) {
                     const h = c.hits[k];
                     const w = k === 0 ? 1 : 0.45;
@@ -333,9 +393,8 @@ demo('d-blackhole', 122, 32, 24, (s) => {
                     const heat = Math.pow(R_IN / h.r, 0.9);
                     const turb = 0.72 + 0.34 * Math.sin(3 * phi + h.r * 1.8)
                                        + 0.18 * Math.sin(7 * phi - h.r * 3.1 + 1.7);
-                    const beam = 1.12 + 0.48 * (h.x / h.r);
+                    const beam = 1.12 + 0.48 * h.bd;
                     b += w * heat * turb * beam;
-                    rHit = rHit || h.r;
                 }
                 // photon-ring boost: rays that grazed the photon sphere
                 if (c.minR2 < 2.9) b += (2.9 - c.minR2) * 0.55;
@@ -345,11 +404,15 @@ demo('d-blackhole', 122, 32, 24, (s) => {
                 s.set(x, y, ch, HEAT[(b * 63) | 0]);
             }
         }
-        // hud: live fps readout
+        // hud: an invitation until the first drag, then live fps
         frames++;
         if (hud && t - hudTime > 0.5) {
-            const fps = Math.round(frames / (t - hudTime));
-            if (fps > 0 && fps < 200 && t - hudLast > 0.9) { hud.textContent = '● ' + Math.min(24, fps) + ' fps'; hudLast = t; }
+            if (!everDragged) {
+                hud.textContent = '● drag to orbit';
+            } else {
+                const fps = Math.round(frames / (t - hudTime));
+                if (fps > 0 && fps < 200 && t - hudLast > 0.9) { hud.textContent = '● ' + Math.min(24, fps) + ' fps'; hudLast = t; }
+            }
             frames = 0; hudTime = t;
         }
     };
@@ -392,9 +455,32 @@ demo('d-signal', 78, 16, 30, (s) => {
 // 03 — the torus
 // ============================================================
 demo('d-torus', 52, 22, 30, (s) => {
-    return (t) => {
+    // idle tumble plus whatever spin the user flings at it
+    let A = 0.6, B = 0.2, kickA = 0, kickB = 0;
+    const cv = s.canvas;
+    let dragging = false, lx = 0, ly = 0;
+    cv.addEventListener('pointerdown', (e) => {
+        dragging = true; lx = e.clientX; ly = e.clientY;
+        cv.classList.add('dragging');
+        try { cv.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+    });
+    cv.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const dx = e.clientX - lx, dy = e.clientY - ly;
+        lx = e.clientX; ly = e.clientY;
+        kickB += dx * 0.010;
+        if (e.pointerType !== 'touch') kickA += dy * 0.010;
+    });
+    const drop = () => { dragging = false; cv.classList.remove('dragging'); };
+    cv.addEventListener('pointerup', drop);
+    cv.addEventListener('pointercancel', drop);
+
+    return (t, dt) => {
         s.clear();
-        const A = t * 0.9, B = t * 0.6;
+        A += (0.9 + kickA) * dt;
+        B += (0.6 + kickB) * dt;
+        const fade = Math.exp(-dt * 1.6);   // spin bleeds off gently
+        kickA *= fade; kickB *= fade;
         const cosA = Math.cos(A), sinA = Math.sin(A), cosB = Math.cos(B), sinB = Math.sin(B);
         const R1 = 1, R2 = 2, K2 = 5;
         const K1 = s.cols * K2 * 3 / (8 * (R1 + R2)) * 0.66;
@@ -972,6 +1058,346 @@ demo('d-signature', 60, 5, 16, (s) => {
 });
 
 // ============================================================
+// hands on — write in fire
+// ============================================================
+demo('d-firetext', 84, 22, 24, (s) => {
+    const W = s.cols, H = s.rows + 2;
+    const heat = new Float32Array(W * H);
+    let mask = new Uint8Array(W * s.rows);
+    const off = document.createElement('canvas');
+    const octx = off.getContext('2d', { willReadFrequently: true });
+
+    let bandTop = 0, bandBot = s.rows;
+    function buildMask(text) {
+        text = (text || '').trim() || '···';
+        off.width = W; off.height = s.rows;
+        octx.clearRect(0, 0, W, s.rows);
+        octx.save();
+        // pre-squash vertically: the display stretches each cell ~1.7×
+        octx.translate(W / 2, s.rows / 2 + 1);
+        octx.scale(1, CELL_ASPECT);
+        try { octx.letterSpacing = '3px'; } catch (e) { /* older browsers */ }
+        let fs = (s.rows - 4) / CELL_ASPECT * 0.62;
+        octx.font = `700 ${fs}px "IBM Plex Mono", monospace`;
+        const w = octx.measureText(text).width;
+        if (w > W - 6) { fs *= (W - 6) / w; octx.font = `700 ${fs}px "IBM Plex Mono", monospace`; }
+        octx.textAlign = 'center';
+        octx.textBaseline = 'middle';
+        octx.fillStyle = '#fff';
+        octx.fillText(text, 0, 0);
+        octx.restore();
+        const img = octx.getImageData(0, 0, W, s.rows).data;
+        const m = new Uint8Array(W * s.rows);
+        bandTop = s.rows; bandBot = 0;
+        for (let i = 0; i < m.length; i++) {
+            m[i] = img[i * 4 + 3] > 70 ? 1 : 0;
+            if (m[i]) {
+                const row = (i / W) | 0;
+                if (row < bandTop) bandTop = row;
+                if (row > bandBot) bandBot = row;
+            }
+        }
+        mask = m;
+    }
+
+    const input = document.getElementById('firetext-input');
+    buildMask(input ? input.value : 'FABLE');
+    let debounce = 0;
+    input?.addEventListener('input', () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(() => buildMask(input.value), 120);
+    });
+
+    return (t) => {
+        // doom-fire propagation first...
+        for (let y = 0; y < H - 2; y++) {
+            for (let x = 0; x < W; x++) {
+                const src2 = (y + 1) * W + ((x + ((Math.random() * 3) | 0) - 1 + W) % W);
+                const cool = Math.random() * 3.6;
+                heat[y * W + x] = Math.max(0, heat[src2] - cool);
+            }
+        }
+        // ...then the letters re-assert themselves as standing coals,
+        // so the propagation feeds off them instead of erasing them
+        for (let y = 0; y < s.rows; y++) {
+            for (let x = 0; x < W; x++) {
+                if (mask[y * W + x]) {
+                    const fl = 0.82 + 0.18 * noise3(x * 0.4, y * 0.4, t * 4);
+                    heat[y * W + x] = 36 * fl;
+                }
+            }
+        }
+        // faint embers on the floor
+        for (let x = 0; x < W; x++) {
+            const surge = 3 + 2 * Math.sin(x * 0.4 + t * 2.1);
+            heat[(H - 1) * W + x] = surge;
+            heat[(H - 2) * W + x] = surge;
+        }
+        s.clear();
+        for (let y = 0; y < s.rows; y++) {
+            const inBand = y >= bandTop && y <= bandBot;
+            for (let x = 0; x < W; x++) {
+                const i = y * W + x;
+                let v = clamp(heat[i] / 36, 0, 1);
+                // inside the text band, unmasked cells are suppressed so
+                // the letterforms stay readable through their own flames
+                if (inBand && !mask[i]) v *= 0.17;
+                if (v < 0.05) continue;
+                const ch = RAMP[clamp((v * RAMP.length) | 0, 1, RAMP.length - 1)];
+                s.set(x, y, ch, HEAT[(v * 63) | 0]);
+            }
+        }
+    };
+});
+
+// ============================================================
+// hands on — wave basin
+// ============================================================
+demo('d-ripple', 64, 18, 30, (s) => {
+    const W = s.cols, H = s.rows;
+    let u = new Float32Array(W * H);
+    let up = new Float32Array(W * H);
+    let nx = new Float32Array(W * H);
+    let nextRain = 1.2, lastTouch = -10;
+
+    function splash(cx, cy, amp) {
+        for (let y = -2; y <= 2; y++) {
+            for (let x = -3; x <= 3; x++) {
+                const px = (cx + x) | 0, py = (cy + y) | 0;
+                if (px < 1 || py < 1 || px >= W - 1 || py >= H - 1) continue;
+                const d2 = x * x * 0.35 + y * y;
+                u[py * W + px] += amp * Math.exp(-d2 * 0.7);
+            }
+        }
+    }
+
+    const cv = s.canvas;
+    function pointerCell(e) {
+        const r = cv.getBoundingClientRect();
+        return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H];
+    }
+    let down = false;
+    cv.addEventListener('pointerdown', (e) => {
+        down = true;
+        const [x, y] = pointerCell(e);
+        splash(x, y, 1.6);
+        lastTouch = performance.now() / 1000;
+    });
+    cv.addEventListener('pointermove', (e) => {
+        // hovering mouse trails ripples; touch trails while pressed
+        if (e.pointerType === 'touch' && !down) return;
+        const [x, y] = pointerCell(e);
+        splash(x, y, down ? 0.6 : 0.22);
+        lastTouch = performance.now() / 1000;
+    });
+    const lift = () => { down = false; };
+    cv.addEventListener('pointerup', lift);
+    cv.addEventListener('pointercancel', lift);
+    cv.addEventListener('pointerleave', lift);
+
+    return (t) => {
+        // left alone, it rains
+        if (t > nextRain && t - lastTouch > 2.2) {
+            splash(2 + Math.random() * (W - 4), 2 + Math.random() * (H - 4), 1.1);
+            nextRain = t + 0.9 + Math.random() * 1.8;
+        }
+        const c2 = 0.30;
+        for (let y = 1; y < H - 1; y++) {
+            for (let x = 1; x < W - 1; x++) {
+                const i = y * W + x;
+                let v = 2 * u[i] - up[i] + c2 * (u[i - 1] + u[i + 1] + u[i - W] + u[i + W] - 4 * u[i]);
+                nx[i] = v * 0.985;
+            }
+        }
+        const tmp = up; up = u; u = nx; nx = tmp;
+        s.clear();
+        for (let y = 0; y < H; y++) {
+            for (let x = 0; x < W; x++) {
+                const v = u[y * W + x];
+                const a = Math.abs(v);
+                if (a < 0.04) {
+                    // still water: a faint sparse floor
+                    if (hash3(x, y, 21) > 0.93) s.set(x, y, '·', 'rgba(80,120,170,0.22)');
+                    continue;
+                }
+                const b = clamp(a * 1.15, 0, 1);
+                const ch = RAMP[clamp((b * RAMP.length) | 0, 1, RAMP.length - 1)];
+                const col = v > 0
+                    ? `rgba(${143 + b * 100 | 0},${216 + b * 30 | 0},${232 + b * 20 | 0},${(0.35 + b * 0.65).toFixed(2)})`
+                    : `rgba(60,100,${170 + b * 60 | 0},${(0.3 + b * 0.6).toFixed(2)})`;
+                s.set(x, y, ch, col);
+            }
+        }
+    };
+});
+
+// ============================================================
+// hands on — game of life
+// ============================================================
+demo('d-life', 64, 20, 30, (s) => {
+    const W = s.cols, H = s.rows;
+    let grid = new Uint8Array(W * H);      // 0 dead, else age
+    let next = new Uint8Array(W * H);
+    let stepAcc = 0, lastPop = -1, stale = 0;
+
+    function glider(cx, cy, d) {
+        const G = d ? [[0, 0], [1, 1], [2, 1], [0, 2], [1, 2]]
+                    : [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]];
+        for (const [x, y] of G) grid[((cy + y + H) % H) * W + ((cx + x + W) % W)] = 1;
+    }
+    function seed() {
+        grid.fill(0);
+        // an r-pentomino (chaos for hundreds of generations) plus escorts
+        const cx = W >> 1, cy = H >> 1;
+        for (const [x, y] of [[1, 0], [2, 0], [0, 1], [1, 1], [1, 2]])
+            grid[(cy + y - 1) * W + cx + x - 1] = 1;
+        glider(4, 2, 0);
+        glider(W - 8, H - 6, 1);
+        // a light soup so the world is busy from the first frame
+        for (let i = 0; i < W * H; i++) {
+            const x = i % W, y = (i / W) | 0;
+            if (x > 3 && x < W - 4 && y > 2 && y < H - 3 && Math.random() < 0.14) grid[i] = 1;
+        }
+    }
+    seed();
+
+    const cv = s.canvas;
+    let painting = false;
+    function paint(e) {
+        const r = cv.getBoundingClientRect();
+        const cx = (e.clientX - r.left) / r.width * W | 0;
+        const cy = (e.clientY - r.top) / r.height * H | 0;
+        for (let y = -1; y <= 1; y++)
+            for (let x = -1; x <= 1; x++)
+                if (Math.random() < 0.5)
+                    grid[((cy + y + H) % H) * W + ((cx + x + W) % W)] = 1;
+    }
+    cv.addEventListener('pointerdown', (e) => { painting = true; paint(e); });
+    cv.addEventListener('pointermove', (e) => { if (painting) paint(e); });
+    const stop = () => { painting = false; };
+    cv.addEventListener('pointerup', stop);
+    cv.addEventListener('pointercancel', stop);
+    cv.addEventListener('pointerleave', stop);
+
+    return (t, dt) => {
+        stepAcc += dt;
+        if (stepAcc > 0.12) {              // evolve at ~8 generations/s
+            stepAcc = 0;
+            let pop = 0;
+            for (let y = 0; y < H; y++) {
+                for (let x = 0; x < W; x++) {
+                    const i = y * W + x;
+                    let n = 0;
+                    for (let dy = -1; dy <= 1; dy++)
+                        for (let dx = -1; dx <= 1; dx++) {
+                            if (!dx && !dy) continue;
+                            if (grid[((y + dy + H) % H) * W + ((x + dx + W) % W)]) n++;
+                        }
+                    const alive = grid[i] > 0;
+                    if (alive && (n === 2 || n === 3)) next[i] = Math.min(99, grid[i] + 1);
+                    else if (!alive && n === 3) next[i] = 1;
+                    else next[i] = 0;
+                    if (next[i]) pop++;
+                }
+            }
+            const tmp = grid; grid = next; next = tmp;
+            // when the world goes quiet, send in a glider
+            if (pop === lastPop) stale++; else stale = 0;
+            lastPop = pop;
+            if (pop < 25 || stale > 25) {
+                // a fresh patch of soup keeps the world talkative
+                const px = (Math.random() * (W - 12)) | 0, py = (Math.random() * (H - 8)) | 0;
+                for (let y = 0; y < 7; y++)
+                    for (let x = 0; x < 11; x++)
+                        if (Math.random() < 0.4) grid[((py + y) % H) * W + (px + x) % W] = 1;
+                glider((Math.random() * (W - 6)) | 0, (Math.random() * (H - 6)) | 0, Math.random() < 0.5 ? 0 : 1);
+                stale = 0;
+            }
+        }
+        s.clear();
+        for (let y = 0; y < H; y++) {
+            for (let x = 0; x < W; x++) {
+                const age = grid[y * W + x];
+                if (!age) continue;
+                const ch = age < 2 ? '·' : age < 4 ? '+' : age < 8 ? '*' : age < 16 ? '#' : '@';
+                s.set(x, y, ch, HEAT[clamp(16 + age * 3, 0, 63)]);
+            }
+        }
+    };
+});
+
+// ============================================================
+// hands on — the mirror
+// ============================================================
+demo('d-mirror', 64, 28, 15, (s) => {
+    const W = s.cols, H = s.rows;
+    const vcan = document.createElement('canvas');
+    const vctx = vcan.getContext('2d', { willReadFrequently: true });
+    vcan.width = W; vcan.height = H;
+    let video = null, stream = null, state = 'off', msg = '';
+    const btn = document.getElementById('mirror-btn');
+
+    function stop() {
+        stream?.getTracks().forEach(tr => tr.stop());
+        stream = null; video = null; state = 'off';
+        if (btn) btn.textContent = 'start camera';
+    }
+    btn?.addEventListener('click', async () => {
+        if (state === 'on') { stop(); return; }
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user', width: { ideal: 320 } }, audio: false
+            });
+            video = document.createElement('video');
+            video.playsInline = true; video.muted = true;
+            video.srcObject = stream;
+            await video.play();
+            state = 'on';
+            if (btn) btn.textContent = 'stop camera';
+        } catch (e) {
+            state = 'err';
+            msg = 'camera unavailable';
+        }
+    });
+    addEventListener('pagehide', stop);
+
+    return (t) => {
+        s.clear();
+        if (state !== 'on' || !video || video.readyState < 2) {
+            // idle: an empty mirror, softly scanning
+            const scan = ((t * 6) | 0) % H;
+            for (let x = 0; x < W; x += 2) s.set(x, scan, '·', 'rgba(245,165,66,0.12)');
+            const m1 = state === 'err' ? msg : 'the mirror is dark';
+            const m2 = state === 'err' ? 'try another browser' : 'press start camera above';
+            s.text((W - m1.length) >> 1, (H >> 1) - 1, m1, 'rgba(230,222,208,0.6)');
+            s.text((W - m2.length) >> 1, (H >> 1) + 1, m2, 'rgba(109,103,92,0.9)');
+            return;
+        }
+        // cover-crop the frame to the window's physical aspect, mirrored
+        const targetAspect = (W * CELL_ASPECT) / H;
+        const va = video.videoWidth / video.videoHeight;
+        let sw = video.videoWidth, sh = video.videoHeight, sx = 0, sy = 0;
+        if (va > targetAspect) { sw = sh * targetAspect; sx = (video.videoWidth - sw) / 2; }
+        else { sh = sw / targetAspect; sy = (video.videoHeight - sh) / 2; }
+        vctx.save();
+        vctx.scale(-1, 1);
+        vctx.drawImage(video, sx, sy, sw, sh, -W, 0, W, H);
+        vctx.restore();
+        const img = vctx.getImageData(0, 0, W, H).data;
+        for (let y = 0; y < H; y++) {
+            for (let x = 0; x < W; x++) {
+                const i = (y * W + x) * 4;
+                const lum = (img[i] * 0.2126 + img[i + 1] * 0.7152 + img[i + 2] * 0.0722) / 255;
+                const g = Math.pow(lum, 1.15);
+                if (g < 0.06) continue;
+                const ch = RAMP[clamp((g * RAMP.length) | 0, 1, RAMP.length - 1)];
+                s.set(x, y, ch, HEAT[(g * 63) | 0]);   // amber phosphor, of course
+            }
+        }
+    };
+});
+
+// ============================================================
 // background sky (static, drawn once)
 // ============================================================
 (function sky() {
@@ -1053,7 +1479,8 @@ if (!REDUCED) requestAnimationFrame(mainLoop);
 // console signature
 console.log(
     '%c\n   ✦ terminal animation · the fable edition ✦\n' +
-    '   sixteen live simulations · zero images\n' +
+    '   twenty live simulations · zero images\n' +
+    '   drag the black hole · write your name in fire\n' +
     '   the black hole is real ray tracing — view source\n',
     'color:#f5a542;font-family:monospace;font-size:12px;line-height:1.6');
 
