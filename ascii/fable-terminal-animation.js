@@ -85,7 +85,10 @@ class Screen {
         }
     }
     _resize() {
-        const w = this.canvas.parentElement.clientWidth;
+        // the canvas is width:100%, so its own clientWidth is the true
+        // content width (parent clientWidth would include padding and
+        // subtly stretch every glyph)
+        const w = this.canvas.clientWidth || this.canvas.parentElement.clientWidth;
         if (!w) return;
         const dpr = Math.min(2, window.devicePixelRatio || 1);
         this.cellW = w / this.cols;
@@ -181,9 +184,31 @@ class Braille {
 // ---------- demo runner ----------
 const demos = [];
 
+const MOBILE_DIMS = {
+    'd-blackhole': [88, 30],
+    'd-signal': [56, 16],
+    'd-torus': [40, 20],
+    'd-planet': [40, 22],
+    'd-warp': [40, 20],
+    'd-nebula': [40, 20],
+    'd-fire': [40, 20],
+    'd-lorenz': [40, 22],
+    'd-galaxy': [40, 22],
+    'd-supernova': [58, 20],
+    'd-signature': [42, 5],
+};
+
+// Narrow containers get a coarser grid: fewer columns means larger,
+// legible glyphs on phones. Decided per-canvas from real layout width.
 function demo(id, cols, rows, fps, setup) {
     const canvas = document.getElementById(id);
     if (!canvas) return;
+    const cw = canvas.parentElement.clientWidth || window.innerWidth;
+    const md = MOBILE_DIMS[id];
+    if (md && cw < 480) {
+        cols = md[0];
+        rows = md[1] || rows;
+    }
     const screen = new Screen(canvas, cols, rows);
     const d = { screen, fps, last: 0, visible: false, frame: setup(screen) };
     demos.push(d);
@@ -933,15 +958,16 @@ demo('d-eclipse', 30, 9, 24, (s) => {
 // footer signature — drifting dust
 // ============================================================
 demo('d-signature', 60, 5, 16, (s) => {
+    const SIG = '~ fable ~';
     return (t) => {
         s.clear();
         for (let i = 0; i < 40; i++) {
-            const x = (hash3(i, 0, 11) * 60 + t * (0.4 + hash3(i, 2, 11) * 1.2)) % 60;
-            const y = (hash3(i, 1, 11) * 5) | 0;
+            const x = (hash3(i, 0, 11) * s.cols + t * (0.4 + hash3(i, 2, 11) * 1.2)) % s.cols;
+            const y = (hash3(i, 1, 11) * s.rows) | 0;
             const tw = 0.5 + 0.5 * Math.sin(t * (1 + hash3(i, 3, 11) * 2) + i);
             if (tw > 0.4) s.set(x, y, tw > 0.85 ? '✦' : '·', `rgba(230,222,208,${(tw * 0.5).toFixed(2)})`);
         }
-        s.text(24, 2, '~ fable ~', 'rgba(245,165,66,0.8)');
+        s.text((s.cols - SIG.length) >> 1, 2, SIG, 'rgba(245,165,66,0.8)');
     };
 });
 

@@ -602,7 +602,9 @@ ul.feature-list li::before {
 
 .technique {
     display: grid;
-    grid-template-columns: 1fr;
+    /* minmax(0,…): never let a wide <pre> inflate the track (and the
+       whole mobile layout viewport) past the screen */
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--s-5);
     align-items: start;
     padding: var(--s-6);
@@ -616,6 +618,9 @@ ul.feature-list li::before {
     border-color: var(--amber-dim);
     box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4), 0 0 60px rgba(245, 165, 66, 0.05);
 }
+
+.technique-text,
+.technique-demo { min-width: 0; }
 
 .technique-text h3 { margin-top: 0; }
 
@@ -722,6 +727,25 @@ ul.feature-list li::before {
 
     .nav.open { transform: translateX(0); }
 
+    /* clear the fixed toggle button */
+    .nav { padding-top: 5rem; }
+
+    /* comfortable thumb targets in the drawer */
+    .nav-link { padding: var(--s-2) var(--s-3); font-size: 0.875rem; }
+
+    /* lock the page and dim it behind the open drawer */
+    body.menu-open { overflow: hidden; }
+
+    body.menu-open::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        background: rgba(5, 4, 8, 0.65);
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+    }
+
     .main { margin-left: 0; }
 
     .container,
@@ -736,6 +760,11 @@ ul.feature-list li::before {
 
     .technique { padding: var(--s-4); }
     .technique-demo { position: static; }
+}
+
+/* single-column technique cards: lead with the animation, not the prose */
+@media (max-width: 1099px) {
+    .technique-demo { order: -1; }
 }
 
 @media (max-width: 640px) {
