@@ -174,7 +174,7 @@ const GRID = 4;               // contour grid stride (1024 -> 256 cells)
 const GOLD_FACE = [255, 199, 116];   // polished gold albedo (sRGB)
 const GOLD_BACK = [228, 176, 102];   // back-of-pin gold, a touch deeper
 
-const BLACK=[20,21,25];                    // gloss black enamel
+const BLACK=[13,14,18];                    // piano-black enamel
 const PRESS=new URLSearchParams(location.search).get('press')||'color';
 
 function makeCanvas(n){ const c=document.createElement('canvas'); c.width=c.height=n; return c; }
@@ -353,9 +353,14 @@ function buildPinMaps(emoji, seed){
      on an ivory ground. Grayscale animals stay noir. */
   /* two finishes: 'noir' fills every cell with gloss black so the whole
      animal reads in raised gold linework; 'color' lays the glyph's own
-     flat vector colours in as enamel */
+     flat vector colours in as enamel, with every dark neutral cell —
+     eyes, stripes, outlines — snapped to true piano black */
   const enamel=PRESS==='color'
-    ? q.palette.map(p=>[p[0],p[1],p[2]])
+    ? q.palette.map(p=>{
+        const lum=(0.299*p[0]+0.587*p[1]+0.114*p[2])/255;
+        const chroma=(Math.max(p[0],p[1],p[2])-Math.min(p[0],p[1],p[2]))/255;
+        return (lum<0.32&&chroma<0.18) ? BLACK : [p[0],p[1],p[2]];
+      })
     : q.palette.map(()=>BLACK);
 
   /* region map: 255 = off-pin, 254 = gold rim, else enamel cell */
@@ -414,7 +419,7 @@ function buildPinMaps(emoji, seed){
       md[o+2]=255;                                 // metal
     } else {
       md[o]=255;                                   // glassy clearcoat
-      md[o+1]=52;                                  // gloss enamel
+      md[o+1]=26;                                  // wet-gloss enamel
       md[o+2]=0;                                   // dielectric
     }
     md[o+3]=255;
@@ -758,7 +763,7 @@ function buildBadge(emoji){
     normalMap:texture(maps.nrm,false), normalScale:new THREE.Vector2(1,1),
     roughnessMap:mrcT, roughness:1,
     metalnessMap:mrcT, metalness:1,
-    clearcoatMap:mrcT, clearcoat:1, clearcoatRoughness:0.22,
+    clearcoatMap:mrcT, clearcoat:1, clearcoatRoughness:0.11,
     envMapIntensity:theme.envFront,
   });
   const gold=new THREE.MeshPhysicalMaterial({
