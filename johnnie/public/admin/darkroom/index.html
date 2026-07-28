@@ -168,7 +168,7 @@ select option { background: var(--night); }
     statusEl.classList.toggle("is-err", !!err);
   };
   // the sheet's house style drops diacritics: GRÀCIA -> GRACIA, Ç -> C
-  const flatten = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const flatten = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const wind = (deg) => WINDS[Math.round(deg / 45)];
 
   // ————— reading one negative —————

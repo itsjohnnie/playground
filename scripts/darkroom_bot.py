@@ -60,6 +60,20 @@ def geocode(lat: float, lon: float) -> dict:
 def extract(path: Path) -> dict | None:
     """Full EXIF read in the house format. None = plate is already clean."""
     im = Image.open(path)
+
+    # a plate developed by the CMS shim is already clean; its curated
+    # capture data rides in a JPEG comment we transcribe and remove
+    comment = im.info.get("comment")
+    if comment:
+        try:
+            note = json.loads(comment.decode("utf-8"))
+            if note.get("darkroom"):
+                meta = {k: str(note.get("meta", {}).get(k, "") or "") for k in META_KEYS}
+                return {"meta": meta, "title": str(note.get("title") or ""),
+                        "year": note.get("year"), "image": im}
+        except (ValueError, UnicodeDecodeError):
+            pass
+
     ex = im.getexif()
     sub = ex.get_ifd(0x8769)
     gps = ex.get_ifd(0x8825)
