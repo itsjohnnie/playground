@@ -299,19 +299,28 @@ function KITCHEN(){
       }
     };
     assign();
-    /* rescue rare colours the median cut never boxed — a shark's eye is a
-       few hundred pixels of navy that would otherwise dissolve into the
-       body gray */
+    /* rescue rare colours the median cut never boxed — a shark's navy eye,
+       a frog's darker nostrils. Only interior pixels of contiguous
+       high-error blobs count, so anti-aliased edges can't trigger it. */
+    const HW=W>>1;
+    const em=new Uint8Array(HW*HW);
     for(let pass=0;pass<3;pass++){
-      let n=0,sr=0,sg=0,sb=0;
-      for(let y=0;y<W;y+=2) for(let x=0;x<W;x+=2){
-        const i=y*W+x;
+      em.fill(0);
+      for(let gy=0;gy<HW;gy++) for(let gx=0;gx<HW;gx++){
+        const i=(gy*2)*W+gx*2;
         if(!alpha[i]) continue;
         const p=palette[idx[i]];
         const dr=px[i*4]-p[0], dg=px[i*4+1]-p[1], db=px[i*4+2]-p[2];
-        if(dr*dr+dg*dg+db*db>3600){ n++; sr+=px[i*4]; sg+=px[i*4+1]; sb+=px[i*4+2]; }
+        if(dr*dr+dg*dg+db*db>800) em[gy*HW+gx]=1;
       }
-      if(n<120) break;
+      let n=0,sr=0,sg=0,sb=0;
+      for(let gy=1;gy<HW-1;gy++) for(let gx=1;gx<HW-1;gx++){
+        const e=gy*HW+gx;
+        if(!em[e]||!em[e-1]||!em[e+1]||!em[e-HW]||!em[e+HW]) continue;
+        const i=(gy*2)*W+gx*2;
+        n++; sr+=px[i*4]; sg+=px[i*4+1]; sb+=px[i*4+2];
+      }
+      if(n<60) break;
       palette.push([Math.round(sr/n),Math.round(sg/n),Math.round(sb/n)]);
       assign();
     }
