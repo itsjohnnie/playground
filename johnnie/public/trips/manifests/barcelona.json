@@ -1,11 +1,13 @@
 {
+  "title": "barcelona",
+  "year": 2026,
   "negatives": [
     {
       "author": "JOHNNIE",
       "title": "TOSSA DE MAR",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-tossa-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-tossa-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "TOSSA DE MAR",
@@ -26,7 +28,7 @@
       "title": "CALA FUTADERA",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-futadera-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-futadera-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "CALA FUTADERA",
@@ -47,7 +49,7 @@
       "title": "CALA GIVEROLA I",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-giverola-1-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-giverola-1-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "CALA GIVEROLA",
@@ -68,7 +70,7 @@
       "title": "CALA GIVEROLA II",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-giverola-2-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-giverola-2-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "CALA GIVEROLA",
@@ -89,7 +91,7 @@
       "title": "EIXAMPLE, BCN",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-eixample-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-eixample-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "EIXAMPLE",
@@ -110,7 +112,7 @@
       "title": "CALA GIVEROLA III",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-giverola-3-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-giverola-3-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "CALA GIVEROLA",
@@ -131,7 +133,7 @@
       "title": "CAMI DE RONDA I",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-camironda-1-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-camironda-1-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "CAMI DE RONDA",
@@ -152,7 +154,7 @@
       "title": "CAMI DE RONDA II",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-camironda-2-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-camironda-2-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "CAMI DE RONDA",
@@ -173,7 +175,7 @@
       "title": "EL GOTIC, BCN",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-gotic-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-gotic-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "EL GOTIC",
@@ -194,7 +196,7 @@
       "title": "CALA FUTADERA II",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-futadera-2-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-futadera-2-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "CALA FUTADERA",
@@ -215,7 +217,7 @@
       "title": "SAGRADA FAMILIA I",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-sagrada-1-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-sagrada-1-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "SAGRADA FAMILIA",
@@ -236,7 +238,7 @@
       "title": "SAGRADA FAMILIA II",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-sagrada-2-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-sagrada-2-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "SAGRADA FAMILIA",
@@ -257,7 +259,7 @@
       "title": "SAGRADA FAMILIA III",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-sagrada-3-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-sagrada-3-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "SAGRADA FAMILIA",
@@ -278,7 +280,7 @@
       "title": "SAGRADA FAMILIA IV",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-sagrada-4-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-sagrada-4-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "SAGRADA FAMILIA",
@@ -299,7 +301,7 @@
       "title": "SAGRADA FAMILIA V",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-sagrada-5-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-sagrada-5-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "SAGRADA FAMILIA",
@@ -320,7 +322,7 @@
       "title": "SANT GERVASI, BCN",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-santgervasi-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-santgervasi-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "SANT GERVASI",
@@ -341,7 +343,7 @@
       "title": "ULTRAMARINOS I",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-balmes-1-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-balmes-1-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "CARRER DE BALMES",
@@ -362,7 +364,7 @@
       "title": "ULTRAMARINOS II",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-balmes-2-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-balmes-2-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "CARRER DE BALMES",
@@ -383,7 +385,7 @@
       "title": "SA TUNA, BEGUR",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-satuna-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-satuna-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "SA TUNA",
@@ -404,7 +406,7 @@
       "title": "LA CANUDA, BCN",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-canuda-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-canuda-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "LA CANUDA",
@@ -425,7 +427,7 @@
       "title": "PLACA NOVA, BCN",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-placanova-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-placanova-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "PLACA NOVA",
@@ -446,7 +448,7 @@
       "title": "LES AIGUES, BCN",
       "year": 2026,
       "lic": "OWN ARCHIVE",
-      "src": "negatives/johnnie-lesaigues-2026.jpg",
+      "src": "/trips/barcelona/negatives/johnnie-lesaigues-2026.jpg",
       "page": "https://johnnies.life",
       "meta": {
         "place": "LES AIGUES",

@@ -216,8 +216,24 @@ export default {
       });
     }
 
-    // Everything else: static assets.
-    const res = await env.ASSETS.fetch(request);
+    // Trips share one engine. /trips/barcelona holds the real files;
+    // any other slug (created in the CMS as manifests/<slug>.json) has
+    // no folder of its own, so its page and assets resolve to the
+    // engine's. The engine reads the slug from the URL and fetches the
+    // matching manifest. A slash-less trip URL is normalized first so
+    // the page's relative asset paths resolve under the slug.
+    let res = await env.ASSETS.fetch(request);
+    if (res.status === 404 && request.method === "GET") {
+      const trip = url.pathname.match(/^\/trips\/([^/.]+)(\/.*)?$/);
+      if (trip && trip[1] !== "barcelona" && trip[1] !== "manifests") {
+        if (!trip[2]) {
+          return Response.redirect(`${url.origin}${url.pathname}/${url.search}`, 301);
+        }
+        const engineUrl = new URL(`/trips/barcelona${trip[2]}`, url.origin);
+        res = await env.ASSETS.fetch(new Request(engineUrl, request));
+      }
+    }
+
     if (!staging) return res;
     const tagged = new Response(res.body, res);
     tagged.headers.set("X-Robots-Tag", "noindex, nofollow");

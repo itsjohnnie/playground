@@ -75,48 +75,55 @@ collections:
       - { name: category, label: "Category (e.g. SaaS, Hospitality)", widget: string }
       - { name: image, label: "Image", widget: image, choose_url: false }
 
-  # The Barcelona sheet (johnnies.life/trips/barcelona). One JSON file is
-  # the single source of truth: the list of negatives and, for each, the
-  # real capture data (EXIF) that drives the sheet's factual micro-copy.
-  # Uploaded plates land next to the manifest in negatives/.
-  # Before adding a frame here, prepare it like the others: ~1920px long
-  # edge and EXIF stripped (see negatives/SOURCES.md for the recipe).
-  - name: barcelona
-    label: "Barcelona Sheet"
-    files:
+  # Trips (johnnies.life/trips/<slug>). Every entry is one trip sheet:
+  # creating a trip here creates its page — the same engine serves all
+  # of them, reading /trips/manifests/<slug>.json. Each negative carries
+  # the real capture data (EXIF) that drives the sheet's factual
+  # micro-copy. Uploaded plates land in /trips/plates.
+  # Before adding a frame, prepare it like the others: ~1920px long
+  # edge and EXIF stripped (see trips/barcelona/negatives/SOURCES.md).
+  - name: trips
+    label: "Trips"
+    label_singular: "Trip"
+    folder: "johnnie/public/trips/manifests"
+    extension: json
+    format: json
+    create: true
+    slug: "{{fields.title}}"
+    identifier_field: title
+    summary: "{{title}} {{year}}"
+    media_folder: "/johnnie/public/trips/plates"
+    public_folder: "/trips/plates"
+    fields:
+      - { name: title, label: "Trip name (lowercase, becomes the URL: /trips/<name>)", widget: string }
+      - { name: year, label: "Year", widget: number, value_type: int, default: 2026 }
       - name: negatives
-        label: "Negatives & capture data"
-        file: "johnnie/public/trips/barcelona/negatives/manifest.json"
-        media_folder: "/johnnie/public/trips/barcelona/negatives"
-        public_folder: "negatives"
+        label: "Negatives"
+        widget: list
+        label_singular: "Negative"
+        summary: "{{fields.title}}"
         fields:
-          - name: negatives
-            label: "Negatives"
-            widget: list
-            label_singular: "Negative"
-            summary: "{{fields.title}}"
+          - { name: author, label: "Author", widget: string, default: "JOHNNIE" }
+          - { name: title, label: "Title (credit line, e.g. EL GOTIC, BCN)", widget: string }
+          - { name: year, label: "Year", widget: number, value_type: int, default: 2026 }
+          - { name: lic, label: "License label", widget: string, default: "OWN ARCHIVE" }
+          - { name: src, label: "Plate (1920px, EXIF-stripped JPG)", widget: image, choose_url: false }
+          - { name: page, label: "Credit link", widget: string, default: "https://johnnies.life" }
+          - name: meta
+            label: "Capture data (real EXIF, drives the micro-copy)"
+            widget: object
             fields:
-              - { name: author, label: "Author", widget: string, default: "JOHNNIE" }
-              - { name: title, label: "Title (credit line, e.g. EL GOTIC, BCN)", widget: string }
-              - { name: year, label: "Year", widget: number, value_type: int, default: 2026 }
-              - { name: lic, label: "License label", widget: string, default: "OWN ARCHIVE" }
-              - { name: src, label: "Plate (1920px, EXIF-stripped JPG)", widget: image, choose_url: false }
-              - { name: page, label: "Credit link", widget: string, default: "https://johnnies.life" }
-              - name: meta
-                label: "Capture data (real EXIF, drives the micro-copy)"
-                widget: object
-                fields:
-                  - { name: place, label: "Place (e.g. SANT GERVASI)", widget: string }
-                  - { name: time, label: "Time (e.g. 12:33)", widget: string }
-                  - { name: date, label: "Date block (two lines: JUL 21, then the time)", widget: text }
-                  - { name: gps, label: "GPS block (two lines: 41.4001° N, then 2.1471° E)", widget: text }
-                  - { name: spec, label: "Exposure (e.g. F 1.8 · 1/2976)", widget: string }
-                  - { name: lens, label: "Lens, 35mm equivalent (e.g. 48MM)", widget: string }
-                  - { name: film, label: "Camera (e.g. IPHONE 17 PRO)", widget: string, default: "IPHONE 17 PRO" }
-                  - { name: iso, label: "ISO (e.g. ISO 64)", widget: string }
-                  - { name: ev, label: "Exposure bias (e.g. EV 0)", widget: string, default: "EV 0" }
-                  - { name: alt, label: "Altitude (e.g. ALT 73M)", widget: string }
-                  - { name: dir, label: "Compass bearing (e.g. 83° E — the arrow follows the number)", widget: string }
+              - { name: place, label: "Place (e.g. SANT GERVASI)", widget: string }
+              - { name: time, label: "Time (e.g. 12:33)", widget: string }
+              - { name: date, label: "Date block (two lines: JUL 21, then the time)", widget: text }
+              - { name: gps, label: "GPS block (two lines: 41.4001° N, then 2.1471° E)", widget: text }
+              - { name: spec, label: "Exposure (e.g. F 1.8 · 1/2976)", widget: string }
+              - { name: lens, label: "Lens, 35mm equivalent (e.g. 48MM)", widget: string }
+              - { name: film, label: "Camera (e.g. IPHONE 17 PRO)", widget: string, default: "IPHONE 17 PRO" }
+              - { name: iso, label: "ISO (e.g. ISO 64)", widget: string }
+              - { name: ev, label: "Exposure bias (e.g. EV 0)", widget: string, default: "EV 0" }
+              - { name: alt, label: "Altitude (e.g. ALT 73M)", widget: string }
+              - { name: dir, label: "Compass bearing (e.g. 83° E — the arrow follows the number)", widget: string }
 
   - name: stuff
     label: "Stuff"
