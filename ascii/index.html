@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal animation — The Fable edition</title>
+    <meta name="description" content="ASCII motion graphics, rebuilt by Fable. A ray-traced black hole, a living planet, a supernova: every frame computed live from characters.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gloock&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="fable-terminal-animation.css">
+</head>
+<body>
+    <canvas id="sky" class="sky" aria-hidden="true"></canvas>
+
+    <!-- Mobile menu toggle -->
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-expanded="false">
+        <div class="menu-toggle-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Navigation -->
+    <nav class="nav" id="nav">
+        <div class="nav-header">
+            <p class="nav-eyebrow">field guide</p>
+            <h3 class="nav-title">Terminal<br>animation</h3>
+            <p class="nav-subtitle">The Fable edition</p>
+        </div>
+        <ul class="nav-list">
+            <li><a href="#overture"   class="nav-link">overture</a></li>
+            <li><a href="#engine"     class="nav-link">the engine</a></li>
+            <li><a href="#gravity"    class="nav-link">gravity</a></li>
+            <li><a href="#dimension"  class="nav-link">dimension</a></li>
+            <li><a href="#light"      class="nav-link">light</a></li>
+            <li><a href="#resolution" class="nav-link">resolution</a></li>
+            <li><a href="#chaos"      class="nav-link">chaos</a></li>
+            <li><a href="#patterns"   class="nav-link">small rituals</a></li>
+            <li><a href="#craft"      class="nav-link">craft</a></li>
+        </ul>
+        <div class="nav-footer">
+            <p>Every frame on this page is<br>computed live. No video.<br>No images. Only characters.</p>
+        </div>
+    </nav>
+
+    <!-- Main -->
+    <main class="main">
+
+        <!-- ============ HERO ============ -->
+        <section class="hero" id="top">
+            <div class="hero-content">
+                <p class="hero-eyebrow">$ guide --rebuilt-by fable</p>
+                <h1>Terminal <em>animation</em></h1>
+                <p class="lead">Motion graphics made of nothing but characters, pushed as far as they will go. Below: light, ray-traced through the curved spacetime around a black hole, drawn one glyph at a time.</p>
+            </div>
+            <div class="hero-demo">
+                <div class="terminal-window hero-window">
+                    <div class="terminal-header">
+                        <span class="term-dot"></span>
+                        <span class="terminal-title">~/gargantua · 3,904 geodesics · live</span>
+                        <span class="term-status" id="hero-hud">● rendering</span>
+                    </div>
+                    <div class="terminal-body">
+                        <canvas class="ascii" id="d-blackhole" aria-label="Live ASCII rendering of a black hole with a glowing accretion disk bent by gravitational lensing"></canvas>
+                    </div>
+                </div>
+                <p class="hero-caption">A Schwarzschild black hole. Each cell fires a photon backwards through curved spacetime; where it lands on the accretion disk decides the character. The arcs above and below the shadow are the far side of the disk, lensed over the top.</p>
+            </div>
+            <div class="scroll-indicator" aria-label="Scroll down"></div>
+        </section>
+
+        <!-- ============ OVERTURE ============ -->
+        <section class="section" id="overture">
+            <div class="container-narrow">
+                <p class="section-path">$ guide/overture</p>
+                <h2>Overture</h2>
+                <p class="intro-text">Terminal animation is the oldest form of computer graphics that is still alive. Before pixels there were teleprinters; before shaders there was a cursor, a grid of cells, and the trick of overwriting a character fast enough that the eye believed in motion.</p>
+                <p>The first edition of this guide taught the fundamentals: frames, buffers, escape codes, spinners. This edition asks a different question. <strong>How far can the medium actually go?</strong> The answer, it turns out, is general relativity.</p>
+                <p>Everything that moves on this page is generated at runtime from three primitives:</p>
+                <ul class="feature-list">
+                    <li><strong>A grid of cells</strong>, the terminal's native geometry, roughly 1:2 in aspect</li>
+                    <li><strong>A luminance ramp</strong>: an ordered string of characters, from faint to dense</li>
+                    <li><strong>A clock</strong>: time, folded through mathematics into light</li>
+                </ul>
+                <p>No sprites were downloaded. No videos are playing. If you view source, you can take all of it with you.</p>
+            </div>
+        </section>
+
+        <!-- ============ THE ENGINE ============ -->
+        <section class="section" id="engine">
+            <div class="container-narrow">
+                <p class="section-path">$ guide/engine</p>
+                <h2>The engine</h2>
+                <p class="section-intro">One renderer draws everything on this page. It is small enough to memorize.</p>
+
+                <p>A terminal is a 2D array of cells; each cell holds one character and one color. The whole craft reduces to a single mapping: <em>compute a brightness for every cell, then spend that brightness on a character.</em> Dense glyphs like <code>@</code> and <code>#</code> carry more ink than <code>·</code> or <code>:</code>, so an ordered string of characters becomes a grayscale.</p>
+
+                <div class="code-block"><code>// The only palette you need
+const RAMP = ' ·:;=+*#%@'
+
+// brightness ∈ [0,1] → one character
+const shade = b => RAMP[Math.min(RAMP.length - 1, (b * RAMP.length) | 0)]
+
+// A screen is just chars + colors, double-buffered
+class Screen {
+  constructor (cols, rows) {
+    this.cols = cols; this.rows = rows
+    this.chars = new Array(cols * rows).fill(' ')
+    this.colors = new Array(cols * rows).fill('')
+  }
+  set (x, y, ch, color) {
+    if (x < 0 || y < 0 || x >= this.cols || y >= this.rows) return
+    const i = y * this.cols + x
+    this.chars[i] = ch; this.colors[i] = color
+  }
+}</code></div>
+
+                <p>Below, three wave sources drift through the grid. Their interference pattern is summed per cell, and the sum is spent on the ramp. This is the entire discipline in one demo: <strong>field → brightness → character.</strong></p>
+
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <span class="term-dot"></span>
+                        <span class="terminal-title">~/interference · field → ramp</span>
+                    </div>
+                    <div class="terminal-body">
+                        <canvas class="ascii" id="d-signal" aria-label="Animated interference pattern of three drifting wave sources rendered in ASCII"></canvas>
+                    </div>
+                </div>
+
+                <h3>Timing</h3>
+                <p>Every demo here runs off a single <code>requestAnimationFrame</code> loop with per-demo frame caps, and each one goes dormant the moment it scrolls off screen. In a real terminal the same principle holds: batch the whole frame into one write, cap your rate, and never draw what nobody is watching.</p>
+                <div class="code-block"><code>const demos = new Set()
+const io = new IntersectionObserver(entries =>
+  entries.forEach(e => e.target.demo.visible = e.isIntersecting))
+
+function loop (t) {
+  for (const d of demos) {
+    if (d.visible && t - d.last >= 1000 / d.fps) {
+      d.frame(t / 1000)   // compute cells
+      d.render()          // one atomic paint
+      d.last = t
+    }
+  }
+  requestAnimationFrame(loop)
+}</code></div>
+            </div>
+        </section>
+
+        <!-- ============ GRAVITY ============ -->
+        <section class="section" id="gravity">
+            <div class="container-narrow">
+                <p class="section-path">$ guide/gravity</p>
+                <h2>Gravity</h2>
+                <p class="section-intro">How the hero above is made: ray tracing in a spacetime where light falls.</p>
+
+                <p>The black hole at the top of this page is not an artist's impression. For every cell of the grid, a photon is launched backwards from the camera and integrated through the gravitational field of a Schwarzschild black hole. Near the hole, light doesn't travel in straight lines. It bends, and photons that pass close enough whip all the way around.</p>
+                <p>The null-geodesic equation collapses to one line of acceleration. That's the entire theory of the image:</p>
+
+                <div class="code-block"><code>// Schwarzschild photon, units where r_s = 1
+// h = |r × v| is conserved angular momentum
+const h2 = cross(pos, vel).len2()
+
+for (let step = 0; step < 120; step++) {
+  const r2 = pos.len2()
+  if (r2 < 1)   return CAPTURED          // inside the horizon: black
+  if (r2 > 260) return sky(vel)          // escaped: sample the stars
+
+  // all of general relativity, as far as this image cares:
+  const a = -1.5 * h2 / Math.pow(r2, 2.5)
+  vel.addScaled(pos, a * dt)
+  pos.addScaled(vel, dt)
+
+  if (crossedDiskPlane(pos) && rIn < r && r < rOut)
+    return diskHit(r, φ)                 // remember where we landed
+}</code></div>
+
+                <p>Two consequences fall out of the integration for free, with no extra drawing code:</p>
+                <ul class="feature-list">
+                    <li><strong>The lensed halo.</strong> The disk behind the hole is visible <em>above and below</em> the shadow. Those arcs are photons from the far side, bent over the top on their way to you.</li>
+                    <li><strong>The photon ring.</strong> The thin bright edge hugging the shadow is light that orbited the hole one or more times before escaping into the camera.</li>
+                </ul>
+                <p>The geodesics never change while the camera holds still, so they are traced <strong>once</strong> at load and cached: each cell remembers <em>where on the disk it landed</em>. Per frame, only the disk's surface is re-shaded. Keplerian rotation (<code>Ω ∝ r<sup>−3/2</sup></code>, the inner edge visibly outrunning the rim), turbulent streaks, and relativistic beaming that brightens the side spinning toward you. Ray tracing at film quality, at a cost of arithmetic per cell.</p>
+
+                <div class="code-block"><code>// per frame: re-shade the cached disk hits only
+const ω    = 1.4 * Math.pow(r, -1.5)          // Keplerian angular speed
+const φt   = φ - ω * t                        // material coordinate
+const heat = Math.pow(rIn / r, 0.9)           // hotter toward the edge
+const turb = 0.75 + 0.35 * Math.sin(3 * φt + r * 1.8)
+             + 0.18 * Math.sin(7 * φt - r * 3.1)
+const beam = 1 + 0.6 * (x / r)                // doppler beaming
+brightness = heat * turb * beam</code></div>
+            </div>
+        </section>
+
+        <!-- ============ DIMENSION ============ -->
+        <section class="section" id="dimension">
+            <div class="container">
+                <p class="section-path">$ guide/dimension</p>
+                <h2>Dimension</h2>
+                <p class="section-intro">The grid is flat. Nothing else has to be.</p>
+
+                <div class="technique-list">
+
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>The torus, paid in full</h3>
+                            <p>The most famous piece of terminal animation ever written is a donut. This one honors it properly: a parametric torus, spun through two rotation matrices, z-buffered, and lit with a Lambert term against a moving light, so the shading rolls across the surface as it tumbles.</p>
+                            <div class="code-block"><code>// sweep the surface: θ around the tube, φ around the ring
+const cx = (R + r * cosθ)
+const x = cx * (cosB * cosφ + sinA * sinB * sinφ)
+        - r * cosA * sinB * sinθ
+const y = cx * (sinB * cosφ - sinA * cosB * sinφ)
+        + r * cosA * cosB * sinθ
+const invz = 1 / (cx * cosA * sinφ + r * sinA * sinθ + K)
+
+// z-buffer, then spend the Lambert term on the ramp
+if (invz > zbuf[i]) { zbuf[i] = invz
+  screen.set(px, py, shade(dot(normal, lightDir))) }</code></div>
+                        </div>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <canvas class="ascii" id="d-torus" aria-label="Classic spinning ASCII donut torus with dynamic lighting"></canvas>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>A living planet</h3>
+                            <p>One analytic ray–sphere intersection per cell, and the grid becomes a world. The surface is four octaves of value noise sampled <em>on the sphere</em>, so continents wrap seamlessly as it turns. A sun orbits slowly; the terminator crawls across the surface; ice holds the poles; the limb catches a thin rim of atmosphere.</p>
+                            <div class="code-block"><code>// per cell: does this ray hit the sphere?
+const b = dot(rayDir, -eye)
+const d2 = eye.len2() - b * b
+if (d2 > R * R) continue                 // miss: space
+
+const p = pointOnSphere(rayDir, b, d2)
+const n = p.normalized()                 // normal = position
+const land = fbm3(rotateY(n, t * spin))  // noise on the sphere
+const lit  = Math.max(0, dot(n, sunDir)) // the terminator
+screen.set(x, y, material(land, lat, lit))</code></div>
+                        </div>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <canvas class="ascii" id="d-planet" aria-label="Rotating ASCII planet with procedural continents, polar ice and a moving day-night terminator"></canvas>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>Warp field</h3>
+                            <p>Four hundred stars in a cone, divided by their own depth; perspective is just <code>x / z</code>. The throttle breathes on a slow cycle: at cruise the stars are points, and as the field accelerates, each star is redrawn several times along its own motion vector and becomes a streak. Speed is rendered as <em>history</em>.</p>
+                            <div class="code-block"><code>star.z -= speed * dt
+const sx = cx + star.x / star.z * focal
+const sy = cy + star.y / star.z * focal * aspect
+
+// draw the streak: the star's own recent past
+for (let k = 0; k < trail; k++) {
+  const zk = star.z + speed * dt * k
+  plot(cx + star.x / zk * focal, ...,
+       RAMP_TAIL[k])                 // '#' → '+' → ':' → '·'
+}</code></div>
+                        </div>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <canvas class="ascii" id="d-warp" aria-label="Star field streaking past at warp speed, accelerating and decelerating in cycles"></canvas>
+                            </div>
+                        </div>
+                    </article>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ LIGHT ============ -->
+        <section class="section" id="light">
+            <div class="container">
+                <p class="section-path">$ guide/light</p>
+                <h2>Light</h2>
+                <p class="section-intro">Modern terminals speak 16.7 million colors. Character chooses the brightness; color chooses the temperature.</p>
+
+                <div class="technique-list">
+
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>Nebula</h3>
+                            <p>Fractal value noise, warped by more of itself (<code>fbm(p + fbm(p))</code>), drifting through time as a third dimension. Density picks the character; a two-stop temperature gradient picks the color, from cold cyan gas to the hot rose of the core. A scatter of hashed stars twinkles through the thin regions.</p>
+                            <div class="code-block"><code>// domain warping: the cloud shapes the cloud
+const q = fbm(x * s, y * s, t * 0.10)
+const d = fbm(x * s + 1.7 * q, y * s + 9.2,
+              t * 0.06)
+
+const ch  = RAMP_SOFT[(d * d * ramp.length) | 0]
+const col = palette(d)         // cyan → violet → rose</code></div>
+                        </div>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <canvas class="ascii" id="d-nebula" aria-label="Drifting ASCII nebula with colored gas clouds and twinkling stars"></canvas>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>Solar surface</h3>
+                            <p>The 1993 DOOM fire algorithm, pointed at a star. Heat is injected at the base, and every cell above steals its value from below, minus a random cooling, with a pixel of side-slip for wind. Convection, radiation and flame licks emerge from four lines of code. Nobody drew a single flame.</p>
+                            <div class="code-block"><code>// classic doom fire: propagate heat upward
+for (let y = 0; y < rows - 1; y++)
+  for (let x = 0; x < cols; x++) {
+    const src  = (y + 1) * cols + x
+    const cool = (Math.random() * 3) | 0
+    const dst  = src - cols - cool + 1   // wind: drift left
+    heat[dst]  = Math.max(0, heat[src] - cool)
+  }
+// bottom row stays molten
+</code></div>
+                        </div>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <canvas class="ascii" id="d-fire" aria-label="Roiling solar fire rendered in ASCII with heat colors from ember red to white hot"></canvas>
+                            </div>
+                        </div>
+                    </article>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ RESOLUTION ============ -->
+        <section class="section" id="resolution">
+            <div class="container">
+                <p class="section-path">$ guide/resolution</p>
+                <h2>Resolution</h2>
+                <p class="section-intro">A braille character is a 2×4 grid of dots. One cell becomes eight pixels.</p>
+
+                <div class="technique-list">
+
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>Strange attractor</h3>
+                            <p>The Lorenz system, three coupled equations that became the original mathematics of chaos, integrated live and plotted into a braille pixel buffer at eight times cell resolution. Three particles start a breath apart and diverge forever; their trails decay like phosphor on a storage scope. The camera orbits the attractor slowly.</p>
+                            <div class="code-block"><code>// Unicode braille: U+2800 + 8 dot bits
+const DOTS = [[0x01,0x08],[0x02,0x10],
+              [0x04,0x20],[0x40,0x80]]
+cellChar = String.fromCharCode(0x2800 | bits)
+
+// the weather, in three lines
+dx = σ * (y - x)
+dy = x * (ρ - z) - y
+dz = x * y - β * z</code></div>
+                        </div>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <canvas class="ascii" id="d-lorenz" aria-label="Lorenz strange attractor drawn with braille characters, three colored trajectories diverging"></canvas>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="technique">
+                        <div class="technique-text">
+                            <h3>Galaxy survey</h3>
+                            <p>Six thousand stars on logarithmic spiral arms, each orbiting at its own Keplerian rate: the inner stars lap the outer ones, which is precisely what keeps the spiral wound. Splatted additively into the braille buffer, warm at the bulge and blue along the arms, it reads like a long-exposure plate that happens to be alive.</p>
+                            <div class="code-block"><code>// each star owns its orbit
+const θ = star.θ0 + t * 0.5 * Math.pow(star.r, -1.2)
+const arm = star.arm * Math.PI          // two arms
+const wind = Math.log(star.r + 1) * 3.1 // spiral winding
+px = r * Math.cos(θ + arm + wind)
+py = r * Math.sin(θ + arm + wind) * tilt
+splat(px, py, star.brightness)          // additive</code></div>
+                        </div>
+                        <div class="technique-demo">
+                            <div class="demo-window">
+                                <canvas class="ascii" id="d-galaxy" aria-label="Rotating spiral galaxy of thousands of stars drawn in braille characters"></canvas>
+                            </div>
+                        </div>
+                    </article>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ CHAOS ============ -->
+        <section class="section" id="chaos">
+            <div class="container-narrow">
+                <p class="section-path">$ guide/chaos</p>
+                <h2>Chaos</h2>
+                <p class="section-intro">Particle systems: hundreds of independent lives, one buffer.</p>
+
+                <p>Everything so far has been a field, a formula asked politely for its value at every cell. Particles invert the relationship: state lives in the objects, and the screen is just where they land. The demo below runs a full stellar life cycle on a loop, about eighteen seconds from peace to peace:</p>
+                <ul class="feature-list">
+                    <li><strong>Quiescence</strong>: a star breathes, its corona flickering</li>
+                    <li><strong>Collapse</strong>: the core contracts and whitens</li>
+                    <li><strong>Detonation</strong>: six hundred particles on ballistic arcs, plus an expanding shockwave ring</li>
+                    <li><strong>Remnant</strong>: the debris cools through amber to ember, and a pulsar is left blinking in the wreck</li>
+                </ul>
+
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <span class="term-dot"></span>
+                        <span class="terminal-title">~/supernova · 600 particles · <span id="sn-phase">quiescence</span></span>
+                    </div>
+                    <div class="terminal-body">
+                        <canvas class="ascii" id="d-supernova" aria-label="Complete supernova sequence: a star collapses, detonates into hundreds of particles, and leaves a blinking pulsar"></canvas>
+                    </div>
+                </div>
+
+                <div class="code-block"><code>// a particle is four numbers and a temperament
+for (const p of particles) {
+  p.vx *= DRAG; p.vy *= DRAG
+  p.x += p.vx * dt; p.y += p.vy * dt
+  p.heat *= COOLING
+
+  const speed = Math.hypot(p.vx, p.vy)
+  screen.set(p.x | 0, p.y | 0,
+    shade(p.heat), temperature(p.heat))
+}
+// the shockwave is not particles: it's a circle
+// of cells, drawn at radius v·t, fading as it thins</code></div>
+            </div>
+        </section>
+
+        <!-- ============ SMALL RITUALS ============ -->
+        <section class="section" id="patterns">
+            <div class="container">
+                <p class="section-path">$ guide/rituals</p>
+                <h2>Small rituals</h2>
+                <p class="section-intro">The everyday patterns (spinner, progress, counter, reveal, marquee, blink) each rebuilt with the same physics as the set pieces.</p>
+
+                <div class="pattern-grid">
+                    <div class="pattern-item">
+                        <h4>Spinner → orbit</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <canvas class="ascii" id="d-orbit" aria-label="Loading spinner reimagined as a moon orbiting a planet with a fading trail"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pattern-item">
+                        <h4>Progress → launch</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <canvas class="ascii" id="d-launch" aria-label="Progress bar reimagined as a rocket crossing the screen leaving an exhaust trail"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pattern-item">
+                        <h4>Counter → pulsar</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <canvas class="ascii" id="d-pulsar" aria-label="Live counter reimagined as a pulsar signal trace counting received pulses"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pattern-item">
+                        <h4>Reveal → decrypt</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <canvas class="ascii" id="d-decrypt" aria-label="Text reveal where scrambled glyphs resolve one by one into a message"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pattern-item">
+                        <h4>Marquee → comet</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <canvas class="ascii" id="d-comet" aria-label="Marquee reimagined as a comet streaking across the screen with a long tail"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pattern-item">
+                        <h4>Blink → eclipse</h4>
+                        <div class="terminal-window small">
+                            <div class="terminal-body">
+                                <canvas class="ascii" id="d-eclipse" aria-label="Blink effect reimagined as a moon cycling through its phases"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ CRAFT ============ -->
+        <section class="section" id="craft">
+            <div class="container-narrow">
+                <p class="section-path">$ guide/craft</p>
+                <h2>Craft</h2>
+                <p class="section-intro">What survives contact with a real terminal.</p>
+
+                <article class="subsection">
+                    <h3>Precompute what doesn't move</h3>
+                    <p>The single biggest lesson on this page: the black hole traces half a million geodesic steps <em>once</em>, then animates forever on cached results. Separate what is geometry from what is time. Geometry is paid at load; time should cost almost nothing.</p>
+                </article>
+
+                <article class="subsection">
+                    <h3>One write per frame</h3>
+                    <p>Whether it's <code>process.stdout.write('\x1b[H' + frame)</code> or one canvas pass, assemble the entire frame first and emit it atomically. Flicker is the sound of a frame being drawn in installments.</p>
+                </article>
+
+                <article class="subsection">
+                    <h3>Respect the cell</h3>
+                    <p>Terminal cells are about twice as tall as they are wide. Every circle on this page multiplies its x-axis by the cell aspect before comparing distances; skip that and every planet becomes an egg.</p>
+                    <div class="code-block"><code>const ASPECT = 0.5      // cell width / cell height
+const dx = (x - cx) * ASPECT
+const dy = (y - cy)
+if (dx * dx + dy * dy < r * r) { /* inside the circle */ }</code></div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Leave the room as you found it</h3>
+                    <p>Hide the cursor, use the alternate screen buffer, and restore both on <em>every</em> exit path, including the one where the user hits Ctrl-C mid-supernova.</p>
+                    <div class="code-block"><code>process.stdout.write('\x1b[?25l\x1b[?1049h')   // enter
+const restore = () =>
+  process.stdout.write('\x1b[?1049l\x1b[?25h\x1b[0m')
+process.on('exit', restore)
+process.on('SIGINT', () => { restore(); process.exit(0) })</code></div>
+                </article>
+
+                <article class="subsection">
+                    <h3>Motion is a preference</h3>
+                    <p>This page honors <code>prefers-reduced-motion</code>: every demo renders a single still frame and stops. In a CLI, honor <code>--no-animation</code> and <code>NO_COLOR</code> the same way. The animation is the garnish; the information is the meal.</p>
+                </article>
+            </div>
+        </section>
+
+        <!-- ============ FOOTER ============ -->
+        <footer class="footer">
+            <div class="container-narrow">
+                <div class="footer-sig">
+                    <canvas class="ascii" id="d-signature" aria-label="Small animated starfield signature"></canvas>
+                </div>
+                <p>Terminal animation: the Fable edition.</p>
+                <p class="footer-note">Written and rendered by Fable. Sixteen live simulations, zero images.<br>View source; all of it fits in one file each of HTML, CSS and JavaScript.<br><a href="terminal-animation.html">Read the first edition →</a></p>
+            </div>
+        </footer>
+    </main>
+
+    <script src="fable-terminal-animation.js"></script>
+</body>
+</html>
