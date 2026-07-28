@@ -62,7 +62,11 @@
     cursor:grab;
   }
   .pinbox:active { cursor:grabbing; }
-  .pinbox canvas { position:absolute; inset:0; width:100%; height:100%; display:block; }
+  .pinbox canvas { position:absolute; inset:0; width:100%; height:100%; display:block;
+    opacity:0; transition:opacity .45s ease; }
+  .pinbox.on canvas { opacity:1; }
+  .pinbox .shadow { opacity:0; transition:opacity .45s ease .1s; }
+  .pinbox.on .shadow { opacity:1; }
   .shadow {
     position:absolute; left:50%; bottom:-4%;
     width:46%; height:7%;
@@ -114,6 +118,9 @@
 <script type="importmap">
   { "imports": { "three": "/badge/lib/three.module.min.js" } }
 </script>
+<link rel="modulepreload" href="/badge/lib/three.module.min.js">
+<link rel="modulepreload" href="/badge/lib/three.core.min.js">
+<link rel="modulepreload" href="/badge/lib/RoomEnvironment.js">
 </head>
 <body>
 
@@ -186,12 +193,11 @@ const GLYPHS=new Map();
 function glyphUrl(emoji){
   return '/badge/lib/twemoji/'+[...emoji].map(c=>c.codePointAt(0).toString(16)).join('-')+'.svg';
 }
-async function loadGlyphs(){
-  await Promise.all(BADGES.map(async ([e])=>{
-    const img=new Image();
-    img.src=glyphUrl(e);
-    try{ await img.decode(); GLYPHS.set(e,img); }catch{ /* skip missing */ }
-  }));
+function loadGlyph(e){
+  if(GLYPHS.has(e)) return Promise.resolve();
+  const img=new Image();
+  img.src=glyphUrl(e);
+  return img.decode().then(()=>{ GLYPHS.set(e,img); }).catch(()=>{});
 }
 
 function rasterEmoji(emoji){
@@ -280,21 +286,27 @@ function quantize(px, alpha, W, K){
 }
 
 /* 3x3 majority filter, run twice: eats the anti-aliasing crumbs so the
-   enamel cells have clean die-cut borders */
-function modeFilter(idx, W, passes){
+   enamel cells have clean die-cut borders. K is the palette size; index
+   255 (off-glyph) rides along as slot K. */
+function modeFilter(idx, W, passes, K){
   let src=idx;
+  const counts=new Uint8Array(K+1);
   for(let p=0;p<passes;p++){
     const dst=new Uint8Array(W*W);
-    for(let y=0;y<W;y++) for(let x=0;x<W;x++){
-      const counts={};
-      for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
-        const xx=Math.min(W-1,Math.max(0,x+dx)), yy=Math.min(W-1,Math.max(0,y+dy));
-        const v=src[yy*W+xx];
-        counts[v]=(counts[v]||0)+1;
+    for(let y=0;y<W;y++){
+      const ym=Math.max(0,y-1)*W, y0=y*W, yp=Math.min(W-1,y+1)*W;
+      for(let x=0;x<W;x++){
+        counts.fill(0);
+        const xm=Math.max(0,x-1), xp=Math.min(W-1,x+1);
+        for(const row of [ym,y0,yp]){
+          let v=src[row+xm]; counts[v===255?K:v]++;
+          v=src[row+x];  counts[v===255?K:v]++;
+          v=src[row+xp]; counts[v===255?K:v]++;
+        }
+        let bi=0,bc=-1;
+        for(let k=0;k<=K;k++) if(counts[k]>bc){ bc=counts[k]; bi=k; }
+        dst[y0+x]=bi===K?255:bi;
       }
-      let bv=src[y*W+x], bc=0;
-      for(const k in counts) if(counts[k]>bc){ bc=counts[k]; bv=+k; }
-      dst[y*W+x]=bv;
     }
     src=dst;
   }
@@ -345,7 +357,7 @@ function buildPinMaps(emoji, seed){
 
   /* enamel cells */
   const q=quantize(px, alpha, TEX, 8);
-  const idx=modeFilter(q.idx, TEX, 2);
+  const idx=modeFilter(q.idx, TEX, 2, q.palette.length);
 
   /* the ink press: the pin is monotone in the animal's own colour. Find
      the glyph's dominant pigment (most pixels x most chroma), deepen it
@@ -938,20 +950,11 @@ function frame(t){
 }
 function start(){
   if(reduced&&!posed){ rotY=-0.5; rotX=0.06; }
-  /* entrance: the pin lands */
-  const t0=performance.now();
-  if(!reduced){
-    scaleAnim.v=0.6;
-    const landIn=()=>{
-      const k=Math.min(1,(performance.now()-t0)/700);
-      const e=1-Math.pow(1-k,3);
-      scaleAnim.v=0.6+0.4*e;
-      if(k<1) requestAnimationFrame(landIn); else scaleAnim.v=1;
-    };
-    requestAnimationFrame(landIn);
-  }
+  /* entrance: full size from the first frame, fading in — a scale-up here
+     reads as the page resizing itself */
   lastT=performance.now();
   raf=requestAnimationFrame(frame);
+  requestAnimationFrame(()=>box.classList.add('on'));
 }
 document.addEventListener('visibilitychange',()=>{
   if(document.hidden){ cancelAnimationFrame(raf); raf=0; }
@@ -960,13 +963,19 @@ document.addEventListener('visibilitychange',()=>{
 
 applyTheme();
 
-loadGlyphs().then(()=>{
+/* strike the first badge as soon as ITS glyph is ready; the rest of the
+   roster loads behind it */
+(async()=>{
   const i=order[0];
-  if(mint(BADGES[i][0])){ cursor=1; setPlate(i); }
-  else mintNext(false);                            // first glyph missing: walk on
+  setPlate(i);                                     // the name reads while the pin is struck
+  await loadGlyph(BADGES[i][0]);
+  if(mint(BADGES[i][0])) cursor=1;
   start();
-  setTimeout(()=>{ try{ prepareNext(); }catch{} },400);
-});
+  Promise.all(BADGES.map(([e])=>loadGlyph(e))).then(()=>{
+    if(!current) mintNext(false);                  // first glyph had failed
+    setTimeout(()=>{ try{ prepareNext(); }catch{} },200);
+  });
+})();
 </script>
 </body>
 </html>
