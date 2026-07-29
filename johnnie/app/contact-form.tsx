@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 // Where the form posts. Defaults to a same-origin Worker route (works on the
 // Cloudflare deployment). Override with NEXT_PUBLIC_CONTACT_ENDPOINT if needed.
@@ -23,6 +23,21 @@ function validate(data: FormData): Record<string, string> {
     errors["email"] = "That doesn't look like an email — typo somewhere?";
   if (!message) errors["Message"] = "You forgot the message — the best part!";
   return errors;
+}
+
+// Always mounted so the message can grow into place (and collapse away)
+// smoothly instead of popping in. The last message is kept around while the
+// slot collapses so the text doesn't vanish mid-animation.
+function FieldError({ id, message }: { id: string; message?: string }) {
+  const last = useRef("");
+  if (message) last.current = message;
+  return (
+    <div className={`field-error${message ? " is-open" : ""}`} id={id} aria-hidden={message ? undefined : true}>
+      <div className="field-error_clip">
+        <div className="field-error_text">{message || last.current}</div>
+      </div>
+    </div>
+  );
 }
 
 export default function ContactForm() {
@@ -127,13 +142,7 @@ export default function ContactForm() {
   }
 
   function fieldError(name: string) {
-    const error = fieldErrors[name];
-    if (!error) return null;
-    return (
-      <div className="field-error" id={`${name}-field-error`}>
-        {error}
-      </div>
-    );
+    return <FieldError id={`${name}-field-error`} message={fieldErrors[name]} />;
   }
 
   return (
@@ -190,9 +199,10 @@ export default function ContactForm() {
                 <span>{SENDING_LABEL}&nbsp;&nbsp;·&nbsp;&nbsp;</span>
               </span>
             ) : status === "error" ? (
-              <span role="alert">{errorLabel}</span>
+              // Keyed so a new message re-runs the populate-in animation.
+              <span className="btn-label" role="alert" key={errorLabel}>{errorLabel}</span>
             ) : (
-              "Send message"
+              <span className="btn-label" key="idle">Send message</span>
             )}
           </button>
         </form>
