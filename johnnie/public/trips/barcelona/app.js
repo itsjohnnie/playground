@@ -1253,8 +1253,8 @@
   // offscreen canvas from the same geometry that placed the real
   // elements, pre-blurred, and handed to a fragment shader that adds
   // what CSS cannot: refraction pooling at the rim, chromatic
-  // dispersion where the bend is strongest, a still north-west specular
-  // on the rim, and a slow breathing of the surface. wherever
+  // dispersion where the bend is strongest, an even hairline rim drawn
+  // from the same SDF, and a slow breathing of the surface. wherever
   // WebGL is missing (or motion is reduced) the CSS frost simply
   // remains — the shader is an upgrade, never a dependency
   const glass = (() => {
@@ -1279,7 +1279,7 @@ void main(){v=a*u_size;gl_Position=vec4(a.x*2.-1.,1.-a.y*2.,0.,1.);}`;
     const FS = `precision mediump float;
 uniform sampler2D u_bg;uniform sampler2D u_lens;uniform vec2 u_size;
 uniform float u_rad;uniform vec4 u_map;
-uniform float u_time;uniform vec4 u_tint;uniform float u_spec;varying vec2 v;
+uniform float u_time;uniform vec4 u_tint;varying vec2 v;
 float sd(vec2 p){vec2 b=u_size*.5-vec2(u_rad);vec2 q=abs(p-u_size*.5)-b;
 return length(max(q,0.))+min(max(q.x,q.y),0.)-u_rad;}
 void main(){
@@ -1303,9 +1303,7 @@ void main(){
   float luma=dot(col,vec3(.2126,.7152,.0722));
   col=mix(vec3(luma),col,1.35);
   col=mix(col,u_tint.rgb,u_tint.a);
-  float spec=pow(max(dot(normalize(n+vec2(1e-4)),vec2(-.6,-.8)),0.),5.)*bev;
-  col+=spec*u_spec;
-  col+=smoothstep(1.6,0.,abs(d+1.2))*.14;
+  col+=smoothstep(1.6,0.,abs(d+1.2))*.16;
   float h=fract(sin(dot(v,vec2(12.9898,78.233)))*43758.5453);
   col+=(h-.5)*(2./255.);
   gl_FragColor=vec4(col,1.);
@@ -1330,7 +1328,7 @@ void main(){
     gl.enableVertexAttribArray(aloc);
     gl.vertexAttribPointer(aloc, 2, gl.FLOAT, false, 0, 0);
     const U = {};
-    ["u_size", "u_rad", "u_map", "u_time", "u_tint", "u_spec"].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+    ["u_size", "u_rad", "u_map", "u_time", "u_tint"].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
     for (const unit of [0, 1]) {
       gl.activeTexture(gl.TEXTURE0 + unit);
       gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
@@ -1504,7 +1502,6 @@ void main(){
       gl.uniform1f(U.u_time, (performance.now() - t0) / 1000);
       const tint = rgba(getComputedStyle(panel).getPropertyValue("--glass"));
       gl.uniform4f(U.u_tint, tint[0], tint[1], tint[2], tint[3]);
-      gl.uniform1f(U.u_spec, matchMedia("(prefers-color-scheme: light)").matches ? 0.2 : 0.34);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
