@@ -18,10 +18,10 @@ function validate(data: FormData): Record<string, string> {
   const errors: Record<string, string> = {};
   const email = String(data.get("email") || "").trim();
   const message = String(data.get("Message") || "").trim();
-  if (!email) errors["email"] = "You forgot your email — how would I reply?";
+  if (!email) errors["email"] = "You forgot your email. Without it I'd have to Wuphf you back.";
   else if (!EMAIL_RE.test(email))
-    errors["email"] = "That doesn't look like an email — typo somewhere?";
-  if (!message) errors["Message"] = "You forgot the message — the best part!";
+    errors["email"] = "That email doesn't look real. Identity theft is not a joke, Jim!";
+  if (!message) errors["Message"] = "You forgot the message. That's like Pretzel Day without the pretzel.";
   return errors;
 }
 
@@ -76,8 +76,8 @@ export default function ContactForm() {
     if (names.length > 0) {
       fail(
         names.length > 1
-          ? "Oops — check the highlighted fields"
-          : "Oops — check the highlighted field"
+          ? "Oops! Check the highlighted fields"
+          : "Oops! Check the highlighted field"
       );
       const first = form.elements.namedItem(names[0]);
       if (first instanceof HTMLElement) first.focus();
@@ -103,15 +103,15 @@ export default function ContactForm() {
         setStatus("success");
         form.reset();
       } else if (res.status === 422) {
-        fail("Oops — check the highlighted fields");
+        fail("Oops! Check the highlighted fields");
       } else {
-        fail("Server hiccup — tap to retry");
+        fail("The server declared bankruptcy. Tap to retry");
       }
     } catch {
       fail(
         typeof navigator !== "undefined" && navigator.onLine === false
-          ? "You're offline — tap to retry"
-          : "Can't reach the server — tap to retry"
+          ? "You're offline. Tap to retry"
+          : "Can't reach the server. Tap to retry"
       );
     }
   }
@@ -209,7 +209,7 @@ export default function ContactForm() {
       )}
       {status === "success" && (
         <div role="status" className="form-success ui-form-done" style={{ display: "block" }}>
-          <div className="text-block-4">¡Gracias! Your message landed in my inbox — I&#x27;ll get back to you soon. 🙌</div>
+          <div className="text-block-4">¡Gracias! Your message landed in my inbox. I&#x27;ll get back to you soon. 🙌</div>
         </div>
       )}
     </div>
