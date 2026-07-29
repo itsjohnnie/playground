@@ -477,13 +477,15 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   gap: 16px;
 }
 .panel__group { display: flex; flex-direction: column; }
+/* the label needs no rule of its own: caps, dimmed ink and the air
+   above it already mark the section — the row hairlines below provide
+   the lattice, and the masthead keeps the one structural divider */
 .panel__label {
   font-size: var(--fs);
   font-weight: 400;
   letter-spacing: 0.14em;
   color: color-mix(in srgb, var(--bone) 44%, transparent);
-  padding: 8px 0 6px;
-  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 13%, transparent);
+  padding: 8px 0 4px;
 }
 
 /* toggles */
