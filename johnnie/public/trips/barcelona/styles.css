@@ -504,7 +504,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   background: transparent;
   border: none;
-  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 8%, transparent);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 10%, transparent);
   cursor: pointer;
 }
 .tgl:focus-visible { outline: 1px solid var(--bone); outline-offset: -2px; }
@@ -544,7 +544,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   background: transparent;
   border: none;
-  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 8%, transparent);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 10%, transparent);
   cursor: pointer;
 }
 .act:focus-visible { outline: 1px solid var(--bone); outline-offset: -2px; }

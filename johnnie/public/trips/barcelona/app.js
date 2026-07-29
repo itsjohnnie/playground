@@ -128,6 +128,14 @@
     const cfg = config();
     const { cols, rows } = cfg;
     const occ = new Uint8Array(cols * rows);
+    // the first and last rows belong to the chrome — the name, the
+    // sheet number, the credit, the readout and the chip live there.
+    // claiming them up front bars EVERYTHING dealt (copy, clippings,
+    // their numbers) from either row, top and bottom alike
+    for (let i = 0; i < cols; i++) {
+      occ[i] = 1;
+      occ[(rows - 1) * cols + i] = 1;
+    }
     const free = (x, y, w, h) => {
       if (x < 0 || y < 0 || x + w > cols || y + h > rows) return false;
       for (let j = y; j < y + h; j++)
