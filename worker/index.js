@@ -234,6 +234,14 @@ export default {
       }
     }
 
+    // The trips engine ships often: its code and manifests must
+    // revalidate on every load (ETag 304s keep it cheap) so browsers
+    // never run a stale sheet. Plates keep their long-lived caching.
+    if (/^\/trips\/.*\.(js|css|json)$/.test(url.pathname) || /^\/trips\/[^/.]+\/?$/.test(url.pathname)) {
+      res = new Response(res.body, res);
+      res.headers.set("Cache-Control", "no-cache");
+    }
+
     if (!staging) return res;
     const tagged = new Response(res.body, res);
     tagged.headers.set("X-Robots-Tag", "noindex, nofollow");
