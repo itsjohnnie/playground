@@ -118,16 +118,20 @@ body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
   }
   /* the 160px breath lives on margins (not flex gap) so a departing
      tile can collapse it as it goes and the strip reflows fluidly */
+  /* cover, not stretch: while a tile animates between aspects the
+     photo centre-crops for a beat instead of distorting — at rest the
+     box matches the frame's aspect exactly, so nothing stays cropped */
   .bg .tile {
     flex: none;
     position: relative;
     overflow: hidden;
-    background-size: 100% 100%;
+    background-size: cover;
+    background-position: center;
     background-repeat: no-repeat;
     transition:
-      width 900ms var(--ease-out),
-      height 900ms var(--ease-out),
-      margin-left 900ms var(--ease-out);
+      width 520ms var(--ease-out),
+      height 520ms var(--ease-out),
+      margin-left 520ms var(--ease-out);
   }
   .bg .tile + .tile { margin-left: 160px; }
   .bg .tile--gone { margin-left: 0 !important; }
@@ -136,10 +140,11 @@ body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
   .bg .tile__next {
     position: absolute;
     inset: 0;
-    background-size: 100% 100%;
+    background-size: cover;
+    background-position: center;
     background-repeat: no-repeat;
     opacity: 0;
-    transition: opacity 700ms var(--ease-out);
+    transition: opacity 380ms var(--ease-out);
   }
   .bg .tile__next.is-on { opacity: 1; }
 }
