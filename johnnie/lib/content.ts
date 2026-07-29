@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import matter from "gray-matter";
+import { slugify } from "./slugify";
 
 const CONTENT = path.join(process.cwd(), "content");
 
@@ -34,6 +35,9 @@ export type StuffSpec = { label: string; value: string };
 export type StuffItem = {
   order: number;
   name: string;
+  // Derived from name (not stored in frontmatter) — used as the #hash for
+  // linking straight to one item's detail sheet (see stuff-list.tsx).
+  slug: string;
   category: string;
   // Owned = full opacity; not owned (wishlist / someday) = dimmed.
   owned: boolean;
@@ -77,11 +81,24 @@ export function getDiscover(): DiscoverItem[] {
 
 export function getStuff(): StuffItem[] {
   // `specs`/`cta` are newer fields; default them so older entries stay valid.
-  return readCollection<StuffItem>("stuff").map((it) => ({
+  const items = readCollection<StuffItem>("stuff").map((it) => ({
     ...it,
+    slug: slugify(it.name),
     specs: Array.isArray(it.specs) ? it.specs : [],
     cta: typeof it.cta === "string" ? it.cta : "",
     image_dark: typeof it.image_dark === "string" ? it.image_dark : "",
     status: typeof it.status === "string" ? it.status : "",
   }));
+
+  const seen = new Set<string>();
+  for (const it of items) {
+    if (seen.has(it.slug)) {
+      throw new Error(
+        `Duplicate /stuff slug "${it.slug}" (from "${it.name}") — two items produce the same URL.`,
+      );
+    }
+    seen.add(it.slug);
+  }
+
+  return items;
 }
