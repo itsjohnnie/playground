@@ -349,11 +349,14 @@
   // they describe the centre tile, so clippings crop from it
   const stripMode = () => !smallScreen.matches;
   const STRIP_GAP = 160, STRIP_PAD = 160;
+  let panLimit = 96; // refreshed with the strip geometry
 
   function stripGeom(iw, ih) {
     const tileH = Math.max(64, innerHeight - STRIP_PAD * 2);
     const tileW = tileH * (iw / ih);
-    const n = Math.max(1, Math.ceil((innerWidth + STRIP_GAP) / (tileW + STRIP_GAP)) + 2);
+    // only whole prints: as many as fit with the uniform breath kept
+    // at the sides too — a repeat is never cropped by the viewport
+    const n = Math.max(1, Math.floor((innerWidth - STRIP_PAD * 2 + STRIP_GAP) / (tileW + STRIP_GAP)));
     const stripW = n * tileW + (n - 1) * STRIP_GAP;
     const startX = (innerWidth - stripW) / 2;
     const center = startX + Math.floor(n / 2) * (tileW + STRIP_GAP);
@@ -484,6 +487,7 @@
     if (!negDims) return;
     if (stripMode()) {
       const g = stripGeom(negDims.iw, negDims.ih);
+      panLimit = Math.max(0, Math.min(96, g.startX - 40));
       root.style.setProperty("--dw", `${g.tileW}px`);
       root.style.setProperty("--dh", `${g.tileH}px`);
       root.style.setProperty("--ox", `${-g.center}px`);
@@ -1422,7 +1426,7 @@
     };
     addEventListener("pointermove", (e) => {
       if (!stripMode()) return;
-      panT = -(e.clientX / innerWidth - 0.5) * 192; // up to 96px each way
+      panT = -(e.clientX / innerWidth - 0.5) * 2 * panLimit; // drift stays inside the side breath
       if (!panRaf) panRaf = requestAnimationFrame(panTick);
     });
   }
