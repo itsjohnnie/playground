@@ -61,12 +61,29 @@
     touch-action:none;
     cursor:grab;
   }
+  @media (min-width: 900px) {
+    .pinbox { width:min(46vh, 460px); height:min(46vh, 460px); }
+  }
   .pinbox:active { cursor:grabbing; }
   .pinbox canvas { position:absolute; inset:0; width:100%; height:100%; display:block;
     opacity:0; transition:opacity .45s ease; }
   .pinbox.on canvas { opacity:1; }
   .pinbox .shadow { opacity:0; transition:opacity .45s ease .1s; }
   .pinbox.on .shadow { opacity:1; }
+  .ghost {
+    position:absolute; inset:20%;
+    border-radius:50%;
+    background:radial-gradient(circle at 38% 32%, rgba(210,172,105,.32), rgba(210,172,105,.10) 55%, rgba(210,172,105,.04) 72%, transparent 76%);
+    filter:blur(2px);
+    animation:breathe 1.5s ease-in-out infinite;
+    transition:opacity .35s ease;
+  }
+  @media (prefers-color-scheme: dark) {
+    .ghost { background:radial-gradient(circle at 38% 32%, rgba(200,158,92,.20), rgba(200,158,92,.07) 55%, rgba(200,158,92,.03) 72%, transparent 76%); }
+  }
+  @keyframes breathe { 0%,100%{ opacity:.5; transform:scale(.97); } 50%{ opacity:1; transform:scale(1.02); } }
+  .pinbox.on .ghost { opacity:0 !important; animation-play-state:paused; }
+  @media (prefers-reduced-motion: reduce) { .ghost { animation:none; opacity:.7; } }
   .shadow {
     position:absolute; left:50%; bottom:-5%;
     width:54%; height:8%;
@@ -136,7 +153,7 @@
 <a class="crumb" href="/"><span class="arrow">&#8592;</span> johnnies.life</a>
 
 <div class="stage">
-  <div class="pinbox" id="pinbox"><div class="shadow"></div></div>
+  <div class="pinbox" id="pinbox"><div class="ghost"></div><div class="shadow"></div></div>
   <div class="plate" id="plate">
     <div class="name" id="name">&nbsp;</div>
     <div class="earned" id="earned">&nbsp;</div>
@@ -330,19 +347,24 @@ function KITCHEN(){
     }
     palette=merged;
     const idx=new Uint8Array(W*W).fill(255);
-    const assign=()=>{
-      for(let i=0;i<W*W;i++){
-        if(!alpha[i]) continue;
-        let best=0,bd=1e9;
-        for(let p=0;p<palette.length;p++){
-          const dr=px[i*4]-palette[p][0], dg=px[i*4+1]-palette[p][1], db=px[i*4+2]-palette[p][2];
-          const d=dr*dr+dg*dg+db*db;
-          if(d<bd){ bd=d; best=p; }
-        }
-        idx[i]=best;
+    const assignAt=(i)=>{
+      let best=0,bd=1e9;
+      for(let p=0;p<palette.length;p++){
+        const dr=px[i*4]-palette[p][0], dg=px[i*4+1]-palette[p][1], db=px[i*4+2]-palette[p][2];
+        const d=dr*dr+dg*dg+db*db;
+        if(d<bd){ bd=d; best=p; }
+      }
+      idx[i]=best;
+    };
+    /* the rescue iterates on a quarter-res grid; the full image is
+       assigned once, at the end, with the settled palette */
+    const strideAssign=()=>{
+      for(let y=0;y<W;y+=2) for(let x=0;x<W;x+=2){
+        const i=y*W+x;
+        if(alpha[i]) assignAt(i);
       }
     };
-    assign();
+    strideAssign();
     /* rescue rare colours the median cut never boxed — a shark's navy eye,
        a frog's darker nostrils. Only interior pixels of contiguous
        high-error blobs count, so anti-aliased edges can't trigger it. */
@@ -366,8 +388,9 @@ function KITCHEN(){
       }
       if(n<60) break;
       palette.push([Math.round(sr/n),Math.round(sg/n),Math.round(sb/n)]);
-      assign();
+      strideAssign();
     }
+    for(let i=0;i<W*W;i++) if(alpha[i]) assignAt(i);
     return { palette, idx };
   }
 
@@ -1253,20 +1276,24 @@ function attach(mesh){
   }
 }
 
-/* the next badge is always being struck in the worker; the main thread
-   only ever swaps a finished mesh in */
-let prepared=null, preparingP=null;
+/* a small stock of pressed badges waits ahead of the taps, so even a
+   burst of clicks finds a finished pin ready */
+const stock=[];
+let ahead=0, preparingP=null;
 function kickPrepare(){
-  if(prepared) return Promise.resolve();
   if(preparingP) return preparingP;
+  if(stock.length>=2) return Promise.resolve();
   preparingP=(async()=>{
     try{
-      let steps=0;
-      while(steps<BADGES.length){
-        const i=order[(cursor+steps)%order.length]; steps++;
-        await loadGlyph(BADGES[i][0]);
-        const mesh=await buildBadge(i);
-        if(mesh){ prepared={mesh,i,steps}; return; }
+      while(stock.length<2){
+        let steps=0, made=false;
+        while(steps<BADGES.length){
+          const i=order[(cursor+ahead+steps)%order.length]; steps++;
+          await loadGlyph(BADGES[i][0]);
+          const mesh=await buildBadge(i);
+          if(mesh){ stock.push({mesh,i,steps}); ahead+=steps; made=true; break; }
+        }
+        if(!made) break;
       }
     } finally { preparingP=null; }
   })();
@@ -1274,7 +1301,8 @@ function kickPrepare(){
 }
 
 function swapToPrepared(){
-  const p=prepared; prepared=null;
+  const p=stock.shift();
+  ahead-=p.steps;
   cursor+=p.steps;
   attach(p.mesh);
   plate.classList.add('swap');
@@ -1314,14 +1342,16 @@ function popMint(){
   if(pendingSwap) return;
   pendingSwap=true;
   if(!reduced) spinVel=Math.max(spinVel,3.2);      // the spin answers on the next frame
-  const p=kickPrepare();
-  p.then(()=>{
-    if(reduced){
-      if(prepared) swapToPrepared();
-      pendingSwap=false;
-    } else if(!prepared&&!preparingP){
-      pendingSwap=false;                           // nothing could be struck
-    }
+  if(reduced){
+    const t=setInterval(()=>{
+      if(stock.length){ clearInterval(t); swapToPrepared(); pendingSwap=false; }
+      else if(!preparingP){ clearInterval(t); pendingSwap=false; }
+    },80);
+    kickPrepare();
+    return;
+  }
+  kickPrepare().then(()=>{
+    if(!stock.length&&!preparingP) pendingSwap=false;   // nothing could be struck
   });
 }
 
@@ -1368,7 +1398,7 @@ function frame(t){
       const prev=rotY;
       rotY+=spinVel*dt;
       rotX+=(0.04+Math.sin(t*0.00042)*0.05-rotX)*Math.min(1,dt*2);
-      if(pendingSwap&&prepared&&
+      if(pendingSwap&&stock.length&&
          Math.floor((prev-Math.PI/2)/Math.PI)!==Math.floor((rotY-Math.PI/2)/Math.PI)){
         swapToPrepared();                          // exchanged while edge-on
         pendingSwap=false;
@@ -1415,7 +1445,7 @@ applyTheme();
   Promise.all(BADGES.map(([e])=>loadGlyph(e))).then(async()=>{
     if(!current){                                  // first glyph had failed: walk on
       await kickPrepare();
-      if(prepared) swapToPrepared();
+      if(stock.length) swapToPrepared();
     } else kickPrepare();
   });
 })();
