@@ -476,7 +476,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   overflow-y: auto;
   /* the foot carries more than its number: the rounded corners crowd
      the last row, so the bottom breathes wider to read as equal */
-  padding: 8px 20px calc(20px + env(safe-area-inset-bottom));
+  padding: 8px 20px calc(16px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -518,7 +518,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   width: 36px;
   height: 20px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bone) 18%, transparent);
+  background: color-mix(in srgb, var(--bone) 16%, transparent);
   transition: background-color 280ms var(--ease-out);
 }
 .tgl__track::after {
@@ -532,7 +532,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
 }
 /* on is a lighter track, never an inverted knob: the pill stays ink
    in every state and the ground beneath it does the talking */
-.tgl[aria-checked="true"] .tgl__track { background: color-mix(in srgb, var(--bone) 45%, transparent); }
+.tgl[aria-checked="true"] .tgl__track { background: color-mix(in srgb, var(--bone) 48%, transparent); }
 .tgl[aria-checked="true"] .tgl__track::after { translate: 16px 0; }
 
 /* actions */
