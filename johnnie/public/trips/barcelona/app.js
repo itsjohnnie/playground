@@ -1214,6 +1214,283 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   }
 
+  // ————— liquid glass: a shader, not a blur —————
+
+  // backdrop-filter can only blur what sits behind the panel; a shader
+  // can BEND it. WebGL cannot see through the DOM, so the glass works
+  // from a mirror: each frame the scene behind the panel — ground,
+  // prints, clippings, veil, type, crosshair — is redrawn onto a small
+  // offscreen canvas from the same geometry that placed the real
+  // elements, pre-blurred, and handed to a fragment shader that adds
+  // what CSS cannot: refraction pooling at the rim, chromatic
+  // dispersion where the bend is strongest, a specular that leans
+  // toward the cursor, and a slow breathing of the surface. wherever
+  // WebGL is missing (or motion is reduced) the CSS frost simply
+  // remains — the shader is an upgrade, never a dependency
+  const glass = (() => {
+    if (reducedMotion) return null;
+    const cv = document.createElement("canvas");
+    cv.className = "panel__glass";
+    const gl = cv.getContext("webgl", { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: "low-power" });
+    if (!gl) return null;
+
+    // mediump in BOTH stages: u_size appears in each, and WebGL1
+    // refuses to link a uniform whose precision differs between them
+    const VS = `precision mediump float;
+attribute vec2 a;uniform vec2 u_size;varying vec2 v;
+void main(){v=a*u_size;gl_Position=vec4(a.x*2.-1.,1.-a.y*2.,0.,1.);}`;
+    // the slab: flat glass with a beveled rim. the SDF of the panel's
+    // rounded rect gives both the rim band and the surface normal
+    const FS = `precision mediump float;
+uniform sampler2D u_bg;uniform vec2 u_size;uniform float u_rad;
+uniform vec4 u_map;uniform vec2 u_cursor;uniform float u_time;
+uniform vec4 u_tint;uniform float u_spec;varying vec2 v;
+float sd(vec2 p){vec2 b=u_size*.5-vec2(u_rad);vec2 q=abs(p-u_size*.5)-b;
+return length(max(q,0.))+min(max(q.x,q.y),0.)-u_rad;}
+void main(){
+  float d=sd(v);
+  float band=min(28.,min(u_size.x,u_size.y)*.25);
+  float e=clamp(-d/band,0.,1.);
+  float bev=(1.-e)*(1.-e);
+  vec2 g=vec2(sd(v+vec2(1.,0.))-sd(v-vec2(1.,0.)),sd(v+vec2(0.,1.))-sd(v-vec2(0.,1.)));
+  g/=max(length(g),1e-4);
+  vec2 rip=vec2(sin(v.y*.017+u_time*.7)+sin(v.x*.011-u_time*.5),
+                cos(v.x*.015+u_time*.6)+cos(v.y*.009+u_time*.4));
+  vec2 n=g*bev+rip*.05*e;
+  vec2 off=n*26.;
+  vec3 col;
+  col.g=texture2D(u_bg,(v+off)*u_map.xy+u_map.zw).g;
+  col.r=texture2D(u_bg,(v+off*1.12)*u_map.xy+u_map.zw).r;
+  col.b=texture2D(u_bg,(v+off*.88)*u_map.xy+u_map.zw).b;
+  col*=1.06;
+  col=mix(col,u_tint.rgb,u_tint.a);
+  vec2 L=normalize(u_cursor-v+vec2(1e-4));
+  float spec=pow(max(dot(normalize(n+vec2(1e-4)),L),0.),5.)*bev;
+  gl_FragColor=vec4(col+spec*u_spec,1.);
+}`;
+    const sh = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : null;
+    };
+    const vsh = sh(gl.VERTEX_SHADER, VS), fsh = sh(gl.FRAGMENT_SHADER, FS);
+    if (!vsh || !fsh) return null;
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vsh);
+    gl.attachShader(prog, fsh);
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return null;
+    gl.useProgram(prog);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1]), gl.STATIC_DRAW);
+    const aloc = gl.getAttribLocation(prog, "a");
+    gl.enableVertexAttribArray(aloc);
+    gl.vertexAttribPointer(aloc, 2, gl.FLOAT, false, 0, 0);
+    const U = {};
+    ["u_size", "u_rad", "u_map", "u_cursor", "u_time", "u_tint", "u_spec"].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    // the mirror: half-resolution, with a margin so refraction near the
+    // panel's edge can reach content just off the viewport
+    const MS = 0.5, MARGIN = 48;
+    const scene = document.createElement("canvas");
+    const frost = document.createElement("canvas");
+    const sctx = scene.getContext("2d");
+    const fctx = frost.getContext("2d");
+
+    // the mirror needs decoded Image objects for whatever the layers
+    // show — including dithered data URLs; a few stay warm
+    const cache = new Map();
+    const plate = (src) => {
+      let img = cache.get(src);
+      if (!img) {
+        img = new Image();
+        img.src = src;
+        cache.set(src, img);
+        if (cache.size > 4) for (const k of cache.keys()) { if (k !== src) { cache.delete(k); break; } }
+      }
+      return img.complete && img.naturalWidth ? img : null;
+    };
+    const rgba = (v) => {
+      const m = (v || "").match(/([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?/);
+      return m ? [+m[1] / 255, +m[2] / 255, +m[3] / 255, m[4] === undefined ? 1 : +m[4]] : [0.07, 0.06, 0.05, 0.34];
+    };
+
+    function drawMirror() {
+      const W = Math.round((innerWidth + MARGIN * 2) * MS);
+      const H = Math.round((innerHeight + MARGIN * 2) * MS);
+      if (scene.width !== W) { scene.width = W; frost.width = W; }
+      if (scene.height !== H) { scene.height = H; frost.height = H; }
+      const ground = getComputedStyle(document.body).backgroundColor;
+      sctx.setTransform(1, 0, 0, 1, 0, 0);
+      sctx.filter = "none";
+      sctx.globalAlpha = 1;
+      sctx.fillStyle = ground;
+      sctx.fillRect(0, 0, W, H);
+      // from here on the mirror speaks CSS pixels
+      sctx.setTransform(MS, 0, 0, MS, MARGIN * MS, MARGIN * MS);
+      const mono = settings.color ? "none" : "grayscale(1) contrast(1.15)";
+      for (const layer of [bgA, bgB]) {
+        const op = parseFloat(getComputedStyle(layer).opacity);
+        if (!op || !layer.dataset.src) continue;
+        const img = plate(layer.dataset.src);
+        if (!img) continue;
+        const iw = img.naturalWidth, ih = img.naturalHeight;
+        sctx.globalAlpha = op;
+        sctx.filter = mono;
+        const tiles = layer.querySelectorAll(".tile");
+        if (tiles.length) tiles.forEach((t) => {
+          // live rects carry the pan drift and any mid-morph size
+          const r = t.getBoundingClientRect();
+          if (r.width < 1 || r.height < 1) return;
+          const cov = Math.max(r.width / iw, r.height / ih);
+          const sw = r.width / cov, shh = r.height / cov;
+          sctx.drawImage(img, (iw - sw) / 2, (ih - shh) / 2, sw, shh, r.left, r.top, r.width, r.height);
+          t.querySelectorAll(".clip").forEach((c) => {
+            const co = parseFloat(getComputedStyle(c).opacity);
+            const cr = c.getBoundingClientRect();
+            if (!co || cr.width < 1) return;
+            const cellW = r.width / CLIP_C, cellH = r.height / CLIP_R;
+            sctx.save();
+            sctx.globalAlpha = op * co;
+            sctx.beginPath();
+            sctx.rect(cr.left, cr.top, cr.width, cr.height);
+            sctx.clip();
+            sctx.drawImage(img, 0, 0, iw, ih, cr.left - c.dataset.sx * cellW, cr.top - c.dataset.sy * cellH, r.width, r.height);
+            sctx.restore();
+          });
+        });
+        else {
+          // phones: one cover-cropped frame fills the viewport
+          const cov = Math.max(innerWidth / iw, innerHeight / ih);
+          const sw = innerWidth / cov, shh = innerHeight / cov;
+          sctx.drawImage(img, (iw - sw) / 2, (ih - shh) / 2, sw, shh, 0, 0, innerWidth, innerHeight);
+        }
+      }
+      sctx.filter = "none";
+      sctx.globalAlpha = 1;
+      sctx.fillStyle = getComputedStyle(root).getPropertyValue("--veil").trim() || "rgba(10,9,8,0.26)";
+      sctx.fillRect(-MARGIN, -MARGIN, innerWidth + MARGIN * 2, innerHeight + MARGIN * 2);
+      // the type, as ink only — pill rings and icons dissolve in the
+      // frost anyway, so the mirror does not carry them
+      const ink = getComputedStyle(root).getPropertyValue("--bone").trim() || "#fff";
+      const fspx = parseFloat(getComputedStyle(root).getPropertyValue("--fs")) || 10;
+      const lh = fspx * 1.55;
+      sctx.fillStyle = ink;
+      sctx.textBaseline = "top";
+      sctx.font = `500 ${fspx}px "Geist Mono", monospace`;
+      grid.querySelectorAll(".cp").forEach((el) => {
+        const cs = getComputedStyle(el);
+        if (cs.visibility === "hidden" || cs.display === "none") return;
+        const r = el.getBoundingClientRect();
+        const lines = el.textContent.split("\n").map((l) => l.trim()).filter(Boolean);
+        if (el.classList.contains("cp--vert")) {
+          sctx.save();
+          sctx.translate(r.right - 8, r.top + 8);
+          sctx.rotate(Math.PI / 2);
+          lines.forEach((l, k) => sctx.fillText(l.toUpperCase(), 0, k * lh));
+          sctx.restore();
+        } else {
+          lines.forEach((l, k) => sctx.fillText(l.toUpperCase(), r.left + 8, r.top + 8 + k * lh));
+        }
+      });
+      document.querySelectorAll(".chrome span, .chrome a").forEach((el) => {
+        if (!el.parentElement.classList.contains("chrome")) return;
+        const r = el.getBoundingClientRect();
+        if (!r.width) return;
+        sctx.fillText(el.textContent.toUpperCase(), r.left, r.top);
+      });
+      if (crosshair.classList.contains("is-on")) {
+        const vr = crosshair.querySelector(".crosshair__v").getBoundingClientRect();
+        const hr = crosshair.querySelector(".crosshair__h").getBoundingClientRect();
+        sctx.globalAlpha = 0.14;
+        sctx.fillRect(vr.left, -MARGIN, 1, innerHeight + MARGIN * 2);
+        sctx.fillRect(-MARGIN, hr.top, innerWidth + MARGIN * 2, 1);
+        sctx.globalAlpha = 1;
+      }
+      // pre-frost: the shader bends an already-diffused scene
+      fctx.setTransform(1, 0, 0, 1, 0, 0);
+      fctx.filter = "none";
+      fctx.fillStyle = ground;
+      fctx.fillRect(0, 0, W, H);
+      fctx.filter = `blur(${Math.round(32 * MS)}px)`;
+      fctx.drawImage(scene, 0, 0);
+      fctx.filter = "none";
+    }
+
+    let cx = innerWidth / 2, cy = innerHeight / 2;
+    let frame = 0, raf = null, holdUntil = 0;
+    const t0 = performance.now();
+    addEventListener("pointermove", (e) => { cx = e.clientX; cy = e.clientY; }, { passive: true });
+
+    function fit() {
+      const dpr = Math.min(devicePixelRatio || 1, 2);
+      const w = panel.clientWidth, h = panel.clientHeight;
+      if (!w || !h) return;
+      const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+      if (cv.width !== bw || cv.height !== bh) {
+        cv.width = bw;
+        cv.height = bh;
+        gl.viewport(0, 0, bw, bh);
+      }
+    }
+
+    function draw() {
+      if (frame++ % 2 === 0) {
+        // the mirror refreshes at half rate; ripple and specular at full
+        drawMirror();
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, frost);
+      }
+      const rect = panel.getBoundingClientRect();
+      const w = panel.clientWidth, h = panel.clientHeight;
+      if (!rect.width || !w) return;
+      // during the bloom the panel is scaled: the rect maps panel-local
+      // pixels back to the viewport, so the glass refracts correctly
+      // even while it grows out of the chip
+      const s = rect.width / w;
+      gl.uniform2f(U.u_size, w, h);
+      gl.uniform1f(U.u_rad, Math.min(parseFloat(getComputedStyle(panel).borderRadius) || 24, Math.min(w, h) / 2));
+      gl.uniform4f(U.u_map, s * MS / frost.width, s * MS / frost.height, (rect.left + MARGIN) * MS / frost.width, (rect.top + MARGIN) * MS / frost.height);
+      gl.uniform2f(U.u_cursor, (cx - rect.left) / s, (cy - rect.top) / s);
+      gl.uniform1f(U.u_time, (performance.now() - t0) / 1000);
+      const tint = rgba(getComputedStyle(panel).getPropertyValue("--glass"));
+      gl.uniform4f(U.u_tint, tint[0], tint[1], tint[2], tint[3]);
+      gl.uniform1f(U.u_spec, matchMedia("(prefers-color-scheme: light)").matches ? 0.2 : 0.34);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    function loop() {
+      if (!panel.classList.contains("is-open") && performance.now() > holdUntil) {
+        raf = null;
+        return;
+      }
+      draw();
+      raf = requestAnimationFrame(loop);
+    }
+
+    cv.addEventListener("webglcontextlost", (e) => {
+      e.preventDefault();
+      // the CSS frost takes back over
+      panel.classList.remove("glass-live");
+      if (raf) cancelAnimationFrame(raf);
+      raf = null;
+    });
+
+    panel.insertBefore(cv, panel.firstChild);
+    panel.classList.add("glass-live");
+    addEventListener("resize", () => { if (raf) fit(); });
+    return {
+      on() { fit(); if (!raf) raf = requestAnimationFrame(loop); },
+      // keep rendering through the collapse back into the chip
+      off() { holdUntil = performance.now() + 420; },
+    };
+  })();
+
   // ————— the panel —————
 
   // the foot of the panel blurs while content remains below the fold;
@@ -1308,10 +1585,12 @@
     panel.classList.add("is-open");
     settingsBtn.setAttribute("aria-expanded", "true");
     panel.focus({ preventScroll: true });
+    if (glass) glass.on();
     requestAnimationFrame(updateScrollHint);
   }
   function closePanel() {
     panel.classList.remove("is-open");
+    if (glass) glass.off();
     settingsBtn.setAttribute("aria-expanded", "false");
     settingsBtn.focus({ preventScroll: true });
     scheduleChipHide(2500);
