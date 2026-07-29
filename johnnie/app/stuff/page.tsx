@@ -294,7 +294,7 @@ export default function StuffPage() {
   display: flex; align-items: center; justify-content: center;
 }
 .stuff-modal-media picture { display: contents; }
-.stuff-modal-media img { width: 75%; height: 75%; object-fit: contain; }
+.stuff-modal-media img { width: 68%; height: 68%; object-fit: contain; transform: translateY(1rem); }
 .stuff-thumb-ph { width: 22%; height: 22%; color: var(--s-fg); opacity: .22; }
 
 .stuff-modal-body { padding: 1.5rem 1.6rem 0; }
