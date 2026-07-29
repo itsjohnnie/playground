@@ -1638,15 +1638,14 @@ void main(){
         showChip();
         scheduleChipHide(8000);
         suppressClick = true; // the release must not poke a clipping
-        // the filled ring IS the chip's outline: the chip fades in on
-        // top of it, and only then does the ring retire, unseen
+        // hand off, never stack: the full-ink ring dims away the
+        // moment the glass chip begins to materialise — the two
+        // outlines held together read as a flash that then dims
+        holdRing.classList.remove("is-on");
         setTimeout(() => {
-          holdRing.classList.remove("is-on");
-          setTimeout(() => {
-            ringProg.style.transition = "none";
-            ringProg.style.strokeDashoffset = RING_LEN;
-          }, 240);
-        }, 360);
+          ringProg.style.transition = "none";
+          ringProg.style.strokeDashoffset = RING_LEN;
+        }, 240);
       }, HOLD_MS),
     };
   });
