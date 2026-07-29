@@ -306,7 +306,9 @@
     NEGATIVES = data.negatives;
     const label = `${data.title || TRIP} ${data.year || ""}`.trim();
     document.getElementById("trip-label").textContent = label;
-    document.title = `johnnie gomez — ${label}`;
+    // the sheet's chrome is lowercase by style; the browser tab is not
+    const proper = label.replace(/\b[a-z]/g, (ch) => ch.toUpperCase());
+    document.title = `Johnnie Gomez — ${proper}`;
   }
 
   // the deck: negatives deal like a shuffled stack of prints — every
