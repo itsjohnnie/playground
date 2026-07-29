@@ -105,7 +105,7 @@
   }
   @media (prefers-color-scheme: dark) {
     /* on black the edges cannot darken — the centre lifts instead */
-    .vig { background:radial-gradient(ellipse at 50% 42%, rgba(255,214,150,.045), transparent 60%); }
+    .vig { background:radial-gradient(ellipse at 50% 42%, rgba(255,214,150,.028), transparent 60%); }
   }
 
   .hint {
@@ -1061,7 +1061,7 @@ scene.add(beam); scene.add(beam.target);
    the room reflections dim and the point lights carry the sparkle */
 const THEMES={
   light:{ exposure:1.12, envFront:1.25, envBack:1.05, envSide:1.10, key:1.3, rim:0.9, edge:0,   beam:1.1 },
-  dark: { exposure:1.04, envFront:0.55, envBack:0.42, envSide:0.50, key:1.5, rim:1.2, edge:0.9, beam:3.0 },
+  dark: { exposure:0.95, envFront:0.40, envBack:0.30, envSide:0.36, key:0.95, rim:0.85, edge:0.65, beam:2.1 },
 };
 const darkMq=matchMedia('(prefers-color-scheme: dark)');
 let theme=darkMq.matches?THEMES.dark:THEMES.light;
