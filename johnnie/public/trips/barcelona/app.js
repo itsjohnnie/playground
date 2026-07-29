@@ -341,12 +341,12 @@
   }
 
   // phones cover-crop the negative to the viewport; desktop shows the
-  // WHOLE frame, repeated side by side on the night ground (128px gaps,
+  // WHOLE frame, repeated side by side on the night ground (160px gaps,
   // 64px of air top and bottom). --dw/--dh/--ox/--oy drive the body
   // layers on phones AND every clipping's crop math — in strip mode
   // they describe the centre tile, so clippings crop from it
   const stripMode = () => !smallScreen.matches;
-  const STRIP_GAP = 128, STRIP_PAD = 64;
+  const STRIP_GAP = 160, STRIP_PAD = 64;
 
   function stripGeom(iw, ih) {
     const tileH = Math.max(64, innerHeight - STRIP_PAD * 2);

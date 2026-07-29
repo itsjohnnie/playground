@@ -17,7 +17,9 @@
   --bone: #ffffff;
   --line: rgba(255, 255, 255, 0.16);
   --veil: rgba(10, 9, 8, 0.26);
-  --fs: 10px; /* type size: optical, the one deliberate off-grid value */
+  /* the ONE type size, fluid: 10px on phones (up to ~430px wide),
+     rising with the viewport to 14px on very large screens */
+  --fs: clamp(10px, calc(8.85px + 0.2685vw), 14px);
   /* ————— the spatial scale: every meaningful distance is a multiple
      of 4px — pad 8, margins 16-40 (fluid), chrome margin edge+pad
      (24 phone / 48 desktop), stage 64, chip 32, radius 24 ————— */
@@ -37,12 +39,6 @@
   --rows: 10;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
-}
-
-/* desktop is read from further away: the ONE type size steps up.
-   (720px is the same breakpoint the layout engine switches grids on) */
-@media (min-width: 721px) {
-  :root { --fs: 12px; }
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -95,14 +91,14 @@ body.color-on .bg { filter: none; }
 body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
 .bg.is-on { opacity: 1; }
 /* desktop: no crop. the whole negative repeats side by side on the
-   night ground, 128px apart, vertically centered with 64px of air —
+   night ground, 160px apart, vertically centered with 64px of air —
    the full frame can be appreciated while the sheet reads over it */
 @media (min-width: 721px) {
   .bg {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 128px;
+    gap: 160px;
     overflow: hidden;
   }
   .bg .tile {
