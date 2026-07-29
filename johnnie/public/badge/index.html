@@ -299,19 +299,28 @@ function KITCHEN(){
       }
     };
     assign();
-    /* rescue rare colours the median cut never boxed — a shark's eye is a
-       few hundred pixels of navy that would otherwise dissolve into the
-       body gray */
+    /* rescue rare colours the median cut never boxed — a shark's navy eye,
+       a frog's darker nostrils. Only interior pixels of contiguous
+       high-error blobs count, so anti-aliased edges can't trigger it. */
+    const HW=W>>1;
+    const em=new Uint8Array(HW*HW);
     for(let pass=0;pass<3;pass++){
-      let n=0,sr=0,sg=0,sb=0;
-      for(let y=0;y<W;y+=2) for(let x=0;x<W;x+=2){
-        const i=y*W+x;
+      em.fill(0);
+      for(let gy=0;gy<HW;gy++) for(let gx=0;gx<HW;gx++){
+        const i=(gy*2)*W+gx*2;
         if(!alpha[i]) continue;
         const p=palette[idx[i]];
         const dr=px[i*4]-p[0], dg=px[i*4+1]-p[1], db=px[i*4+2]-p[2];
-        if(dr*dr+dg*dg+db*db>3600){ n++; sr+=px[i*4]; sg+=px[i*4+1]; sb+=px[i*4+2]; }
+        if(dr*dr+dg*dg+db*db>800) em[gy*HW+gx]=1;
       }
-      if(n<120) break;
+      let n=0,sr=0,sg=0,sb=0;
+      for(let gy=1;gy<HW-1;gy++) for(let gx=1;gx<HW-1;gx++){
+        const e=gy*HW+gx;
+        if(!em[e]||!em[e-1]||!em[e+1]||!em[e-HW]||!em[e+HW]) continue;
+        const i=(gy*2)*W+gx*2;
+        n++; sr+=px[i*4]; sg+=px[i*4+1]; sb+=px[i*4+2];
+      }
+      if(n<60) break;
       palette.push([Math.round(sr/n),Math.round(sg/n),Math.round(sb/n)]);
       assign();
     }
@@ -480,7 +489,7 @@ function KITCHEN(){
       if(region[i]===255){ height[i]=0; continue; }
       /* the rim sits clearly below the drawing, so the inner walls read
          over it at grazing angles */
-      height[i]= region[i]===254 ? 0.70 : (goldM[i] ? 1.0 : 0.42);
+      height[i]= region[i]===254 ? 0.88 : (goldM[i] ? 1.0 : 0.42);
     }
     for(let i=0;i<N;i++) if(region[i]<254 && !goldM[i]) height[i]+=(rng()-0.5)*0.05;
     const hsm=boxBlur(height, TEX, 4, 2);
@@ -880,7 +889,9 @@ function silhouetteToShapes(sil){
     for(const j of comps[ci]) cmask[j]=1;
     let poly=traceBoundary(cmask, W, sx, sy);
     if(poly.length<12) continue;
-    poly=smoothResample(poly, 3.0, 240);
+    /* smooth enough to kill the staircase, gentle enough to keep ears
+       and tails — heavy smoothing was erasing thin anatomy outright */
+    poly=smoothResample(poly, 1.7, 340);
     outers.push({ id:ci, pts:poly.map(toShapePt), holes:[] });
   }
 
@@ -892,7 +903,7 @@ function silhouetteToShapes(sil){
     for(const j of holes[hi]) hmask[j]=1;
     let poly=traceBoundary(hmask, W, sx, sy);
     if(poly.length<12) continue;
-    poly=smoothResample(poly, 2.2, 120);
+    poly=smoothResample(poly, 1.5, 160);
     const spts=poly.map(toShapePt);
     const owner=outers.find(o=>pointInPoly(spts[0], o.pts));
     if(owner) owner.holes.push(spts);
@@ -911,7 +922,7 @@ function silhouetteToShapes(sil){
 function buildGeometry(shapes){
   const geo=new THREE.ExtrudeGeometry(shapes, {
     depth:0.072, steps:1,
-    bevelEnabled:true, bevelThickness:0.026, bevelSize:0.019, bevelSegments:5,
+    bevelEnabled:true, bevelThickness:0.030, bevelSize:0.019, bevelSegments:5,
   });
   geo.translate(0,0,-0.072/2);
 
@@ -1059,7 +1070,7 @@ function buildCap(sil, hq){
   const G=240, step=TEX/G, M=5;
   const vidx=new Int32Array((G+1)*(G+1)).fill(-1);
   const pos=[], uvs=[];
-  const POP=0.062;                                 // how far the walls rise, world units
+  const POP=0.048;                                 // how far the walls rise, world units
   const ok=(px,py)=>{
     if(px<M||py<M||px>=TEX-M||py>=TEX-M) return false;
     return sil[py*TEX+px]&&sil[py*TEX+px-M]&&sil[py*TEX+px+M]&&sil[(py-M)*TEX+px]&&sil[(py+M)*TEX+px];
