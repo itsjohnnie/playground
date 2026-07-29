@@ -118,7 +118,10 @@ body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
+    /* NO overflow clip: the strip must paint its full width past both
+       sides — the layer's own box pans with --pan, and a clip at the
+       box would drag bare ground into view at the drift extremes */
+    overflow: visible;
   }
   /* the 160px breath lives on margins (not flex gap) so a departing
      tile can collapse it as it goes and the strip reflows fluidly */
