@@ -858,6 +858,44 @@ strong {
   .send-marquee { animation: none; }
 }
 
+/* Validation: a flagged field is highlighted in place, with its own message
+   right below it — the visitor fixes it where they're looking. */
+.ui-input.is-invalid {
+  border-color: #8f1f14;
+  background-color: #ffdede;
+}
+.ui-input.is-invalid:focus {
+  border-color: #8f1f14;
+}
+.field-error {
+  color: #8f1f14;
+  margin: -4px 0 10px;
+  font-size: .85em;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+/* Error state: the message lives inside the button itself (uppercased by the
+   base .button styles, so it matches "Send message"), replacing the old
+   detached banner below the form. The button stays a live submit — tapping
+   it retries. */
+.button.form.is-error {
+  color: #8f1f14;
+  background-color: #ffdede;
+  border-color: #8f1f14;
+  animation: form-error-shake .35s var(--ease-out);
+}
+@keyframes form-error-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  45% { transform: translateX(5px); }
+  70% { transform: translateX(-3px); }
+  85% { transform: translateX(2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .button.form.is-error { animation: none; }
+}
+
 .body {
   background-color: #facbc7;
 }
