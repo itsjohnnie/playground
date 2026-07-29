@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getStuff } from "@/lib/content";
-import { asset } from "@/lib/asset";
+import StuffHero from "./stuff-hero";
 import StuffList from "./stuff-list";
 
 export const metadata: Metadata = {
@@ -14,35 +14,7 @@ export default function StuffPage() {
 
   return (
     <main className="stuff-page">
-      <div className="stuff-hero">
-        {/* Light and dark renders of the same scene; CSS picks by the system
-            colour-scheme preference (both stay in the DOM — a <picture> can't
-            switch between an img and a video). Dark is a boomerang loop
-            (forward, then reverse, so the "cut" back to the start is really
-            just the same frame it started on); light stays a still render
-            until its own video is ready. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          className="stuff-hero-light"
-          src={asset("/images/stuff-hero.png")}
-          alt="Johnnie at his desk with his two monitors and his dog Honey"
-          width={1024}
-          height={1024}
-        />
-        <video
-          className="stuff-hero-dark"
-          aria-label="Johnnie at his desk with his two monitors and his dog Honey"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-          width={960}
-          height={960}
-        >
-          <source src={asset("/videos/stuff-hero-dark.webm")} type="video/webm" />
-        </video>
-      </div>
+      <StuffHero />
 
       <div className="stuff">
         <StuffList items={items} />
