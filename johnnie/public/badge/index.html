@@ -238,9 +238,9 @@ function earnedPct(emoji){ const h=hash32(emoji+'-earned'); return ((h%97)/10+0.
    hand-enamelled pin would need: flat enamel cells, raised gold walls
    along every cell boundary, a gold rim, and a sand-grained gold back. */
 
-const TEX = 1024;             // texture resolution
-const RIM = 20;               // gold rim width around the glyph, px
-const GRID = 4;               // contour grid stride (1024 -> 256 cells)
+const TEX = 768;              // texture resolution
+const RIM = 15;               // gold rim width around the glyph, px
+const GRID = 3;               // contour grid stride (768 -> 256 cells)
 
 const GOLD_FACE = [255, 199, 116];   // polished gold albedo (sRGB)
 const GOLD_BACK = [228, 176, 102];   // back-of-pin gold, a touch deeper
@@ -268,7 +268,7 @@ function rasterEmoji(emoji){
   const img=GLYPHS.get(emoji);
   if(!img||!img.width) return null;
   const c=makeCanvas(TEX), g=c.getContext('2d',{willReadFrequently:true});
-  const target=TEX-2*(RIM+70);
+  const target=TEX-2*(RIM+52);
   const s=target/Math.max(img.width,img.height);
   const w=img.width*s, h=img.height*s;
   g.drawImage(img,(TEX-w)/2,(TEX-h)/2,w,h);
@@ -282,7 +282,7 @@ function rasterEmoji(emoji){
    struck. The same code runs synchronously on the main thread if
    Workers or OffscreenCanvas are unavailable. */
 function KITCHEN(){
-  const TEX=1024, RIM=20;
+  const TEX=768, RIM=15;
   const GOLD_FACE=[255,199,116], GOLD_BACK=[228,176,102], BLACK=[13,14,18];
 
   function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
@@ -453,7 +453,7 @@ function KITCHEN(){
     const alpha=new Uint8Array(N);
     let solid=0;
     for(let i=0;i<N;i++){ if(px[i*4+3]>140){ alpha[i]=1; solid++; } }
-    if(solid<1600) return null;
+    if(solid<900) return null;
 
     const dist=distanceOutside(alpha, TEX);
     const sil=new Uint8Array(N);
@@ -543,7 +543,7 @@ function KITCHEN(){
       }
       compMax.push(mx);
     }
-    const WALL=16.5, THIN=27;      // chamfer px*3: ~5.5px half-width lines; <9px-inradius cells go metal
+    const WALL=12.5, THIN=20;      // chamfer px*3: ~4px half-width lines; thin cells go metal
     const goldM=new Uint8Array(N);
     for(let i=0;i<N;i++){
       if(region[i]===255) continue;
@@ -559,12 +559,12 @@ function KITCHEN(){
       height[i]= region[i]===254 ? 0.88 : (goldM[i] ? 1.0 : 0.42);
     }
     for(let i=0;i<N;i++) if(region[i]<254 && !goldM[i]) height[i]+=(rng()-0.5)*0.05;
-    const hsm=boxBlur(height, TEX, 4, 2);
+    const hsm=boxBlur(height, TEX, 3, 2);
 
     /* baked ambient occlusion: every hollow sits in the soft shadow of
        its own walls — computed once here, free at render time */
-    const b1=boxBlur(hsm, TEX, 6, 1);
-    const b2=boxBlur(hsm, TEX, 16, 1);
+    const b1=boxBlur(hsm, TEX, 5, 1);
+    const b2=boxBlur(hsm, TEX, 12, 1);
     const ao=new Float32Array(N);
     for(let i=0;i<N;i++){
       const occ=Math.max(0,b1[i]-hsm[i])*1.2+Math.max(0,b2[i]-hsm[i])*0.7;
@@ -598,7 +598,7 @@ function KITCHEN(){
 
       const xm=Math.max(0,x-1), xp=Math.min(TEX-1,x+1);
       const ym=Math.max(0,y-1), yp=Math.min(TEX-1,y+1);
-      const s=5.2;
+      const s=3.9;
       const dhx=(hsm[y*TEX+xp]-hsm[y*TEX+xm])*s;
       const dhy=(hsm[yp*TEX+x]-hsm[ym*TEX+x])*s;
       const inv=1/Math.hypot(dhx,dhy,1);
@@ -638,7 +638,7 @@ function KITCHEN(){
     const rng=mulberry32(seed);
     const N=TEX*TEX;
     const td=text.data;
-    const mott=boxBlur(Float32Array.from({length:N},()=>rng()), TEX, 14, 2);
+    const mott=boxBlur(Float32Array.from({length:N},()=>rng()), TEX, 11, 2);
     const fine=new Float32Array(N);
     for(let i=0;i<N;i++) fine[i]=rng();
     const back=new ImageData(TEX,TEX), bd=back.data;
@@ -658,7 +658,7 @@ function KITCHEN(){
       h[i]=((mott[i]-0.5)*0.10+(fine[i]-0.5)*0.05)*(1-t*0.7) - t*0.55;
     }
     const hs=boxBlur(h, TEX, 1, 1);
-    const bb=boxBlur(hs, TEX, 5, 1);
+    const bb=boxBlur(hs, TEX, 4, 1);
     for(let i=0;i<N;i++){
       const o=i*4;
       const k=1-Math.min(0.14, Math.max(0,bb[i]-hs[i])*0.5);
@@ -669,7 +669,7 @@ function KITCHEN(){
       const i=y*TEX+x, o=i*4;
       const xm=Math.max(0,x-1), xp=Math.min(TEX-1,x+1);
       const ym=Math.max(0,y-1), yp=Math.min(TEX-1,y+1);
-      const s=5.4;
+      const s=4.1;
       const dhx=(hs[y*TEX+xp]-hs[y*TEX+xm])*s;
       const dhy=(hs[yp*TEX+x]-hs[ym*TEX+x])*s;
       const inv=1/Math.hypot(dhx,dhy,1);
@@ -688,14 +688,14 @@ const PRESSKIT=KITCHEN();
 /* the reverse text, mirrored so it reads correctly from behind. Pure
    function: it is stringified into the worker alongside the kitchen. */
 function drawBackText(g, label, num, anchor, sil){
-  const TEX=1024;
+  const TEX=768;
   const F='-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
   const name=String(label).toUpperCase();
   const maxW=anchor.r*1.65, maxH=anchor.r*1.35;
   const fitSize=(txt)=>{
-    let s=84;
+    let s=63;
     g.font='800 '+s+'px '+F;
-    while(s>24 && g.measureText(txt).width>maxW){ s-=4; g.font='800 '+s+'px '+F; }
+    while(s>18 && g.measureText(txt).width>maxW){ s-=3; g.font='800 '+s+'px '+F; }
     return s;
   };
   /* the name takes one line or two, whichever the surface strikes larger */
@@ -716,9 +716,9 @@ function drawBackText(g, label, num, anchor, sil){
       /* tight leading between name lines; the number sits in a pressed
          pill below — the pill floor sinks, the numerals stay at surface */
       const lines=nameLines.map(t=>[t,'800',s2,s2*-0.08]);
-      if(s2>=34){
+      if(s2>=26){
         lines[lines.length-1][3]=s2*0.34;          // air between name and pill
-        const ns=Math.max(36,Math.round(s2*0.62));
+        const ns=Math.max(27,Math.round(s2*0.62));
         lines.push(['Nº '+String(num).padStart(2,'0'),'pill',ns*1.7,s2*0.3,ns]);
       }
       let h=-lines[0][3];
@@ -726,7 +726,7 @@ function drawBackText(g, label, num, anchor, sil){
       return { lines, h };
     };
     let plan=build(s);
-    if(plan.h>maxH){ s=Math.max(24,Math.floor(s*maxH/plan.h)); plan=build(s); }
+    if(plan.h>maxH){ s=Math.max(18,Math.floor(s*maxH/plan.h)); plan=build(s); }
     return { s, plan };
   };
   let pick=layout(options[0]);
@@ -743,7 +743,7 @@ function drawBackText(g, label, num, anchor, sil){
     let y=oy-(pick.plan.h*k)/2;
     for(const [txt,w,size,gap,pfs] of pick.plan.lines){
       if(w==='pill'){
-        const ns2=Math.max(18,Math.round(pfs*k));
+        const ns2=Math.max(14,Math.round(pfs*k));
         g.font='800 '+ns2+'px '+F;
         const tw=g.measureText(txt).width;
         const pw=tw+ns2*1.3, ph=size*k, cy=y+ph/2;
@@ -793,13 +793,13 @@ try{
       '  try{\n'+
       '    const r=press(new Uint8ClampedArray(buf), seed, mode);\n'+
       '    if(!r){ postMessage({id,ok:false}); return; }\n'+
-      '    const tc=new OffscreenCanvas(1024,1024), tg=tc.getContext("2d");\n'+
+      '    const tc=new OffscreenCanvas(768,768), tg=tc.getContext("2d");\n'+
       '    drawBackText(tg, label, num, r.anchor, r.sil);\n'+
-      '    const bk=finishBack(tg.getImageData(0,0,1024,1024), seed^0x9e3779b9);\n'+
+      '    const bk=finishBack(tg.getImageData(0,0,768,768), seed^0x9e3779b9);\n'+
       '    const all={albedo:r.maps.albedo, mrc:r.maps.mrc, nrm:r.maps.nrm, back:bk.back, brough:bk.brough, bnrm:bk.bnrm};\n'+
       '    const out={}, transfer=[];\n'+
       '    for(const k of ["albedo","mrc","nrm","back","brough","bnrm"]){\n'+
-      '      const c=new OffscreenCanvas(1024,1024), g=c.getContext("2d");\n'+
+      '      const c=new OffscreenCanvas(768,768), g=c.getContext("2d");\n'+
       '      g.putImageData(all[k],0,0);\n'+
       '      out[k]=await createImageBitmap(c,{imageOrientation:"flipY"});\n'+
       '      transfer.push(out[k]);\n'+
@@ -1164,7 +1164,7 @@ function nextFrame(){ return new Promise(r=>requestAnimationFrame(r)); }
    enamel — the bulge survives every viewing angle instead of living only
    in the normal map */
 function buildCap(sil, hq){
-  const G=240, step=TEX/G, M=5;
+  const G=240, step=TEX/G, M=4;
   const vidx=new Int32Array((G+1)*(G+1)).fill(-1);
   const pos=[], uvs=[];
   const POP=0.048;                                 // how far the walls rise, world units
@@ -1282,10 +1282,10 @@ const stock=[];
 let ahead=0, preparingP=null;
 function kickPrepare(){
   if(preparingP) return preparingP;
-  if(stock.length>=2) return Promise.resolve();
+  if(stock.length>=3) return Promise.resolve();
   preparingP=(async()=>{
     try{
-      while(stock.length<2){
+      while(stock.length<3){
         let steps=0, made=false;
         while(steps<BADGES.length){
           const i=order[(cursor+ahead+steps)%order.length]; steps++;
