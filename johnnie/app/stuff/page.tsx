@@ -158,6 +158,7 @@ export default function StuffPage() {
   color: var(--s-fg); background: transparent;
   border: none; border-bottom: 1px solid var(--s-line);
   padding: .15rem 1.15rem .03rem .1rem; cursor: pointer;
+  position: relative; top: -1px;
   appearance: none; -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%231b1b1b' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right .05rem center; background-size: .62rem;
