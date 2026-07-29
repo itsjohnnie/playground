@@ -39,6 +39,12 @@
   --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* desktop is read from further away: the ONE type size steps up.
+   (720px is the same breakpoint the layout engine switches grids on) */
+@media (min-width: 721px) {
+  :root { --fs: 12px; }
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {

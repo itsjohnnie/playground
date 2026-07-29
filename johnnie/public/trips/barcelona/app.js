@@ -833,9 +833,10 @@
     }
 
     // registration crosses at the anchor intersections
+    const FS = parseFloat(getComputedStyle(root).getPropertyValue("--fs")) || 10;
     if (settings.marks) {
       ctx.fillStyle = "#ffffff";
-      ctx.font = `400 ${10 * S}px "Geist Mono", monospace`;
+      ctx.font = `400 ${FS * S}px "Geist Mono", monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       for (const ax of current.layout.anchorCols) {
@@ -852,8 +853,8 @@
       ctx.textAlign = "start";
     }
 
-    // every piece of type, straight from the DOM
-    const fs = 10 * S;
+    // every piece of type, straight from the DOM — at the live --fs
+    const fs = FS * S;
     ctx.textBaseline = "top";
     // canvas twins of the hairline copy icons
     const drawIcon = (name, x, y, size, rot) => {
@@ -910,7 +911,7 @@
         const text = (lines[0] || "").toUpperCase();
         const iconW = el.dataset.icon ? (12 + 6) * S : 0;
         const w = ctx.measureText(text).width + iconW + 16 * S;
-        const h = 20 * S;
+        const h = (FS + 10) * S; // 1px line + ~4px breath around the type
         const x0 = r.left * S + 8 * S, y0 = r.top * S + 3 * S;
         ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = S;
