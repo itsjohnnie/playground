@@ -82,8 +82,10 @@ export default function RootLayout({
    The inline head script seeds --bg (random color) before first paint, so there
    is no flash/jump when the color loop takes over. */
 .body { background-color: var(--bg, #facbc7) !important; }
-.navbar, .nav_menu { background-color: var(--bg, #facbc7) !important; }
-@media (max-width: 991px) { .navbar, .nav_menu { background-image: none !important; } }
+/* background-image: none kills the Webflow white->transparent gradient at every
+   width — left in place on desktop it paints a white bar over --bg, and the
+   nav_menu's solid --bg then reads as a stray box behind the links. */
+.navbar, .nav_menu { background-color: var(--bg, #facbc7) !important; background-image: none !important; }
 
 /* Marquees: continuous horizontal scroll (was Webflow IX2). The track holds the
    items twice over, so translating -50% loops seamlessly. */
