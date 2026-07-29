@@ -254,9 +254,10 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
    backdrop-filter, which iOS Safari lacks - this is the optics the
    cross-browser recreations use. */
 
-/* the chip IS the hold ring, landed: the same 32px hairline circle in
-   the sheet's own ink. the glass optics stay on the panel — on an
-   element this small they only read as smudge */
+/* the ring's completion is a change of language: the bare hairline
+   circle fills over the hold, and the chip that fades in on top of it
+   speaks the panel's liquid glass — frost, tint, a soft specular —
+   so the summon control and the menu it opens are one material */
 .chip {
   position: relative;
   display: inline-flex;
@@ -268,8 +269,14 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   border-radius: 999px;
   cursor: pointer;
-  border: 1px solid var(--bone);
-  background: none;
+  border: 1px solid color-mix(in srgb, var(--bone) 45%, transparent);
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5) brightness(1.06);
+  backdrop-filter: blur(16px) saturate(1.5) brightness(1.06);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.06),
+    0 8px 24px rgba(0, 0, 0, 0.25);
   transition: transform 160ms var(--ease-out), opacity 240ms var(--ease-out);
 }
 /* an unseen apron keeps the 48px touch target around the 32px circle */
@@ -427,7 +434,12 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
 .panel.glass-live {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  /* the shader owns ALL the optics: the CSS rim, sheen and inner
+     highlights were drawn for the frost and collide with the shader's
+     rounded bevel at the corners — only the drop shadow remains */
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
 }
+.panel.glass-live::before, .panel.glass-live::after { display: none; }
 
 /* the controls arrive a beat after the glass */
 .panel__head, .panel__body { opacity: 0; translate: 0 8px; transition: opacity 180ms var(--ease-out), translate 180ms var(--ease-out); }
@@ -755,7 +767,7 @@ body.jitter-on .chrome--bc { filter: url(#boil); }
   transition: opacity 400ms var(--ease-out);
 }
 .crosshair.is-on { opacity: 1; }
-.crosshair__v, .crosshair__h { position: absolute; background: var(--bone); opacity: 0.14; }
+.crosshair__v, .crosshair__h { position: absolute; background: var(--bone); opacity: 0.09; }
 .crosshair__v { top: 0; bottom: 0; width: 1px; left: 0; }
 .crosshair__h { left: 0; right: 0; height: 1px; top: 0; }
 
