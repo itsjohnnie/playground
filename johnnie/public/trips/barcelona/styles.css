@@ -17,11 +17,11 @@
   --bone: #ffffff;
   --line: color-mix(in srgb, var(--bone) 16%, transparent);
   --veil: rgba(10, 9, 8, 0.26);
-  --glass: rgba(18, 16, 14, 0.34);
-  --glass-deep: rgba(14, 12, 10, 0.4);
-  /* the ONE type size, fluid: 10px on phones (up to ~430px wide),
-     rising with the viewport to 14px on very large screens */
-  --fs: clamp(10px, calc(8.85px + 0.2685vw), 14px);
+  --glass: rgba(18, 16, 14, 0.42);
+  --glass-deep: rgba(14, 12, 10, 0.48);
+  /* the ONE type size, fluid: 11px on phones, rising with the
+     viewport to 14px on very large screens */
+  --fs: clamp(11px, calc(8.85px + 0.2685vw), 14px);
   /* ————— the spatial scale: every meaningful distance is a multiple
      of 4px — pad 8, margins 16-40 (fluid), chrome margin edge+pad
      (24 phone / 48 desktop), stage 64, chip 32, radius 24 ————— */
@@ -53,8 +53,8 @@
     --night: #f4f2ef;
     --bone: #0c0b0a;
     --veil: rgba(244, 242, 239, 0.26);
-    --glass: rgba(248, 246, 244, 0.55);
-    --glass-deep: rgba(244, 242, 240, 0.55);
+    --glass: rgba(248, 246, 244, 0.62);
+    --glass-deep: rgba(244, 242, 240, 0.62);
   }
 }
 
@@ -269,7 +269,9 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   border-radius: 999px;
   cursor: pointer;
-  border: 1px solid color-mix(in srgb, var(--bone) 45%, transparent);
+  /* the rim is the panel's: a light glass edge in both appearances,
+     never the ink hairline — the chip and the menu are one material */
+  border: 1px solid rgba(255, 255, 255, 0.32);
   background: var(--glass);
   -webkit-backdrop-filter: blur(16px) saturate(1.5) brightness(1.06);
   backdrop-filter: blur(16px) saturate(1.5) brightness(1.06);
@@ -311,9 +313,12 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
 
 .panel {
   position: fixed;
-  /* bottom-anchored above the chip, which stays put as the close */
-  inset: auto max(12px, env(safe-area-inset-right))
-         calc(max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom)) + var(--chip) + 8px) max(12px, env(safe-area-inset-left));
+  /* bottom-anchored above the chip, which stays put as the close;
+     the sides hold the sheet's own content margin, so the glass and
+     the type share one column */
+  inset: auto max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-right))
+         calc(max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-bottom)) + var(--chip) + 8px)
+         max(calc(var(--edge-x) + var(--pad)), env(safe-area-inset-left));
   max-height: calc(100dvh - max(24px, env(safe-area-inset-top)) - 80px);
   z-index: 50;
   display: flex;
