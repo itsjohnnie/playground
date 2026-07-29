@@ -11,7 +11,7 @@ specs:
   - { label: "Type", value: "Eau de Parfum" }
   - { label: "Family", value: "Amber floral" }
   - { label: "Notes", value: "Bergamot · jasmine · patchouli" }
-image: ""
+image: "/images/stuff/01-sospiro-vibrato.png"
 link: "https://sospiroperfumes.com"
 cta: "Buy it"
 ---
