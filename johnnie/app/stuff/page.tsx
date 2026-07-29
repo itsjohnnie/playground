@@ -207,7 +207,7 @@ export default function StuffPage() {
 .stuff-row {
   border-bottom: 1px solid var(--s-line);
   animation: stuffRowIn .42s var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 38ms);
+  animation-delay: calc(var(--i, 0) * 26ms);
 }
 @keyframes stuffRowIn {
   from { opacity: 0; transform: translateY(9px); }
