@@ -380,6 +380,7 @@
       frag.appendChild(t);
     }
     layer.replaceChildren(frag);
+    buildTileClips(layer);
   }
 
   // desktop shuffles morph the strip in place: the SAME tiles resize
@@ -388,6 +389,8 @@
   function morphStrip(src) {
     const g = stripGeom(negDims.iw, negDims.ih);
     frontBg.dataset.src = src;
+    frontBg.querySelectorAll(".clip").forEach((c) => c.remove());
+    if (settings.clips) setTimeout(() => buildTileClips(frontBg), 700);
     const tiles = [...frontBg.querySelectorAll(".tile")];
     while (tiles.length < g.n) {
       const t = document.createElement("div");
@@ -424,6 +427,56 @@
         }, 560 + delay);
       });
     }));
+  }
+
+  // strip clippings: each print carries its own displaced crops — a
+  // hidden 3x4 grid inside the tile, every tile dealt differently
+  const CLIP_C = 3, CLIP_R = 4;
+  function buildTileClips(layer) {
+    const gone = [...layer.querySelectorAll(".clip")];
+    if (!settings.clips || !stripMode() || !layer.dataset.src || !negDims) {
+      gone.forEach((c) => { c.classList.remove("is-in"); setTimeout(() => c.remove(), 550); });
+      return;
+    }
+    gone.forEach((c) => c.remove());
+    const src = layer.dataset.src;
+    const g = stripGeom(negDims.iw, negDims.ih);
+    const cellW = g.tileW / CLIP_C, cellH = g.tileH / CLIP_R;
+    layer.querySelectorAll(".tile").forEach((tile, ti) => {
+      const count = 1 + ((Math.random() * 2) | 0);
+      const used = [];
+      for (let k = 0; k < count; k++) {
+        const w = 1 + ((Math.random() * 2) | 0);
+        const h = 1 + ((Math.random() * 2) | 0);
+        const x = (Math.random() * (CLIP_C - w + 1)) | 0;
+        const y = (Math.random() * (CLIP_R - h + 1)) | 0;
+        if (used.some(([ux, uy]) => Math.abs(ux - x) + Math.abs(uy - y) < 2)) continue;
+        used.push([x, y]);
+        // the crop shows ANOTHER region of the same print
+        let sx = x, sy = y, guard = 24;
+        while (guard-- && Math.abs(sx - x) + Math.abs(sy - y) < 2) {
+          sx = (Math.random() * (CLIP_C - w + 1)) | 0;
+          sy = (Math.random() * (CLIP_R - h + 1)) | 0;
+        }
+        const c = document.createElement("div");
+        c.className = "clip";
+        c.dataset.tile = ti;
+        c.dataset.cx = x; c.dataset.cy = y;
+        c.dataset.cw = w; c.dataset.ch = h;
+        c.dataset.sx = sx; c.dataset.sy = sy;
+        c.style.left = `${x * cellW}px`;
+        c.style.top = `${y * cellH}px`;
+        c.style.width = `${w * cellW}px`;
+        c.style.height = `${h * cellH}px`;
+        c.style.backgroundImage = `url("${src}")`;
+        c.style.backgroundSize = `${g.tileW}px ${g.tileH}px`;
+        c.style.backgroundPosition = `${-sx * cellW}px ${-sy * cellH}px`;
+        c.style.setProperty("--d", `${reducedMotion ? 0 : ti * 80 + k * 140}ms`);
+        tile.appendChild(c);
+      }
+    });
+    requestAnimationFrame(() => requestAnimationFrame(() =>
+      layer.querySelectorAll(".clip").forEach((c) => c.classList.add("is-in"))));
   }
 
   let negDims = null;
@@ -796,7 +849,7 @@
     grid.replaceChildren(frag);
     await nextFrame();
     cells.forEach((el) => {
-      if (settings.clips || !el.classList.contains("frag")) el.classList.add("is-in");
+      if ((settings.clips && !stripMode()) || !el.classList.contains("frag")) el.classList.add("is-in");
     });
     [...marksLayer.children].forEach((el) => el.classList.add("is-in"));
 
@@ -924,28 +977,38 @@
     const fragEls = [...grid.querySelectorAll(".frag")];
     const stageBox = stage.getBoundingClientRect();
     const { cols, rows } = current.layout.cfg;
-    if (settings.clips) current.layout.frags.forEach((f, i) => {
+    if (settings.clips && isStrip) {
+      // per-tile clips, from the same datasets that placed them
+      frontBg.querySelectorAll(".clip").forEach((c) => {
+        const ti = +c.dataset.tile;
+        const cellW = sg.tileW / CLIP_C, cellH = sg.tileH / CLIP_R;
+        const tileX = sg.startX + ti * (sg.tileW + STRIP_GAP);
+        const dx = (tileX + c.dataset.cx * cellW) * S;
+        const dy = (STRIP_PAD + c.dataset.cy * cellH) * S;
+        const dw = c.dataset.cw * cellW * S, dh = c.dataset.ch * cellH * S;
+        ctx.filter = monoFilter;
+        ctx.drawImage(
+          source,
+          (c.dataset.sx * iw) / CLIP_C, (c.dataset.sy * ih) / CLIP_R,
+          (c.dataset.cw * iw) / CLIP_C, (c.dataset.ch * ih) / CLIP_R,
+          dx, dy, dw, dh
+        );
+        ctx.filter = "none";
+        ctx.fillStyle = veil;
+        ctx.fillRect(dx, dy, dw, dh);
+      });
+    } else if (settings.clips) current.layout.frags.forEach((f, i) => {
       const el = fragEls[i];
       if (!el) return;
       const r = el.getBoundingClientRect();
       const srcVpX = stageBox.left + (stageBox.width * f.sx) / cols;
       const srcVpY = stageBox.top + (stageBox.height * f.sy) / rows;
       ctx.filter = monoFilter;
-      if (isStrip) {
-        // clippings crop from the centre tile, exactly as on screen
-        const kx = iw / sg.tileW, ky = ih / sg.tileH;
-        ctx.drawImage(
-          source,
-          (srcVpX - sg.center) * kx, (srcVpY - STRIP_PAD) * ky, r.width * kx, r.height * ky,
-          r.left * S, r.top * S, r.width * S, r.height * S
-        );
-      } else {
-        ctx.drawImage(
-          source,
-          sx0 + srcVpX / cover, sy0 + srcVpY / cover, r.width / cover, r.height / cover,
-          r.left * S, r.top * S, r.width * S, r.height * S
-        );
-      }
+      ctx.drawImage(
+        source,
+        sx0 + srcVpX / cover, sy0 + srcVpY / cover, r.width / cover, r.height / cover,
+        r.left * S, r.top * S, r.width * S, r.height * S
+      );
       ctx.filter = "none";
       ctx.fillStyle = veil;
       ctx.fillRect(r.left * S, r.top * S, r.width * S, r.height * S);
@@ -1243,7 +1306,8 @@
     if (key === "grid") document.body.classList.toggle("grid-on", on);
     if (key === "clips") {
       document.body.classList.toggle("clips-on", on);
-      [...grid.querySelectorAll(".frag")].forEach((el, i) => {
+      if (stripMode()) buildTileClips(frontBg);
+      else [...grid.querySelectorAll(".frag")].forEach((el, i) => {
         el.style.setProperty("--d", `${reducedMotion ? 0 : i * 70}ms`);
         el.classList.remove("is-out");
         if (on) {
