@@ -91,6 +91,18 @@ export default function RootLayout({
    hamburger dropdown (<=767px) needs an opaque panel to slide out from. */
 @media (max-width: 991px) { .navbar, .nav_menu { background-color: var(--bg, #facbc7) !important; background-image: none !important; } }
 
+/* Fixed-nav reveal: one motion everywhere. The bar slides out at the very top
+   with the same 0.4s slide it uses while scrolling down — it used to flip
+   display:none there and vanish abruptly. visibility drops only after the
+   slide finishes so the off-screen links leave the tab order; pointer-events
+   on the wrapper keeps a hidden bar from blocking clicks on the page below. */
+.cc-fixed { pointer-events: none; }
+.cc-fixed .navbar { pointer-events: auto; transition: transform .4s ease, visibility 0s; }
+.cc-fixed .navbar.is-away { transform: translateY(-100%); visibility: hidden; transition: transform .4s ease, visibility 0s .4s; }
+@media (prefers-reduced-motion: reduce) {
+  .cc-fixed .navbar, .cc-fixed .navbar.is-away { transition: none; }
+}
+
 /* Marquees: continuous horizontal scroll (was Webflow IX2). The track holds the
    items twice over, so translating -50% loops seamlessly. */
 .marquee_track { display: flex; flex: none; width: max-content; }

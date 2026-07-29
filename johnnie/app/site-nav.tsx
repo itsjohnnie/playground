@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { asset } from "@/lib/asset";
 
 const LINKS = [
@@ -14,33 +14,27 @@ const LINKS = [
 ];
 
 export default function SiteNav() {
-  const fixedRef = useRef<HTMLDivElement>(null);
-  const barRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  // Starts away so the server-rendered bar is already off-screen — no flash
+  // at load, and the first reveal is a slide like every other one.
+  const [away, setAway] = useState(true);
 
-  // Reveal-on-scroll: hidden at the very top; once past the hero it shows, then
-  // slides up while scrolling down and back down while scrolling up.
+  // Reveal-on-scroll: away at the very top and while scrolling down, slides in
+  // while scrolling up. All three transitions use the same slide (see the
+  // .is-away CSS in layout.tsx) — previously reaching the top flipped
+  // display:none, which made the bar vanish abruptly instead of sliding out.
   useEffect(() => {
-    const fixed = fixedRef.current;
-    const bar = barRef.current;
-    if (!fixed || !bar) return;
     let lastY = window.scrollY;
     let ticking = false;
     const TOP_HIDE = 160;
     const update = () => {
       ticking = false;
       const y = window.scrollY;
-      if (y < TOP_HIDE) {
-        fixed.style.display = "none";
-      } else {
-        fixed.style.display = "block";
-        fixed.style.opacity = "1";
-        if (y > lastY + 4) {
-          bar.style.transform = "translateY(-100%)";
-          setOpen(false);
-        } else if (y < lastY - 4) {
-          bar.style.transform = "translateY(0)";
-        }
+      if (y < TOP_HIDE || y > lastY + 4) {
+        setAway(true);
+        setOpen(false);
+      } else if (y < lastY - 4) {
+        setAway(false);
       }
       lastY = y;
     };
@@ -56,14 +50,10 @@ export default function SiteNav() {
   }, []);
 
   return (
-    <div ref={fixedRef} style={{ display: "none", opacity: 0 }} className="cc-fixed">
+    <div className="cc-fixed">
       {/* No role="banner" here — the hero <header> is the page's banner
           landmark; a second one is a duplicate-landmark violation. */}
-      <div
-        ref={barRef}
-        className={`navbar ui-nav${open ? " is-open" : ""}`}
-        style={{ transition: "transform 0.4s ease" }}
-      >
+      <div className={`navbar ui-nav${open ? " is-open" : ""}${away ? " is-away" : ""}`}>
         <div className="container cc-nav">
           <a href="#hero" className="brand ui-nav-brand" onClick={() => setOpen(false)}>
             <div>Johnnie&#x27;s LiFe</div>
