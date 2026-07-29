@@ -1349,6 +1349,23 @@ void main(){
     const sctx = scene.getContext("2d");
     const fctx = frost.getContext("2d");
     const lctx = lens.getContext("2d");
+    // Safari ignores canvas 2D filters entirely — the frost silently
+    // became a sharp mirror there, all ghost type and fringe. detect by
+    // effect, not by property: draw a blurred dot, check that it bled
+    const FILTER_OK = (() => {
+      const t = document.createElement("canvas");
+      t.width = t.height = 8;
+      const tc = t.getContext("2d");
+      if (!("filter" in tc)) return false;
+      tc.fillStyle = "#000";
+      tc.fillRect(0, 0, 8, 8);
+      tc.filter = "blur(2px)";
+      tc.fillStyle = "#fff";
+      tc.fillRect(3, 3, 2, 2);
+      return tc.getImageData(1, 4, 1, 1).data[0] > 0;
+    })();
+    const ping = document.createElement("canvas");
+    const pong = document.createElement("canvas");
 
     // the mirror needs decoded Image objects for whatever the layers
     // show — including dithered data URLs; a few stay warm
@@ -1454,14 +1471,41 @@ void main(){
       });
       // two frosts from one scene: heavy for the body of the glass,
       // light for the rim's lens
-      for (const [ctx2, radius] of [[fctx, 32], [lctx, 7]]) {
-        ctx2.setTransform(1, 0, 0, 1, 0, 0);
-        ctx2.filter = "none";
-        ctx2.fillStyle = ground;
-        ctx2.fillRect(0, 0, W, H);
-        ctx2.filter = `blur(${Math.round(radius * MS)}px)`;
-        ctx2.drawImage(scene, 0, 0);
-        ctx2.filter = "none";
+      if (FILTER_OK) {
+        for (const [ctx2, radius] of [[fctx, 32], [lctx, 7]]) {
+          ctx2.setTransform(1, 0, 0, 1, 0, 0);
+          ctx2.filter = "none";
+          ctx2.fillStyle = ground;
+          ctx2.fillRect(0, 0, W, H);
+          ctx2.filter = `blur(${Math.round(radius * MS)}px)`;
+          ctx2.drawImage(scene, 0, 0);
+          ctx2.filter = "none";
+        }
+      } else {
+        // no canvas filters (Safari): walk the scene down halvings and
+        // stretch it back up — the bilinear taps do the diffusing. two
+        // halvings make the rim's light frost, two more the body's
+        let cur = scene, cw = W, ch = H, flip = 0;
+        const halve = () => {
+          const t = flip++ % 2 ? pong : ping;
+          const nw = Math.max(8, cw >> 1), nh = Math.max(8, ch >> 1);
+          if (t.width !== nw) t.width = nw;
+          if (t.height !== nh) t.height = nh;
+          const tc = t.getContext("2d");
+          tc.imageSmoothingQuality = "high";
+          tc.clearRect(0, 0, nw, nh);
+          tc.drawImage(cur, 0, 0, cw, ch, 0, 0, nw, nh);
+          cur = t; cw = nw; ch = nh;
+        };
+        const tap = (dst, dctx) => {
+          dctx.setTransform(1, 0, 0, 1, 0, 0);
+          dctx.imageSmoothingQuality = "high";
+          dctx.drawImage(cur, 0, 0, cw, ch, 0, 0, dst.width, dst.height);
+        };
+        halve(); halve();
+        tap(lens, lctx);
+        halve(); halve();
+        tap(frost, fctx);
       }
     }
 
