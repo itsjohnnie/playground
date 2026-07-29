@@ -85,25 +85,62 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
     return () => observer.disconnect();
   }, []);
 
-  const openItem = (i: number) => {
+  // pushHash defaults to true for user-initiated opens (row click, swipe/
+  // arrow nav); the initial hash-driven open on mount passes false so it
+  // doesn't push a second, identical history entry on top of the one that
+  // got us here.
+  const openItem = (i: number, pushHash = true) => {
     setDir(0);
     setIdx(i);
     requestAnimationFrame(() => setOpen(true));
+    if (pushHash) window.history.pushState(null, "", `#${sorted[i].slug}`);
   };
   const close = () => {
     setOpen(false);
     setTimeout(() => setIdx(null), 200); // match the faster exit transition
+    window.history.pushState(null, "", window.location.pathname + window.location.search);
   };
-  // Move to the previous/next item (clamped at the ends).
+  // Move to the previous/next item (clamped at the ends). replaceState, not
+  // push — swiping through ten items shouldn't leave ten back-button stops.
   const go = (d: number) => {
     setIdx((cur) => {
       if (cur == null) return cur;
       const n = cur + d;
       if (n < 0 || n >= sorted.length) return cur;
       setDir(d);
+      window.history.replaceState(null, "", `#${sorted[n].slug}`);
       return n;
     });
   };
+
+  // Deep link: /stuff#some-slug opens straight to that item's sheet — for
+  // sharing a specific product rather than just the list. Runs once on
+  // mount (not e.g. keyed to `sorted`, which is stable in identity but
+  // would be pedantic to depend on for a one-time check).
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const i = sorted.findIndex((it) => it.slug === hash);
+    if (i !== -1) openItem(i, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Back/forward (and manually editing the hash) should open/close the
+  // sheet to match, not just silently change the URL under it.
+  useEffect(() => {
+    const onHashChange = () => {
+      const hash = window.location.hash.slice(1);
+      if (!hash) {
+        close();
+        return;
+      }
+      const i = sorted.findIndex((it) => it.slug === hash);
+      if (i !== -1) openItem(i, false);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sorted]);
 
   // Escape/arrow keys, and lock body scroll while the modal is up.
   useEffect(() => {
