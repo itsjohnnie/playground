@@ -1300,7 +1300,7 @@ void main(){
   float luma=dot(col,vec3(.2126,.7152,.0722));
   col=mix(vec3(luma),col,1.35);
   col=mix(col,u_tint.rgb,u_tint.a);
-  col+=smoothstep(1.6,0.,abs(d+1.2))*.16;
+  col+=smoothstep(1.,0.,abs(d+.7))*.16;
   float h=fract(sin(dot(v,vec2(12.9898,78.233)))*43758.5453);
   col+=(h-.5)*(2./255.);
   gl_FragColor=vec4(col,1.);
