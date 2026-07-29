@@ -349,7 +349,18 @@
   // they describe the centre tile, so clippings crop from it
   const stripMode = () => !smallScreen.matches;
   const STRIP_GAP = 160, STRIP_PAD = 160;
-  let panLimit = 96; // refreshed with the strip geometry
+  // the cursor drift: target and current offset live here so that a
+  // geometry change (new photo, resize) can clamp a stale pan — the
+  // limit differs per photo, and an offset beyond the new strip's end
+  // would strand it off to one side
+  let panLimit = 0, panT = 0, panC = 0, panRaf = null;
+  const panTick = () => {
+    panC += (panT - panC) * 0.07;
+    root.style.setProperty("--pan", `${panC.toFixed(2)}px`);
+    if (Math.abs(panT - panC) > 0.2) panRaf = requestAnimationFrame(panTick);
+    else panRaf = null;
+  };
+  const kickPan = () => { if (!panRaf && Math.abs(panT - panC) > 0.2) panRaf = requestAnimationFrame(panTick); };
 
   function stripGeom(iw, ih) {
     const tileH = Math.max(64, innerHeight - STRIP_PAD * 2);
@@ -491,6 +502,8 @@
       // full travel: at the extreme the outermost print is entirely
       // in view, its edge flush with the viewport's
       panLimit = Math.max(0, -g.startX);
+      panT = Math.max(-panLimit, Math.min(panLimit, panT));
+      kickPan();
       root.style.setProperty("--dw", `${g.tileW}px`);
       root.style.setProperty("--dh", `${g.tileH}px`);
       root.style.setProperty("--ox", `${-g.center}px`);
@@ -1420,17 +1433,10 @@
   // ————— the strip drifts toward the cursor (desktop only) —————
 
   if (matchMedia("(hover: hover) and (pointer: fine)").matches && !reducedMotion) {
-    let panT = 0, panC = 0, panRaf = null;
-    const panTick = () => {
-      panC += (panT - panC) * 0.07;
-      root.style.setProperty("--pan", `${panC.toFixed(2)}px`);
-      if (Math.abs(panT - panC) > 0.2) panRaf = requestAnimationFrame(panTick);
-      else panRaf = null;
-    };
     addEventListener("pointermove", (e) => {
       if (!stripMode()) return;
       panT = -(e.clientX / innerWidth - 0.5) * 2 * panLimit; // edge to edge across the whole strip
-      if (!panRaf) panRaf = requestAnimationFrame(panTick);
+      kickPan();
     });
   }
 
