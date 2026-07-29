@@ -109,10 +109,10 @@ body.color-on .bg { filter: none; }
 /* the dithered plate upscales with hard pixel edges, never a blur */
 body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
 .bg.is-on { opacity: 1; }
-/* desktop: no crop. the whole negative repeats side by side on the
-   night ground with one uniform breath — 160px between repeats and
-   the same 160px above and below — so the full frame can be
-   appreciated while the sheet reads over it */
+/* desktop: the whole negative repeats side by side on the ground —
+   160px between repeats and above/below — running past both edges so
+   the strip feels almost endless; the cursor pans it, and only the
+   outermost prints are met by the viewport's edge */
 @media (min-width: 721px) {
   .bg {
     display: flex;

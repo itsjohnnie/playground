@@ -354,9 +354,10 @@
   function stripGeom(iw, ih) {
     const tileH = Math.max(64, innerHeight - STRIP_PAD * 2);
     const tileW = tileH * (iw / ih);
-    // only whole prints: as many as fit with the uniform breath kept
-    // at the sides too — a repeat is never cropped by the viewport
-    const n = Math.max(1, Math.floor((innerWidth - STRIP_PAD * 2 + STRIP_GAP) / (tileW + STRIP_GAP)));
+    // the strip runs past both edges — near-infinite, but finite: the
+    // cursor can pan far enough to fully reveal the end prints, and
+    // at the extremes the strip's edge meets the viewport's edge
+    const n = Math.max(1, Math.ceil((innerWidth + STRIP_GAP) / (tileW + STRIP_GAP)) + 2);
     const stripW = n * tileW + (n - 1) * STRIP_GAP;
     const startX = (innerWidth - stripW) / 2;
     const center = startX + Math.floor(n / 2) * (tileW + STRIP_GAP);
@@ -487,7 +488,9 @@
     if (!negDims) return;
     if (stripMode()) {
       const g = stripGeom(negDims.iw, negDims.ih);
-      panLimit = Math.max(0, Math.min(96, g.startX - 40));
+      // full travel: at the extreme the outermost print is entirely
+      // in view, its edge flush with the viewport's
+      panLimit = Math.max(0, -g.startX);
       root.style.setProperty("--dw", `${g.tileW}px`);
       root.style.setProperty("--dh", `${g.tileH}px`);
       root.style.setProperty("--ox", `${-g.center}px`);
@@ -1426,7 +1429,7 @@
     };
     addEventListener("pointermove", (e) => {
       if (!stripMode()) return;
-      panT = -(e.clientX / innerWidth - 0.5) * 2 * panLimit; // drift stays inside the side breath
+      panT = -(e.clientX / innerWidth - 0.5) * 2 * panLimit; // edge to edge across the whole strip
       if (!panRaf) panRaf = requestAnimationFrame(panTick);
     });
   }
