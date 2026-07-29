@@ -474,7 +474,9 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
 
 .panel__body {
   overflow-y: auto;
-  padding: 8px 20px calc(12px + env(safe-area-inset-bottom));
+  /* the foot carries more than its number: the rounded corners crowd
+     the last row, so the bottom breathes wider to read as equal */
+  padding: 8px 20px calc(20px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 16px;
