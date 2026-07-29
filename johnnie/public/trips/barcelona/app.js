@@ -348,7 +348,7 @@
   // layers on phones AND every clipping's crop math — in strip mode
   // they describe the centre tile, so clippings crop from it
   const stripMode = () => !smallScreen.matches;
-  const STRIP_GAP = 160, STRIP_PAD = 160;
+  const STRIP_GAP = 160, STRIP_PAD = 160, PAN_MAX = 120;
   // the cursor drift: target and current offset live here so that a
   // geometry change (new photo, resize) can clamp a stale pan — the
   // limit differs per photo, and an offset beyond the new strip's end
@@ -365,10 +365,10 @@
   function stripGeom(iw, ih) {
     const tileH = Math.max(64, innerHeight - STRIP_PAD * 2);
     const tileW = tileH * (iw / ih);
-    // the strip runs past both edges — near-infinite, but finite: the
-    // cursor can pan far enough to fully reveal the end prints, and
-    // at the extremes the strip's edge meets the viewport's edge
-    const n = Math.max(1, Math.ceil((innerWidth + STRIP_GAP) / (tileW + STRIP_GAP)) + 2);
+    // an infinite carousel: enough repeats that even at full drift the
+    // viewport is never uncovered — the edge prints always run off
+    // screen, and the ends are never reachable
+    const n = Math.max(1, Math.ceil((innerWidth + 2 * PAN_MAX + STRIP_GAP) / (tileW + STRIP_GAP)) + 1);
     const stripW = n * tileW + (n - 1) * STRIP_GAP;
     const startX = (innerWidth - stripW) / 2;
     const center = startX + Math.floor(n / 2) * (tileW + STRIP_GAP);
@@ -499,9 +499,9 @@
     if (!negDims) return;
     if (stripMode()) {
       const g = stripGeom(negDims.iw, negDims.ih);
-      // full travel: at the extreme the outermost print is entirely
-      // in view, its edge flush with the viewport's
-      panLimit = Math.max(0, -g.startX);
+      // a gentle drift only: far from the strip's ends, so the
+      // carousel never betrays that it is finite
+      panLimit = Math.min(PAN_MAX, Math.max(0, -g.startX));
       panT = Math.max(-panLimit, Math.min(panLimit, panT));
       kickPan();
       root.style.setProperty("--dw", `${g.tileW}px`);
