@@ -52,11 +52,13 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
   // visible in the server-rendered markup (so JS-less/slow-JS loads never
   // show blank rows) — this hides them imperatively on mount, then an
   // IntersectionObserver un-hides each row the moment it's on screen.
-  // Above-the-fold rows fire almost immediately, so they still read as "the
-  // page loaded in" like before; the rest cascade in as you scroll down to
-  // them. Rows that intersect in the same observer callback (i.e. entered
-  // view together) stagger against each other via --i; unrelated batches
-  // don't inherit each other's delay.
+  // threshold: 0 — reveal as soon as even a sliver is on screen, no shrunk
+  // margin. Anything less lets rows that are genuinely visible in a short
+  // viewport (a tall hero pushes the fold up on mobile) sit hidden until a
+  // scroll event happens to fire, which read as "only 2 rows loaded." Rows
+  // that intersect in the same observer callback (i.e. entered view
+  // together, including everything visible at first paint) stagger against
+  // each other via --i; unrelated batches don't inherit each other's delay.
   useEffect(() => {
     const rows = [...rowRefs.current.values()];
     rows.forEach((el) => {
@@ -77,7 +79,7 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
             observer.unobserve(el);
           });
       },
-      { threshold: 0.1, rootMargin: "0px 0px -10% 0px" },
+      { threshold: 0 },
     );
     rows.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
