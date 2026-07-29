@@ -1424,14 +1424,6 @@ void main(){
         if (!r.width) return;
         sctx.fillText(el.textContent.toUpperCase(), r.left, r.top);
       });
-      if (crosshair.classList.contains("is-on")) {
-        const vr = crosshair.querySelector(".crosshair__v").getBoundingClientRect();
-        const hr = crosshair.querySelector(".crosshair__h").getBoundingClientRect();
-        sctx.globalAlpha = 0.14;
-        sctx.fillRect(vr.left, -MARGIN, 1, innerHeight + MARGIN * 2);
-        sctx.fillRect(-MARGIN, hr.top, innerWidth + MARGIN * 2, 1);
-        sctx.globalAlpha = 1;
-      }
       // two frosts from one scene: heavy for the body of the glass,
       // light for the rim's lens
       for (const [ctx2, radius] of [[fctx, 32], [lctx, 7]]) {
@@ -1608,6 +1600,7 @@ void main(){
   function openPanel() {
     showChip();
     panel.classList.add("is-open");
+    crosshair.classList.remove("is-on");
     settingsBtn.setAttribute("aria-expanded", "true");
     panel.focus({ preventScroll: true });
     if (glass) glass.on();
@@ -1725,7 +1718,10 @@ void main(){
       const c = Math.min(cols, Math.max(1, Math.ceil(((e.clientX - box.left) / box.width) * cols)));
       const r = Math.min(rows, Math.max(1, Math.ceil(((e.clientY - box.top) / box.height) * rows)));
       readoutEl.textContent = `C·${String(c).padStart(2, "0")} R·${String(r).padStart(2, "0")}`;
-      crosshair.classList.add("is-on");
+      // the reticle is a sheet tool: while the menu is up it rests —
+      // lines swimming refracted behind the glass, lagging the real
+      // ones, read as noise rather than optics
+      if (!panel.classList.contains("is-open")) crosshair.classList.add("is-on");
       if (!raf) raf = requestAnimationFrame(tick);
     });
     stage.addEventListener("pointerleave", () => {
