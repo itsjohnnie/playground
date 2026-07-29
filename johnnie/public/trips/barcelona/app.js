@@ -403,7 +403,7 @@
         if (i >= g.n) {
           t.classList.add("tile--gone");
           t.style.width = "0px";
-          setTimeout(() => t.remove(), 1000);
+          setTimeout(() => t.remove(), 620);
           return;
         }
         t.style.marginLeft = "";
@@ -418,7 +418,7 @@
         setTimeout(() => {
           t.style.backgroundImage = `url("${src}")`;
           face.remove();
-        }, 950);
+        }, 560);
       });
     }));
   }
