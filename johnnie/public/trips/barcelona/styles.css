@@ -434,14 +434,19 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   transition: opacity 360ms var(--ease-out) 140ms, translate 360ms var(--ease-out) 140ms;
 }
 
+/* one type size everywhere, so rank is carried by everything else:
+   the masthead speaks in weight, the widest tracking in the piece and
+   a full-strength rule; section labels answer in light weight, dimmed
+   ink and a quieter rule; rows sit on the faintest hairline of all */
 .panel__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 20px 20px 0;
+  padding: 20px 20px 12px;
+  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 18%, transparent);
 }
-.panel__title { font-weight: 600; letter-spacing: 0.14em; }
+.panel__title { font-weight: 600; letter-spacing: 0.26em; }
 .panel__spin { width: 12px; height: 12px; margin-left: auto; opacity: 0; transition: opacity 240ms var(--ease-out); }
 .panel__spin svg { width: 100%; height: 100%; animation: spin 700ms linear infinite; }
 .panel.is-busy .panel__spin { opacity: 0.7; }
@@ -451,19 +456,19 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
 
 .panel__body {
   overflow-y: auto;
-  padding: 2px 20px calc(12px + env(safe-area-inset-bottom));
+  padding: 8px 20px calc(12px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 .panel__group { display: flex; flex-direction: column; }
 .panel__label {
   font-size: var(--fs);
   font-weight: 400;
   letter-spacing: 0.14em;
-  color: color-mix(in srgb, var(--bone) 50%, transparent);
-  padding: 4px 0;
-  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 10%, transparent);
+  color: color-mix(in srgb, var(--bone) 44%, transparent);
+  padding: 8px 0 6px;
+  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 13%, transparent);
 }
 
 /* toggles */
@@ -479,7 +484,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   background: transparent;
   border: none;
-  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 5%, transparent);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 8%, transparent);
   cursor: pointer;
 }
 .tgl:focus-visible { outline: 1px solid var(--bone); outline-offset: -2px; }
@@ -520,7 +525,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   background: transparent;
   border: none;
-  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 5%, transparent);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 8%, transparent);
   cursor: pointer;
 }
 .act:focus-visible { outline: 1px solid var(--bone); outline-offset: -2px; }
