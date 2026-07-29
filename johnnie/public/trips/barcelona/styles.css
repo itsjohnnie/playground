@@ -94,6 +94,23 @@ body.color-on .bg { filter: none; }
 /* the dithered plate upscales with hard pixel edges, never a blur */
 body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
 .bg.is-on { opacity: 1; }
+/* desktop: no crop. the whole negative repeats side by side on the
+   night ground, 128px apart, vertically centered with 64px of air —
+   the full frame can be appreciated while the sheet reads over it */
+@media (min-width: 721px) {
+  .bg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 128px;
+    overflow: hidden;
+  }
+  .bg .tile {
+    flex: none;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+  }
+}
 /* first arrival: a slow settle */
 .bg.is-first { transition: opacity 1400ms var(--ease-out), transform 2600ms var(--ease-out); transform: scale(1.03); }
 .bg.is-first.is-on { transform: scale(1); }

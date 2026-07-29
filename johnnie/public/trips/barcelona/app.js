@@ -227,6 +227,9 @@
     // one cell is too tight for a clean line on phones: copy there must
     // own two cells (vertical blocks excepted) or it is not placed at all
     const tryCopy = (x, y, opts = {}) => {
+      // the top row belongs to the corner chrome: the name and the
+      // sheet number must never share a line with dealt copy
+      if (y === 0) return false;
       if (occ[y * cols + x]) return false;
       if (opts.vert) {
         if (y + 1 >= rows || occ[(y + 1) * cols + x]) return false;
@@ -337,11 +340,56 @@
     });
   }
 
-  // cover-fit: the negative keeps its own aspect and crops to the viewport;
-  // --dw/--dh/--ox/--oy drive the body layers AND every clipping's crop math
+  // phones cover-crop the negative to the viewport; desktop shows the
+  // WHOLE frame, repeated side by side on the night ground (128px gaps,
+  // 64px of air top and bottom). --dw/--dh/--ox/--oy drive the body
+  // layers on phones AND every clipping's crop math — in strip mode
+  // they describe the centre tile, so clippings crop from it
+  const stripMode = () => !smallScreen.matches;
+  const STRIP_GAP = 128, STRIP_PAD = 64;
+
+  function stripGeom(iw, ih) {
+    const tileH = Math.max(64, innerHeight - STRIP_PAD * 2);
+    const tileW = tileH * (iw / ih);
+    const n = Math.max(1, Math.ceil((innerWidth + STRIP_GAP) / (tileW + STRIP_GAP)) + 2);
+    const stripW = n * tileW + (n - 1) * STRIP_GAP;
+    const startX = (innerWidth - stripW) / 2;
+    const center = startX + Math.floor(n / 2) * (tileW + STRIP_GAP);
+    return { tileW, tileH, n, startX, center };
+  }
+
+  function setLayerImage(layer, src) {
+    layer.dataset.src = src;
+    if (!stripMode() || !negDims) {
+      layer.replaceChildren();
+      layer.style.backgroundImage = `url("${src}")`;
+      return;
+    }
+    layer.style.backgroundImage = "";
+    const g = stripGeom(negDims.iw, negDims.ih);
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < g.n; i++) {
+      const t = document.createElement("div");
+      t.className = "tile";
+      t.style.width = `${g.tileW}px`;
+      t.style.height = `${g.tileH}px`;
+      t.style.backgroundImage = `url("${src}")`;
+      frag.appendChild(t);
+    }
+    layer.replaceChildren(frag);
+  }
+
   let negDims = null;
   function applyCover() {
     if (!negDims) return;
+    if (stripMode()) {
+      const g = stripGeom(negDims.iw, negDims.ih);
+      root.style.setProperty("--dw", `${g.tileW}px`);
+      root.style.setProperty("--dh", `${g.tileH}px`);
+      root.style.setProperty("--ox", `${-g.center}px`);
+      root.style.setProperty("--oy", `${-STRIP_PAD}px`);
+      return;
+    }
     const scale = Math.max(innerWidth / negDims.iw, innerHeight / negDims.ih);
     const dw = negDims.iw * scale, dh = negDims.ih * scale;
     root.style.setProperty("--dw", `${dw}px`);
@@ -591,7 +639,7 @@
 
   function applyNegativeSrc() {
     const src = displaySrc();
-    frontBg.style.backgroundImage = `url("${src}")`;
+    setLayerImage(frontBg, src);
     for (const el of grid.querySelectorAll(".frag"))
       el.style.setProperty("--img", `url("${src}")`);
   }
@@ -662,13 +710,13 @@
     // one continuous dissolve: the next negative fades in WHILE the old
     // sheet clears above it, and the new sheet lands on the tail of the
     // crossfade rather than after a blank beat
-    const sameImage = keepNegative && frontBg.style.backgroundImage.includes(src.slice(0, 80));
+    const sameImage = keepNegative && frontBg.dataset.src === src;
     if (!sameImage) {
       const back = frontBg === bgA ? bgB : bgA;
       // the incoming layer follows the live cover vars again
       back.style.backgroundSize = "";
       back.style.backgroundPosition = "";
-      back.style.backgroundImage = `url("${src}")`;
+      setLayerImage(back, src);
       if (firstRun) back.classList.add("is-first");
       await nextFrame();
       back.classList.add("is-on");
@@ -747,7 +795,7 @@
       const back = frontBg === bgA ? bgB : bgA;
       back.style.backgroundSize = "";
       back.style.backgroundPosition = "";
-      back.style.backgroundImage = `url("${src}")`;
+      setLayerImage(back, src);
       await nextFrame();
       back.classList.add("is-on");
       frontBg.classList.remove("is-on");
@@ -789,9 +837,23 @@
     // the dithered plate must upscale with hard pixel edges
     ctx.imageSmoothingEnabled = !settings.dither;
     const monoFilter = settings.color ? "none" : "grayscale(1) contrast(1.15)";
-    ctx.filter = monoFilter;
-    ctx.drawImage(source, sx0, sy0, sw, sh, 0, 0, W, H);
-    ctx.filter = "none";
+    const isStrip = stripMode();
+    const sg = isStrip ? stripGeom(iw, ih) : null;
+    if (isStrip) {
+      // desktop: the whole frame repeated on the night ground
+      ctx.fillStyle = "#0c0b0a";
+      ctx.fillRect(0, 0, W, H);
+      ctx.filter = monoFilter;
+      for (let i = 0; i < sg.n; i++) {
+        const x = sg.startX + i * (sg.tileW + STRIP_GAP);
+        ctx.drawImage(source, 0, 0, iw, ih, x * S, STRIP_PAD * S, sg.tileW * S, sg.tileH * S);
+      }
+      ctx.filter = "none";
+    } else {
+      ctx.filter = monoFilter;
+      ctx.drawImage(source, sx0, sy0, sw, sh, 0, 0, W, H);
+      ctx.filter = "none";
+    }
 
     const veil = "rgba(10, 9, 8, 0.26)";
     ctx.fillStyle = veil;
@@ -808,11 +870,21 @@
       const srcVpX = stageBox.left + (stageBox.width * f.sx) / cols;
       const srcVpY = stageBox.top + (stageBox.height * f.sy) / rows;
       ctx.filter = monoFilter;
-      ctx.drawImage(
-        source,
-        sx0 + srcVpX / cover, sy0 + srcVpY / cover, r.width / cover, r.height / cover,
-        r.left * S, r.top * S, r.width * S, r.height * S
-      );
+      if (isStrip) {
+        // clippings crop from the centre tile, exactly as on screen
+        const kx = iw / sg.tileW, ky = ih / sg.tileH;
+        ctx.drawImage(
+          source,
+          (srcVpX - sg.center) * kx, (srcVpY - STRIP_PAD) * ky, r.width * kx, r.height * ky,
+          r.left * S, r.top * S, r.width * S, r.height * S
+        );
+      } else {
+        ctx.drawImage(
+          source,
+          sx0 + srcVpX / cover, sy0 + srcVpY / cover, r.width / cover, r.height / cover,
+          r.left * S, r.top * S, r.width * S, r.height * S
+        );
+      }
       ctx.filter = "none";
       ctx.fillStyle = veil;
       ctx.fillRect(r.left * S, r.top * S, r.width * S, r.height * S);
@@ -1218,6 +1290,8 @@
   addEventListener("resize", () => {
     setViewportVars();
     applyCover();
+    // the strip's tile count and size follow the viewport
+    if (stripMode() && frontBg.dataset.src) setLayerImage(frontBg, frontBg.dataset.src);
   });
 
   smallScreen.addEventListener("change", () => { if (!busy) render(); });
