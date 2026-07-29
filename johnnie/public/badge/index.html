@@ -99,6 +99,15 @@
   .plate .name { transform:translateY(0); }
   .plate.swap .name { transform:translateY(3px); }
 
+  .vig {
+    position:fixed; inset:0; pointer-events:none; z-index:2;
+    background:radial-gradient(ellipse at 50% 42%, transparent 58%, rgba(24,18,8,.07) 100%);
+  }
+  @media (prefers-color-scheme: dark) {
+    /* on black the edges cannot darken — the centre lifts instead */
+    .vig { background:radial-gradient(ellipse at 50% 42%, rgba(255,214,150,.045), transparent 60%); }
+  }
+
   .hint {
     position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 20px); left:0; right:0;
     text-align:center; font-size:12px; color:var(--hint);
@@ -135,11 +144,13 @@
   </div>
 </div>
 
+<div class="vig"></div>
 <div class="hint" id="hint">tap the badge to mint another &#183; drag to spin</div>
 
 <script type="module">
 import * as THREE from 'three';
 import { RoomEnvironment } from '/badge/lib/RoomEnvironment.js';
+import { HDRLoader } from '/badge/lib/HDRLoader.js';
 
 /* ============================== the roster ============================== */
 
@@ -494,6 +505,16 @@ function KITCHEN(){
     for(let i=0;i<N;i++) if(region[i]<254 && !goldM[i]) height[i]+=(rng()-0.5)*0.05;
     const hsm=boxBlur(height, TEX, 4, 2);
 
+    /* baked ambient occlusion: every hollow sits in the soft shadow of
+       its own walls — computed once here, free at render time */
+    const b1=boxBlur(hsm, TEX, 6, 1);
+    const b2=boxBlur(hsm, TEX, 16, 1);
+    const ao=new Float32Array(N);
+    for(let i=0;i<N;i++){
+      const occ=Math.max(0,b1[i]-hsm[i])*1.2+Math.max(0,b2[i]-hsm[i])*0.7;
+      ao[i]=1-Math.min(0.18, occ*0.9);
+    }
+
     const albedo=new ImageData(TEX,TEX), ad=albedo.data;
     const mrc=new ImageData(TEX,TEX), md=mrc.data;   /* R=clearcoat G=rough B=metal */
     const nrm=new ImageData(TEX,TEX), nd=nrm.data;
@@ -505,7 +526,7 @@ function KITCHEN(){
       let r,gc,b;
       if(off || gold){ r=GOLD_FACE[0]; gc=GOLD_FACE[1]; b=GOLD_FACE[2]; }
       else { const e=enamel[region[i]]; r=e[0]; gc=e[1]; b=e[2]; }
-      ad[o]=r; ad[o+1]=gc; ad[o+2]=b; ad[o+3]=255;
+      ad[o]=r*ao[i]; ad[o+1]=gc*ao[i]; ad[o+2]=b*ao[i]; ad[o+3]=255;
 
       const grain=(rng()-0.5);
       if(off || gold){
@@ -581,6 +602,12 @@ function KITCHEN(){
       h[i]=((mott[i]-0.5)*0.10+(fine[i]-0.5)*0.05)*(1-t*0.7) - t*0.55;
     }
     const hs=boxBlur(h, TEX, 1, 1);
+    const bb=boxBlur(hs, TEX, 5, 1);
+    for(let i=0;i<N;i++){
+      const o=i*4;
+      const k=1-Math.min(0.14, Math.max(0,bb[i]-hs[i])*0.5);
+      bd[o]*=k; bd[o+1]*=k; bd[o+2]*=k;
+    }
     const bnrm=new ImageData(TEX,TEX), nd=bnrm.data;
     for(let y=0;y<TEX;y++) for(let x=0;x<TEX;x++){
       const i=y*TEX+x, o=i*4;
@@ -1005,7 +1032,21 @@ const camera=new THREE.PerspectiveCamera(14,1,0.1,60);
 camera.position.set(0,0,13);
 
 const pmrem=new THREE.PMREMGenerator(renderer);
-scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+/* the room is a photographed studio now — softboxes and gradient cards —
+   which is where offline renders get their look. Zero per-frame cost: it
+   only changes the picture the reflections sample. Falls back to the
+   synthetic room if the file can't load. */
+const ENV_URL='/badge/lib/studio.hdr';
+const envReady=(async()=>{
+  try{
+    const hdr=await new HDRLoader().loadAsync(ENV_URL);
+    hdr.mapping=THREE.EquirectangularReflectionMapping;
+    scene.environment=pmrem.fromEquirectangular(hdr).texture;
+    hdr.dispose();
+  }catch(e){
+    scene.environment=pmrem.fromScene(new RoomEnvironment(),0.04).texture;
+  }
+})();
 
 const key=new THREE.DirectionalLight(0xffffff,1.6); key.position.set(2.6,4,3.2); scene.add(key);
 const rim=new THREE.DirectionalLight(0xffe2b0,0.9); rim.position.set(-3,-1.5,-2.5); scene.add(rim);
@@ -1335,6 +1376,7 @@ applyTheme();
   setPlate(i);                                     // the name reads while the pin is struck
   await loadGlyph(BADGES[i][0]);
   const mesh=await buildBadge(i);
+  await envReady;
   if(mesh){ attach(mesh); if(i===order[0]) cursor=1; }
   start();
   Promise.all(BADGES.map(([e])=>loadGlyph(e))).then(async()=>{
