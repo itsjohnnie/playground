@@ -1305,6 +1305,7 @@ void main(){
   col=mix(col,u_tint.rgb,u_tint.a);
   float spec=pow(max(dot(normalize(n+vec2(1e-4)),vec2(-.6,-.8)),0.),5.)*bev;
   col+=spec*u_spec;
+  col+=smoothstep(1.6,0.,abs(d+1.2))*.14;
   float h=fract(sin(dot(v,vec2(12.9898,78.233)))*43758.5453);
   col+=(h-.5)*(2./255.);
   gl_FragColor=vec4(col,1.);
@@ -1551,7 +1552,7 @@ void main(){
   const holdRing = document.getElementById("holdring");
   const ringProg = holdRing.querySelector(".holdring__progress");
   const RING_LEN = 97.39;
-  const HOLD_MS = 3000;
+  const HOLD_MS = 2000;
   let hold = null;
   let chipTimer = null;
   let suppressClick = false;
