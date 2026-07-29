@@ -144,6 +144,17 @@ body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
     to { opacity: 1; translate: 0 0; }
   }
   .bg .tile--gone { margin-left: 0 !important; }
+  /* strip clippings: displaced crops INSIDE each print, every tile
+     dealt its own — they wipe in staggered like the mobile frags */
+  .bg .clip {
+    position: absolute;
+    background-repeat: no-repeat;
+    opacity: 0;
+    translate: 0 10px;
+    transition: opacity 500ms var(--ease-out), translate 500ms var(--ease-out);
+    transition-delay: var(--d, 0ms);
+  }
+  .bg .clip.is-in { opacity: 1; translate: 0 0; }
   /* the next frame fades in on the face of the SAME tile while the
      box resizes to the new aspect — one continuous morph */
   .bg .tile__next {
@@ -334,9 +345,14 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
 }
 @media (min-width: 721px) {
   .panel {
-    inset: auto max(20px, env(safe-area-inset-right)) 76px auto;
+    /* pinned to the chip: right edges align, panel floats 8px above
+       it, and the bloom grows from the chip's centre (16px in from
+       the panel's right edge, 24px below its bottom) */
+    inset: auto calc(var(--edge-x) + var(--pad))
+           calc(var(--edge-x) + var(--pad) + var(--chip) + 8px) auto;
     width: min(420px, calc(100vw - 40px));
-    max-height: calc(100vh - 150px);
+    max-height: calc(100vh - 160px);
+    transform-origin: calc(100% - 16px) calc(100% + 24px);
   }
 }
 
@@ -405,7 +421,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 20px 0;
+  padding: 20px 20px 0;
 }
 .panel__title { font-weight: 600; letter-spacing: 0.14em; }
 .panel__spin { width: 12px; height: 12px; margin-left: auto; opacity: 0; transition: opacity 240ms var(--ease-out); }
