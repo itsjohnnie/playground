@@ -4,7 +4,7 @@ import { asset } from "@/lib/asset";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://johnnies.life"),
-  title: "Johnnie's Life — An ongoing work in progress",
+  title: "Johnnie's Life | An ongoing work in progress",
   description:
     "Dog-lover, sticker collector, music aficionado, conference enthusiast, and Staff Brand Designer at Webflow, working remotely from Miami, FL.",
   icons: {
@@ -12,11 +12,11 @@ export const metadata: Metadata = {
     apple: asset("/images/webclip.png"),
   },
   openGraph: {
-    title: "Johnnie's Life — An ongoing work in progress",
+    title: "Johnnie's Life | An ongoing work in progress",
     images: [asset("/images/opengraph.jpg")],
   },
   twitter: {
-    title: "Johnnie's Life — An ongoing work in progress",
+    title: "Johnnie's Life | An ongoing work in progress",
     images: [asset("/images/opengraph.jpg")],
   },
   // Transparent status bar in standalone (Add to Home Screen) mode so content
