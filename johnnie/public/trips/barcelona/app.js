@@ -1241,32 +1241,44 @@ attribute vec2 a;uniform vec2 u_size;varying vec2 v;
 void main(){v=a*u_size;gl_Position=vec4(a.x*2.-1.,1.-a.y*2.,0.,1.);}`;
     // the slab: flat glass with a beveled rim. the SDF of the panel's
     // rounded rect gives both the rim band and the surface normal
+    // two frosts, one lens: the body of the glass diffuses heavily (the
+    // content above must stay legible) but the rim — where the bend is
+    // strongest — samples a much lighter frost, so the refraction pulls
+    // recognizable imagery, not mush. real glass is sharpest where it
+    // bends most
     const FS = `precision mediump float;
-uniform sampler2D u_bg;uniform vec2 u_size;uniform float u_rad;
-uniform vec4 u_map;uniform vec2 u_cursor;uniform float u_time;
-uniform vec4 u_tint;uniform float u_spec;varying vec2 v;
+uniform sampler2D u_bg;uniform sampler2D u_lens;uniform vec2 u_size;
+uniform float u_rad;uniform vec4 u_map;uniform vec2 u_cursor;
+uniform float u_time;uniform vec4 u_tint;uniform float u_spec;varying vec2 v;
 float sd(vec2 p){vec2 b=u_size*.5-vec2(u_rad);vec2 q=abs(p-u_size*.5)-b;
 return length(max(q,0.))+min(max(q.x,q.y),0.)-u_rad;}
 void main(){
   float d=sd(v);
-  float band=min(28.,min(u_size.x,u_size.y)*.25);
+  float band=min(32.,min(u_size.x,u_size.y)*.25);
   float e=clamp(-d/band,0.,1.);
-  float bev=(1.-e)*(1.-e);
+  float bev=pow(1.-e,1.6);
   vec2 g=vec2(sd(v+vec2(1.,0.))-sd(v-vec2(1.,0.)),sd(v+vec2(0.,1.))-sd(v-vec2(0.,1.)));
   g/=max(length(g),1e-4);
   vec2 rip=vec2(sin(v.y*.017+u_time*.7)+sin(v.x*.011-u_time*.5),
                 cos(v.x*.015+u_time*.6)+cos(v.y*.009+u_time*.4));
   vec2 n=g*bev+rip*.05*e;
-  vec2 off=n*26.;
-  vec3 col;
-  col.g=texture2D(u_bg,(v+off)*u_map.xy+u_map.zw).g;
-  col.r=texture2D(u_bg,(v+off*1.12)*u_map.xy+u_map.zw).r;
-  col.b=texture2D(u_bg,(v+off*.88)*u_map.xy+u_map.zw).b;
+  vec2 off=n*28.;
+  vec2 uvG=(v+off)*u_map.xy+u_map.zw;
+  vec2 uvR=(v+off*1.14)*u_map.xy+u_map.zw;
+  vec2 uvB=(v+off*.86)*u_map.xy+u_map.zw;
+  vec3 fro=vec3(texture2D(u_bg,uvR).r,texture2D(u_bg,uvG).g,texture2D(u_bg,uvB).b);
+  vec3 len=vec3(texture2D(u_lens,uvR).r,texture2D(u_lens,uvG).g,texture2D(u_lens,uvB).b);
+  vec3 col=mix(fro,len,bev);
   col*=1.06;
+  float luma=dot(col,vec3(.2126,.7152,.0722));
+  col=mix(vec3(luma),col,1.35);
   col=mix(col,u_tint.rgb,u_tint.a);
   vec2 L=normalize(u_cursor-v+vec2(1e-4));
   float spec=pow(max(dot(normalize(n+vec2(1e-4)),L),0.),5.)*bev;
-  gl_FragColor=vec4(col+spec*u_spec,1.);
+  col+=spec*u_spec;
+  float h=fract(sin(dot(v,vec2(12.9898,78.233)))*43758.5453);
+  col+=(h-.5)*(2./255.);
+  gl_FragColor=vec4(col,1.);
 }`;
     const sh = (type, src) => {
       const s = gl.createShader(type);
@@ -1289,19 +1301,26 @@ void main(){
     gl.vertexAttribPointer(aloc, 2, gl.FLOAT, false, 0, 0);
     const U = {};
     ["u_size", "u_rad", "u_map", "u_cursor", "u_time", "u_tint", "u_spec"].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
-    gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    for (const unit of [0, 1]) {
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    }
+    gl.uniform1i(gl.getUniformLocation(prog, "u_bg"), 0);
+    gl.uniform1i(gl.getUniformLocation(prog, "u_lens"), 1);
 
     // the mirror: half-resolution, with a margin so refraction near the
     // panel's edge can reach content just off the viewport
     const MS = 0.5, MARGIN = 48;
     const scene = document.createElement("canvas");
     const frost = document.createElement("canvas");
+    const lens = document.createElement("canvas");
     const sctx = scene.getContext("2d");
     const fctx = frost.getContext("2d");
+    const lctx = lens.getContext("2d");
 
     // the mirror needs decoded Image objects for whatever the layers
     // show — including dithered data URLs; a few stay warm
@@ -1324,8 +1343,8 @@ void main(){
     function drawMirror() {
       const W = Math.round((innerWidth + MARGIN * 2) * MS);
       const H = Math.round((innerHeight + MARGIN * 2) * MS);
-      if (scene.width !== W) { scene.width = W; frost.width = W; }
-      if (scene.height !== H) { scene.height = H; frost.height = H; }
+      if (scene.width !== W) { scene.width = W; frost.width = W; lens.width = W; }
+      if (scene.height !== H) { scene.height = H; frost.height = H; lens.height = H; }
       const ground = getComputedStyle(document.body).backgroundColor;
       sctx.setTransform(1, 0, 0, 1, 0, 0);
       sctx.filter = "none";
@@ -1413,14 +1432,17 @@ void main(){
         sctx.fillRect(-MARGIN, hr.top, innerWidth + MARGIN * 2, 1);
         sctx.globalAlpha = 1;
       }
-      // pre-frost: the shader bends an already-diffused scene
-      fctx.setTransform(1, 0, 0, 1, 0, 0);
-      fctx.filter = "none";
-      fctx.fillStyle = ground;
-      fctx.fillRect(0, 0, W, H);
-      fctx.filter = `blur(${Math.round(32 * MS)}px)`;
-      fctx.drawImage(scene, 0, 0);
-      fctx.filter = "none";
+      // two frosts from one scene: heavy for the body of the glass,
+      // light for the rim's lens
+      for (const [ctx2, radius] of [[fctx, 32], [lctx, 7]]) {
+        ctx2.setTransform(1, 0, 0, 1, 0, 0);
+        ctx2.filter = "none";
+        ctx2.fillStyle = ground;
+        ctx2.fillRect(0, 0, W, H);
+        ctx2.filter = `blur(${Math.round(radius * MS)}px)`;
+        ctx2.drawImage(scene, 0, 0);
+        ctx2.filter = "none";
+      }
     }
 
     let cx = innerWidth / 2, cy = innerHeight / 2;
@@ -1444,7 +1466,10 @@ void main(){
       if (frame++ % 2 === 0) {
         // the mirror refreshes at half rate; ripple and specular at full
         drawMirror();
+        gl.activeTexture(gl.TEXTURE0);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, frost);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, lens);
       }
       const rect = panel.getBoundingClientRect();
       const w = panel.clientWidth, h = panel.clientHeight;
