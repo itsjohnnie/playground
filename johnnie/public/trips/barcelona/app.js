@@ -1252,9 +1252,10 @@
   // prints, clippings, veil, type, crosshair — is redrawn onto a small
   // offscreen canvas from the same geometry that placed the real
   // elements, pre-blurred, and handed to a fragment shader that adds
-  // what CSS cannot: refraction pooling at the rim, chromatic
-  // dispersion where the bend is strongest, an even hairline rim drawn
-  // from the same SDF, and a slow breathing of the surface. wherever
+  // what CSS cannot: refraction pooling at the rim, an even hairline
+  // rim drawn from the same SDF, and a slow breathing of the surface.
+  // no chromatic dispersion: on tall rims it reads as a blue fringe,
+  // an artifact rather than optics — crisp beats clever. wherever
   // WebGL is missing (or motion is reduced) the CSS frost simply
   // remains — the shader is an upgrade, never a dependency
   const glass = (() => {
@@ -1293,12 +1294,8 @@ void main(){
                 cos(v.x*.015+u_time*.6)+cos(v.y*.009+u_time*.4));
   vec2 n=g*bev+rip*.05*e;
   vec2 off=n*28.;
-  vec2 uvG=(v+off)*u_map.xy+u_map.zw;
-  vec2 uvR=(v+off*1.14)*u_map.xy+u_map.zw;
-  vec2 uvB=(v+off*.86)*u_map.xy+u_map.zw;
-  vec3 fro=vec3(texture2D(u_bg,uvR).r,texture2D(u_bg,uvG).g,texture2D(u_bg,uvB).b);
-  vec3 len=vec3(texture2D(u_lens,uvR).r,texture2D(u_lens,uvG).g,texture2D(u_lens,uvB).b);
-  vec3 col=mix(fro,len,bev);
+  vec2 uv=(v+off)*u_map.xy+u_map.zw;
+  vec3 col=mix(texture2D(u_bg,uv).rgb,texture2D(u_lens,uv).rgb,bev);
   col*=1.06;
   float luma=dot(col,vec3(.2126,.7152,.0722));
   col=mix(vec3(luma),col,1.35);
