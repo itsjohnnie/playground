@@ -15,21 +15,33 @@ export default function StuffPage() {
   return (
     <main className="stuff-page">
       <div className="stuff-hero">
-        {/* Light and dark renders of the same scene; the browser picks by the
-            system colour-scheme preference. */}
-        <picture>
-          <source
-            srcSet={asset("/images/stuff-hero-dark.png")}
-            media="(prefers-color-scheme: dark)"
-          />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={asset("/images/stuff-hero.png")}
-            alt="Johnnie at his desk with his two monitors and his dog Honey"
-            width={1024}
-            height={1024}
-          />
-        </picture>
+        {/* Light and dark renders of the same scene; CSS picks by the system
+            colour-scheme preference (both stay in the DOM — a <picture> can't
+            switch between an img and a video). Dark is a boomerang loop
+            (forward, then reverse, so the "cut" back to the start is really
+            just the same frame it started on); light stays a still render
+            until its own video is ready. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          className="stuff-hero-light"
+          src={asset("/images/stuff-hero.png")}
+          alt="Johnnie at his desk with his two monitors and his dog Honey"
+          width={1024}
+          height={1024}
+        />
+        <video
+          className="stuff-hero-dark"
+          aria-label="Johnnie at his desk with his two monitors and his dog Honey"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          width={960}
+          height={960}
+        >
+          <source src={asset("/videos/stuff-hero-dark.webm")} type="video/webm" />
+        </video>
       </div>
 
       <div className="stuff">
@@ -97,8 +109,17 @@ export default function StuffPage() {
 
 /* Full-bleed hero, flush at the top. */
 .stuff-hero { position: relative; width: 100%; margin: 0; }
-.stuff-hero picture { display: block; }
-.stuff-hero img { width: 100%; height: auto; display: block; }
+.stuff-hero img, .stuff-hero video { width: 100%; height: auto; }
+/* Only one of these two is ever visible — CSS toggles by colour scheme,
+   both stay mounted so the video can autoplay/loop before it's shown. Kept
+   as un-combined single-class rules (not "display: block" bundled into the
+   img/video sizing rule above) so specificity doesn't fight this toggle. */
+.stuff-hero-light { display: block; }
+.stuff-hero-dark { display: none; }
+@media (prefers-color-scheme: dark) {
+  .stuff-hero-light { display: none; }
+  .stuff-hero-dark { display: block; }
+}
 /* Inner glow in the page's background colour, feathered inward on every edge.
    The photo's borders aren't a perfectly uniform tone, so this haze blends
    the render into the page instead of leaving a hard, slightly-mismatched seam. */
@@ -158,6 +179,7 @@ export default function StuffPage() {
   color: var(--s-fg); background: transparent;
   border: none; border-bottom: 1px solid var(--s-line);
   padding: .15rem 1.15rem .03rem .1rem; cursor: pointer;
+  position: relative; top: -1px;
   appearance: none; -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%231b1b1b' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right .05rem center; background-size: .62rem;
@@ -185,7 +207,7 @@ export default function StuffPage() {
 .stuff-row {
   border-bottom: 1px solid var(--s-line);
   animation: stuffRowIn .42s var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 38ms);
+  animation-delay: calc(var(--i, 0) * 26ms);
 }
 @keyframes stuffRowIn {
   from { opacity: 0; transform: translateY(9px); }
