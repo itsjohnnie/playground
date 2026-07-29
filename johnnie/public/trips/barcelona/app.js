@@ -365,14 +365,41 @@
   function stripGeom(iw, ih) {
     const tileH = Math.max(64, innerHeight - STRIP_PAD * 2);
     const tileW = tileH * (iw / ih);
-    // an infinite carousel: enough repeats that even at full drift the
-    // viewport is never uncovered — the edge prints always run off
-    // screen, and the ends are never reachable
-    const n = Math.max(1, Math.ceil((innerWidth + 2 * PAN_MAX + STRIP_GAP) / (tileW + STRIP_GAP)) + 1);
+    const P = tileW + STRIP_GAP;
+    // the tease: everywhere along the drift BOTH viewport edges must
+    // cut through a print — a sliver of image always promising more
+    // beyond each side, never a bare gap resting at the edge. the
+    // travel and a small off-centre shift are solved together, per
+    // photo, so the edges stay inside prints through the whole sweep
+    const SLIVER = 48;
+    const D = ((innerWidth % P) + P) % P;
+    let travel = PAN_MAX, sweepStart = -1;
+    outer: for (let l = PAN_MAX; l >= 8; l -= 4) {
+      // the latest point a sweep may begin and still end inside a print
+      const last = tileW - SLIVER - 2 * l;
+      for (let a = SLIVER; a <= last; a += 4) {
+        const b = (a + D) % P;
+        if (b >= SLIVER && b <= last) { travel = l; sweepStart = a; break outer; }
+      }
+    }
+    // spare repeats absorb the shift; the viewport stays covered — the
+    // ends of an infinite carousel are never reachable
+    const n = Math.max(1, Math.ceil((innerWidth + 2 * PAN_MAX + STRIP_GAP) / P) + 3);
     const stripW = n * tileW + (n - 1) * STRIP_GAP;
-    const startX = (innerWidth - stripW) / 2;
-    const center = startX + Math.floor(n / 2) * (tileW + STRIP_GAP);
-    return { tileW, tileH, n, startX, center };
+    let startX = (innerWidth - stripW) / 2;
+    let shift = 0;
+    if (sweepStart >= 0) {
+      // place the sweep: at full-left travel the viewport's left edge
+      // lands sweepStart px into a print, and stays in prints from there.
+      // the tiles centre themselves by flex, so the shift is carried as
+      // a margin on the first print — doubled, since centring halves it
+      let delta = ((-(sweepStart + travel) - startX) % P + P) % P;
+      if (delta > P / 2) delta -= P;
+      startX += delta;
+      shift = delta;
+    }
+    const center = startX + Math.floor(n / 2) * P;
+    return { tileW, tileH, n, startX, center, travel, shift };
   }
 
   function setLayerImage(layer, src) {
@@ -391,6 +418,7 @@
       t.style.animationDelay = `${reducedMotion ? 0 : i * 90}ms`;
       t.style.width = `${g.tileW}px`;
       t.style.height = `${g.tileH}px`;
+      if (i === 0) t.style.marginLeft = `${2 * g.shift}px`;
       t.style.backgroundImage = `url("${src}")`;
       frag.appendChild(t);
     }
@@ -425,7 +453,9 @@
           setTimeout(() => t.remove(), 620);
           return;
         }
-        t.style.marginLeft = "";
+        // the first print carries the strip's tease shift; it rides the
+        // same 520ms as the widths, so the whole strip glides into place
+        t.style.marginLeft = i === 0 ? `${2 * g.shift}px` : "";
         t.style.width = `${g.tileW}px`;
         t.style.height = `${g.tileH}px`;
         if (t.style.backgroundImage.includes(src)) return;
@@ -499,9 +529,9 @@
     if (!negDims) return;
     if (stripMode()) {
       const g = stripGeom(negDims.iw, negDims.ih);
-      // a gentle drift only: far from the strip's ends, so the
-      // carousel never betrays that it is finite
-      panLimit = Math.min(PAN_MAX, Math.max(0, -g.startX));
+      // a gentle drift only — the solved travel keeps a cut print at
+      // both edges everywhere along it, and the ends stay unreachable
+      panLimit = Math.min(g.travel, Math.max(0, -g.startX));
       panT = Math.max(-panLimit, Math.min(panLimit, panT));
       kickPan();
       root.style.setProperty("--dw", `${g.tileW}px`);
