@@ -381,6 +381,48 @@
     layer.replaceChildren(frag);
   }
 
+  // desktop shuffles morph the strip in place: the SAME tiles resize
+  // to the next frame's aspect while the new image fades in on their
+  // faces; extra tiles grow in from nothing, surplus ones collapse
+  function morphStrip(src) {
+    const g = stripGeom(negDims.iw, negDims.ih);
+    frontBg.dataset.src = src;
+    const tiles = [...frontBg.querySelectorAll(".tile")];
+    while (tiles.length < g.n) {
+      const t = document.createElement("div");
+      t.className = "tile";
+      t.style.width = "0px";
+      t.style.height = `${g.tileH}px`;
+      t.style.marginLeft = "0px";
+      t.style.backgroundImage = `url("${src}")`;
+      frontBg.appendChild(t);
+      tiles.push(t);
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      tiles.forEach((t, i) => {
+        if (i >= g.n) {
+          t.classList.add("tile--gone");
+          t.style.width = "0px";
+          setTimeout(() => t.remove(), 1000);
+          return;
+        }
+        t.style.marginLeft = "";
+        t.style.width = `${g.tileW}px`;
+        t.style.height = `${g.tileH}px`;
+        if (t.style.backgroundImage.includes(src)) return;
+        const face = document.createElement("div");
+        face.className = "tile__next";
+        face.style.backgroundImage = `url("${src}")`;
+        t.appendChild(face);
+        requestAnimationFrame(() => requestAnimationFrame(() => face.classList.add("is-on")));
+        setTimeout(() => {
+          t.style.backgroundImage = `url("${src}")`;
+          face.remove();
+        }, 950);
+      });
+    }));
+  }
+
   let negDims = null;
   function applyCover() {
     if (!negDims) return;
@@ -641,7 +683,8 @@
 
   function applyNegativeSrc() {
     const src = displaySrc();
-    setLayerImage(frontBg, src);
+    if (stripMode() && frontBg.querySelector(".tile")) morphStrip(src);
+    else setLayerImage(frontBg, src);
     for (const el of grid.querySelectorAll(".frag"))
       el.style.setProperty("--img", `url("${src}")`);
   }
@@ -714,16 +757,20 @@
     // crossfade rather than after a blank beat
     const sameImage = keepNegative && frontBg.dataset.src === src;
     if (!sameImage) {
-      const back = frontBg === bgA ? bgB : bgA;
-      // the incoming layer follows the live cover vars again
-      back.style.backgroundSize = "";
-      back.style.backgroundPosition = "";
-      setLayerImage(back, src);
-      if (firstRun) back.classList.add("is-first");
-      await nextFrame();
-      back.classList.add("is-on");
-      frontBg.classList.remove("is-on");
-      frontBg = back;
+      if (stripMode() && !firstRun && frontBg.querySelector(".tile")) {
+        morphStrip(src);
+      } else {
+        const back = frontBg === bgA ? bgB : bgA;
+        // the incoming layer follows the live cover vars again
+        back.style.backgroundSize = "";
+        back.style.backgroundPosition = "";
+        setLayerImage(back, src);
+        if (firstRun) back.classList.add("is-first");
+        await nextFrame();
+        back.classList.add("is-on");
+        frontBg.classList.remove("is-on");
+        frontBg = back;
+      }
     }
 
     const old = [...grid.children];
@@ -794,14 +841,18 @@
       negDims = { iw: img.naturalWidth, ih: img.naturalHeight };
       applyCover();
       const src = displaySrc();
-      const back = frontBg === bgA ? bgB : bgA;
-      back.style.backgroundSize = "";
-      back.style.backgroundPosition = "";
-      setLayerImage(back, src);
-      await nextFrame();
-      back.classList.add("is-on");
-      frontBg.classList.remove("is-on");
-      frontBg = back;
+      if (stripMode() && frontBg.querySelector(".tile")) {
+        morphStrip(src);
+      } else {
+        const back = frontBg === bgA ? bgB : bgA;
+        back.style.backgroundSize = "";
+        back.style.backgroundPosition = "";
+        setLayerImage(back, src);
+        await nextFrame();
+        back.classList.add("is-on");
+        frontBg.classList.remove("is-on");
+        frontBg = back;
+      }
       for (const el of grid.querySelectorAll(".frag"))
         el.style.setProperty("--img", `url("${src}")`);
       retype(negInfoEl, `${next.author} — ${next.title}, ${next.year}`);
