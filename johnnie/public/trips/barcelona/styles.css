@@ -447,7 +447,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   letter-spacing: 0.14em;
   color: color-mix(in srgb, var(--bone) 50%, transparent);
   padding: 4px 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--bone) 12%, transparent);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 10%, transparent);
 }
 
 /* toggles */
@@ -463,7 +463,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   background: transparent;
   border: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--bone) 7%, transparent);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 5%, transparent);
   cursor: pointer;
 }
 .tgl:focus-visible { outline: 1px solid var(--bone); outline-offset: -2px; }
@@ -504,7 +504,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   background: transparent;
   border: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--bone) 7%, transparent);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--bone) 5%, transparent);
   cursor: pointer;
 }
 .act:focus-visible { outline: 1px solid var(--bone); outline-offset: -2px; }
