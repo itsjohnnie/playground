@@ -201,13 +201,18 @@ export default function StuffPage() {
 
 /* List + expandable rows. */
 .stuff-grid { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--s-line); }
-/* Staggered entrance on first load. animation-fill-mode both holds the
-   from-state through the per-item delay; stable keys mean this plays once and
-   never on re-sort. */
+/* Staggered entrance, triggered per row as it scrolls into view (JS in
+   stuff-list.tsx hides rows on mount and reveals them via
+   IntersectionObserver — this class is what that JS adds). Rows that enter
+   view together stagger against each other via --i; unrelated batches
+   don't inherit each other's delay. animation-fill-mode both holds the
+   from-state through the per-item delay. */
 .stuff-row {
   border-bottom: 1px solid var(--s-line);
+}
+.stuff-row--in {
   animation: stuffRowIn .42s var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 26ms);
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 @keyframes stuffRowIn {
   from { opacity: 0; transform: translateY(9px); }
@@ -360,7 +365,7 @@ export default function StuffPage() {
   .stuff-modal-scroll[data-dir="next"], .stuff-modal-scroll[data-dir="prev"] {
     animation: stuffFade .2s var(--ease-out);
   }
-  .stuff-row { animation: none; }
+  .stuff-row--in { animation: none; }
 }
 @keyframes stuffFade { from { opacity: 0; } to { opacity: 1; } }
 `,

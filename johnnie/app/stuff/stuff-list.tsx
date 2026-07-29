@@ -5,7 +5,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type TouchEvent,
 } from "react";
 import type { StuffItem } from "@/lib/content";
@@ -46,6 +45,43 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
   const [dir, setDir] = useState(0); // last nav direction: 1 next, -1 prev, 0 none
   const sorted = useMemo(() => sortItems(items, sort), [items, sort]);
   const shown = idx == null ? null : sorted[idx];
+  const rowRefs = useRef<Map<string, HTMLLIElement>>(new Map());
+
+  // Reveal rows as they actually scroll into view, instead of staggering
+  // every row (up to 43+ of them) at once on first paint. Rows start fully
+  // visible in the server-rendered markup (so JS-less/slow-JS loads never
+  // show blank rows) — this hides them imperatively on mount, then an
+  // IntersectionObserver un-hides each row the moment it's on screen.
+  // Above-the-fold rows fire almost immediately, so they still read as "the
+  // page loaded in" like before; the rest cascade in as you scroll down to
+  // them. Rows that intersect in the same observer callback (i.e. entered
+  // view together) stagger against each other via --i; unrelated batches
+  // don't inherit each other's delay.
+  useEffect(() => {
+    const rows = [...rowRefs.current.values()];
+    rows.forEach((el) => {
+      el.style.opacity = "0";
+      el.style.transform = "translateY(9px)";
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries
+          .filter((entry) => entry.isIntersecting)
+          .forEach((entry, i) => {
+            const el = entry.target as HTMLElement;
+            el.style.setProperty("--i", String(i));
+            el.style.opacity = "";
+            el.style.transform = "";
+            el.classList.add("stuff-row--in");
+            observer.unobserve(el);
+          });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -10% 0px" },
+    );
+    rows.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
 
   const openItem = (i: number) => {
     setDir(0);
@@ -142,8 +178,11 @@ export default function StuffList({ items }: { items: StuffItem[] }) {
         {sorted.map((it, i) => (
           <li
             key={it.name}
+            ref={(el) => {
+              if (el) rowRefs.current.set(it.name, el);
+              else rowRefs.current.delete(it.name);
+            }}
             className={`stuff-row${it.owned ? "" : " is-wish"}`}
-            style={{ "--i": Math.min(i, 12) } as CSSProperties}
           >
             <button
               type="button"
