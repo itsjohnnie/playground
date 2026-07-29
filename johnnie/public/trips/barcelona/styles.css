@@ -91,8 +91,9 @@ body.color-on .bg { filter: none; }
 body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
 .bg.is-on { opacity: 1; }
 /* desktop: no crop. the whole negative repeats side by side on the
-   night ground, 160px apart, vertically centered with 64px of air —
-   the full frame can be appreciated while the sheet reads over it */
+   night ground with one uniform breath — 160px between repeats and
+   the same 160px above and below — so the full frame can be
+   appreciated while the sheet reads over it */
 @media (min-width: 721px) {
   .bg {
     display: flex;
