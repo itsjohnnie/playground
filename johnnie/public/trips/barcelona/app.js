@@ -308,7 +308,7 @@
     document.getElementById("trip-label").textContent = label;
     // the sheet's chrome is lowercase by style; the browser tab is not
     const proper = label.replace(/\b[a-z]/g, (ch) => ch.toUpperCase());
-    document.title = `Johnnie Gomez — ${proper}`;
+    document.title = `${proper} | Johnnie’s Life`;
   }
 
   // the deck: negatives deal like a shuffled stack of prints — every
