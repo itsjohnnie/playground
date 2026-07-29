@@ -15,8 +15,10 @@
   /* one type color, one shade; one type size */
   --night: #0c0b0a;
   --bone: #ffffff;
-  --line: rgba(255, 255, 255, 0.16);
+  --line: color-mix(in srgb, var(--bone) 16%, transparent);
   --veil: rgba(10, 9, 8, 0.26);
+  --glass: rgba(18, 16, 14, 0.34);
+  --glass-deep: rgba(14, 12, 10, 0.4);
   /* the ONE type size, fluid: 10px on phones (up to ~430px wide),
      rising with the viewport to 14px on very large screens */
   --fs: clamp(10px, calc(8.85px + 0.2685vw), 14px);
@@ -39,6 +41,19 @@
   --rows: 10;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* light appearance: the sheet inverts — paper ground, night ink.
+   photographs keep their own tones; the veil turns to paper so the
+   dark ink always has ground */
+@media (prefers-color-scheme: light) {
+  :root {
+    --night: #f4f2ef;
+    --bone: #0c0b0a;
+    --veil: rgba(244, 242, 239, 0.26);
+    --glass: rgba(248, 246, 244, 0.55);
+    --glass-deep: rgba(244, 242, 240, 0.55);
+  }
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -269,7 +284,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   border-radius: var(--radius);
   overflow: hidden;
-  background: rgba(18, 16, 14, 0.34);
+  background: var(--glass);
   -webkit-backdrop-filter: blur(32px) saturate(1.8) brightness(1.06);
   backdrop-filter: blur(32px) saturate(1.8) brightness(1.06);
   border: none;
@@ -327,7 +342,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   backdrop-filter: blur(6px);
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 70%);
   mask-image: linear-gradient(to bottom, transparent, black 70%);
-  background: linear-gradient(to bottom, rgba(14, 12, 10, 0), rgba(14, 12, 10, 0.4));
+  background: linear-gradient(to bottom, transparent, var(--glass-deep));
 }
 
 /* the specular rim and sheen */
@@ -398,9 +413,9 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   font-size: var(--fs);
   font-weight: 400;
   letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.5);
+  color: color-mix(in srgb, var(--bone) 50%, transparent);
   padding: 4px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid color-mix(in srgb, var(--bone) 12%, transparent);
 }
 
 /* toggles */
@@ -416,7 +431,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid color-mix(in srgb, var(--bone) 7%, transparent);
   cursor: pointer;
 }
 .tgl:focus-visible { outline: 1px solid var(--bone); outline-offset: -2px; }
@@ -428,7 +443,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   width: 36px;
   height: 20px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--bone) 18%, transparent);
   transition: background-color 280ms var(--ease-out);
 }
 .tgl__track::after {
@@ -440,7 +455,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   background: var(--bone);
   transition: translate 280ms cubic-bezier(0.32, 0.72, 0, 1), background-color 280ms var(--ease-out);
 }
-.tgl[aria-checked="true"] .tgl__track { background: rgba(255, 255, 255, 0.9); }
+.tgl[aria-checked="true"] .tgl__track { background: color-mix(in srgb, var(--bone) 90%, transparent); }
 .tgl[aria-checked="true"] .tgl__track::after { translate: 16px 0; background: var(--night); }
 
 /* actions */
@@ -457,7 +472,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
   color: var(--bone);
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  border-bottom: 1px solid color-mix(in srgb, var(--bone) 7%, transparent);
   cursor: pointer;
 }
 .act:focus-visible { outline: 1px solid var(--bone); outline-offset: -2px; }
@@ -466,7 +481,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
 .act em {
   font-style: normal;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.45);
+  color: color-mix(in srgb, var(--bone) 45%, transparent);
   letter-spacing: 0.08em;
   white-space: nowrap;
   overflow: hidden;
@@ -504,7 +519,7 @@ body.chip-on .chrome--br { opacity: 1; pointer-events: auto; }
 /* the ring traces the chip's exact outline (32px circle, 1px line), so
    the filled ring and the arriving chip are one and the same element */
 .holdring circle { fill: none; stroke-width: 1; }
-.holdring__track { stroke: rgba(255, 255, 255, 0.25); }
+.holdring__track { stroke: var(--bone); opacity: 0.25; }
 .holdring__progress {
   stroke: var(--bone);
   stroke-linecap: round;

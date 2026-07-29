@@ -889,12 +889,15 @@
     ctx.imageSmoothingQuality = "high";
     // the dithered plate must upscale with hard pixel edges
     ctx.imageSmoothingEnabled = !settings.dither;
+    // the export prints in the viewer's appearance: night or paper
+    const LIGHT = matchMedia("(prefers-color-scheme: light)").matches;
+    const INK = LIGHT ? "#0c0b0a" : "#ffffff";
     const monoFilter = settings.color ? "none" : "grayscale(1) contrast(1.15)";
     const isStrip = stripMode();
     const sg = isStrip ? stripGeom(iw, ih) : null;
     if (isStrip) {
       // desktop: the whole frame repeated on the night ground
-      ctx.fillStyle = "#0c0b0a";
+      ctx.fillStyle = LIGHT ? "#f4f2ef" : "#0c0b0a";
       ctx.fillRect(0, 0, W, H);
       ctx.filter = monoFilter;
       for (let i = 0; i < sg.n; i++) {
@@ -908,7 +911,7 @@
       ctx.filter = "none";
     }
 
-    const veil = "rgba(10, 9, 8, 0.26)";
+    const veil = LIGHT ? "rgba(244, 242, 239, 0.26)" : "rgba(10, 9, 8, 0.26)";
     ctx.fillStyle = veil;
     ctx.fillRect(0, 0, W, H);
 
@@ -945,7 +948,7 @@
 
     // grid lines, if revealed
     if (settings.grid) {
-      ctx.strokeStyle = "rgba(255, 255, 255, 0.16)";
+      ctx.strokeStyle = LIGHT ? "rgba(12, 11, 10, 0.16)" : "rgba(255, 255, 255, 0.16)";
       ctx.lineWidth = S;
       for (let i = 0; i <= cols; i++) {
         const x = (stageBox.left + (stageBox.width * i) / cols) * S;
@@ -960,7 +963,7 @@
     // registration crosses at the anchor intersections
     const FS = parseFloat(getComputedStyle(root).getPropertyValue("--fs")) || 10;
     if (settings.marks) {
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = INK;
       ctx.font = `400 ${FS * S}px "Geist Mono", monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -986,7 +989,7 @@
       const u = size / 12;
       ctx.save();
       ctx.translate(x + size / 2, y + size / 2);
-      ctx.strokeStyle = "#ffffff";
+      ctx.strokeStyle = INK;
       ctx.lineWidth = u;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -1019,7 +1022,7 @@
       const cs = getComputedStyle(el);
       if (cs.visibility === "hidden" || cs.display === "none") return;
       const r = el.getBoundingClientRect();
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = INK;
       ctx.font = `${cs.fontWeight} ${fs}px "Geist Mono", monospace`;
       if ("letterSpacing" in ctx) ctx.letterSpacing = `${0.06 * fs}px`;
       const lines = el.textContent.split("\n").map((l) => l.trim()).filter(Boolean);
@@ -1038,7 +1041,7 @@
         const w = ctx.measureText(text).width + iconW + 16 * S;
         const h = (FS + 10) * S; // 1px line + ~4px breath around the type
         const x0 = r.left * S + 8 * S, y0 = r.top * S + 3 * S;
-        ctx.strokeStyle = "#ffffff";
+        ctx.strokeStyle = INK;
         ctx.lineWidth = S;
         ctx.beginPath();
         ctx.roundRect(x0 + S / 2, y0 + S / 2, w - S, h - S, h / 2);
@@ -1062,7 +1065,7 @@
     grid.querySelectorAll(".cp").forEach((el) => drawText(el, el.classList.contains("cp--vert")));
     grid.querySelectorAll(".frag__no").forEach((el) => {
       const r = el.getBoundingClientRect();
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = INK;
       ctx.font = `500 ${fs}px "Geist Mono", monospace`;
       ctx.fillText(el.textContent, r.left * S, r.top * S);
     });
@@ -1072,7 +1075,7 @@
       if (!el.parentElement.classList.contains("chrome")) return;
       const cs = getComputedStyle(el);
       const r = el.getBoundingClientRect();
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = INK;
       ctx.font = `${cs.fontWeight} ${fs}px "Geist Mono", monospace`;
       if ("letterSpacing" in ctx) ctx.letterSpacing = `${0.05 * fs}px`;
       ctx.fillText(el.textContent.toUpperCase(), r.left * S, r.top * S + 1 * S);
