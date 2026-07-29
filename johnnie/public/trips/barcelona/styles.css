@@ -99,14 +99,34 @@ body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 160px;
     overflow: hidden;
   }
+  /* the 160px breath lives on margins (not flex gap) so a departing
+     tile can collapse it as it goes and the strip reflows fluidly */
   .bg .tile {
     flex: none;
+    position: relative;
+    overflow: hidden;
     background-size: 100% 100%;
     background-repeat: no-repeat;
+    transition:
+      width 900ms var(--ease-out),
+      height 900ms var(--ease-out),
+      margin-left 900ms var(--ease-out);
   }
+  .bg .tile + .tile { margin-left: 160px; }
+  .bg .tile--gone { margin-left: 0 !important; }
+  /* the next frame fades in on the face of the SAME tile while the
+     box resizes to the new aspect — one continuous morph */
+  .bg .tile__next {
+    position: absolute;
+    inset: 0;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    opacity: 0;
+    transition: opacity 700ms var(--ease-out);
+  }
+  .bg .tile__next.is-on { opacity: 1; }
 }
 /* first arrival: a slow settle */
 .bg.is-first { transition: opacity 1400ms var(--ease-out), transform 2600ms var(--ease-out); transform: scale(1.03); }
