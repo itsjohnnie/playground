@@ -478,9 +478,9 @@ function KITCHEN(){
     const height=new Float32Array(N);
     for(let i=0;i<N;i++){
       if(region[i]===255){ height[i]=0; continue; }
-      /* the rim sits clearly below the drawing, so the inner walls read
-         over it at grazing angles */
-      height[i]= region[i]===254 ? 0.70 : (goldM[i] ? 1.0 : 0.42);
+      /* rim and inner walls share one metal plane — struck from the same
+         die, so neither bulges over the other; only the enamel sits low */
+      height[i]= goldM[i] ? 1.0 : 0.42;
     }
     for(let i=0;i<N;i++) if(region[i]<254 && !goldM[i]) height[i]+=(rng()-0.5)*0.05;
     const hsm=boxBlur(height, TEX, 4, 2);
