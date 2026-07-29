@@ -863,16 +863,25 @@ strong {
   .send-marquee { animation: none; }
 }
 
-/* Validation: a flagged field is highlighted in place, with its own message
-   right below it — the visitor fixes it where they're looking. Nothing pops:
-   the highlight fades in, and the message slot grows open (pushing the form
-   down fluidly) before the text settles into it. */
+/* Validation: a flagged field keeps its background and its underline-only
+   look — just the bottom rule turns red and the placeholder blushes at low
+   opacity, with its own message right below it. Nothing pops: colors
+   crossfade, and the message slot grows open (pushing the form down fluidly)
+   before the text settles into it. */
+.input.ui-input {
+  transition: border-color .3s var(--ease-out);
+}
+.input.ui-input::placeholder {
+  transition: color .3s var(--ease-out);
+}
 .ui-input.is-invalid {
-  border-color: #8f1f14;
-  background-color: #ffdede;
+  border-bottom-color: #8f1f14;
 }
 .ui-input.is-invalid:focus {
-  border-color: #8f1f14;
+  border-bottom-color: #8f1f14;
+}
+.ui-input.is-invalid::placeholder {
+  color: rgba(143, 31, 20, .5);
 }
 .field-error {
   display: grid;
