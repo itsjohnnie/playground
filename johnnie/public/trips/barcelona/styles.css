@@ -27,7 +27,9 @@
      (24 phone / 48 desktop), stage 64, chip 32, radius 24 ————— */
   --pad: 8px;
   --edge-x: clamp(16px, 3vw, 40px);
-  --edge-y: 64px;
+  /* the grid frames the WHOLE sheet: the same edge on all four sides,
+     so the corner chrome sits inside the first and last rows */
+  --edge-y: var(--edge-x);
   --chip: 32px;
   --radius: 24px;
   --vpw: 100vw;
