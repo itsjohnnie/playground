@@ -99,6 +99,8 @@ body {
   /* the sheet prints black and white, contrast lifted; COLOR restores */
   filter: grayscale(1) contrast(1.15);
   transition: opacity 1300ms var(--ease-out), filter 600ms var(--ease-out);
+  /* desktop: the strip drifts gently toward the cursor (JS lerps --pan) */
+  transform: translateX(var(--pan, 0px));
   z-index: 0;
 }
 body.color-on .bg { filter: none; }
@@ -134,6 +136,13 @@ body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
       margin-left 520ms var(--ease-out);
   }
   .bg .tile + .tile { margin-left: 160px; }
+  /* a fresh strip arrives as a stagger: each print settles after its
+     neighbour, rising softly out of the ground */
+  .bg .tile--rise { animation: tile-rise 700ms var(--ease-out) both; }
+  @keyframes tile-rise {
+    from { opacity: 0; translate: 0 16px; }
+    to { opacity: 1; translate: 0 0; }
+  }
   .bg .tile--gone { margin-left: 0 !important; }
   /* the next frame fades in on the face of the SAME tile while the
      box resizes to the new aspect — one continuous morph */
@@ -149,8 +158,8 @@ body.dither-on .bg, body.dither-on .frag { image-rendering: pixelated; }
   .bg .tile__next.is-on { opacity: 1; }
 }
 /* first arrival: a slow settle */
-.bg.is-first { transition: opacity 1400ms var(--ease-out), transform 2600ms var(--ease-out); transform: scale(1.03); }
-.bg.is-first.is-on { transform: scale(1); }
+.bg.is-first { transition: opacity 1400ms var(--ease-out), transform 2600ms var(--ease-out); transform: translateX(var(--pan, 0px)) scale(1.03); }
+.bg.is-first.is-on { transform: translateX(var(--pan, 0px)) scale(1); }
 
 /* a quiet dark veil so white ink always has ground;
    clippings carry the same veil so their crops match the page */
@@ -695,8 +704,9 @@ body.jitter-on .chrome--bc { filter: url(#boil); }
 
 /* ————— crosshair (fine pointers only) ————— */
 
+/* the light-table lines run edge to edge, ignoring the stage inset */
 .crosshair {
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 20;

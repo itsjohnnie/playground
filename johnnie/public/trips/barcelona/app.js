@@ -372,7 +372,8 @@
     const frag = document.createDocumentFragment();
     for (let i = 0; i < g.n; i++) {
       const t = document.createElement("div");
-      t.className = "tile";
+      t.className = "tile tile--rise";
+      t.style.animationDelay = `${reducedMotion ? 0 : i * 90}ms`;
       t.style.width = `${g.tileW}px`;
       t.style.height = `${g.tileH}px`;
       t.style.backgroundImage = `url("${src}")`;
@@ -412,13 +413,15 @@
         if (t.style.backgroundImage.includes(src)) return;
         const face = document.createElement("div");
         face.className = "tile__next";
+        const delay = reducedMotion ? 0 : i * 70;
+        face.style.transitionDelay = `${delay}ms`;
         face.style.backgroundImage = `url("${src}")`;
         t.appendChild(face);
         requestAnimationFrame(() => requestAnimationFrame(() => face.classList.add("is-on")));
         setTimeout(() => {
           t.style.backgroundImage = `url("${src}")`;
           face.remove();
-        }, 560);
+        }, 560 + delay);
       });
     }));
   }
@@ -809,6 +812,8 @@
     const settleMs = reducedMotion ? 0 : cols * 22 + rows * 30 + 900;
     await wait(settleMs);
     grid.classList.add("is-settled");
+    bgA.classList.remove("is-first");
+    bgB.classList.remove("is-first");
 
     setBusy(false);
   }
@@ -1326,11 +1331,11 @@
 
     stage.addEventListener("pointermove", (e) => {
       const box = stage.getBoundingClientRect();
-      tx = e.clientX - box.left;
-      ty = e.clientY - box.top;
+      tx = e.clientX;
+      ty = e.clientY;
       const { cols, rows } = config();
-      const c = Math.min(cols, Math.max(1, Math.ceil((tx / box.width) * cols)));
-      const r = Math.min(rows, Math.max(1, Math.ceil((ty / box.height) * rows)));
+      const c = Math.min(cols, Math.max(1, Math.ceil(((e.clientX - box.left) / box.width) * cols)));
+      const r = Math.min(rows, Math.max(1, Math.ceil(((e.clientY - box.top) / box.height) * rows)));
       readoutEl.textContent = `C·${String(c).padStart(2, "0")} R·${String(r).padStart(2, "0")}`;
       crosshair.classList.add("is-on");
       if (!raf) raf = requestAnimationFrame(tick);
@@ -1338,6 +1343,23 @@
     stage.addEventListener("pointerleave", () => {
       crosshair.classList.remove("is-on");
       readoutEl.textContent = "C·— R·—";
+    });
+  }
+
+  // ————— the strip drifts toward the cursor (desktop only) —————
+
+  if (matchMedia("(hover: hover) and (pointer: fine)").matches && !reducedMotion) {
+    let panT = 0, panC = 0, panRaf = null;
+    const panTick = () => {
+      panC += (panT - panC) * 0.07;
+      root.style.setProperty("--pan", `${panC.toFixed(2)}px`);
+      if (Math.abs(panT - panC) > 0.2) panRaf = requestAnimationFrame(panTick);
+      else panRaf = null;
+    };
+    addEventListener("pointermove", (e) => {
+      if (!stripMode()) return;
+      panT = -(e.clientX / innerWidth - 0.5) * 192; // up to 96px each way
+      if (!panRaf) panRaf = requestAnimationFrame(panTick);
     });
   }
 
