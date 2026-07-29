@@ -11,6 +11,11 @@
 <meta property="og:title" content="Badges | Johnnie’s Life">
 <meta property="og:description" content="A case of one hundred hard-enamel animal badges, struck in 3D. Spin one, flip it over, tap for the next.">
 <style>
+  @font-face {
+    font-family:'Geist';
+    src:url('/art/lib/fonts/Geist-Variable.woff2') format('woff2');
+    font-weight:100 900; font-style:normal; font-display:swap;
+  }
   * { margin:0; padding:0; box-sizing:border-box; }
   :root {
     --bg:#ffffff;
@@ -71,19 +76,19 @@
   .pinbox .shadow { opacity:0; transition:opacity .45s ease .1s; }
   .pinbox.on .shadow { opacity:1; }
   .ghost {
-    position:absolute; inset:20%;
+    position:absolute; left:50%; top:50%;
+    width:9px; height:9px; margin:-4.5px 0 0 -4.5px;
     border-radius:50%;
-    background:radial-gradient(circle at 38% 32%, rgba(210,172,105,.32), rgba(210,172,105,.10) 55%, rgba(210,172,105,.04) 72%, transparent 76%);
-    filter:blur(2px);
-    animation:breathe 1.5s ease-in-out infinite;
+    background:rgba(198,160,94,.5);
+    animation:breathe 1.3s ease-in-out infinite;
     transition:opacity .35s ease;
   }
   @media (prefers-color-scheme: dark) {
-    .ghost { background:radial-gradient(circle at 38% 32%, rgba(200,158,92,.20), rgba(200,158,92,.07) 55%, rgba(200,158,92,.03) 72%, transparent 76%); }
+    .ghost { background:rgba(214,176,110,.45); }
   }
-  @keyframes breathe { 0%,100%{ opacity:.5; transform:scale(.97); } 50%{ opacity:1; transform:scale(1.02); } }
+  @keyframes breathe { 0%,100%{ opacity:.25; transform:scale(.8); } 50%{ opacity:.85; transform:scale(1); } }
   .pinbox.on .ghost { opacity:0 !important; animation-play-state:paused; }
-  @media (prefers-reduced-motion: reduce) { .ghost { animation:none; opacity:.7; } }
+  @media (prefers-reduced-motion: reduce) { .ghost { animation:none; opacity:.5; } }
   .shadow {
     position:absolute; left:50%; bottom:-5%;
     width:54%; height:8%;
@@ -99,18 +104,13 @@
 
   .plate { margin-top:clamp(10px, 3vh, 28px); text-align:center; padding:0 24px; }
   .plate .name {
-    font-size:clamp(21px, 5.6vw, 26px); font-weight:700; letter-spacing:-.02em;
+    font-family:'Geist', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size:clamp(21px, 5.6vw, 26px); font-weight:650; letter-spacing:-.02em;
     transition:opacity .28s ease, filter .28s ease, transform .28s ease;
   }
   .plate .earned {
     margin-top:7px; font-size:13px; color:var(--sub); font-weight:450;
     transition:opacity .28s ease .04s, filter .28s ease .04s;
-  }
-  .plate .chip {
-    display:inline-block; margin-top:16px;
-    font-size:11px; font-weight:600; letter-spacing:.08em;
-    color:var(--chip-ink); background:var(--chip-bg);
-    padding:6px 11px 5px; border-radius:6px;
   }
   .plate.swap .name, .plate.swap .earned { opacity:0; filter:blur(6px); }
   .plate .name { transform:translateY(0); }
@@ -157,7 +157,6 @@
   <div class="plate" id="plate">
     <div class="name" id="name">&nbsp;</div>
     <div class="earned" id="earned">&nbsp;</div>
-    <div class="chip">UNLOCKED</div>
   </div>
 </div>
 
