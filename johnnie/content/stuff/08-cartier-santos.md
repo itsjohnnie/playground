@@ -6,7 +6,7 @@ owned: false
 brand: "Cartier"
 price: "From $7,900"
 description: "The watch that kickstarted the wristwatch — Louis Cartier's 1904 square, all clean lines and exposed screws. Effortless dressed up or down."
-image: ""
+image: "/images/stuff/08-cartier-santos.png"
 image_dark: ""
 link: "https://www.cartier.com"
 cta: "Buy it"

@@ -6,7 +6,7 @@ owned: false
 brand: "TAG Heuer"
 price: "$3,300"
 description: "TAG's do-anything dive watch — 300 m water resistance, a legible dial and a bracelet that wears from the pool to the office. Solid everyday steel."
-image: ""
+image: "/images/stuff/18-tag-heuer-aquaracer.png"
 image_dark: ""
 link: "https://www.tagheuer.com"
 cta: "Buy it"

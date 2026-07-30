@@ -9,7 +9,7 @@ description: "Vanilla and musk built up in layers, named for the way it unfolds 
 specs:
   - { label: "Volume", value: "100 ml" }
   - { label: "Type", value: "Eau de Parfum" }
-image: ""
+image: "/images/stuff/34-lv-symphony.png"
 link: "https://www.louisvuitton.com"
 cta: "Buy it"
 ---

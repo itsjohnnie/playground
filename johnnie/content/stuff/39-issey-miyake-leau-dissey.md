@@ -10,7 +10,7 @@ specs:
   - { label: "Volume", value: "125 ml" }
   - { label: "Type", value: "Eau de Toilette" }
   - { label: "Family", value: "Aquatic" }
-image: ""
+image: "/images/stuff/39-issey-miyake-leau-dissey.png"
 link: "https://www.isseymiyakeparfums.com"
 cta: "Buy it"
 ---

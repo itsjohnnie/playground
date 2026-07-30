@@ -10,7 +10,7 @@ specs:
   - { label: "Volume", value: "125 ml" }
   - { label: "Type", value: "Eau de Parfum" }
   - { label: "Family", value: "Gourmand" }
-image: ""
+image: "/images/stuff/30-pdm-sedley.png"
 link: "https://www.parfumsdemarly.com"
 cta: "Buy it"
 ---

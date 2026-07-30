@@ -11,7 +11,7 @@ specs:
   - { label: "Movement", value: "Quartz" }
   - { label: "Dial", value: "White" }
   - { label: "Water resistance", value: "100 m" }
-image: ""
+image: "/images/stuff/23-tissot-prx-white.png"
 link: "https://www.tissotwatches.com"
 cta: "Buy it"
 ---

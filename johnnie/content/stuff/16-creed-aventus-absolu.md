@@ -6,7 +6,7 @@ owned: false
 brand: "Creed"
 price: "$510"
 description: "The richer, deeper Absolu take on Creed's iconic Aventus — smoky pineapple and birch dialled up into something denser and far longer-lasting."
-image: ""
+image: "/images/stuff/16-creed-aventus-absolu.png"
 image_dark: ""
 link: "https://www.creedboutique.com"
 cta: "Buy it"

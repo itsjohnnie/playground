@@ -11,7 +11,7 @@ specs:
   - { label: "Speeds", value: "33 / 45 / 78 rpm" }
   - { label: "Cartridge", value: "AT-VM95E" }
   - { label: "Output", value: "Analog · USB" }
-image: ""
+image: "/images/stuff/04-audio-technica-turntable.png"
 link: "https://www.audio-technica.com"
 cta: "Buy it"
 ---

@@ -9,7 +9,7 @@ description: "The coolest, most aquatic LV in the collection — built for humid
 specs:
   - { label: "Volume", value: "100 ml" }
   - { label: "Type", value: "Eau de Parfum" }
-image: ""
+image: "/images/stuff/36-lv-pacific-chill.png"
 link: "https://www.louisvuitton.com"
 cta: "Buy it"
 ---

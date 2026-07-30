@@ -10,7 +10,7 @@ specs:
   - { label: "Case", value: "42 mm steel, square" }
   - { label: "Movement", value: "Automatic" }
   - { label: "Water resistance", value: "100 m" }
-image: ""
+image: "/images/stuff/24-bell-ross-br03.png"
 link: "https://www.bellross.com"
 cta: "Buy it"
 ---

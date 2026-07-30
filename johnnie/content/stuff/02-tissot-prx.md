@@ -11,7 +11,7 @@ specs:
   - { label: "Movement", value: "Powermatic 80 automatic" }
   - { label: "Reserve", value: "80 hours" }
   - { label: "Water resistance", value: "100 m" }
-image: ""
+image: "/images/stuff/02-tissot-prx.png"
 link: "https://www.tissotwatches.com"
 cta: "Buy it"
 ---

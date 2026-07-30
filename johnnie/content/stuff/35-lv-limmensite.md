@@ -9,7 +9,7 @@ description: "Ginger and amber over a woody base — spacious, restrained, built
 specs:
   - { label: "Volume", value: "100 ml" }
   - { label: "Type", value: "Eau de Parfum" }
-image: ""
+image: "/images/stuff/35-lv-limmensite.png"
 link: "https://www.louisvuitton.com"
 cta: "Buy it"
 ---

@@ -11,7 +11,7 @@ specs:
   - { label: "Complications", value: "Day · Date · Moon phase" }
   - { label: "Water resistance", value: "50 m" }
   - { label: "Band", value: "Stainless steel mesh" }
-image: ""
+image: "/images/stuff/38-casio-mtp-m305.png"
 link: "https://www.casio.com/us/watches/casio/product.MTP-M305MC-1AV/"
 cta: "Buy it"
 ---

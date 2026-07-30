@@ -11,7 +11,7 @@ specs:
   - { label: "Movement", value: "Swiss quartz (Ronda 515)" }
   - { label: "Water resistance", value: "100 m" }
   - { label: "Band", value: "Silicone, 19 mm" }
-image: ""
+image: "/images/stuff/37-luminox-leatherback-sea-turtle.png"
 link: "https://luminox.com/products/leatherback-sea-turtle-0301-bo"
 cta: "Buy it"
 ---

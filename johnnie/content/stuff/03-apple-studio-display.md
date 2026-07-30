@@ -12,7 +12,7 @@ specs:
   - { label: "Resolution", value: "5120 × 2880" }
   - { label: "Camera", value: "12 MP Center Stage" }
   - { label: "Ports", value: "Thunderbolt 3 · 3× USB-C" }
-image: ""
+image: "/images/stuff/03-apple-studio-display.png"
 link: "https://www.apple.com/studio-display/"
 cta: "Buy it"
 ---

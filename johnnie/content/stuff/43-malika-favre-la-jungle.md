@@ -9,7 +9,7 @@ description: "A screen print from the French illustrator's shop — her signatur
 specs:
   - { label: "Medium", value: "Screen print" }
   - { label: "Size", value: "50 × 40 cm" }
-image: ""
+image: "/images/stuff/43-malika-favre-la-jungle.png"
 link: "https://shop.malikafavre.com"
 cta: "Buy it"
 ---

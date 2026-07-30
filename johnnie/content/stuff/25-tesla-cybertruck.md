@@ -10,7 +10,7 @@ specs:
   - { label: "Drivetrain", value: "Tri-motor AWD" }
   - { label: "Range", value: "≈ 320 mi" }
   - { label: "Body", value: "Ultra-hard 30X stainless steel" }
-image: ""
+image: "/images/stuff/25-tesla-cybertruck.png"
 link: "https://www.tesla.com/cybertruck"
 cta: "Buy it"
 ---
