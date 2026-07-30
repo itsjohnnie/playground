@@ -10,7 +10,7 @@ specs:
   - { label: "Volume", value: "125 ml" }
   - { label: "Type", value: "Eau de Parfum" }
   - { label: "Family", value: "Aromatic fougère" }
-image: ""
+image: "/images/stuff/29-pdm-percival.png"
 link: "https://www.parfumsdemarly.com"
 cta: "Buy it"
 ---

@@ -10,7 +10,7 @@ specs:
   - { label: "Volume", value: "125 ml" }
   - { label: "Type", value: "Eau de Toilette" }
   - { label: "Family", value: "Woody spicy" }
-image: ""
+image: "/images/stuff/40-polo-black.png"
 link: "https://www.ralphlauren.com"
 cta: "Buy it"
 ---

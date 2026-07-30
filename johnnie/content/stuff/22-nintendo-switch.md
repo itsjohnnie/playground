@@ -10,7 +10,7 @@ specs:
   - { label: "Model", value: "OLED" }
   - { label: "Display", value: "7\" OLED" }
   - { label: "Storage", value: "64 GB" }
-image: ""
+image: "/images/stuff/22-nintendo-switch.png"
 link: "https://www.nintendo.com/us/switch/"
 cta: "Buy it"
 ---

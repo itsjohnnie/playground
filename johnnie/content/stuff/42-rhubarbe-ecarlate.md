@@ -10,7 +10,7 @@ specs:
   - { label: "Volume", value: "100 ml" }
   - { label: "Type", value: "Eau de Toilette" }
   - { label: "Family", value: "Fruity" }
-image: ""
+image: "/images/stuff/42-rhubarbe-ecarlate.png"
 link: "https://www.hermes.com"
 cta: "Buy it"
 ---

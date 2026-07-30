@@ -11,7 +11,7 @@ specs:
   - { label: "Power", value: "261 hp" }
   - { label: "Drivetrain", value: "quattro AWD" }
   - { label: "0–100 km/h", value: "≈ 6.1 s" }
-image: ""
+image: "/images/stuff/07-audi-q5.png"
 link: "https://www.audiusa.com/en/models/q5/"
 cta: "Buy it"
 ---

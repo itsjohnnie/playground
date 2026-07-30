@@ -10,7 +10,7 @@ specs:
   - { label: "Volume", value: "50 ml" }
   - { label: "Type", value: "Eau de Parfum" }
   - { label: "Family", value: "Amber vanilla" }
-image: ""
+image: "/images/stuff/31-tom-ford-soleil-neige.png"
 link: "https://www.tomford.com"
 cta: "Buy it"
 ---

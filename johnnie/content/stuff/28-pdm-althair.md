@@ -10,7 +10,7 @@ specs:
   - { label: "Volume", value: "125 ml" }
   - { label: "Type", value: "Eau de Parfum" }
   - { label: "Family", value: "Aromatic fougère" }
-image: ""
+image: "/images/stuff/28-pdm-althair.png"
 link: "https://www.parfumsdemarly.com"
 cta: "Buy it"
 ---

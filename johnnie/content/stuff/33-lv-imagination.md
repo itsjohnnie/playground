@@ -9,7 +9,7 @@ description: "Citrus and leather in the same breath — Louis Vuitton's take on 
 specs:
   - { label: "Volume", value: "100 ml" }
   - { label: "Type", value: "Eau de Parfum" }
-image: ""
+image: "/images/stuff/33-lv-imagination.png"
 link: "https://www.louisvuitton.com"
 cta: "Buy it"
 ---

@@ -11,7 +11,7 @@ specs:
   - { label: "Display", value: "16.2\" Liquid Retina XDR" }
   - { label: "Ports", value: "3× Thunderbolt · HDMI · SDXC" }
   - { label: "Battery", value: "Up to 24 hr" }
-image: ""
+image: "/images/stuff/19-macbook-pro-16-m5.png"
 image_dark: ""
 link: "https://www.apple.com/macbook-pro/"
 cta: "Buy it"

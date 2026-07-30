@@ -9,7 +9,7 @@ description: "Part of the house's fragrance collection — a woody, mineral scen
 specs:
   - { label: "Volume", value: "100 ml" }
   - { label: "Type", value: "Eau de Parfum" }
-image: ""
+image: "/images/stuff/32-lv-meteore.png"
 link: "https://www.louisvuitton.com"
 cta: "Buy it"
 ---

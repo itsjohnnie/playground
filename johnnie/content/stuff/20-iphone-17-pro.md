@@ -11,7 +11,7 @@ specs:
   - { label: "Chip", value: "A19 Pro" }
   - { label: "Display", value: "6.3\" ProMotion" }
   - { label: "Build", value: "Titanium" }
-image: ""
+image: "/images/stuff/20-iphone-17-pro.png"
 image_dark: ""
 link: "https://www.apple.com/iphone-17-pro/"
 cta: "Buy it"

@@ -10,7 +10,7 @@ specs:
   - { label: "Model", value: "Slim, Disc Edition" }
   - { label: "Storage", value: "1 TB SSD" }
   - { label: "Output", value: "4K at up to 120 Hz" }
-image: ""
+image: "/images/stuff/21-playstation-5.png"
 link: "https://www.playstation.com/en-us/ps5/"
 cta: "Buy it"
 ---

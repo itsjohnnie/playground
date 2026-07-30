@@ -10,7 +10,7 @@ specs:
   - { label: "Volume", value: "100 ml" }
   - { label: "Type", value: "Eau de Cologne" }
   - { label: "Family", value: "Citrus" }
-image: ""
+image: "/images/stuff/26-hermes-eau-orange-verte.png"
 link: "https://www.hermes.com"
 cta: "Buy it"
 ---

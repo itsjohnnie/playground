@@ -10,7 +10,7 @@ specs:
   - { label: "Material", value: "Cast resin, hand-finished" }
   - { label: "Height", value: "≈ 20 cm" }
   - { label: "Edition", value: "Limited" }
-image: ""
+image: "/images/stuff/05-marylou-faure-figurine.png"
 link: "https://maryloufaure.com"
 cta: "See more"
 ---

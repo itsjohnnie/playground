@@ -10,7 +10,7 @@ specs:
   - { label: "Volume", value: "50 ml" }
   - { label: "Type", value: "Perfume" }
   - { label: "Family", value: "Amber" }
-image: ""
+image: "/images/stuff/27-clive-christian-blonde-amber.png"
 link: "https://clivechristian.com"
 cta: "Buy it"
 ---
