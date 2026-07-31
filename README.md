@@ -28,13 +28,14 @@ A collection of experimental web projects, prototypes, and interactive demos.
 ## Client Sites
 
 Domains this repo deploys to directly (outside the GitHub Pages playground
-above), each as its own Cloudflare Worker with static assets — migrated off
-Webflow onto Cloudflare's free tier:
+above), as a Cloudflare Worker with static assets — migrated off Webflow
+onto Cloudflare's free tier:
 
 | Site | Source | Deploy |
 |------|--------|--------|
 | [johnnies.life](https://johnnies.life) | [`johnnie/`](johnnie/) | `wrangler.toml` (root) via [`deploy-cloudflare.yml`](.github/workflows/deploy-cloudflare.yml) |
-| [bluehousebahia.com](https://bluehousebahia.com) | [`bluehousebahia/`](bluehousebahia/) | [`bluehousebahia/wrangler.toml`](bluehousebahia/wrangler.toml) via [`deploy-bluehousebahia.yml`](.github/workflows/deploy-bluehousebahia.yml) |
+
+bluehousebahia.com lives in its own repo, [`itsjohnnie/bluehouse`](https://github.com/itsjohnnie/bluehouse).
 
 ## Claude Code Documentation
 
