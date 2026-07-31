@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://johnnies.life"),
   title: "Johnnie's Life | An ongoing work in progress",
   description:
-    "Dog-lover, sticker collector, music aficionado, conference enthusiast, and Staff Brand Designer at Webflow, working remotely from Miami, FL.",
+    "Dog-lover, sticker collector, music aficionado, conference enthusiast, and Member of Technical Staff at Anthropic, working remotely from Miami, FL.",
   icons: {
     icon: asset("/images/favicon.png"),
     apple: asset("/images/webclip.png"),
