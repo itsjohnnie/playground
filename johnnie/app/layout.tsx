@@ -64,7 +64,7 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap"
         />
-        {/* Native interactions CSS (replaces the Webflow JS runtime) */}
+        {/* Native interactions CSS (no external animation runtime needed) */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
@@ -83,7 +83,7 @@ export default function RootLayout({
    is no flash/jump when the color loop takes over. */
 .body { background-color: var(--bg, #facbc7) !important; }
 /* Desktop nav fades from the cycling color to transparent, top to bottom —
-   the Webflow gradient hardcoded #fff, which painted a white bar over --bg
+   the old gradient hardcoded #fff, which painted a white bar over --bg
    (and made the nav_menu's solid --bg read as a stray box behind the links). */
 .navbar { background-color: #0000 !important; background-image: linear-gradient(var(--bg, #facbc7) 10%, #0000) !important; }
 .nav_menu { background-color: #0000 !important; }
@@ -103,14 +103,14 @@ export default function RootLayout({
   .cc-fixed .navbar, .cc-fixed .navbar.is-away { transition: none; }
 }
 
-/* Marquees: continuous horizontal scroll (was Webflow IX2). The track holds the
+/* Marquees: continuous horizontal scroll. The track holds the
    items twice over, so translating -50% loops seamlessly. */
 .marquee_track { display: flex; flex: none; width: max-content; }
 .marquee_wrapper.cc-top .marquee_track,
 .marquee_wrapper.cc-bottom .marquee_track { animation: marquee-left 80s linear infinite; }
 @keyframes marquee-left { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 
-/* Footer "forever sharing" circle: slow spin (was Webflow IX2). */
+/* Footer "forever sharing" circle: slow spin. */
 .rotating_circle svg { animation: rotate-circle 22s linear infinite; transform-origin: 50% 50%; }
 @keyframes rotate-circle { to { transform: rotate(360deg); } }
 
@@ -136,7 +136,7 @@ export default function RootLayout({
 @media (max-width: 767px) {
   .hamburger {
     display: flex;
-    /* Webflow nudged the old Lottie icon 18px right; our clean 44px button
+    /* The old icon was nudged 18px right; our clean 44px button
        doesn't need it (it would overflow the container). Right-align the bars
        so the icon's right edge meets the container edge — symmetric with the
        logo's left edge. */

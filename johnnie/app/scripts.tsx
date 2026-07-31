@@ -4,9 +4,9 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
 // Cycling background palette, sampled from the original site:
-// green -> peach -> salmon -> lavender, looping. We drive it ourselves (no
-// Webflow runtime) by writing the current color onto <body> and into the --bg
-// custom property (which the nav and the browser theme-color follow).
+// green -> peach -> salmon -> lavender, looping. We drive it ourselves by
+// writing the current color onto <body> and into the --bg custom property
+// (which the nav and the browser theme-color follow).
 const PALETTE: [number, number, number][] = [
   [174, 190, 169], // green
   [233, 178, 151], // peach
@@ -61,7 +61,7 @@ function colorCycle(): () => void {
   return () => cancelAnimationFrame(raf);
 }
 
-// Minimal image lightbox for the project tiles ("Zoom in"), replacing Webflow's.
+// Minimal image lightbox for the project tiles ("Zoom in").
 function lightbox(): () => void {
   const onClick = (e: Event) => {
     const link = (e.target as HTMLElement).closest<HTMLElement>(".project-link_block");
