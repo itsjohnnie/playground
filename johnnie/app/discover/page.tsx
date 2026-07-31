@@ -204,24 +204,27 @@ body,
   .toggle-mode { width: 28.4px; }
 }
 
-/* Focus: nothing on a pointer, a ring only for the keyboard. site.css draws a
-   2px solid currentColor outline at outline-offset 2px — outside the
-   button, where .discover-comp's overflow:hidden clips it into a partial edge,
-   and its [data-wf-focus-visible] half (a leftover Webflow polyfill hook) isn't
-   gated on input modality the way :focus-visible is. The ring moves inside so it
-   survives the clip, and taps no longer flash iOS's grey highlight box. */
+/* Focus: no outline on the control-bar buttons, in any state. site.css draws a
+   2px solid currentColor outline at outline-offset 2px, i.e. OUTSIDE the button,
+   where .discover-comp's overflow:hidden clips it into a partial edge — and it
+   hangs that off [data-wf-focus-visible] (a leftover Webflow polyfill hook) as
+   well as :focus-visible, so a pointer click paints it too. All three states are
+   cleared here, and iOS's grey tap-highlight box with them.
+
+   Deliberate trade-off: this leaves keyboard users without a visible focus
+   indicator on these two controls. Both are still reachable and operable by
+   keyboard, and the press (.95 scale) and result (the whole page changes theme)
+   are unmistakable — but if the indicator is ever wanted back, it belongs here
+   as :focus-visible with outline-offset NEGATIVE, so the bar's clip can't eat it. */
 .discover-logo, .toggle-mode {
   -webkit-tap-highlight-color: transparent;
 }
-.discover-logo[data-wf-focus-visible],
-.toggle-mode[data-wf-focus-visible],
 .discover-logo:focus,
-.toggle-mode:focus { outline: none; }
+.toggle-mode:focus,
 .discover-logo:focus-visible,
-.toggle-mode:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: -2px;
-}
+.toggle-mode:focus-visible,
+.discover-logo[data-wf-focus-visible],
+.toggle-mode[data-wf-focus-visible] { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   .discover-logo:active, .toggle-mode:active { transform: none; }
 }
