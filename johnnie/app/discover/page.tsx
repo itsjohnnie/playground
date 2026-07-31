@@ -178,14 +178,20 @@ body,
 .hero-item {
   transition: var(--theme-tr);
 }
-/* Press feedback on the control-bar buttons: the shared theme eases plus a
-   quick transform, so the press doesn't snap. */
+/* The buttons carry only the shared theme eases — neither transforms any more
+   (see the press rule below), so a transform entry here would ease nothing. */
 .discover-logo,
 .toggle-mode {
-  transition: var(--theme-tr), transform .16s var(--ease-out);
+  transition: var(--theme-tr);
 }
-.discover-logo:active,
-.toggle-mode:active { transform: scale(.95); }
+/* Press feedback, without the ring it used to draw. These segments fill their
+   cell edge-to-edge, so scaling the BUTTON to .95 pulled it off all four edges
+   and let the bar's frosted backdrop show through as a ~1px frame — read as an
+   outline appearing on press, but it was geometry, not a focus ring (measured
+   mid-press: outline none, box-shadow none, 36.1px painted in a 38px cell).
+   The segment now stays put and the glyph dips instead. The logo has no glyph
+   to dip, so its press is just the hover tint. */
+.toggle-mode:active .sunmoon { transform: scale(.7); }
 /* The toggle is an icon button, so it should read as a square. Its height comes
    from the bar row (.discover-comp is align-items: stretch) while its width was
    the icon plus site.css's horizontal padding — two unrelated numbers, so it sat
@@ -226,7 +232,8 @@ body,
 .discover-logo[data-wf-focus-visible],
 .toggle-mode[data-wf-focus-visible] { outline: none; }
 @media (prefers-reduced-motion: reduce) {
-  .discover-logo:active, .toggle-mode:active { transform: none; }
+  /* Hold the glyph at its resting scale — no press dip. */
+  .toggle-mode:active .sunmoon { transform: scale(.8); }
 }
 /* The icon fills via currentColor, so it already follows .toggle-mode's color
    transition. Giving the SVG its OWN color transition made it chase an already-
@@ -242,8 +249,11 @@ body,
 .sunmoon {
   position: relative; display: flex; align-items: center; justify-content: center;
   /* Uniform shrink of the whole glyph (disc + rays) — full-size it crowded
-     the button. Scaling the container keeps the morph geometry intact. */
+     the button. Scaling the container keeps the morph geometry intact, and it
+     is also what the press dips (see :active above) — the disc/ray transforms
+     below are the theme morph and stay independent of it. */
   transform: scale(.8);
+  transition: transform .16s var(--ease-out);
 }
 .sunmoon::before {
   content: ""; display: block;
