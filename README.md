@@ -25,6 +25,17 @@ A collection of experimental web projects, prototypes, and interactive demos.
 | **tyme** | Six SVG watch faces (Omega, Tissot PRX, Timex, Bell & Ross, Braun, Citizen Tsuyosa) with live hands and accurate shadows | [View](https://itsjohnnie.github.io/playground/tyme/) |
 | **waves** | Full-screen banded gradient waves with a fresh harmonious palette each load | [View](https://itsjohnnie.github.io/playground/waves/) |
 
+## Client Sites
+
+Domains this repo deploys to directly (outside the GitHub Pages playground
+above), each as its own Cloudflare Worker with static assets — migrated off
+Webflow onto Cloudflare's free tier:
+
+| Site | Source | Deploy |
+|------|--------|--------|
+| [johnnies.life](https://johnnies.life) | [`johnnie/`](johnnie/) | `wrangler.toml` (root) via [`deploy-cloudflare.yml`](.github/workflows/deploy-cloudflare.yml) |
+| [bluehousebahia.com](https://bluehousebahia.com) | [`bluehousebahia/`](bluehousebahia/) | [`bluehousebahia/wrangler.toml`](bluehousebahia/wrangler.toml) via [`deploy-bluehousebahia.yml`](.github/workflows/deploy-bluehousebahia.yml) |
+
 ## Claude Code Documentation
 
 The `/cc` folder contains internal documentation about Claude Code:
