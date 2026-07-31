@@ -149,30 +149,52 @@ body { position: relative; }
   .hero-gradient.cc-white { height: auto; }
 }
 
-/* Unified light/dark transition. Every themed surface eases on the SAME timing
-   so backgrounds, text, borders, shadows and the toggle icon all change in
-   lockstep — previously each had a different transition (or none), so they
-   shifted at different speeds. An explicit light background-color on <body>
-   gives the body a real value to ease from. */
-body { background-color: #fff; }
-body,
-.discover-comp,
-.discover-logo,
-.discover-text,
-.toggle-mode,
-.hero-image,
-.hero-item {
-  transition: background-color .45s ease, color .45s ease,
-    border-color .45s ease, outline-color .45s ease, box-shadow .45s ease !important;
+/* ── Light ↔ dark: ONE clock for the whole page ───────────────────────────────
+   Every themed thing — the page fill, the glass tints, text, the hairline
+   dividers, the bar's shadow, the tile outlines, the vignette and the sun/moon
+   morph — runs on THIS duration and THIS curve, declared once here and reused
+   verbatim by every rule below via --theme-tr. Duplicated timings are what
+   broke this before: each surface had its own (or none), so the page changed
+   in waves instead of as one object.
+
+   The curve is an ease-out (cubic), NOT the "ease" this used to run on and not
+   the page's --ease-out either:
+     - "ease" loiters at the head — it was still only ~18% along at 100ms while
+       the toggle icon, on --ease-out, was ~78% done. That gap between the icon
+       flipping and the colours following is what read as the colours taking a
+       moment to catch up.
+     - --ease-out (cubic-bezier(.23,1,.32,1)) overcorrects: it's an expo-ish
+       curve meant for MOVEMENT, and it packs 97% of the change into the first
+       half. On a full-page white↔black flip that reads as a flash, not a fade.
+   Cubic ease-out sits where it should: 58% of the way at quarter-time, 87.5%
+   at half-time. It leaves on the first frame, so nothing feels delayed, and
+   still lands as a crossfade. */
+html {
+  --theme-dur: .35s;
+  --theme-ease: cubic-bezier(.33, 1, .68, 1);
+  --theme-tr:
+    background-color var(--theme-dur) var(--theme-ease),
+    color var(--theme-dur) var(--theme-ease),
+    border-color var(--theme-dur) var(--theme-ease),
+    outline-color var(--theme-dur) var(--theme-ease),
+    box-shadow var(--theme-dur) var(--theme-ease);
 }
-/* Press feedback on the control-bar buttons. Re-declared after the theme rule
-   above (which sets their transition !important without transform) so the
-   colour eases stay AND a quick transform ease is added — otherwise the press
-   would snap. */
+/* Explicit light values so both roots have something real to ease FROM.
+   <html> needs its own: it carries the dark fill, and in iOS standalone it is
+   taller than <body> (see the display-mode block above) — with no transition
+   of its own it snapped to black on the first frame while everything else was
+   still easing. */
+html, body { background-color: #fff; }
+body,
+.discover-text,
+.hero-item {
+  transition: var(--theme-tr);
+}
+/* Press feedback on the control-bar buttons: the shared theme eases plus a
+   quick transform, so the press doesn't snap. */
 .discover-logo,
 .toggle-mode {
-  transition: background-color .45s ease, color .45s ease, box-shadow .45s ease,
-    transform .16s var(--ease-out) !important;
+  transition: var(--theme-tr), transform .16s var(--ease-out);
 }
 .discover-logo:active,
 .toggle-mode:active { transform: scale(.95); }
@@ -211,11 +233,14 @@ body,
      light mode shows the moon, dark mode shows the sun. */
   -webkit-mask-position: -21px -27px; mask-position: -21px -27px;
   transform: scale(1);
-  transition: transform .5s var(--ease-out),
-    -webkit-mask-position .5s var(--ease-out);
-  transition: transform .5s var(--ease-out),
-    mask-position .5s var(--ease-out),
-    -webkit-mask-position .5s var(--ease-out);
+  /* Same clock as the colours (--theme-dur/--theme-ease): the morph and the
+     page tint are one change, so they must start and land together. This used
+     to run .1s longer, which is why the icon appeared to lead. */
+  transition: transform var(--theme-dur) var(--theme-ease),
+    -webkit-mask-position var(--theme-dur) var(--theme-ease);
+  transition: transform var(--theme-dur) var(--theme-ease),
+    mask-position var(--theme-dur) var(--theme-ease),
+    -webkit-mask-position var(--theme-dur) var(--theme-ease);
 }
 html.is-dark .sunmoon::before {
   transform: scale(.72);
@@ -228,7 +253,11 @@ html.is-dark .sunmoon::before {
   background: currentColor;
   transform: rotate(var(--a)) translateY(0) scale(0);
   opacity: 0;
-  transition: transform .5s var(--ease-out), opacity .3s ease;
+  /* Both on the shared clock — the rays used to fade on .3s ease while they
+     travelled on .5s ease-out, so they finished appearing well before they
+     finished moving. */
+  transition: transform var(--theme-dur) var(--theme-ease),
+    opacity var(--theme-dur) var(--theme-ease);
 }
 .sunmoon .ray:nth-child(1) { --a: 0deg; }
 .sunmoon .ray:nth-child(2) { --a: 45deg; }
@@ -243,7 +272,12 @@ html.is-dark .sunmoon .ray {
   opacity: 1;
 }
 @media (prefers-reduced-motion: reduce) {
-  .sunmoon::before, .sunmoon .ray { transition: opacity .2s ease; }
+  /* No morph, but the glyph still crossfades on the shared clock — a colour
+     change is not motion, and dropping it would make the icon the one thing
+     that snaps. */
+  .sunmoon::before, .sunmoon .ray {
+    transition: opacity var(--theme-dur) var(--theme-ease);
+  }
 }
 
 /* Vignette edge colour as REGISTERED custom properties so the fade can be
@@ -253,11 +287,19 @@ html.is-dark .sunmoon .ray {
    colour-matched to --vig so there's no gray fringe mid-transition. */
 @property --vig { syntax: "<color>"; inherits: true; initial-value: #ffffff; }
 @property --vig0 { syntax: "<color>"; inherits: true; initial-value: rgba(255, 255, 255, 0); }
+/* Same treatment for the control bar's divider hairlines (below): they were
+   raw gradient stops, which can't transition — so the seams flipped black to
+   white on the first frame while the glass around them was still easing. As a
+   registered property the colour animates and the gradients re-resolve with it. */
+@property --hairline { syntax: "<color>"; inherits: true; initial-value: #0000001f; }
 html {
-  --vig: #ffffff; --vig0: rgba(255, 255, 255, 0);
-  transition: --vig .45s ease, --vig0 .45s ease;
+  --vig: #ffffff; --vig0: rgba(255, 255, 255, 0); --hairline: #0000001f;
+  transition: var(--theme-tr),
+    --vig var(--theme-dur) var(--theme-ease),
+    --vig0 var(--theme-dur) var(--theme-ease),
+    --hairline var(--theme-dur) var(--theme-ease);
 }
-html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); }
+html.is-dark { --vig: #080808; --vig0: rgba(8, 8, 8, 0); --hairline: #ffffff1f; }
 .hero-gradient.cc-white {
   background-image: radial-gradient(circle closest-corner at 50% 50%, var(--vig0) 60%, var(--vig) 98%);
 }
@@ -328,9 +370,15 @@ html.is-dark .hero-item { background-color: rgba(255, 255, 255, .06); }
   pointer-events: none; user-select: none; -webkit-user-drag: none;
   width: 100%; height: 100%; object-fit: cover; aspect-ratio: auto;
   /* Blur-up: each tile eases from a soft blur to sharp as it decodes, instead
-     of popping in. Per-image and brief, so it stays light on the GPU. */
+     of popping in. Per-image and brief, so it stays light on the GPU.
+     outline-color rides along on the shared theme clock — the image's hairline
+     outline flips with the theme, and it's listed HERE rather than in the
+     theme block because the two lists target the same element: the blanket
+     old blanket .hero-image rule used !important and so silently overrode this,
+     which killed the blur-up entirely. One transition per element, always. */
   opacity: 0; filter: blur(14px);
-  transition: opacity .55s var(--ease-out), filter .55s var(--ease-out);
+  transition: opacity .55s var(--ease-out), filter .55s var(--ease-out),
+    outline-color var(--theme-dur) var(--theme-ease);
 }
 .hero-item .hero-image.is-loaded { opacity: 1; filter: blur(0); }
 /* Phones: sharper corners on the (unstaged) website tiles. Desktop keeps 4px. */
@@ -357,18 +405,15 @@ html.is-dark .discover-comp { box-shadow: 0 0 0 1px #ffffff14, 0 2px 4px #000000
    bar fade out so the flying image never pops in front of layers the tile was
    sitting behind (it starts under the gradient/bar, but the stage paints above
    them). They fade back in under the return flight, so the tile lands already
-   dimmed by the restored vignette. The .discover-comp transition re-declares
-   the theme eases !important + opacity — the theme block's own !important
-   shorthand (above) would otherwise drop the opacity ease. */
+   dimmed by the restored vignette. The .discover-comp transition composes the
+   shared theme eases (--theme-tr) with its own transform timing. */
 .discover-comp {
   /* The bar moves as a FINISHED, solid, frosted object — no opacity fade and
      no frost state changes, ever (mixing motion with material changes is what
      read as smears/pops). These timings are the RETURN (class removed on
      close): it WAITS for the image to land (.45s flight), then glides back up
      on a long, soft ease. */
-  transition: background-color .45s ease, color .45s ease,
-    border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
-    transform .55s var(--ease-out) .45s !important;
+  transition: var(--theme-tr), transform .55s var(--ease-out) .45s;
 }
 html.stage-open .discover-comp {
   /* Slide clean off the bottom edge (keep the centring -50% X); include the
@@ -377,9 +422,7 @@ html.stage-open .discover-comp {
   pointer-events: none;
   /* Departure is snappier than the return — it must clear the scene during
      the first third of the image's .5s flight. */
-  transition: background-color .45s ease, color .45s ease,
-    border-color .45s ease, outline-color .45s ease, box-shadow .45s ease,
-    transform .25s var(--ease-out) !important;
+  transition: var(--theme-tr), transform .25s var(--ease-out);
 }
 /* Vignette sequencing on close: the flying copy travels ABOVE the gradient,
    so it always lands undimmed — restoring the vignette during the flight made
@@ -413,23 +456,19 @@ html.stage-open .hero-gradient.cc-white { opacity: 0; transition: opacity .18s e
   border-left: none !important; border-right: none !important;
   margin-left: 0 !important; margin-right: 0 !important;
 }
-/* Vertical divider: text ↔ toggle (all widths). */
+/* Vertical divider: text ↔ toggle (all widths). The stop colour is --hairline,
+   the registered property that eases on the shared theme clock, so there is no
+   light/dark variant to declare — the seam crossfades with the glass. */
 .discover-text::after {
   content: ""; position: absolute; top: 0; bottom: 0; right: 0; width: 1px;
-  background: linear-gradient(180deg, transparent, #0000001f 30%, #0000001f 70%, transparent);
+  background: linear-gradient(180deg, transparent, var(--hairline) 30%, var(--hairline) 70%, transparent);
   pointer-events: none;
-}
-html.is-dark .discover-text::after {
-  background: linear-gradient(180deg, transparent, #ffffff1f 30%, #ffffff1f 70%, transparent);
 }
 /* Vertical divider: logo ↔ text (desktop pill only — rows stack on phones). */
 .discover-text::before {
   content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 1px;
-  background: linear-gradient(180deg, transparent, #0000001f 30%, #0000001f 70%, transparent);
+  background: linear-gradient(180deg, transparent, var(--hairline) 30%, var(--hairline) 70%, transparent);
   pointer-events: none;
-}
-html.is-dark .discover-text::before {
-  background: linear-gradient(180deg, transparent, #ffffff1f 30%, #ffffff1f 70%, transparent);
 }
 @media (max-width: 479px) {
   .discover-text::before { display: none; }
@@ -437,11 +476,8 @@ html.is-dark .discover-text::before {
   .discover-logo { border-bottom: none !important; position: relative; top: auto; right: auto; bottom: auto; left: auto; }
   .discover-logo::after {
     content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, #0000001f 12%, #0000001f 88%, transparent);
+    background: linear-gradient(90deg, transparent, var(--hairline) 12%, var(--hairline) 88%, transparent);
     pointer-events: none;
-  }
-  html.is-dark .discover-logo::after {
-    background: linear-gradient(90deg, transparent, #ffffff1f 12%, #ffffff1f 88%, transparent);
   }
 }
 
@@ -469,7 +505,8 @@ html.is-dark .discover-text::before {
   background-color: rgba(8, 8, 8, .72);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   opacity: 0;
-  transition: opacity .35s ease, background-color .45s ease;
+  transition: opacity .35s ease,
+    background-color var(--theme-dur) var(--theme-ease);
 }
 html:not(.is-dark) .discover-stage::before { background-color: rgba(255, 255, 255, .82); }
 .discover-stage.is-open { visibility: visible; pointer-events: auto; transition: none; }
@@ -514,22 +551,35 @@ html:not(.is-dark) .discover-stage .hero-image {
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
   letter-spacing: .01em;
   /* Entrance: a subtle rise + fade that starts once the image is landing
-     (the .18s delay below); exits with the stage fade, no delay. */
+     (the .18s delay below); exits with the stage fade, no delay. The caption's
+     light/dark colours (bottom of this sheet) ride the shared theme clock, so
+     toggling while an image is staged crossfades it with everything else
+     instead of snapping. */
   opacity: 0; transform: translateY(8px);
-  transition: opacity .35s ease, transform .5s var(--ease-out);
+  transition: opacity .35s ease, transform .5s var(--ease-out),
+    color var(--theme-dur) var(--theme-ease);
 }
 .discover-stage.is-open .hero-meta_data {
   opacity: 1; transform: none;
-  transition-delay: .18s, .18s;
+  /* Per-property, in the order above — the theme colour must NOT inherit the
+     entrance delay (an unmatched list would cycle back onto it). */
+  transition-delay: .18s, .18s, 0s;
 }
 @media (prefers-reduced-motion: reduce) {
-  .discover-stage .hero-meta_data { transform: none; transition: opacity .25s ease; }
+  .discover-stage .hero-meta_data {
+    transform: none;
+    transition: opacity .25s ease, color var(--theme-dur) var(--theme-ease);
+  }
 }
 .discover-stage .hero-meta_data > :first-child {
   max-width: 84vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .discover-stage .hero-meta_data-lighter {
   white-space: nowrap; opacity: .6;
+  /* Light mode swaps this one's colour AND its opacity (below) — both on the
+     shared clock so the secondary line tracks the primary exactly. */
+  transition: color var(--theme-dur) var(--theme-ease),
+    opacity var(--theme-dur) var(--theme-ease);
 }
 /* Light mode: dark caption text so it stays legible on the light scrim — a
    strong primary (name) and a lighter-but-AA-legible grey secondary (category).
