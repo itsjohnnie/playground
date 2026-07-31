@@ -149,26 +149,14 @@ body { position: relative; }
   .hero-gradient.cc-white { height: auto; }
 }
 
-/* ── Light ↔ dark: ONE clock for the whole page ───────────────────────────────
-   Every themed thing — the page fill, the glass tints, text, the hairline
-   dividers, the bar's shadow, the tile outlines, the vignette and the sun/moon
-   morph — runs on THIS duration and THIS curve, declared once here and reused
-   verbatim by every rule below via --theme-tr. Duplicated timings are what
-   broke this before: each surface had its own (or none), so the page changed
-   in waves instead of as one object.
-
-   The curve is an ease-out (cubic), NOT the "ease" this used to run on and not
-   the page's --ease-out either:
-     - "ease" loiters at the head — it was still only ~18% along at 100ms while
-       the toggle icon, on --ease-out, was ~78% done. That gap between the icon
-       flipping and the colours following is what read as the colours taking a
-       moment to catch up.
-     - --ease-out (cubic-bezier(.23,1,.32,1)) overcorrects: it's an expo-ish
-       curve meant for MOVEMENT, and it packs 97% of the change into the first
-       half. On a full-page white↔black flip that reads as a flash, not a fade.
-   Cubic ease-out sits where it should: 58% of the way at quarter-time, 87.5%
-   at half-time. It leaves on the first frame, so nothing feels delayed, and
-   still lands as a crossfade. */
+/* Light ↔ dark: ONE clock for the whole page. Every themed surface runs on this
+   duration and this curve, declared once and composed by the rules below via
+   --theme-tr — each surface having its own timing (or none) is what made the
+   page change in waves. Cubic ease-out, not the "ease" this used to use: that
+   loitered at the head (~18% along at 100ms while the toggle icon was ~78%
+   done), which is what read as the colours lagging the click. Not the page's
+   --ease-out either — that curve is for movement and packs 97% of the change
+   into the first half, a flash rather than a fade on a full-page flip. */
 html {
   --theme-dur: .35s;
   --theme-ease: cubic-bezier(.33, 1, .68, 1);
@@ -551,35 +539,22 @@ html:not(.is-dark) .discover-stage .hero-image {
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
   letter-spacing: .01em;
   /* Entrance: a subtle rise + fade that starts once the image is landing
-     (the .18s delay below); exits with the stage fade, no delay. The caption's
-     light/dark colours (bottom of this sheet) ride the shared theme clock, so
-     toggling while an image is staged crossfades it with everything else
-     instead of snapping. */
+     (the .18s delay below); exits with the stage fade, no delay. */
   opacity: 0; transform: translateY(8px);
-  transition: opacity .35s ease, transform .5s var(--ease-out),
-    color var(--theme-dur) var(--theme-ease);
+  transition: opacity .35s ease, transform .5s var(--ease-out);
 }
 .discover-stage.is-open .hero-meta_data {
   opacity: 1; transform: none;
-  /* Per-property, in the order above — the theme colour must NOT inherit the
-     entrance delay (an unmatched list would cycle back onto it). */
-  transition-delay: .18s, .18s, 0s;
+  transition-delay: .18s, .18s;
 }
 @media (prefers-reduced-motion: reduce) {
-  .discover-stage .hero-meta_data {
-    transform: none;
-    transition: opacity .25s ease, color var(--theme-dur) var(--theme-ease);
-  }
+  .discover-stage .hero-meta_data { transform: none; transition: opacity .25s ease; }
 }
 .discover-stage .hero-meta_data > :first-child {
   max-width: 84vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .discover-stage .hero-meta_data-lighter {
   white-space: nowrap; opacity: .6;
-  /* Light mode swaps this one's colour AND its opacity (below) — both on the
-     shared clock so the secondary line tracks the primary exactly. */
-  transition: color var(--theme-dur) var(--theme-ease),
-    opacity var(--theme-dur) var(--theme-ease);
 }
 /* Light mode: dark caption text so it stays legible on the light scrim — a
    strong primary (name) and a lighter-but-AA-legible grey secondary (category).
