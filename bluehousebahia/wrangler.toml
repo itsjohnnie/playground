@@ -1,0 +1,30 @@
+# Cloudflare Worker for bluehousebahia.com.
+# Pure static hosting (no server-side logic needed) — a "no main script"
+# Workers Assets deployment. Cloudflare serves every request straight from
+# public/, so there's no Worker invocation cost at all; free plan is plenty
+# for this traffic level.
+#
+# This mirrors the johnnies.life migration at the repo root (see the top-level
+# wrangler.toml) — same approach, same free Cloudflare tier, applied to the
+# bluehousebahia.com domain instead.
+name = "bluehousebahia"
+compatibility_date = "2025-01-01"
+
+# Custom domains (infra-as-code): serve the site at the apex + www. Applied on
+# every `wrangler deploy`. NOTE: the conflicting Webflow DNS records (the apex
+# A record and the `www` CNAME → cdn.webflow.com / proxy-ssl.webflow.com) must
+# be deleted in Cloudflare first — otherwise attaching fails with "hostname
+# already has externally managed DNS records." Once attached, Cloudflare
+# manages these records. The domain's nameservers must already point at
+# Cloudflare for this to work.
+routes = [
+  { pattern = "bluehousebahia.com", custom_domain = true },
+  { pattern = "www.bluehousebahia.com", custom_domain = true },
+]
+
+# Static export: the full public/ tree (index.html, /old-home, css, js,
+# fonts, images, icons). html_handling defaults to "auto-trailing-slash",
+# which resolves /old-home to /old-home/index.html — matching the clean URL
+# Webflow served at bluehousebahia.com/old-home.
+[assets]
+directory = "./public"

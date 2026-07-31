@@ -1,0 +1,36 @@
+name: Deploy bluehousebahia.com to Cloudflare
+
+# Deploys the bluehousebahia/ static site (pure HTML/CSS/JS export from the
+# old Webflow site — see bluehousebahia/README.md) as a Cloudflare Worker with
+# static assets. Runs on every push to main that touches the folder, same
+# pattern as the johnnies.life deploy at deploy-cloudflare.yml.
+#
+# Reuses the same repo secrets as the johnnies.life deploy (one Cloudflare
+# account, two Workers):
+#   CLOUDFLARE_API_TOKEN
+#   CLOUDFLARE_ACCOUNT_ID
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "bluehousebahia/**"
+      - ".github/workflows/deploy-bluehousebahia.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-deploy-bluehousebahia
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: bluehousebahia
