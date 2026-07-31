@@ -186,6 +186,42 @@ body,
 }
 .discover-logo:active,
 .toggle-mode:active { transform: scale(.95); }
+/* The toggle is an icon button, so it should read as a square. Its height comes
+   from the bar row (.discover-comp is align-items: stretch) while its width was
+   the icon plus site.css's horizontal padding — two unrelated numbers, so it sat
+   at 44x38 on desktop and 30.8x28.4 on phones. aspect-ratio can't do this: a
+   flex item's main size resolves BEFORE stretch, so it collapses to the icon
+   (20px) instead of growing to the row. The width is therefore pinned to the row
+   height; the height stays stretched, so the segment can never leave a gap. */
+.toggle-mode {
+  width: 38px;   /* the one-row bar's height, set by .discover-logo */
+  padding-left: 0; padding-right: 0;
+  flex: none;
+}
+@media (max-width: 479px) {
+  /* Stacked bar: the toggle shares the second row with .discover-text, which
+     sizes it (.5rem of padding + a .85rem/1.5 line box). */
+  .toggle-mode { width: 28.4px; }
+}
+
+/* Focus: nothing on a pointer, a ring only for the keyboard. site.css draws a
+   2px solid currentColor outline at outline-offset 2px — outside the
+   button, where .discover-comp's overflow:hidden clips it into a partial edge,
+   and its [data-wf-focus-visible] half (a leftover Webflow polyfill hook) isn't
+   gated on input modality the way :focus-visible is. The ring moves inside so it
+   survives the clip, and taps no longer flash iOS's grey highlight box. */
+.discover-logo, .toggle-mode {
+  -webkit-tap-highlight-color: transparent;
+}
+.discover-logo[data-wf-focus-visible],
+.toggle-mode[data-wf-focus-visible],
+.discover-logo:focus,
+.toggle-mode:focus { outline: none; }
+.discover-logo:focus-visible,
+.toggle-mode:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
 @media (prefers-reduced-motion: reduce) {
   .discover-logo:active, .toggle-mode:active { transform: none; }
 }
