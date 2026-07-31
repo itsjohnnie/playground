@@ -1,14 +1,13 @@
 /* =============================================================================
    site.css — the look & feel of johnnies.life
    -----------------------------------------------------------------------------
-   In memoriam: this page was born in Webflow, hand-tended there for years, and
-   served well. Times change. The smoke machine, the IX2 runtime, the jQuery,
-   the "Made in Webflow" badge — all retired. What's left was rewritten by hand,
-   and the site now lives in plain code, managed with Claude.
-   The old `w-` and `webflow-` class names have been renamed (`w-` -> `ui-`); the
-   unused Webflow subsystems (lightbox, slider, tabs, dropdowns, the icon font,
-   the badge) have been removed entirely. Same pixels, none of the scaffolding.
-   Gracias, Webflow. — 2026
+   In memoriam: this page was born on a page builder, hand-tended there for
+   years, and served well. Times change. The smoke machine, the old IX2-style
+   runtime, the jQuery, the platform badge — all retired. What's left was
+   rewritten by hand, and the site now lives in plain code, managed with Claude.
+   The old builder-prefixed class names have been renamed (`ui-`); the unused
+   subsystems (lightbox, slider, tabs, dropdowns, the icon font, the badge)
+   have been removed entirely. Same pixels, none of the scaffolding. — 2026
    ============================================================================= */
 
 html {

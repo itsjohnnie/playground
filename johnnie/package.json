@@ -2,7 +2,7 @@
   "name": "johnnies-life",
   "version": "1.0.0",
   "private": true,
-  "description": "Johnnie's Life — personal site migrated from Webflow to Next.js (static export).",
+  "description": "Johnnie's Life — personal site built with Next.js (static export).",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -1,42 +1,38 @@
 # Johnnie's Life — Next.js
 
-A 1:1 migration of [johnnies.life](https://johnnies.life) from Webflow to a
-code-based **Next.js** app with a free, Git-based **CMS**. Built to deploy for
-free on **Cloudflare Pages** (or any static host) and to be edited via Claude
-Code or a point-and-click admin.
+[johnnies.life](https://johnnies.life), a code-based **Next.js** app with a
+free, Git-based **CMS**. Built to deploy for free on **Cloudflare Pages** (or
+any static host) and to be edited via Claude Code or a point-and-click admin.
 
 ## What's here
 
 ```
 johnnie/
 ├─ app/
-│  ├─ layout.tsx     # <head>, fonts, favicons, global styles, data-wf attrs
+│  ├─ layout.tsx     # <head>, fonts, favicons, global styles
 │  ├─ page.tsx       # the full homepage markup (renders content below)
-│  └─ scripts.tsx    # loads jQuery + Webflow IX2 runtime + Three.js smoke
+│  └─ scripts.tsx    # color-cycling bg, scroll-reveal nav, lightbox — all native JS
 ├─ content/
 │  ├─ projects/*.md  # the "Work" grid — one file per project (CMS-managed)
 │  └─ features/*.md  # the "Features & Appearances" list (CMS-managed)
 ├─ lib/content.ts    # reads the markdown front-matter at build time
 └─ public/
-   ├─ webflow.css    # the exact published Webflow stylesheet (fonts localized)
-   ├─ js/            # vendored Webflow IX2 chunks (animations/interactions)
-   ├─ vendor/        # jQuery, three.js, smoke texture
-   ├─ images/ icons/ videos/ fonts/ lottie/   # every asset, self-hosted
+   ├─ site.css       # the site's stylesheet (fonts localized)
+   ├─ images/ icons/ videos/ fonts/   # every asset, self-hosted
    └─ admin/         # Sveltia CMS (config.yml + index.html)
 ```
 
 ### Approach
 
-The visual design reuses Webflow's exported **CSS** (`public/webflow.css`), but
-**all the JavaScript is now native** — there is no Webflow runtime, no jQuery,
-and no Lottie. The interactions are hand-written:
+Everything is hand-written, native code — no page-builder runtime, no jQuery,
+no third-party animation library. The interactions:
 
 - **Color-cycling background** + `--bg` variable + live `theme-color` — `app/scripts.tsx`
 - **Scroll-reveal nav + hamburger menu** — `app/site-nav.tsx`
 - **Marquee, hamburger icon, mobile menu, footer spin, lightbox, smooth scroll** — CSS in `app/layout.tsx`
 
-All assets are self-hosted in `public/`, so the site has no dependency on
-Webflow at all.
+All assets are self-hosted in `public/`, so the site has no external runtime
+dependencies at all.
 
 Fonts: **Inconsolata** (Google Fonts) + an **Adobe Fonts / Typekit** kit
 (`uqs5mpm` — Eckmann, Program Narrow, Franklin Gothic) loaded from their font
