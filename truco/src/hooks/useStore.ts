@@ -113,6 +113,15 @@ export function useStore() {
   // partial updates (e.g. when a single event arrives over realtime).
   const eventsRef = useRef<EventRow[]>([])
 
+  // Matches deleted on this device. Realtime can still deliver an echo
+  // referring to a match we just removed — our own trailing score
+  // update, or another device that hasn't seen the delete yet — and the
+  // `matches` handler re-adds any id it doesn't recognise. Without a
+  // tombstone a deleted match reappears in Historial and, worse, starts
+  // counting in Estadísticas again. Cleared on reload, by which point
+  // the row is gone from the server anyway.
+  const deletedMatchIds = useRef<Set<string>>(new Set())
+
   // ── Auth: track session + user, persists across reloads ──────
   useEffect(() => {
     let cancelled = false
@@ -228,6 +237,8 @@ export function useStore() {
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const row = payload.new as MatchRow
             if (!idBelongsToMesa(row.id)) return s
+            // Deleted here — never let a trailing echo resurrect it.
+            if (deletedMatchIds.current.has(row.id)) return s
             const m = rowToMatch(row, eventsRef.current)
             const exists = s.matches.some((x) => x.id === m.id)
             const next = exists
@@ -236,7 +247,10 @@ export function useStore() {
             return { ...s, matches: next.sort((a, b) => b.startedAt - a.startedAt) }
           }
           if (payload.eventType === 'DELETE') {
-            const id = (payload.old as MatchRow).id
+            const id = (payload.old as MatchRow | undefined)?.id
+            if (!id) return s
+            deletedMatchIds.current.add(id)
+            eventsRef.current = eventsRef.current.filter((e) => e.match_id !== id)
             return { ...s, matches: s.matches.filter((x) => x.id !== id) }
           }
           return s
@@ -256,13 +270,20 @@ export function useStore() {
             ),
           }))
         } else if (payload.eventType === 'DELETE') {
-          const old = payload.old as EventRow
+          const old = payload.old as Partial<EventRow> | undefined
+          if (old?.id == null) return
+          // With the default REPLICA IDENTITY, Postgres sends only the
+          // primary key on a DELETE — `old.match_id` is absent. Deleting
+          // a match cascades to its events, so this fires once per event
+          // of every deleted match. Resolve the owning match from our own
+          // cache instead of trusting the payload.
+          const matchId = old.match_id ?? eventsRef.current.find((e) => e.id === old.id)?.match_id
           eventsRef.current = eventsRef.current.filter((e) => e.id !== old.id)
-          if (!idBelongsToMesa(old.match_id)) return
+          if (!matchId || !idBelongsToMesa(matchId)) return
           setState((s) => ({
             ...s,
             matches: s.matches.map((m) =>
-              m.id === old.match_id ? rowToMatch(matchToRow(m), eventsRef.current) : m,
+              m.id === matchId ? rowToMatch(matchToRow(m), eventsRef.current) : m,
             ),
           }))
         }
@@ -690,6 +711,13 @@ export function useStore() {
   }, [])
 
   const deleteMatch = useCallback((id: string) => {
+    // Tombstone first, so an echo that lands between here and the
+    // server delete can't put the match back into Estadísticas.
+    deletedMatchIds.current.add(id)
+    // Drop its events too. They are cascaded away server-side, but the
+    // local cache is what rebuilds Match.events on the next realtime
+    // push — leaving them behind resurrects the match's plays.
+    eventsRef.current = eventsRef.current.filter((e) => e.match_id !== id)
     setState((s) => ({
       ...s,
       matches: s.matches.filter((m) => m.id !== id),

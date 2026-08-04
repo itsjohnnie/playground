@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
 import { PulseGlow } from '@/components/ui/PulseGlow'
+import { Cobweb } from '@/components/ui/Cobweb'
 import {
   type Match,
   type Player,
@@ -12,7 +13,7 @@ import {
   BUENAS_THRESHOLD,
   SCORE_REASON_LABEL,
 } from '@/types/game'
-import { detectRoundMode, splitScore, isInBuenas } from '@/utils/scoring'
+import { detectRoundMode, splitScore, isInBuenas, dryRounds, SEQUIA_ROUNDS } from '@/utils/scoring'
 
 interface GameScreenProps {
   match: Match
@@ -95,6 +96,7 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
           players={teamPlayers(leftSide)}
           score={scoreOn(leftSide)}
           highlight={scoreOn(leftSide) > scoreOn(rightSide)}
+          dry={dryRounds(match.events, leftSide)}
           onQuickAdd={() => onScore(leftSide, 1, 'manual')}
           onQuickSub={() => onScore(leftSide, -1, 'manual')}
           right={false}
@@ -104,6 +106,7 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
           players={teamPlayers(rightSide)}
           score={scoreOn(rightSide)}
           highlight={scoreOn(rightSide) > scoreOn(leftSide)}
+          dry={dryRounds(match.events, rightSide)}
           onQuickAdd={() => onScore(rightSide, 1, 'manual')}
           onQuickSub={() => onScore(rightSide, -1, 'manual')}
           right={true}
@@ -218,12 +221,14 @@ const SWIPE_VEL = 380   // px / second
 const MAX_DRAG_PX = 110
 
 function TeamPanel({
-  name, players, score, highlight, onQuickAdd, onQuickSub, right,
+  name, players, score, highlight, dry, onQuickAdd, onQuickSub, right,
 }: {
   name: string
   players: Player[]
   score: number
   highlight: boolean
+  /** Rounds since this team last scored — drives the corner cobweb. */
+  dry: number
   onQuickAdd: () => void
   onQuickSub: () => void
   right: boolean
@@ -327,6 +332,12 @@ function TeamPanel({
       className={`group relative flex flex-col gap-3 px-4 py-5 text-left overflow-hidden ${right ? '' : 'border-r border-line/70'} hover-elevate select-none cursor-pointer`}
       aria-label={`Sumar puntos a ${name}. Tocá para sumar un punto, arrastrá hacia abajo para restar.`}
     >
+      {/* Cobweb — this team has gone quiet. Rendered first so it sits
+          behind everything else in the panel. */}
+      <AnimatePresence>
+        {dry >= SEQUIA_ROUNDS && <Cobweb key="cobweb" rounds={dry} />}
+      </AnimatePresence>
+
       {/* Swipe hint arrows — only visible while dragging, stay anchored.
           Up = basto green, down = copa red — same hues as the Spanish suits. */}
       <motion.div
