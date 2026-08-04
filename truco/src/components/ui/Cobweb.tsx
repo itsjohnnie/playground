@@ -57,9 +57,44 @@ export function Cobweb({ rounds }: { rounds: number }) {
         <mask id={`${maskId}-m`}>
           <rect x="0" y="0" width="100" height="100" fill={`url(#${maskId})`} />
         </mask>
+
+        {/* Silk, not ink. The turbulence warp pushes every thread off
+            its mathematically perfect curve — the thing that most gives
+            a generated web away — and the blurred copy underneath reads
+            as the thread catching light rather than being drawn on.
+            Computed once and cached; the idle drift is a transform on
+            the filtered layer, so it never re-runs. */}
+        <filter
+          id={`${maskId}-silk`}
+          x="-15%"
+          y="-15%"
+          width="130%"
+          height="130%"
+          colorInterpolationFilters="sRGB"
+        >
+          <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="3" seed="7" result="noise" />
+          <feDisplacementMap
+            in="SourceGraphic"
+            in2="noise"
+            scale="2.4"
+            xChannelSelector="R"
+            yChannelSelector="G"
+            result="warp"
+          />
+          <feGaussianBlur in="warp" stdDeviation="0.6" result="halo" />
+          <feMerge>
+            <feMergeNode in="halo" />
+            <feMergeNode in="warp" />
+          </feMerge>
+        </filter>
       </defs>
 
-      <g mask={`url(#${maskId}-m)`} stroke="currentColor" strokeLinecap="round">
+      <g
+        mask={`url(#${maskId}-m)`}
+        filter={`url(#${maskId}-silk)`}
+        stroke="currentColor"
+        strokeLinecap="round"
+      >
         {radialPaths.map((d, i) => (
           <path
             key={`r${i}`}
