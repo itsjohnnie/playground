@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { useStore } from '@/hooks/useStore'
+import { useWakeLock } from '@/hooks/useWakeLock'
 import { HomeScreen } from '@/components/screens/HomeScreen'
 import { MesaScreen } from '@/components/screens/MesaScreen'
 import { NewMatchScreen } from '@/components/screens/NewMatchScreen'
@@ -36,6 +37,10 @@ export default function App() {
   const { activeMatch, loading, error } = store
 
   const [route, setRoute] = useState<Route>(readSavedRoute)
+
+  // Hold the screen awake while a match is on screen — the phone lives
+  // face-up on the table and only gets touched between manos.
+  useWakeLock(route === 'game' || route === 'win')
 
   // Persist route changes so a refresh comes back to the same screen.
   useEffect(() => {
