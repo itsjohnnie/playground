@@ -47,6 +47,31 @@ export function addPoints(current: number, points: number): number {
   return Math.min(current + points, MAX_SCORE)
 }
 
+// ─── Sequía (scoring drought) ─────────────────────────────────
+
+// Rounds a team has to go without scoring before the table starts
+// noticing. Three is the point where someone says something.
+export const SEQUIA_ROUNDS = 3
+
+/**
+ * How many rounds have gone by since `team` last put a point on the
+ * board. Counts back from the most recent event and stops the moment
+ * that team scored, so it resets to 0 as soon as they get on it.
+ *
+ * Only positive-point events count as a round: a manual −1 is the
+ * scorer fixing a mistake, not a hand anybody played.
+ */
+export function dryRounds(events: ScoreEvent[], team: 'A' | 'B'): number {
+  let rounds = 0
+  for (let i = events.length - 1; i >= 0; i--) {
+    const ev = events[i]
+    if (ev.points <= 0) continue
+    if (ev.team === team) break
+    rounds++
+  }
+  return rounds
+}
+
 // ─── Stats ────────────────────────────────────────────────────
 
 export interface PlayerStats {
