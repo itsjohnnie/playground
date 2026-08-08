@@ -1,0 +1,616 @@
+/* A Song a Day® — /songs
+   ------------------------------------------------------------------
+   Two routes share this file: the index (/songs) and the song page
+   (/songs/<slug>/), both imported through app/songs/layout.tsx.
+
+   Everything is scoped under `.sad` so none of it leaks into the rest
+   of johnnies.life, which runs a different body font, palette and
+   cycling background — and so the rest of the site can't leak in here
+   either (site.css styles bare h1/h2/h3 for the homepage).
+
+   Built to hold up at a thousand songs and to feel like an app on a
+   phone, so a few rules are doing real work rather than decoration:
+   `content-visibility` on the cards, `dvh` + safe-area insets on the
+   full-height screens, and a per-page `--ink` that flips to light text
+   on dark artwork instead of assuming everything is pastel. */
+
+.sad {
+  --sad-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Noto Sans", Ubuntu, Cantarell, "Helvetica Neue", Oxygen, "Fira Sans",
+    "Droid Sans", sans-serif;
+  --sad-serif: "Times New Roman", TimesNewRoman, Times, Baskerville, Georgia,
+    serif;
+  --sad-paper: #fafafa;
+  --sad-ink: #101011;
+  --sad-line: #d9d9d9;
+  --sad-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Tap targets never go under this. 44px is the documented floor on iOS
+     and close enough to Android's 48dp to serve both. */
+  --sad-tap: 44px;
+
+  color: var(--sad-ink);
+  font-family: var(--sad-sans);
+  font-size: 100%;
+  line-height: 1.75;
+  /* Nothing in this section is ever meant to scroll sideways. */
+  overflow-x: clip;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* site.css styles bare h1/h2/h3 for the homepage — uppercase, in Eckmann. An
+   element selector beats an inherited value however specific the ancestor
+   rule is, so the reset has to name the elements too. Kept to the properties
+   no rule below overrides: adding `margin` here would outrank the
+   single-class rules that set it (`.sad h1` beats `.sad-title`). */
+.sad h1,
+.sad h2,
+.sad h3 {
+  font-family: var(--sad-sans);
+  font-weight: 400;
+  text-transform: none;
+}
+
+/* One visible focus style for the whole section, on the accent-aware ink so
+   it stays visible on a near-black cover and a pastel one alike. :focus-visible
+   only, so a mouse click doesn't leave a ring behind. */
+.sad :focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* Jump past the header straight to the list — the first thing a keyboard or
+   screen-reader user wants on a page that is essentially one long list. */
+.sad-skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 20;
+  padding: 0.75rem 1rem;
+  background: var(--sad-ink);
+  color: var(--sad-paper);
+  text-decoration: none;
+}
+.sad-skip:focus {
+  left: 0.5rem;
+  top: 0.5rem;
+}
+
+/* ================================================================== */
+/* Index: /songs                                                       */
+/* ================================================================== */
+
+.sad-index {
+  width: 100%;
+  min-height: 100dvh;
+  padding: 0 6vw calc(4rem + env(safe-area-inset-bottom));
+  background-color: var(--sad-paper);
+}
+
+/* Full-bleed scrolling strip at the very top. */
+.sad-ticker {
+  display: flex;
+  width: 100vw;
+  margin-left: -6vw;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--sad-line);
+  overflow: hidden;
+}
+.sad-ticker-track {
+  display: flex;
+  flex: none;
+  /* Two identical halves; -50% lands the second exactly where the first
+     began, so the loop has no seam. */
+  animation: sadTicker 46s linear infinite;
+}
+.sad-ticker-half { display: flex; }
+.sad-ticker-item {
+  flex: none;
+  padding-right: 2.5rem;
+  font-family: var(--sad-serif);
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+.sad-ticker-item b { font-family: var(--sad-sans); font-weight: 600; }
+@keyframes sadTicker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+/* Motion nobody asked for, running forever, is exactly what this setting is
+   for: stop it and centre the one legible copy. */
+@media (prefers-reduced-motion: reduce) {
+  .sad-ticker-track { animation: none; }
+  .sad-ticker { justify-content: center; }
+  .sad-ticker-half:nth-child(2) { display: none; }
+}
+
+.sad-masthead { margin: 3.5rem 0 2rem; }
+.sad-logo {
+  margin: 0;
+  font-size: clamp(2.75rem, 15.38vw, 15rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.sad-tagline {
+  margin: 0.4rem 0 0;
+  font-family: var(--sad-serif);
+  font-size: clamp(1.1rem, 3.4vw, 1.8rem);
+  font-style: italic;
+  line-height: 1.4;
+  letter-spacing: -0.04em;
+}
+.sad-tagline a {
+  text-decoration: underline;
+  text-decoration-thickness: 0.07em;
+  text-underline-offset: 0.12em;
+}
+
+/* Search + count. Sticky, so at a thousand songs the way out of the list is
+   always one thumb-reach away rather than a scroll back to the top. */
+.sad-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  /* Full-bleed background so content scrolling under it is covered edge to
+     edge, while the controls stay on the page's 6vw margin. */
+  width: 100vw;
+  margin-left: -6vw;
+  padding: 0.6rem 6vw calc(0.6rem + 1px);
+  background: var(--sad-paper);
+  border-bottom: 1px solid var(--sad-line);
+}
+.sad-search {
+  flex: 1;
+  min-width: 0;
+  height: var(--sad-tap);
+  padding: 0 0.9rem;
+  color: var(--sad-ink);
+  background: #fff;
+  border: 1px solid var(--sad-line);
+  border-radius: 999px;
+  /* 16px is the threshold below which iOS Safari zooms the viewport on
+     focus. Anything smaller here and tapping search jerks the page. */
+  font: inherit;
+  font-size: 1rem;
+}
+.sad-search::placeholder { color: #6b6b6b; }
+.sad-search:focus-visible { outline-offset: 1px; }
+.sad-count {
+  flex: none;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: #5a5a5a;
+}
+
+.sad-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: clamp(1.25rem, 3vw, 3rem);
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sad-card {
+  position: relative;
+  /* Long titles must wrap, not widen the column. */
+  min-width: 0;
+  /* The whole point of this rule: at a thousand cards the browser skips
+     layout and paint for everything off screen. `contain-intrinsic-size`
+     supplies a placeholder height so the scrollbar doesn't lurch as cards
+     come into view. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
+}
+.sad-card[hidden] { display: none; }
+.sad-card a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  outline-offset: 6px;
+}
+
+.sad-art {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 4px;
+  /* Painted before the image lands, so a slow connection shows the song's
+     own colour instead of a white hole. */
+  background: var(--card-accent, #eee);
+}
+.sad-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Monochrome index, colour on the song page — the list reads as one
+     editorial run rather than a wall of competing covers. */
+  filter: grayscale(1) contrast(1.08) brightness(1.05);
+  transition: filter 0.4s var(--sad-ease), transform 0.4s var(--sad-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .sad-card a:hover .sad-art img { filter: none; transform: scale(1.03); }
+}
+/* Touch has no hover, so the colour arrives on press instead. */
+.sad-card a:active .sad-art img { filter: none; }
+
+.sad-card-title {
+  margin: 0.7rem 0 0.15rem;
+  font-size: 1.1rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.sad-card-artist {
+  font-family: var(--sad-serif);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: #444;
+}
+
+/* Shown when a search matches nothing. */
+.sad-empty {
+  margin: 3rem 0;
+  font-family: var(--sad-serif);
+  font-size: 1.2rem;
+  font-style: italic;
+  color: #5a5a5a;
+}
+
+/* ================================================================== */
+/* Song page: /songs/<slug>/                                           */
+/* ================================================================== */
+
+/* `--accent` and `--ink` are set inline per song; every colour below reads
+   from them, so one pair of values dresses the whole screen. */
+.sad-song {
+  /* Positioned, so the phone layout's floating top bar has something to
+     anchor to other than the viewport. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100dvh;
+  padding: 6rem 6vw;
+  color: var(--ink);
+  background-color: var(--accent);
+}
+.sad-song ::selection { background: var(--ink); color: var(--accent); }
+
+.sad-song-grid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 6rem;
+  align-items: stretch;
+}
+.sad-song-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.sad-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.sad-home {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sad-tap);
+  color: inherit;
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.sad-pager { display: flex; align-items: center; gap: 0.25rem; }
+.sad-pager-date { display: flex; align-items: center; gap: 0.25rem; }
+.sad-pill {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.1rem 0.6rem;
+  border: 1px solid currentColor;
+  border-radius: 2rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-transform: uppercase;
+}
+.sad-step {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: var(--sad-tap);
+  height: var(--sad-tap);
+  color: inherit;
+  transition: transform 0.2s var(--sad-ease);
+}
+.sad-step--prev { transform: rotate(180deg); }
+@media (hover: hover) and (pointer: fine) {
+  .sad-step--prev:hover { transform: translateX(-0.35rem) rotate(180deg); }
+  .sad-step--next:hover { transform: translateX(0.35rem); }
+}
+/* A missing neighbour keeps its slot, so the date never shifts sideways
+   between songs. */
+.sad-step[aria-disabled="true"] { visibility: hidden; pointer-events: none; }
+
+.sad-meta { display: flex; flex-direction: column; align-items: flex-start; margin-top: 2rem; }
+.sad-number {
+  margin: 0;
+  /* Ghosted back from the title, but not so far that it stops being
+     readable: at 0.28 this was a serious contrast failure on every accent.
+     --ink-muted is the ink blended toward the accent as far as contrast
+     allows, computed per song in lib/content.ts — the ghosted look where the
+     colour permits it, firmer where it doesn't. No opacity: that would scale
+     the contrast back down and undo the whole point. */
+  color: var(--ink-muted, currentColor);
+  font-size: clamp(2.5rem, 12vh, 9rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.sad-title {
+  margin: 0 0 0.2em;
+  font-size: clamp(2.25rem, 11vh, 8rem);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+.sad-blurb {
+  max-width: 46ch;
+  margin: 0 0 1.6rem;
+  font-family: var(--sad-serif);
+  font-size: 1.2rem;
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.sad-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; }
+.song-btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: var(--sad-tap);
+  padding: 0.7rem 1.4rem;
+  color: var(--accent);
+  background-color: var(--ink);
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.16s var(--sad-ease);
+}
+.song-btn:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) { .song-btn:hover { opacity: 0.85; } }
+/* Secondary action — outlined rather than filled, so the play button stays
+   the obvious one. */
+.song-btn--ghost { color: var(--ink); background: transparent; }
+
+/* Four bars that rise and fall while the clip is playing. Purely a state
+   cue — the button's label already says Play/Pause — so it's aria-hidden
+   and it stops dead under reduced motion. */
+.song-eq { display: none; align-items: flex-end; gap: 2px; height: 14px; margin-left: 0.15rem; }
+.song-eq.is-on { display: inline-flex; }
+.song-eq i {
+  display: block;
+  width: 2.5px;
+  height: 100%;
+  background: currentColor;
+  border-radius: 1px;
+  transform-origin: 50% 100%;
+  animation: sadEq 0.9s ease-in-out infinite;
+}
+.song-eq i:nth-child(2) { animation-delay: 0.18s; }
+.song-eq i:nth-child(3) { animation-delay: 0.36s; }
+.song-eq i:nth-child(4) { animation-delay: 0.54s; }
+@keyframes sadEq {
+  0%, 100% { transform: scaleY(0.28); }
+  50% { transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .song-eq i { animation: none; transform: scaleY(0.55); }
+}
+
+/* Artwork column — in full colour here, unlike the monochrome index. This
+   is the "now playing" screen; the cover is the point. */
+.sad-cover {
+  position: relative;
+  align-self: stretch;
+  min-height: 60vh;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.sad-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+}
+/* Photo source line, sat quietly in the corner of the image. */
+.sad-credit {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.4rem;
+  z-index: 1;
+  max-width: calc(100% - 1rem);
+  margin: 0;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  color: #fff;
+  background: rgba(17, 17, 17, 0.45);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 0.7rem;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ================================================================== */
+/* Phone: the song page becomes a "now playing" screen                 */
+/* ================================================================== */
+
+@media (max-width: 860px) {
+  .sad-song {
+    /* The action bar is pinned to the bottom; this keeps the last of the
+       content clear of it (and of the home indicator). */
+    padding: 0 0 calc(7rem + env(safe-area-inset-bottom));
+  }
+  /* Cover first and full-bleed, the way a player app opens. The markup leads
+     with the text column (it's the page's substance, and that's the order a
+     screen reader and a no-CSS render should get it in), so the visual
+     reordering happens here rather than in the DOM. */
+  .sad-song-grid {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    column-gap: 0;
+  }
+  .sad-cover { order: -1; }
+  /* Text sits in the space between the cover and the pinned bar, centred
+     rather than stranded at the top of a tall empty screen. */
+  .sad-song-col { flex: 1; justify-content: center; }
+
+  .sad-cover {
+    min-height: 0;
+    aspect-ratio: 1;
+    width: 100%;
+    border-radius: 0;
+  }
+  /* Melt the bottom of the cover into the accent so there's no hard seam
+     between the artwork and the text below it. */
+  .sad-cover::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 -1px;
+    height: 38%;
+    background: linear-gradient(to bottom, transparent, var(--accent));
+  }
+
+  .sad-topbar {
+    position: absolute;
+    top: env(safe-area-inset-top);
+    left: 0;
+    right: 0;
+    z-index: 2;
+    padding: 0.5rem 1.1rem;
+  }
+  /* Over artwork rather than the flat accent, so the controls get their own
+     legibility instead of borrowing the background's. */
+  .sad-home,
+  .sad-pager {
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(17, 17, 17, 0.42);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  .sad-home { padding: 0 0.75rem; font-size: 0.95rem; white-space: nowrap; }
+  .sad-pill { border-color: rgba(255, 255, 255, 0.5); font-size: 0.8rem; }
+  .sad-step { width: 2.2rem; height: var(--sad-tap); }
+
+  .sad-meta {
+    align-items: center;
+    margin-top: -2.5rem;
+    padding: 0 1.4rem;
+    text-align: center;
+  }
+  .sad-number { font-size: 2.5rem; }
+  .sad-title { font-size: clamp(2rem, 9vw, 3rem); }
+  .sad-blurb { margin-bottom: 0; font-size: 1.05rem; }
+
+  /* Pinned action bar — the app-like part. Sits above the home indicator,
+     stays put while the page scrolls. */
+  .sad-actions {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 6;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.7rem 1.1rem calc(0.7rem + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--accent) 86%, transparent);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+  }
+  .sad-actions > * { flex: 1; }
+  .song-btn { width: 100%; }
+  .song-player { max-width: none; }
+  /* Spotify's compact embed; the full-size one would eat the screen. */
+  .song-player-frame { height: 80px; border-radius: 10px; }
+}
+
+/* Phone index: two columns reads like a library, one column wastes the
+   screen and makes a thousand songs an endless scroll. */
+@media (max-width: 640px) {
+  .sad-index { padding-left: 1.1rem; padding-right: 1.1rem; }
+  .sad-ticker { width: 100%; margin-left: 0; }
+  .sad-toolbar { width: 100%; margin-left: 0; padding-left: 0; padding-right: 0; }
+  .sad-masthead { margin: 2rem 0 1.25rem; }
+  /* minmax(0, …), not 1fr: a bare `1fr` floors at the item's min-content
+     width, and a card's min-content is wider than half a phone — which
+     silently pushed the second column off the screen. */
+  .sad-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.1rem 0.9rem;
+  }
+  .sad-card { contain-intrinsic-size: auto 230px; }
+  .sad-card-title { font-size: 0.95rem; margin-top: 0.5rem; }
+  .sad-card-artist { font-size: 0.82rem; }
+}
+
+/* Standalone (Add to Home Screen): no browser chrome, so the index needs its
+   own breathing room under the status bar. */
+@media (display-mode: standalone) {
+  .sad-index { padding-top: env(safe-area-inset-top); }
+}
+
+/* ================================================================== */
+/* Motion                                                              */
+/* ================================================================== */
+
+/* Cross-document view transitions: paging between songs cross-fades like a
+   native pager instead of blinking through a page load. Ignored where
+   unsupported, and no JavaScript either way.
+
+   Note there is deliberately NO entrance animation on the cards. Under
+   `content-visibility: auto` a card re-runs its animation every time it
+   scrolls back into view, so at a thousand songs a fade-up isn't a flourish,
+   it's a flicker that never stops. */
+@view-transition { navigation: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sad *,
+  .sad *::before,
+  .sad *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+  /* The page-swap cross-fade lives on pseudo-elements outside .sad, so the
+     blanket rule above can't reach it. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

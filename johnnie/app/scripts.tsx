@@ -170,21 +170,11 @@ export default function Scripts() {
     // The Discover page runs its own background/theme logic (a flat white/dark
     // canvas), so the cycling color loop must not run there.
     if (pathname.indexOf("/discover") !== -1) return;
-    // /music is fixed-colour too, but the colour is per-page: the index is a
-    // flat #fafafa and every song page is its own accent, published on the
-    // section element as data-asad-bg. Read it and hold there — no cycling.
-    if (pathname.indexOf("/music") !== -1) {
-      const c = document
-        .querySelector("[data-asad-bg]")
-        ?.getAttribute("data-asad-bg");
-      if (c) {
-        document.documentElement.style.setProperty("--bg", c);
-        document
-          .querySelectorAll('meta[name="theme-color"]')
-          .forEach((m) => m.setAttribute("content", c));
-      }
-      return;
-    }
+    // /songs paints its own background in a server-rendered rule (a flat
+    // off-white on the index, the song's accent on a song page) and sets its
+    // own theme-color per page, so there is nothing to do here but stay out
+    // of the way — the cycling loop must not run over it.
+    if (pathname.indexOf("/songs") !== -1) return;
     // /stuff has no colour cycling; it follows the system light/dark preference
     // (light → #f1f1f0 studio backdrop, dark → #0c0c0d), keeping the nav chrome
     // and browser theme-color in sync — live-updating if the preference flips.

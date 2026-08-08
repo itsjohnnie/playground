@@ -2,13 +2,15 @@
   "name": "johnnies-life",
   "version": "1.0.0",
   "private": true,
-  "description": "Johnnie's Life — personal site built with Next.js (static export).",
+  "description": "Johnnie's Life \u2014 personal site built with Next.js (static export).",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "serve": "npx serve out"
+    "serve": "npx serve out",
+    "songs:add": "node scripts/add-song.mjs",
+    "songs:previews": "node scripts/find-previews.mjs"
   },
   "dependencies": {
     "gray-matter": "4.0.3",
@@ -20,6 +22,7 @@
     "@types/node": "22.10.7",
     "@types/react": "19.0.7",
     "@types/react-dom": "19.0.3",
+    "sharp": "^0.35.3",
     "typescript": "5.7.3"
   }
 }

@@ -213,7 +213,7 @@ body,
 /* Focus: no outline on the control-bar buttons, in any state. site.css draws a
    2px solid currentColor outline at outline-offset 2px, i.e. OUTSIDE the button,
    where .discover-comp's overflow:hidden clips it into a partial edge — and it
-   hangs that off [data-wf-focus-visible] (a leftover Webflow polyfill hook) as
+   hangs that off :focus-visible as
    well as :focus-visible, so a pointer click paints it too. All three states are
    cleared here, and iOS's grey tap-highlight box with them.
 
@@ -229,8 +229,6 @@ body,
 .toggle-mode:focus,
 .discover-logo:focus-visible,
 .toggle-mode:focus-visible,
-.discover-logo[data-wf-focus-visible],
-.toggle-mode[data-wf-focus-visible] { outline: none; }
 @media (prefers-reduced-motion: reduce) {
   /* Hold the glyph at its resting scale — no press dip. */
   .toggle-mode:active .sunmoon { transform: scale(.8); }
