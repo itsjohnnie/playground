@@ -3,3 +3,9 @@
 /gomis /trips/barcelona 301
 /gomis/ /trips/barcelona/ 301
 /gomis/* /trips/barcelona/:splat 301
+
+# A Song a Day® came off Webflow, where songs lived at /song/<slug>. The
+# slugs carried over unchanged, so old links land on the right song.
+/song /music/ 301
+/song/ /music/ 301
+/song/* /music/:splat 301

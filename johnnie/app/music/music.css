@@ -1,0 +1,479 @@
+/* A Song a Day® — /music
+   ------------------------------------------------------------------
+   Ported from the Webflow site (a-song-a-day.webflow.io) by hand: the
+   original's generated stylesheet is ~50KB of Webflow scaffolding, of
+   which this is the part that actually draws the page. Class names are
+   kept close to the originals (`song-photo`, `date_pill`, `sublogo`…)
+   so the two are easy to diff, but everything lives under `.asad` so
+   none of it leaks into the rest of johnnies.life, whose own site.css
+   sets a different body font, colour and background.
+
+   Two routes share this file: the index (/music) and the song page
+   (/music/<slug>/). Both are imported through app/music/layout.tsx. */
+
+.asad {
+  /* The original's stack — system UI for headings, Times for the italic
+     asides. Deliberately not the site's Franklin Gothic: this section
+     kept its own voice on Webflow and keeps it here. */
+  --asad-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Noto Sans", Ubuntu, Cantarell, "Helvetica Neue", Oxygen, "Fira Sans",
+    "Droid Sans", sans-serif;
+  --asad-serif: "Times New Roman", TimesNewRoman, Times, Baskerville, Georgia,
+    serif;
+  --asad-ink: #101011;
+  --asad-line: #d9d9d9;
+  --asad-ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  color: var(--asad-ink);
+  font-family: var(--asad-sans);
+  font-size: 100%;
+  font-weight: 400;
+  line-height: 1.75;
+}
+
+/* The site's global stylesheet paints `.body` pink and the homepage script
+   cycles it; both pages here own their background instead. */
+.asad-index-body { background-color: #fafafa !important; }
+
+.asad ::selection { background: rgb(200, 255, 85); color: #111; }
+.asad ::-moz-selection { background: rgb(200, 255, 85); color: #111; }
+
+/* site.css styles bare h1/h2 for the homepage — uppercase, in Eckmann. An
+   element selector beats an inherited value no matter how specific the
+   ancestor rule is, so the reset has to name the elements too.
+   Kept to the properties no per-element rule below overrides — adding
+   `margin` or `letter-spacing` here would outrank the single-class rules
+   that set them (`.asad h1` is more specific than `.asad-title`). */
+.asad h1,
+.asad h2 {
+  font-family: var(--asad-sans);
+  font-weight: 400;
+  text-transform: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Index: /music                                                       */
+/* ------------------------------------------------------------------ */
+
+.asad-home {
+  width: 100%;
+  min-height: 100vh;
+  padding: 0 6vw 6rem;
+  background-color: #fafafa;
+}
+
+/* Scrolling disclaimer, flush to the top of the page. The original
+   repeated the sentence three times inside an overflow-hidden strip and
+   animated it in Webflow; here one CSS keyframe slides the track by
+   exactly one copy's width, so the loop is seamless. */
+.asad-disclaimer {
+  display: flex;
+  width: 100vw;
+  margin-left: -6vw;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--asad-line);
+  overflow: hidden;
+}
+.asad-marquee {
+  display: flex;
+  flex: none;
+  /* Two identical halves; -50% lands the second exactly where the first
+     began, so there's no jump at the loop point. */
+  animation: asadMarquee 46s linear infinite;
+}
+.asad-disclaimer-text {
+  flex: none;
+  padding-right: 2.5rem;
+  font-family: var(--asad-serif);
+  white-space: nowrap;
+}
+.asad-disclaimer-text .asad-label { font-family: var(--asad-sans); font-weight: 600; }
+@keyframes asadMarquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .asad-marquee { animation: none; }
+  .asad-disclaimer { justify-content: center; }
+}
+
+.asad-headline { position: relative; margin: 4rem 0 6rem; }
+.asad-logo {
+  margin: 0;
+  font-size: 15.38vw;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.asad-sublogo {
+  font-family: var(--asad-serif);
+  font-size: 1.8rem;
+  font-style: italic;
+  line-height: 1.4;
+  letter-spacing: -0.04em;
+}
+.asad-sublogo a { text-decoration: underline; text-decoration-thickness: 0.07em; text-underline-offset: 0.12em; }
+
+.asad-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One card. The whole tile is a link; the hover outline sits 20px out,
+   exactly as the original's did. */
+.asad-song {
+  position: relative;
+  outline: 1px solid transparent;
+  outline-offset: 20px;
+  transition: outline-color 0.2s;
+}
+.asad-song:hover { outline-color: rgba(16, 16, 17, 0.08); }
+.asad-song a { display: block; color: inherit; text-decoration: none; }
+.asad-song a:focus-visible { outline: 1px solid #d9d9d9; outline-offset: 20px; }
+
+.asad-photo-wrap { position: relative; overflow: hidden; border-radius: 2px; }
+.asad-photo {
+  display: block;
+  width: 100%;
+  height: 25vw;
+  object-fit: cover;
+  object-position: 50% 0%;
+  border-radius: 2px;
+  /* The grid is monochrome; colour is what you get on the song page. */
+  filter: brightness(120%) contrast(120%) grayscale(1);
+  transition: filter 0.4s var(--asad-ease), transform 0.4s var(--asad-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .asad-song:hover .asad-photo { filter: none; transform: scale(1.02); }
+}
+
+.asad-song-name {
+  display: inline-block;
+  margin: 0.5em 0 0.4rem;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.asad-song-artist {
+  font-family: var(--asad-serif);
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+}
+
+/* Cards fade up on load, staggered by --i (set inline, capped so the last
+   card in a long list doesn't wait seconds). */
+.asad-song { animation: asadRise 0.5s var(--asad-ease) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes asadRise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .asad-song { animation: none; }
+  .asad-photo, .asad-song:hover .asad-photo { transition: none; transform: none; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Song page: /music/<slug>/                                           */
+/* ------------------------------------------------------------------ */
+
+/* The accent colour (from the song's artwork) is the page. It's set as an
+   inline custom property on the section, so the background, the selection
+   colour and the menu numbers all read from one value. */
+.asad-song-page {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 100vh;
+  /* 6rem all round on desktop; the original tightened the top to 2rem only
+     from the tablet breakpoint down (see the 991px block). */
+  padding: 6rem 6vw;
+  background-color: var(--accent);
+}
+.asad-song-page ::selection { background: #111; color: var(--accent); }
+.asad-song-page ::-moz-selection { background: #111; color: var(--accent); }
+
+.asad-song-container {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 6rem;
+  row-gap: 1rem;
+  align-self: stretch;
+  justify-content: space-between;
+}
+.asad-song-content { display: flex; flex-direction: column; justify-content: space-between; }
+
+.asad-song-nav { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+.asad-song-logo {
+  order: -1;
+  align-self: center;
+  color: #111;
+  font-weight: 600;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.asad-pagination { display: flex; justify-content: center; align-items: center; gap: 0.2rem; }
+.asad-date-pill {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 0.6rem;
+  border: 1px solid #000;
+  border-radius: 2rem;
+  font-size: 0.925rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+.asad-arrow {
+  display: flex;
+  align-items: center;
+  color: var(--asad-ink);
+  transition: transform 0.2s;
+}
+.asad-arrow.is-prev { transform: rotate(180deg); }
+.asad-arrow.is-prev:hover { transform: translateX(-0.5rem) rotate(180deg); }
+.asad-arrow.is-next:hover { transform: translateX(0.5rem); }
+/* An end-of-list arrow keeps its slot so the pills never shift sideways. */
+.asad-arrow.is-off { visibility: hidden; pointer-events: none; }
+
+/* Title block, pinned to the bottom of the column by the flex parent. */
+.asad-block { display: flex; flex-direction: column; align-items: flex-start; margin-top: 2rem; }
+.asad-number {
+  margin: 0;
+  color: rgba(16, 16, 17, 0.2);
+  font-size: 12vh;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.asad-title {
+  margin: 0 0 0.2em;
+  font-size: 11vh;
+  font-weight: 400;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+.asad-blurb {
+  max-width: 90%;
+  margin: 0 0 2rem;
+  font-family: var(--asad-serif);
+  font-size: 1.2rem;
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.asad-buttons { display: flex; gap: 0.5rem; }
+.asad-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem 1.6rem;
+  color: #fff;
+  background-color: #101110;
+  border: 0;
+  border-radius: 2px;
+  font: inherit;
+  font-weight: 600;
+  text-transform: uppercase;
+  text-decoration: none;
+  /* Multiply against the accent, as on the original. */
+  mix-blend-mode: multiply;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.asad-button:hover { opacity: 0.8; }
+.asad-button.is-secondary {
+  color: #101110;
+  background-color: transparent;
+  box-shadow: inset 0 0 0 1px #101110;
+}
+
+/* Artwork column: fills its half, bleeding into the accent via multiply. */
+.asad-image-wrap { position: relative; min-height: 600px; mix-blend-mode: multiply; }
+.asad-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin-top: 2rem;
+  object-fit: cover;
+  object-position: 50% 0%;
+  filter: brightness(120%) grayscale(1);
+}
+
+/* The YouTube embed that plays behind everything, as it did on Webflow. */
+.asad-bg-video {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.asad-bg-video iframe { width: 100%; height: 100%; border: 0; }
+
+/* "All songs" overlay: a full-height black panel that slides in from the
+   left over the page. */
+.asad-menu-button {
+  padding: 0;
+  color: #111;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 600;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.asad-menu {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 2;
+  width: min(100%, 34rem);
+  height: 100vh;
+  padding: 3rem;
+  color: #fff;
+  background-color: #111;
+  -webkit-backdrop-filter: blur(1rem);
+  backdrop-filter: blur(1rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transform: translateX(-100%);
+  transition: transform 0.4s ease;
+}
+.asad-menu.is-open { transform: none; }
+.asad-menu-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: rgba(17, 17, 17, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.asad-menu-scrim.is-open { opacity: 1; pointer-events: auto; }
+/* Sticky, and opaque in the panel's own black — otherwise the song titles
+   scroll straight through it. The negative margins let that black reach the
+   panel's padding edges. */
+.asad-menu-close {
+  position: sticky;
+  top: -3rem;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  width: calc(100% + 6rem);
+  margin: -3rem -3rem 0;
+  padding: 3rem 3rem 1rem;
+  color: #fff;
+  background: #111;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+.asad-menu-list { margin: 0; padding: 0; list-style: none; }
+/* Air between entries — a 42-song list needs it to stay scannable. */
+.asad-menu-item + .asad-menu-item { margin-top: 1.1rem; }
+.asad-menu-item a {
+  display: flex;
+  gap: 1.5rem;
+  color: #fff;
+  text-align: left;
+  text-decoration: none;
+}
+.asad-menu-item a:hover .asad-menu-title { text-decoration: underline; }
+.asad-menu-number {
+  width: 2rem;
+  flex: none;
+  text-align: right;
+  font-size: 2rem;
+  line-height: 1.25;
+}
+.asad-menu-text { display: flex; flex-direction: column; }
+.asad-menu-title { font-size: 2rem; line-height: 1.25; }
+.asad-menu-artist {
+  font-family: var(--asad-serif);
+  font-size: 1.2rem;
+  line-height: 1.5;
+  letter-spacing: -0.03em;
+}
+@media (prefers-reduced-motion: reduce) {
+  .asad-menu, .asad-menu-scrim { transition: none; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Breakpoints — the original's four Webflow tiers.                    */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 991px) {
+  .asad-grid { grid-template-columns: 1fr 1fr; }
+  .asad-photo { height: 40vw; }
+  .asad-logo { font-size: 15.37vw; }
+  .asad-image-wrap { min-height: 600px; }
+  .asad-home { padding-bottom: 2rem; }
+  .asad-song-page { padding-top: 2rem; padding-bottom: 2rem; }
+}
+
+@media (max-width: 767px) {
+  .asad-photo { height: 280px; }
+  .asad-song-container { grid-template-columns: 1fr; }
+  .asad-block { align-items: center; text-align: center; }
+  .asad-title { font-size: 8vh; }
+  .asad-image-wrap { min-height: 500px; }
+  .asad-sublogo { font-size: 1.4rem; }
+  .asad-blurb { max-width: 100%; padding: 0 1rem; }
+}
+
+@media (max-width: 479px) {
+  .asad-home { padding: 0 6vw 2rem; }
+  .asad-grid { grid-template-columns: 1fr; }
+  .asad-photo { aspect-ratio: 1; height: auto; }
+  .asad-logo { font-size: 15.1vw; margin-bottom: 0.2em; }
+  .asad-headline { margin-bottom: 3rem; }
+  .asad-sublogo { font-size: 1.2rem; }
+  .asad-disclaimer { padding: 0.6rem 0; }
+
+  .asad-song-page { padding: 1rem 6vw 6rem; }
+  .asad-number { font-size: 3.2rem; }
+  .asad-title { font-size: 2.8rem; margin-top: 0.5rem; }
+  .asad-blurb { font-size: 1rem; margin-bottom: 1.5rem; }
+  .asad-buttons { flex-direction: column; gap: 0.5rem; width: 100%; }
+  .asad-button { mix-blend-mode: normal; }
+  /* The original hid its secondary button on phones. Ours is the play
+     control, and a phone is exactly where autoplay is refused — hiding it
+     would leave no way to start the video at all. It stays. */
+  .asad-image-wrap { min-height: 60vh; }
+  .asad-menu { padding: 2rem 1.2rem; }
+  .asad-menu-close {
+    top: -2rem;
+    width: calc(100% + 2.4rem);
+    margin: -2rem -1.2rem 0;
+    padding: 2rem 1.2rem 0.8rem;
+  }
+  .asad-menu-item + .asad-menu-item { margin-top: 0.8rem; }
+  .asad-menu-number { width: 1.5rem; font-size: 1.2rem; font-weight: 300; }
+  .asad-menu-title { font-size: 1.2rem; }
+  .asad-menu-artist { font-size: 1rem; }
+
+  /* The date + arrows become a floating pill at the bottom of the screen,
+     as they did on the original's phone layout. */
+  .asad-pagination {
+    position: fixed;
+    left: 50%;
+    bottom: 2rem;
+    z-index: 1;
+    transform: translateX(-50%);
+    padding: 0.5rem 0.3rem;
+    color: #fff;
+    background-color: #111;
+    border-radius: 2.5rem;
+  }
+  .asad-date-pill { border-color: #2b2b2b; }
+  .asad-arrow { color: #fff; }
+}

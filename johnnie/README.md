@@ -11,14 +11,17 @@ johnnie/
 ├─ app/
 │  ├─ layout.tsx     # <head>, fonts, favicons, global styles
 │  ├─ page.tsx       # the full homepage markup (renders content below)
-│  └─ scripts.tsx    # color-cycling bg, scroll-reveal nav, lightbox — all native JS
+│  ├─ scripts.tsx    # color-cycling bg, scroll-reveal nav, lightbox — all native JS
+│  └─ music/         # A Song a Day® — the index, /music/[slug]/, and its CSS
 ├─ content/
 │  ├─ projects/*.md  # the "Work" grid — one file per project (CMS-managed)
-│  └─ features/*.md  # the "Features & Appearances" list (CMS-managed)
+│  ├─ features/*.md  # the "Features & Appearances" list (CMS-managed)
+│  └─ music/*.md     # one file per song in A Song a Day® (CMS-managed)
 ├─ lib/content.ts    # reads the markdown front-matter at build time
 └─ public/
    ├─ site.css       # the site's stylesheet (fonts localized)
    ├─ images/ icons/ videos/ fonts/   # every asset, self-hosted
+   ├─ music/         # album art, self-hosted (was on Webflow's CDN)
    └─ admin/         # Sveltia CMS (config.yml + index.html)
 ```
 
@@ -57,8 +60,8 @@ npm run serve          # preview the exported ./out locally
 
 ## Edit content
 
-**Projects** and **Features** are markdown files with front-matter in
-`content/`. Two ways to edit:
+**Projects**, **Features** and **A Song a Day** are markdown files with
+front-matter in `content/`. Two ways to edit:
 
 1. **Claude Code / any editor** — edit the `.md` files directly. Add a project
    by dropping an image in `public/images/` and creating a new file in
@@ -70,6 +73,38 @@ npm run serve          # preview the exported ./out locally
    ```
    For the hosted admin, set up a GitHub OAuth app and point `/admin/config.yml`
    at it (see Sveltia docs). `repo`/`branch` are configured in that file.
+
+## A Song a Day® (`/music`)
+
+Migrated off [a-song-a-day.webflow.io](https://a-song-a-day.webflow.io) — the
+design is the same, hand-written instead of Webflow-generated, and the album
+art is self-hosted under `public/music/` rather than served from Webflow's CDN.
+
+- **Index** — `app/music/page.tsx`, the grid, newest song first.
+- **Song page** — `app/music/[slug]/page.tsx`, one static HTML file per song
+  (`generateStaticParams`), on its own accent colour.
+- **Styles** — `app/music/music.css`, ported by hand from the Webflow
+  stylesheet; scoped under `.asad` so it can't touch the rest of the site.
+
+Adding a song in the CMS ("A Song a Day" collection) is all it takes: the grid,
+the prev/next arrows, the "All songs" panel and the song's own page all follow
+from the one entry. The fields worth knowing:
+
+| Field | Notes |
+|-------|-------|
+| `order` | The song's number in the run. Highest shows first — a new song is the next number up. |
+| `color` | The song page's background. Pick it out of the artwork. |
+| `youtube` | Just the video id (`g8sX6wZHhD0`), not the whole URL. Plays behind the page. |
+| `note` | Optional. Replaces the automatic "a song by X, featured in the album Y." line. |
+| `slug` | Optional URL override. Blank = derived from the title. |
+
+Songs kept their Webflow slugs, and `/song/<slug>` 301s to `/music/<slug>/`
+(`public/_redirects`), so old links still land.
+
+One thing browsers changed since the original: unmuted autoplay is refused
+everywhere now, so the song page ships a **Play the video** button next to the
+Spotify one. It drives the same embed through YouTube's postMessage API, and
+its label follows the player's real state rather than what we asked for.
 
 ## Hosting / base path
 

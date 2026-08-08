@@ -35,6 +35,10 @@ onto Cloudflare's free tier:
 |------|--------|--------|
 | [johnnies.life](https://johnnies.life) | [`johnnie/`](johnnie/) | `wrangler.toml` (root) via [`deploy-cloudflare.yml`](.github/workflows/deploy-cloudflare.yml) |
 
+[johnnies.life/music](https://johnnies.life/music/) is **A Song a Day®**,
+migrated off `a-song-a-day.webflow.io` into the same app — one markdown file
+per song, editable from `/admin/`. See [`johnnie/README.md`](johnnie/README.md).
+
 bluehousebahia.com lives in its own repo, [`itsjohnnie/bluehouse`](https://github.com/itsjohnnie/bluehouse).
 
 ## Claude Code Documentation

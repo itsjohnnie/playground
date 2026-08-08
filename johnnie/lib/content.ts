@@ -57,6 +57,31 @@ export type StuffItem = {
   cta: string;
 };
 
+// One entry of A Song a Day® (/music) — migrated off Webflow, where each song
+// was a CMS item with its own page. `order` is the song's number in the run
+// (1 = the first one ever); the grid shows them newest-first.
+export type Song = {
+  order: number;
+  title: string;
+  // The song's URL: /music/<slug>/. Derived from the title unless the entry
+  // carries an explicit `slug` — three of the migrated songs had a Webflow
+  // slug longer than their title ("bzrp-music-sessions-vol-3-feat-paco-
+  // amoroso" for "BZRP Music Session"), and the override keeps those old
+  // links working. New entries can just leave it blank.
+  slug: string;
+  artist: string;
+  album: string;
+  date: string; // ISO yyyy-mm-dd; rendered as the DD / MON / YYYY pills
+  // Accent colour: the song page's background, picked from its artwork.
+  color: string;
+  image: string; // album art, self-hosted under /music
+  spotify: string;
+  youtube: string; // video id — plays behind the song page, as it did on Webflow
+  // Optional free-text line replacing the automatic "a song by X, featured in
+  // the album Y." sentence, for when a song deserves an actual note.
+  note: string;
+};
+
 function readCollection<T>(dir: string): T[] {
   const full = path.join(CONTENT, dir);
   if (!fs.existsSync(full)) return [];
@@ -101,4 +126,71 @@ export function getStuff(): StuffItem[] {
   }
 
   return items;
+}
+
+// The accent colour ends up inside a server-rendered <style> block, so it
+// can't be taken on trust: a hand-edited (or CMS-fumbled) value carrying a
+// brace or a semicolon would escape its rule and inject arbitrary CSS. Only
+// plain hex and the rgb()/hsl() function forms get through; anything else
+// falls back to the page's neutral.
+const COLOR_RE = /^(#[0-9a-f]{3,8}|(rgb|hsl)a?\([\d\s.,%/-]+\))$/i;
+
+function safeColor(value: unknown): string {
+  const raw = typeof value === "string" ? value.trim() : "";
+  return COLOR_RE.test(raw) ? raw : "#fafafa";
+}
+
+// Newest first — the order the songs are shown in, and the order the arrows
+// page through. `order` is the song's number in the run, so descending by it
+// puts the most recent song first (as the Webflow grid did).
+export function getSongs(): Song[] {
+  const songs = readCollection<Song & { slug?: string }>("music")
+    .map((s) => ({
+      ...s,
+      slug: s.slug || slugify(s.title),
+      note: typeof s.note === "string" ? s.note : "",
+      album: typeof s.album === "string" ? s.album : "",
+      youtube: typeof s.youtube === "string" ? s.youtube : "",
+      spotify: typeof s.spotify === "string" ? s.spotify : "",
+      color: safeColor(s.color),
+    }))
+    .sort((a, b) => b.order - a.order);
+
+  const seen = new Set<string>();
+  for (const s of songs) {
+    if (seen.has(s.slug)) {
+      throw new Error(
+        `Duplicate /music slug "${s.slug}" (from "${s.title}") — two songs produce the same URL. Set an explicit \`slug\` on one of them.`,
+      );
+    }
+    seen.add(s.slug);
+  }
+
+  return songs;
+}
+
+// "a song by Mac Miller, featured in the album “Circles”." — the line under
+// every song title, unless the entry overrides it with a `note`.
+export function songBlurb(song: Song): string {
+  if (song.note) return song.note;
+  const album = song.album ? `, featured in the album “${song.album}”` : "";
+  return `a song by ${song.artist}${album}.`;
+}
+
+// "05 / Nov / 2022" as three pills. Parsed as UTC (the plain yyyy-mm-dd form
+// is already UTC by spec) and formatted in UTC, so the date never slips a day
+// for readers west of Greenwich.
+export function songDateParts(date: string): [string, string, string] {
+  const d = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return ["", "", ""];
+  const [mon, day, year] = new Intl.DateTimeFormat("en-US", {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
+    .format(d)
+    .replace(",", "")
+    .split(" ");
+  return [day, mon, year];
 }
