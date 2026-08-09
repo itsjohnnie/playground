@@ -3,6 +3,7 @@ import { getSongs } from "@/lib/content";
 import { asset } from "@/lib/asset";
 import SongSearch from "./song-search";
 import PhotoFade from "./photo-fade";
+import Ticker from "./ticker";
 
 const TITLE = "A SONG A DAY® — Curated by Johnnie Gómez";
 const DESCRIPTION =
@@ -47,22 +48,7 @@ export default function SongsPage() {
       </a>
 
       <div className="sad-index">
-        <div className="sad-ticker" aria-hidden="true">
-          {/* Two identical halves so the -50% keyframe loops seamlessly. The
-              whole strip is aria-hidden and the line is repeated for the
-              readable copy below, so nobody hears it six times. */}
-          <div className="sad-ticker-track">
-            {[0, 1].map((half) => (
-              <div className="sad-ticker-half" key={half}>
-                {[0, 1, 2].map((i) => (
-                  <div className="sad-ticker-item" key={i}>
-                    <b>A Song a Day®</b> — {TICKER} •
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
+        <Ticker line={TICKER} />
 
         <header className="sad-masthead">
           <h1 className="sad-logo">A Song a Day®</h1>
