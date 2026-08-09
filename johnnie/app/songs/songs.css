@@ -81,17 +81,24 @@
 /* ================================================================== */
 
 .sad-index {
+  /* One gutter for the whole page, so anything that wants to break out of it
+     can do so exactly — see .sad-ticker and .sad-toolbar below. */
+  --sad-gutter: 6vw;
+
   width: 100%;
   min-height: 100dvh;
-  padding: 0 6vw calc(4rem + env(safe-area-inset-bottom));
+  padding: 0 var(--sad-gutter) calc(4rem + env(safe-area-inset-bottom));
   background-color: var(--sad-paper);
 }
 
-/* Full-bleed scrolling strip at the very top. */
+/* Full-bleed scrolling strip at the very top: edge to edge at every size.
+   Negative margins of exactly one gutter, rather than `100vw` — 100vw counts
+   the scrollbar, so on desktop it ran a few pixels past the right edge and
+   got silently clipped. This lands flush on both sides and follows the
+   gutter automatically when it changes at the phone breakpoint. */
 .sad-ticker {
   display: flex;
-  width: 100vw;
-  margin-left: -6vw;
+  margin-inline: calc(-1 * var(--sad-gutter));
   padding: 0.9rem 0;
   border-bottom: 1px solid var(--sad-line);
   overflow: hidden;
@@ -155,10 +162,9 @@
   align-items: center;
   gap: 0.75rem;
   /* Full-bleed background so content scrolling under it is covered edge to
-     edge, while the controls stay on the page's 6vw margin. */
-  width: 100vw;
-  margin-left: -6vw;
-  padding: 0.6rem 6vw calc(0.6rem + 1px);
+     edge, while the controls stay on the page's own margin. */
+  margin-inline: calc(-1 * var(--sad-gutter));
+  padding: 0.6rem var(--sad-gutter) calc(0.6rem + 1px);
   background: var(--sad-paper);
   border-bottom: 1px solid var(--sad-line);
 }
@@ -563,9 +569,9 @@
 /* Phone index: two columns reads like a library, one column wastes the
    screen and makes a thousand songs an endless scroll. */
 @media (max-width: 640px) {
-  .sad-index { padding-left: 1.1rem; padding-right: 1.1rem; }
-  .sad-ticker { width: 100%; margin-left: 0; }
-  .sad-toolbar { width: 100%; margin-left: 0; padding-left: 0; padding-right: 0; }
+  /* Just the gutter changes; the ticker and toolbar break out of whatever
+     it is, so they stay edge to edge without needing their own overrides. */
+  .sad-index { --sad-gutter: 1.1rem; }
   .sad-masthead { margin: 2rem 0 1.25rem; }
   /* minmax(0, …), not 1fr: a bare `1fr` floors at the item's min-content
      width, and a card's min-content is wider than half a phone — which
