@@ -98,9 +98,16 @@
    gutter automatically when it changes at the phone breakpoint. */
 .sad-ticker {
   display: flex;
+  align-items: center;
   margin-inline: calc(-1 * var(--sad-gutter));
-  padding: 0.9rem 0;
   border-bottom: 1px solid var(--sad-line);
+}
+/* Only the moving part clips; the control sits outside it so the text can
+   never scroll underneath the button. */
+.sad-ticker-window {
+  flex: 1;
+  min-width: 0;
+  padding: 0.9rem 0;
   overflow: hidden;
 }
 .sad-ticker-track {
@@ -110,25 +117,59 @@
      began, so the loop has no seam. */
   animation: sadTicker 46s linear infinite;
 }
+.sad-ticker-track.is-paused { animation-play-state: paused; }
 .sad-ticker-half { display: flex; }
 .sad-ticker-item {
   flex: none;
-  padding-right: 2.5rem;
   font-family: var(--sad-serif);
   font-size: 0.95rem;
   white-space: nowrap;
 }
 .sad-ticker-item b { font-family: var(--sad-sans); font-weight: 600; }
+/* The separator carries the spacing, evenly on both sides. It used to be
+   part of the sentence with all the gap dumped after it, which read as one
+   big hole rather than a rhythm. */
+.sad-ticker-dot {
+  margin: 0 0.85rem;
+  opacity: 0.45;
+}
+
+/* Pause control. Small on the page, but a full tap target: the padding
+   gives it 44px of height without making the strip any taller, because the
+   strip's own height comes from the window's padding. */
+.sad-ticker-toggle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--sad-tap);
+  height: var(--sad-tap);
+  margin-right: max(0.35rem, calc(var(--sad-gutter) - 0.75rem));
+  padding: 0;
+  color: var(--sad-ink);
+  background: none;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.sad-ticker-toggle:hover,
+.sad-ticker-toggle:focus-visible { opacity: 1; }
+
 @keyframes sadTicker {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
 /* Motion nobody asked for, running forever, is exactly what this setting is
-   for: stop it and centre the one legible copy. */
+   for: stop it and centre the one legible copy. With nothing moving there is
+   nothing to pause, so the control goes too. */
 @media (prefers-reduced-motion: reduce) {
   .sad-ticker-track { animation: none; }
-  .sad-ticker { justify-content: center; }
+  .sad-ticker-window { display: flex; justify-content: center; }
   .sad-ticker-half:nth-child(2) { display: none; }
+  .sad-ticker-half > :not(:first-child) { display: none; }
+  .sad-ticker-toggle { display: none; }
 }
 
 .sad-masthead { margin: 3.5rem 0 2rem; }
