@@ -28,12 +28,16 @@ A collection of experimental web projects, prototypes, and interactive demos.
 ## Client Sites
 
 Domains this repo deploys to directly (outside the GitHub Pages playground
-above), as a Cloudflare Worker with static assets — migrated off Webflow
-onto Cloudflare's free tier:
+above), as a Cloudflare Worker with static assets, on Cloudflare's free
+tier:
 
 | Site | Source | Deploy |
 |------|--------|--------|
 | [johnnies.life](https://johnnies.life) | [`johnnie/`](johnnie/) | `wrangler.toml` (root) via [`deploy-cloudflare.yml`](.github/workflows/deploy-cloudflare.yml) |
+
+[johnnies.life/songs](https://johnnies.life/songs/) is **A Song a Day®** — one
+markdown file per song, generated from a Spotify playlist and editable from
+`/admin/`. See [`johnnie/README.md`](johnnie/README.md).
 
 bluehousebahia.com lives in its own repo, [`itsjohnnie/bluehouse`](https://github.com/itsjohnnie/bluehouse).
 

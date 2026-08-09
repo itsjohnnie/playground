@@ -1,0 +1,19 @@
+{
+  "name": "A Song a Day",
+  "short_name": "A Song a Day",
+  "description": "A playlist curated by Johnnie Gómez — one song a day.",
+  "display": "standalone",
+  "start_url": "/songs/",
+  "scope": "/songs/",
+  "background_color": "#fafafa",
+  "theme_color": "#fafafa",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/images/webclip.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

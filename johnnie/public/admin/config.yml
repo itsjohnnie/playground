@@ -158,3 +158,34 @@ collections:
       - { name: image_dark, label: "Isometric image (dark theme, optional)", widget: image, required: false, choose_url: false }
       - { name: link, label: "Buy / info link (optional)", widget: string, required: false, default: "" }
       - { name: cta, label: "Button label (defaults to \"Buy it\")", widget: string, required: false, default: "" }
+
+  # A Song a Day® (johnnies.life/songs). One entry per song — creating one
+  # here creates its page at /songs/<slug>/, adds it to the index, and slots
+  # it into the prev/next arrows automatically. New songs normally arrive via
+  # Claude Code ("add this song" — see johnnie/scripts/add-song.mjs); this
+  # collection is for editing them afterwards, or adding one by hand.
+  - name: songs
+    label: "A Song a Day"
+    label_singular: "Song"
+    folder: "johnnie/content/songs"
+    create: true
+    slug: "{{fields.order}}-{{slug}}"
+    identifier_field: title
+    sortable_fields: [order, title, artist, date]
+    summary: "{{fields.order}} — {{title}} ({{artist}})"
+    # Album art lives under /songs, away from the homepage's /images.
+    media_folder: "/johnnie/public/songs"
+    public_folder: "/songs"
+    fields:
+      - { name: order, label: "Number (the song's place in the run — highest shows first)", widget: number, value_type: int, default: 1 }
+      - { name: title, label: "Song title", widget: string }
+      - { name: artist, label: "Artist", widget: string }
+      - { name: album, label: "Album", widget: string, required: false, default: "" }
+      - { name: date, label: "Date", widget: datetime, date_format: "YYYY-MM-DD", time_format: false, picker_utc: true, format: "YYYY-MM-DD" }
+      - { name: color, label: "Accent colour (the song page's background — text flips to white automatically on dark colours)", widget: color, allow_input: true, default: "#fafafa" }
+      - { name: image, label: "Photo (hand-picked shot of the artist — not the album cover)", widget: image, choose_url: false }
+      - { name: credit, label: "Photo credit / source (shown on the page)", widget: string, required: false, default: "" }
+      - { name: spotify, label: "Spotify track link (the \"full song\" button)", widget: string, required: false, default: "" }
+      - { name: preview, label: "30-second preview clip URL (plays in the page for everyone — `npm run songs:previews` fills this in)", widget: string, required: false, default: "" }
+      - { name: note, label: "Note (optional — replaces the automatic \"a song by X, featured in the album Y.\" line)", widget: text, required: false, default: "" }
+      - { name: slug, label: "URL override (optional — leave blank to use the title)", widget: string, required: false, default: "" }
