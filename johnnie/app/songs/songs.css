@@ -97,6 +97,16 @@
    got silently clipped. This lands flush on both sides and follows the
    gutter automatically when it changes at the phone breakpoint. */
 .sad-ticker {
+  /* How long the track takes to travel one full copy of itself.
+     The text is `white-space: nowrap` at a fixed size, so the track is the
+     same 3191px at every viewport and this duration is a real, constant
+     speed: 1596px of travel / 16s ≈ 100px per second, or about five
+     seconds for one sentence to cross. It was 46s, which works out at
+     35px/s — slow enough to read three times over while waiting.
+     Changing the tagline changes its width, and so the speed; adjust
+     here if it ever gets much longer or shorter. */
+  --sad-ticker-duration: 16s;
+
   display: flex;
   align-items: center;
   margin-inline: calc(-1 * var(--sad-gutter));
@@ -115,7 +125,7 @@
   flex: none;
   /* Two identical halves; -50% lands the second exactly where the first
      began, so the loop has no seam. */
-  animation: sadTicker 46s linear infinite;
+  animation: sadTicker var(--sad-ticker-duration) linear infinite;
 }
 .sad-ticker-track.is-paused { animation-play-state: paused; }
 .sad-ticker-half { display: flex; }
