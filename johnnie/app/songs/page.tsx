@@ -70,7 +70,7 @@ export default function SongsPage() {
             <a href="https://twitter.com/callmejohnnie" target="_blank" rel="noreferrer">
               Johnnie Gómez
             </a>
-            . Back to <a href={asset("/")}>johnnies.life</a>.
+            .
           </p>
         </header>
 
