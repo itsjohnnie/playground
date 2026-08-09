@@ -433,13 +433,23 @@
 
 /* Artwork column — in full colour here, unlike the monochrome index. This
    is the "now playing" screen; the cover is the point. */
+/* The photo is a boxed plate, not a bleed: rounded, with a hairline border
+   in the page's own ink so it reads as an object sitting on the colour. */
 .sad-cover {
   position: relative;
   align-self: stretch;
   min-height: 60vh;
-  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--ink) 16%, transparent);
+  border-radius: 10px;
   overflow: hidden;
 }
+
+/* Every photo gets the same treatment, which is the only reason forty-two
+   images pulled from forty-two different places sit together at all: strip
+   the colour out, then multiply the result onto the accent. What survives is
+   the photo's tonality rendered in the song's colour — a duotone. Two shots
+   that would clash in full colour end up in the same key.
+   `brightness` lifts the whites first, because multiply only ever darkens. */
 .sad-cover img {
   position: absolute;
   inset: 0;
@@ -447,6 +457,8 @@
   height: 100%;
   object-fit: cover;
   object-position: 50% 30%;
+  filter: grayscale(1) brightness(1.14) contrast(1.04);
+  mix-blend-mode: multiply;
 }
 /* Photo source line, sat quietly in the corner of the image. */
 .sad-credit {
@@ -477,66 +489,53 @@
   .sad-song {
     /* The action bar is pinned to the bottom; this keeps the last of the
        content clear of it (and of the home indicator). */
-    padding: 0 0 calc(7rem + env(safe-area-inset-bottom));
+    padding: calc(env(safe-area-inset-top) + 0.5rem) 1.1rem
+      calc(7rem + env(safe-area-inset-bottom));
   }
-  /* Cover first and full-bleed, the way a player app opens. The markup leads
-     with the text column (it's the page's substance, and that's the order a
-     screen reader and a no-CSS render should get it in), so the visual
-     reordering happens here rather than in the DOM. */
+  /* Cover above the text. The markup leads with the text column (it's the
+     page's substance, and that's the order a screen reader and a no-CSS
+     render should get it in), so the visual reordering happens here rather
+     than in the DOM. */
   .sad-song-grid {
     display: flex;
     flex: 1;
     flex-direction: column;
     column-gap: 0;
   }
+  /* `display: contents` dissolves the text column so its two halves — the
+     nav bar and the title block — become flex items alongside the cover and
+     can be ordered independently. Without it the bar is welded above the
+     title and follows it below the photo. Desktop keeps the real column. */
+  .sad-song-col { display: contents; }
+  .sad-topbar { order: -2; }
   .sad-cover { order: -1; }
-  /* Text sits in the space between the cover and the pinned bar, centred
+  /* Text takes the space between the cover and the pinned bar, centred in it
      rather than stranded at the top of a tall empty screen. */
-  .sad-song-col { flex: 1; justify-content: center; }
+  .sad-meta { flex: 1; justify-content: center; }
 
+  /* A square plate with room around it, not a bleed. Keeps its border and
+     radius from the base rule. */
   .sad-cover {
     min-height: 0;
     aspect-ratio: 1;
     width: 100%;
-    border-radius: 0;
-  }
-  /* Melt the bottom of the cover into the accent so there's no hard seam
-     between the artwork and the text below it. */
-  .sad-cover::after {
-    content: "";
-    position: absolute;
-    inset: auto 0 -1px;
-    height: 38%;
-    background: linear-gradient(to bottom, transparent, var(--accent));
+    margin-top: 0.75rem;
   }
 
-  .sad-topbar {
-    position: absolute;
-    top: env(safe-area-inset-top);
-    left: 0;
-    right: 0;
-    z-index: 2;
-    padding: 0.5rem 1.1rem;
-  }
-  /* Over artwork rather than the flat accent, so the controls get their own
-     legibility instead of borrowing the background's. */
-  .sad-home,
-  .sad-pager {
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-    color: #fff;
-    background: rgba(17, 17, 17, 0.42);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-  }
-  .sad-home { padding: 0 0.75rem; font-size: 0.95rem; white-space: nowrap; }
-  .sad-pill { border-color: rgba(255, 255, 255, 0.5); font-size: 0.8rem; }
+  /* The bar sits on the accent above the photo now, so it uses the page's
+     own ink — no blurred pills floating over artwork. */
+  .sad-topbar { padding: 0; }
+  .sad-home { font-size: 0.95rem; white-space: nowrap; }
+  .sad-pill { font-size: 0.8rem; }
   .sad-step { width: 2.2rem; height: var(--sad-tap); }
 
   .sad-meta {
     align-items: center;
-    margin-top: -2.5rem;
-    padding: 0 1.4rem;
+    /* No negative pull any more — that existed to tuck the text under the
+       old gradient fade. The photo is a plate now, so the text sits below
+       it with honest space in between. */
+    margin-top: 1.5rem;
+    padding: 0 0.3rem;
     text-align: center;
   }
   .sad-number { font-size: 2.5rem; }
