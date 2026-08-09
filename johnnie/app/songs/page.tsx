@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { getSongs } from "@/lib/content";
 import { asset } from "@/lib/asset";
 import SongSearch from "./song-search";
+import PhotoFade from "./photo-fade";
 
 const TITLE = "A SONG A DAY® — Curated by Johnnie Gómez";
 const DESCRIPTION =
@@ -117,6 +118,8 @@ export default function SongsPage() {
           No songs match that. Try an artist, or part of a title.
         </p>
       </div>
+
+      <PhotoFade />
     </main>
   );
 }

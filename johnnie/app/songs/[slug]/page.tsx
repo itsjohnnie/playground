@@ -5,6 +5,7 @@ import { getSongs, songBlurb, songDateParts, type Song } from "@/lib/content";
 import { asset } from "@/lib/asset";
 import SongGestures from "./song-gestures";
 import SongPlayer from "./song-player";
+import PhotoFade from "../photo-fade";
 
 type Params = { slug: string };
 
@@ -181,6 +182,7 @@ export default async function SongPage({ params }: { params: Promise<Params> }) 
       </article>
 
       <SongGestures older={olderHref} newer={newerHref} />
+      <PhotoFade />
     </main>
   );
 }
