@@ -233,8 +233,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Monochrome index, colour on the song page — the list reads as one
-     editorial run rather than a wall of competing covers. */
+  /* Monochrome index, duotone on the song page — the list reads as one
+     editorial run rather than a wall of competing photographs. */
   filter: grayscale(1) contrast(1.08) brightness(1.05);
   transition: filter 0.4s var(--sad-ease), transform 0.4s var(--sad-ease);
 }
@@ -442,6 +442,10 @@
   border: 1px solid color-mix(in srgb, var(--ink) 16%, transparent);
   border-radius: 10px;
   overflow: hidden;
+  /* The plate holds the accent until the photo arrives, so the frame is
+     never an empty hole — and it's what the photo fades up out of. Same
+     colour the image multiplies onto, so the blend is unchanged. */
+  background: var(--accent);
 }
 
 /* Every photo gets the same treatment, which is the only reason forty-two
@@ -459,6 +463,31 @@
   object-position: 50% 30%;
   filter: grayscale(1) brightness(1.14) contrast(1.04);
   mix-blend-mode: multiply;
+}
+
+/* Photos cross-fade up out of their coloured placeholder instead of
+   snapping in. Gated on [data-fade], which app/songs/photo-fade.tsx sets
+   once it's watching: without JavaScript the attribute never appears, the
+   images are never hidden, and the page just works.
+
+   The opacity transition lives ONLY on the loaded state, never on the
+   hidden one. Put it on both and hiding the image is itself animated — the
+   photo spends the first half-second fading *out* from full opacity before
+   it can fade in, so the real fade starts late and the placeholder is doing
+   nothing while it waits. Hidden should be instant; only the arrival is
+   worth animating. */
+.sad[data-fade] .sad-art img,
+.sad[data-fade] .sad-cover img {
+  opacity: 0;
+}
+.sad[data-fade] .sad-art img[data-loaded] {
+  opacity: 1;
+  transition: filter 0.4s var(--sad-ease), transform 0.4s var(--sad-ease),
+    opacity 0.55s ease-out;
+}
+.sad[data-fade] .sad-cover img[data-loaded] {
+  opacity: 1;
+  transition: opacity 0.55s ease-out;
 }
 /* Photo source line, sat quietly in the corner of the image. */
 .sad-credit {
