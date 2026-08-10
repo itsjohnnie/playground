@@ -60,28 +60,36 @@ export async function generateMetadata({
   };
 }
 
-// Drawn as a stroke rather than a filled wedge. The old one was a solid
-// shape about 2px through the waist, next to borders that are all 1px — so
-// it read as the heaviest thing in the row — and it splayed at nearly 40°
-// from vertical, which made it stubby. This is a single 1px line at a
-// steeper 35°, so it sits at the same weight as the pills beside it.
+// A whole arrow — shaft and head — not a chevron. Two passes at the chevron
+// (angle, then weight) both read wrong: on its own a bare V has no direction
+// to point along, so it has to lean hard to look like it means anything, and
+// leaning hard is exactly what made it stubby. The shaft carries the
+// direction here, which lets the head stay shallow and quiet.
+//
+// The line runs the full width of the box so the glyph reads as horizontal
+// against the round pills beside it.
 //
 // `vector-effect="non-scaling-stroke"` is what makes 1px actually mean one
 // device pixel: without it the stroke scales with the viewBox and lands at
-// whatever thickness the 24→18 ratio produces.
-function Chevron() {
+// whatever thickness the 24→20 ratio produces. 1px is --sad-rule, the same
+// hairline as the pill borders.
+function Arrow() {
   return (
     <svg
-      width="18"
-      height="18"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       aria-hidden="true"
       fill="none"
       stroke="currentColor"
+      strokeWidth="1"
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M10.5 5 L15.5 12 L10.5 19" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+      {/* Centred in the box on its own ink (4.5→19.5), not on the path data,
+          so the two arrows sit symmetrically either side of the date. */}
+      <path d="M4.5 12 H19.5" vectorEffect="non-scaling-stroke" />
+      <path d="M13.7 7 L19.5 12 L13.7 17" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
@@ -141,11 +149,11 @@ export default async function SongPage({ params }: { params: Promise<Params> }) 
               <div className="sad-pager">
                 {olderHref ? (
                   <Link className="sad-step sad-step--prev" href={olderHref} rel="prev" aria-label={`Older song: ${older.title}`}>
-                    <Chevron />
+                    <Arrow />
                   </Link>
                 ) : (
                   <span className="sad-step sad-step--prev" aria-disabled="true" aria-hidden="true">
-                    <Chevron />
+                    <Arrow />
                   </span>
                 )}
 
@@ -159,11 +167,11 @@ export default async function SongPage({ params }: { params: Promise<Params> }) 
 
                 {newerHref ? (
                   <Link className="sad-step sad-step--next" href={newerHref} rel="next" aria-label={`Newer song: ${newer.title}`}>
-                    <Chevron />
+                    <Arrow />
                   </Link>
                 ) : (
                   <span className="sad-step sad-step--next" aria-disabled="true" aria-hidden="true">
-                    <Chevron />
+                    <Arrow />
                   </span>
                 )}
               </div>
