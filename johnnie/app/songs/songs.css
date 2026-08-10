@@ -515,6 +515,24 @@
   background: var(--accent);
 }
 
+/* The whole look depends on the photo being seen through the duotone, and a
+   long-press on iOS blows straight past it — the callout previews the
+   original file in full colour, as does dragging one out on a desktop. So
+   the images aren't interactive: no callout, no drag, no selection, and no
+   pointer events at all. On the index the tap still lands, because the card's
+   link is the element underneath. */
+.sad-art img,
+.sad-cover img {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+/* The card is a link, and long-pressing a link raises its own preview sheet
+   — which renders the image inside it, colour and all. */
+.sad-card a { -webkit-touch-callout: none; }
+
 /* Every photo gets the same treatment, which is the only reason forty-two
    images pulled from forty-two different places sit together at all: strip
    the colour out, then multiply the result onto the accent. What survives is
@@ -596,7 +614,7 @@
     min-height: 0;
     aspect-ratio: 1;
     width: 100%;
-    margin-top: 0.75rem;
+    margin-top: 0.3rem;
   }
 
   /* The bar sits on the accent above the photo now, so it uses the page's
@@ -605,6 +623,13 @@
   .sad-home { font-size: 0.88rem; white-space: nowrap; letter-spacing: 0.02em; }
   .sad-pill { font-size: 0.72rem; padding: 0.05rem 0.38rem; }
   .sad-step { width: 1.6rem; height: var(--sad-tap); }
+  /* The row was 44px tall only because the tap targets inside it are — which
+     left a band of empty colour between the date and the photo. The targets
+     keep their full 44px (nothing gets harder to hit); negative block margins
+     just stop them dictating the row's height, pulling the bar in around
+     them. */
+  .sad-home,
+  .sad-step { margin-block: -0.5rem; }
 
   .sad-meta {
     align-items: center;
