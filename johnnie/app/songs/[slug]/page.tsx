@@ -184,7 +184,9 @@ export default async function SongPage({ params }: { params: Promise<Params> }) 
           </div>
 
           <div className="sad-cover">
-            {/* Hand-picked photographs of the artists, not album covers. */}
+            {/* Hand-picked photographs of the artists, not album covers.
+                Where each came from is recorded in the entry's `credit`
+                field — kept as a record, deliberately not shown. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={asset(song.image)}
@@ -196,7 +198,6 @@ export default async function SongPage({ params }: { params: Promise<Params> }) 
               decoding="async"
               sizes="(max-width: 860px) 100vw, 50vw"
             />
-            {song.credit && <p className="sad-credit">{song.credit}</p>}
           </div>
         </div>
       </article>

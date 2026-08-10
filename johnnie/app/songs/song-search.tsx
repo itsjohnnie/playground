@@ -77,14 +77,27 @@ export default function SongSearch({ total }: { total: number }) {
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search songs, artists, albums…"
+        // The total lives in the placeholder rather than in a chip beside
+        // the field. On a phone that chip sat in the sticky bar taking up
+        // room the whole way down the list, to say a number that never
+        // changed until you typed something.
+        placeholder={`Search ${total} songs…`}
         autoComplete="off"
         spellCheck={false}
       />
-      {/* Announced politely so a screen reader hears the result count settle
-          rather than every intermediate number as it's typed. */}
-      <output className="sad-count" htmlFor="sad-search" aria-live="polite">
-        {shown === total ? `${total} songs` : `${shown} of ${total}`}
+
+      {/* Only worth the space once it's actually telling you something. */}
+      {query.trim() !== "" && (
+        <span className="sad-count" aria-hidden="true">
+          {shown} of {total}
+        </span>
+      )}
+
+      {/* The count as a live region, always present so a screen reader hears
+          the result total settle after typing — politely, so it reads the
+          final number rather than every intermediate one. */}
+      <output className="sr-only" htmlFor="sad-search" aria-live="polite">
+        {shown === total ? `${total} songs` : `${shown} of ${total} songs`}
       </output>
     </>
   );

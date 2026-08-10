@@ -378,25 +378,32 @@
   text-decoration: none;
 }
 
-.sad-pager { display: flex; align-items: center; gap: 0.25rem; }
-.sad-pager-date { display: flex; align-items: center; gap: 0.25rem; }
+.sad-pager { display: flex; align-items: center; gap: 0.15rem; }
+.sad-pager-date { display: flex; align-items: center; gap: 0.2rem; }
+/* Compact by design: these are a date, not a call to action. Tight padding,
+   a hairline rather than a full-weight border, and a smaller face — they sit
+   beside the arrows without crowding the top of the screen. */
 .sad-pill {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0.1rem 0.6rem;
-  border: 1px solid currentColor;
+  padding: 0.05rem 0.42rem;
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
   border-radius: 2rem;
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
   text-transform: uppercase;
+  line-height: 1.5;
 }
 .sad-step {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: var(--sad-tap);
+  /* Narrower than it is tall: still a comfortable target vertically, but it
+     stops padding the row out sideways. */
+  width: 1.9rem;
   height: var(--sad-tap);
   color: inherit;
   transition: transform 0.2s var(--sad-ease);
@@ -549,26 +556,7 @@
   opacity: 1;
   transition: opacity 0.55s ease-out;
 }
-/* Photo source line, sat quietly in the corner of the image. */
-.sad-credit {
-  position: absolute;
-  right: 0.5rem;
-  bottom: 0.4rem;
-  z-index: 1;
-  max-width: calc(100% - 1rem);
-  margin: 0;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  color: #fff;
-  background: rgba(17, 17, 17, 0.45);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  font-size: 0.7rem;
-  line-height: 1.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+
 
 /* ================================================================== */
 /* Phone: the song page becomes a "now playing" screen                 */
@@ -614,9 +602,9 @@
   /* The bar sits on the accent above the photo now, so it uses the page's
      own ink — no blurred pills floating over artwork. */
   .sad-topbar { padding: 0; }
-  .sad-home { font-size: 0.95rem; white-space: nowrap; }
-  .sad-pill { font-size: 0.8rem; }
-  .sad-step { width: 2.2rem; height: var(--sad-tap); }
+  .sad-home { font-size: 0.88rem; white-space: nowrap; letter-spacing: 0.02em; }
+  .sad-pill { font-size: 0.72rem; padding: 0.05rem 0.38rem; }
+  .sad-step { width: 1.6rem; height: var(--sad-tap); }
 
   .sad-meta {
     align-items: center;
