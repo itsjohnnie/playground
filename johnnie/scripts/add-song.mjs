@@ -30,7 +30,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { findPreview } from "./lib/preview.mjs";
+import { resolvePreview } from "./lib/preview.mjs";
 import { importArtwork, hasSharp } from "./lib/artwork.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -115,10 +115,13 @@ let preview = "";
 if (!opts["no-preview"]) {
   process.stdout.write("  looking for a 30-second preview… ");
   try {
-    const hit = await findPreview(title, artist, album);
+    const hit = await resolvePreview(title, artist, album, opts.spotify);
     if (hit) {
       preview = hit.url;
-      console.log(`found\n    ${hit.matched}${hit.variant ? "  ⚠ variant recording" : ""}`);
+      console.log(
+        `found (${hit.source})\n    ${hit.matched}` +
+          (hit.variant ? "  ⚠ variant recording" : ""),
+      );
     } else {
       console.log("none confidently matched (the page will link to Spotify instead)");
     }

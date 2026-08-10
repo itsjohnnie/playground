@@ -11,6 +11,42 @@
 // none, so every candidate has to match on BOTH title and artist before it's
 // accepted, and a song with no confident match simply gets no preview.
 
+// The best preview is the one we don't have to guess at.
+//
+// When a song already carries a Spotify track link, Spotify's own embed page
+// exposes that track's 30-second clip on a public CDN — no key, no login,
+// and no matching, because the link identifies the exact recording. That
+// sidesteps this whole file's hard problem: there is nothing to get wrong.
+//
+// Only used when a Spotify link exists. Songs without one still go through
+// the search-and-verify path below.
+export async function spotifyPreview(link) {
+  const id = (String(link || "").match(/track\/([A-Za-z0-9]{22})/) || [])[1];
+  if (!id) return null;
+  try {
+    const res = await fetch(`https://open.spotify.com/embed/track/${id}`, {
+      headers: { "user-agent": "Mozilla/5.0 (compatible; a-song-a-day/1.0)" },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const json = html.match(
+      /<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s,
+    );
+    if (!json) return null;
+    const entity = JSON.parse(json[1])?.props?.pageProps?.state?.data?.entity;
+    const url = entity?.audioPreview?.url;
+    if (!url) return null;
+    return {
+      url,
+      source: "spotify",
+      matched: `${entity.title} — ${(entity.artists || []).map((a) => a.name).join(", ")}`,
+      exact: true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 const norm = (s) =>
   (s || "")
     .normalize("NFD")
@@ -137,4 +173,14 @@ export async function findPreview(title, artist, album = "") {
   // retried later; the caller is told which happened.
   if (throttled) throw new Error("iTunes Search throttled — try again shortly");
   return null;
+}
+
+// What both scripts actually call. Tries the exact route first (Spotify's own
+// clip for the linked track), then falls back to searching Apple's catalogue
+// and verifying the result — which is the only option for a song with no
+// Spotify link, and still refuses anything it isn't sure of.
+export async function resolvePreview(title, artist, album = "", spotify = "") {
+  const exact = await spotifyPreview(spotify);
+  if (exact) return exact;
+  return findPreview(title, artist, album);
 }

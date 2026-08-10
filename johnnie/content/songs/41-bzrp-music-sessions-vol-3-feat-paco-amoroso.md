@@ -8,6 +8,6 @@ date: "2022-11-04"
 color: "#97cfe0"
 image: "/songs/41-bzrp-music-sessions-vol-3-feat-paco-amoroso.webp"
 spotify: "https://open.spotify.com/track/6GIJ1H3QklpRlRVaMG2r7j"
-preview: ""
+preview: "https://p.scdn.co/mp3-preview/173785554c15ef49198ad96bff4a66a93e120f59"
 note: ""
 ---

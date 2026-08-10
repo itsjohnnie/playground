@@ -15,7 +15,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { findPreview } from "./lib/preview.mjs";
+import { resolvePreview } from "./lib/preview.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CONTENT = path.join(ROOT, "content", "songs");
@@ -51,7 +51,7 @@ for (const file of files) {
 
   let hit = null;
   try {
-    hit = await findPreview(title, artist, album);
+    hit = await resolvePreview(title, artist, album, field(text, "spotify"));
   } catch (err) {
     console.error(`\n✗ ${err.message}`);
     console.error("  Stopping here — rerun in a minute to pick up where this left off.\n");
@@ -61,7 +61,7 @@ for (const file of files) {
   if (hit) {
     found++;
     console.log(`✓ ${title} — ${artist}`);
-    console.log(`    ${hit.matched}${hit.variant ? "   ⚠ variant recording" : ""}`);
+    console.log(`    ${hit.matched}  [${hit.source}]${hit.variant ? "   ⚠ variant recording" : ""}`);
     if (hit.variant) variants.push(`${title} — ${hit.matched}`);
   } else {
     missing++;
