@@ -7,6 +7,6 @@ date: "2022-09-26"
 color: "#ff7213"
 image: "/songs/01-sweet-life.webp"
 spotify: "https://open.spotify.com/track/6MEDfjHxnVNcYmHe3mM6L2"
-preview: ""
+preview: "https://p.scdn.co/mp3-preview/adc193bb45760647bab1203520c047919c76316c"
 note: ""
 ---
