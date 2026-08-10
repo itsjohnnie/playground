@@ -60,13 +60,28 @@ export async function generateMetadata({
   };
 }
 
+// Drawn as a stroke rather than a filled wedge. The old one was a solid
+// shape about 2px through the waist, next to borders that are all 1px — so
+// it read as the heaviest thing in the row — and it splayed at nearly 40°
+// from vertical, which made it stubby. This is a single 1px line at a
+// steeper 35°, so it sits at the same weight as the pills beside it.
+//
+// `vector-effect="non-scaling-stroke"` is what makes 1px actually mean one
+// device pixel: without it the stroke scales with the viewBox and lands at
+// whatever thickness the 24→18 ratio produces.
 function Chevron() {
   return (
-    <svg width="17" height="17" viewBox="0 0 16 16" aria-hidden="true">
-      <path
-        fill="currentColor"
-        d="M6.769,1.36A1,1,0,0,0,5.231,2.64L9.7,8,5.231,13.36a1,1,0,0,0,1.538,1.28l5-6a1,1,0,0,0,0-1.28Z"
-      />
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      fill="none"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10.5 5 L15.5 12 L10.5 19" strokeWidth="1" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
