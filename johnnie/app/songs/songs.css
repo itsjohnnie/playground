@@ -260,7 +260,13 @@
      supplies a placeholder height so the scrollbar doesn't lurch as cards
      come into view. */
   content-visibility: auto;
-  contain-intrinsic-size: auto 320px;
+  /* Placeholder height for cards that haven't been rendered yet, so the
+     scrollbar doesn't lurch as they come into view. `auto` means the browser
+     uses the real size once it has seen a card, so these fallbacks only
+     matter on the first pass down the list — but they should still be close,
+     and the value tracks the column width, which changes per breakpoint.
+     Measured, not guessed: 317px at 1440. */
+  contain-intrinsic-size: auto 330px;
 }
 .sad-card[hidden] { display: none; }
 .sad-card a {
@@ -272,7 +278,10 @@
 
 .sad-art {
   position: relative;
-  aspect-ratio: 1;
+  /* A shade taller than square. Most of these are portraits of people, and
+     a true square crops them tight; 1:1.1 gives a little headroom without
+     tipping the grid into a magazine-column look. */
+  aspect-ratio: 1 / 1.1;
   overflow: hidden;
   border-radius: 4px;
   /* Painted before the image lands, so a slow connection shows the song's
@@ -645,6 +654,14 @@
   .song-player-frame { height: 80px; border-radius: 10px; }
 }
 
+/* Between the phone grid and the desktop one, auto-fill settles on two wide
+   columns, so a card is far taller than at either end — measured 415px at
+   768 against 317px at 1440. Without this the placeholder is ~90px short per
+   row and the scrollbar jumps on the first scroll through. */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .sad-card { contain-intrinsic-size: auto 420px; }
+}
+
 /* Phone index: two columns reads like a library, one column wastes the
    screen and makes a thousand songs an endless scroll. */
 @media (max-width: 640px) {
@@ -659,7 +676,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.1rem 0.9rem;
   }
-  .sad-card { contain-intrinsic-size: auto 230px; }
+  .sad-card { contain-intrinsic-size: auto 245px; } /* measured 234px */
   .sad-card-title { font-size: 0.95rem; margin-top: 0.5rem; }
   .sad-card-artist { font-size: 0.82rem; }
 }
