@@ -288,6 +288,17 @@
      tipping the grid into a magazine-column look. */
   aspect-ratio: 1 / 1.1;
   overflow: hidden;
+  /* The same hairline frame the song page puts round its cover, at the same
+     16% — one idea, two sizes. It's translucent ink rather than a flat grey
+     on purpose: over a pale accent it draws the edge that a light,
+     desaturated photo otherwise loses against the paper, and over a dark one
+     it disappears, because a dark card already has an edge. A solid line
+     would ring the dark cards in grey.
+
+     Sized into the box, not added to it: `aspect-ratio` applies to the
+     border box under border-box sizing, so the frame costs the photo a pixel
+     rather than costing the grid two. */
+  border: var(--sad-rule) solid color-mix(in srgb, var(--sad-ink) 16%, transparent);
   border-radius: 4px;
   /* Painted before the image lands, so a slow connection shows the song's
      own colour instead of a white hole. */
