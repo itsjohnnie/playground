@@ -6,6 +6,7 @@ import { asset } from "@/lib/asset";
 import SongGestures from "./song-gestures";
 import SongPlayer from "./song-player";
 import PhotoFade from "../photo-fade";
+import ThemeColor from "./theme-color";
 
 type Params = { slug: string };
 
@@ -27,7 +28,12 @@ export async function generateViewport({
 }): Promise<Viewport> {
   const { slug } = await params;
   return {
-    // Each song tints the browser chrome with its own accent.
+    // Correct in the server HTML, so a no-JS visitor still gets the right
+    // browser chrome. Next re-applies this on every client-side navigation
+    // by removing the tag and inserting a new one, which Safari often
+    // ignores — so the script below installs a second, longer-lived tag
+    // ahead of it. First theme-color in the document wins, and that one is
+    // only ever edited in place.
     themeColor: find(slug)?.color ?? "#fafafa",
     width: "device-width",
     initialScale: 1,
@@ -89,6 +95,20 @@ export default async function SongPage({ params }: { params: Promise<Params> }) 
       <style
         dangerouslySetInnerHTML={{
           __html: `.body { background-color: ${song.color} !important; }`,
+        }}
+      />
+      {/* Paints the browser chrome before first paint, and creates the one
+          long-lived meta that ThemeColor then edits in place on every
+          subsequent song. Runs during parse, so it beats hydration and works
+          even if the JS never arrives. The colour is validated hex (see
+          lib/content.ts) and JSON-encoded on the way in. */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html:
+            `(function(c){var m=document.querySelector('meta[name=theme-color][data-sad]');` +
+            `if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');` +
+            `m.setAttribute('data-sad','');document.head.appendChild(m);}` +
+            `m.setAttribute('content',c);})(${JSON.stringify(song.color)})`,
         }}
       />
 
@@ -181,6 +201,7 @@ export default async function SongPage({ params }: { params: Promise<Params> }) 
         </div>
       </article>
 
+      <ThemeColor color={song.color} />
       <SongGestures older={olderHref} newer={newerHref} />
       <PhotoFade />
     </main>
