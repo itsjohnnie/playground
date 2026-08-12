@@ -54,8 +54,8 @@
 .room{view-transition-name:artwork}
 ::view-transition-group(sheet),::view-transition-group(artwork){
 animation-duration:380ms;animation-timing-function:cubic-bezier(0.23,1,0.32,1)}
-::view-transition-old(artwork),::view-transition-new(artwork){
-animation-duration:300ms}
+::view-transition-old(artwork){animation:vt-ink-out 160ms ease both}
+::view-transition-new(artwork){animation:vt-ink-in 200ms ease 180ms both}
 /* the masthead is the anchor of the morph: its snapshots render at
    natural size, pinned to the top-left corner the two pages share, so
    the type never rescales — the wordmark holds still while the bar's
@@ -71,16 +71,20 @@ inset:0 auto auto 0;width:auto;height:auto}
    the type, not the corners, not the paper; the box only wipes wider
    or narrower over still faces */
 ::view-transition-image-pair(sheet){overflow:hidden;
-border-radius:clamp(0px,3vw,40px)}
+border-radius:clamp(0px,3vw,40px);background:#f2f1ee}
 ::view-transition-old(sheet),::view-transition-new(sheet){
-inset:0 auto auto 0;width:auto;height:auto}
-/* the index face sits solid underneath at full opacity (animation:none
-   also silences the UA's plus-lighter blend animation) and the piece
-   face fades in above it — the paper is never half-faded. Plain
-   selectors on purpose: structural guards like :only-child parse but
-   never match on these pseudos */
-::view-transition-old(sheet),::view-transition-new(sheet){mix-blend-mode:normal}
-::view-transition-old(sheet){animation:none}
+inset:0 auto auto 0;width:auto;height:auto;mix-blend-mode:normal}
+/* the contents never blend: the pair itself is the paper, so the old
+   ink lifts OFF first, the bare sheet rides the wipe, and the new ink
+   settles IN — two fades in sequence, never superimposed. The room's
+   artwork (rules above) follows the same grammar against the dark.
+   (Plain selectors on purpose: structural guards like :only-child
+   parse but never match on these pseudos; the named animations also
+   replace the UA's plus-lighter blend animation) */
+::view-transition-old(sheet){animation:vt-ink-out 160ms ease both}
+::view-transition-new(sheet){animation:vt-ink-in 200ms ease 180ms both}
+@keyframes vt-ink-out{to{opacity:0}}
+@keyframes vt-ink-in{from{opacity:0}}
 @media (prefers-reduced-motion:reduce){
 ::view-transition-group(*),::view-transition-image-pair(*),
 ::view-transition-old(*),::view-transition-new(*){animation:none!important}}
