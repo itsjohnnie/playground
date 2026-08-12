@@ -202,6 +202,10 @@
     animation-delay: calc(var(--day-base) + var(--di, 0) * var(--day-step));
   }
   @keyframes day-in { to { opacity: 1; transform: none; filter: blur(0); } }
+  /* hairlines between the days — the same rule the spec card draws
+     between its rows, so the list reads as one ruled sheet. Between
+     only: no line above the first match or under the last */
+  .day + .day { border-top: 1px solid rgba(22, 19, 15, 0.08); }
   @media (prefers-reduced-motion: reduce) {
     .day, header.top, .intro h1, .intro p {
       animation: day-fade 200ms ease forwards; transform: none; filter: none;
