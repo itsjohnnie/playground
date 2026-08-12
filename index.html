@@ -202,8 +202,19 @@
             z-index: 0;
         }
 
-        /* Layered gradient blur: each stacked layer doubles the blur and owns
-           one band of the mask, so the blur ramps smoothly instead of jumping */
+        /* Cumulative blur stack: every layer stretches to the bottom, each one
+           starting 12.5% lower and adding a little more blur on top of the
+           already-blurred layers beneath it, so the total ramps up smoothly.
+           No masks: this compositor ignores mask on backdrop-filter layers
+           (verified — a masked layer's red test background painted unclipped),
+           so element bounds do the banding instead, which every engine honors.
+           Two invariants keep the ramp intact:
+           - layers must paint in tree order (::before, divs, ::after) so each
+             samples the previous ones' output — don't add z-index back;
+           - stacked blurs compose as sqrt of the sum of squares, so the radii
+             below are NOT a doubling series: 0.5/1/1.5/2/3/4/6/10 accumulate
+             to ~13px at the bottom. Doubling them again would compound to
+             ~74px of mush. */
         .progressive-blur > div,
         .progressive-blur::before,
         .progressive-blur::after {
@@ -212,73 +223,21 @@
             inset: 0;
             opacity: var(--blur-fade, 1);
             transition: opacity 0.3s ease;
+            backdrop-filter: blur(var(--b, 0.5px));
+            -webkit-backdrop-filter: blur(var(--b, 0.5px));
         }
 
-        .progressive-blur::before {
-            z-index: 1;
-            backdrop-filter: blur(0.5px);
-            -webkit-backdrop-filter: blur(0.5px);
-            mask: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 12.5%, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 37.5%);
-            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 12.5%, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 37.5%);
-        }
+        .progressive-blur > div:nth-of-type(1) { top: 12.5%; --b: 1px; }
+        .progressive-blur > div:nth-of-type(2) { top: 25%;   --b: 1.5px; }
+        .progressive-blur > div:nth-of-type(3) { top: 37.5%; --b: 2px; }
+        .progressive-blur > div:nth-of-type(4) { top: 50%;   --b: 3px; }
+        .progressive-blur > div:nth-of-type(5) { top: 62.5%; --b: 4px; }
+        .progressive-blur > div:nth-of-type(6) { top: 75%;   --b: 6px; }
+        .progressive-blur::after               { top: 87.5%; --b: 10px; }
 
-        .progressive-blur > div:nth-of-type(1) {
-            z-index: 2;
-            backdrop-filter: blur(1px);
-            -webkit-backdrop-filter: blur(1px);
-            mask: linear-gradient(to bottom, rgba(0,0,0,0) 12.5%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 37.5%, rgba(0,0,0,0) 50%);
-            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 12.5%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 37.5%, rgba(0,0,0,0) 50%);
-        }
-
-        .progressive-blur > div:nth-of-type(2) {
-            z-index: 3;
-            backdrop-filter: blur(2px);
-            -webkit-backdrop-filter: blur(2px);
-            mask: linear-gradient(to bottom, rgba(0,0,0,0) 25%, rgba(0,0,0,1) 37.5%, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 62.5%);
-            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 25%, rgba(0,0,0,1) 37.5%, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 62.5%);
-        }
-
-        .progressive-blur > div:nth-of-type(3) {
-            z-index: 4;
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
-            mask: linear-gradient(to bottom, rgba(0,0,0,0) 37.5%, rgba(0,0,0,1) 50%, rgba(0,0,0,1) 62.5%, rgba(0,0,0,0) 75%);
-            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 37.5%, rgba(0,0,0,1) 50%, rgba(0,0,0,1) 62.5%, rgba(0,0,0,0) 75%);
-        }
-
-        .progressive-blur > div:nth-of-type(4) {
-            z-index: 5;
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            mask: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 62.5%, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 87.5%);
-            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 62.5%, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 87.5%);
-        }
-
-        .progressive-blur > div:nth-of-type(5) {
-            z-index: 6;
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            mask: linear-gradient(to bottom, rgba(0,0,0,0) 62.5%, rgba(0,0,0,1) 75%, rgba(0,0,0,1) 87.5%, rgba(0,0,0,0) 100%);
-            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 62.5%, rgba(0,0,0,1) 75%, rgba(0,0,0,1) 87.5%, rgba(0,0,0,0) 100%);
-        }
-
-        .progressive-blur > div:nth-of-type(6) {
-            z-index: 7;
-            backdrop-filter: blur(32px);
-            -webkit-backdrop-filter: blur(32px);
-            mask: linear-gradient(to bottom, rgba(0,0,0,0) 75%, rgba(0,0,0,1) 87.5%, rgba(0,0,0,1) 100%);
-            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 75%, rgba(0,0,0,1) 87.5%, rgba(0,0,0,1) 100%);
-        }
-
-        .progressive-blur::after {
-            z-index: 8;
-            backdrop-filter: blur(64px);
-            -webkit-backdrop-filter: blur(64px);
-            mask: linear-gradient(to bottom, rgba(0,0,0,0) 87.5%, rgba(0,0,0,1) 100%);
-            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 87.5%, rgba(0,0,0,1) 100%);
-        }
-
-        .prompt-line {
+        /* scoped to the input row: the same class on command echoes in the
+           scrollback must NOT lift them above the blur stack */
+        .terminal-input-wrapper .prompt-line {
             position: relative;
             z-index: 1;
         }
