@@ -94,6 +94,13 @@ list: **append at the end, never reorder, never delete.** An entry whose
 emoji has no Twemoji glyph (a typo, or text that isn't an emoji) doesn't
 break anything — the build warns and the page quietly skips it.
 
+**Rarity:** the "Earned by X%" line doubles as the badge's draw weight —
+each visit deals the case in a weighted order, so a 0.5% badge genuinely
+turns up late and rarely, while every badge still appears once per full
+cycle of taps. Set it per badge with the optional `earned` field in the
+CMS (any number — clamped into 0.1–100); left blank, it's derived from
+the emoji itself (a stable value between 0.3 and 9.9).
+
 ## A Song a Day® (`/songs`)
 
 A playlist page: one song, one page, one photo, one colour.

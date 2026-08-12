@@ -185,13 +185,23 @@ if (new URLSearchParams(location.search).has('sim')){
    reorder. */
 const BADGES = await fetch('/badge/badges.json')
   .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(j => j.badges.map(b => [String(b.emoji).trim(), b.label]))
+  .then(j => j.badges.map(b => [String(b.emoji).trim(), b.label, b.earned]))
   .catch(e => { console.error('the badge case failed to open:', e); return []; });
 
 /* seeded rng — grain and percentages must not shimmer between frames */
 function hash32(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
 function mulberry32(a){ return function(){ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; }; }
-function earnedPct(emoji){ const h=hash32(emoji+'-earned'); return ((h%97)/10+0.3).toFixed(1); }
+
+/* "Earned by X%": the CMS's optional `earned` field when set (any number,
+   clamped into 0.1–100 so the plate and the weight agree), otherwise
+   derived from the emoji (0.3–9.9, stable per glyph). The same number is
+   the badge's draw weight — a 0.5% badge really does turn up rarely. */
+function earnedOf(i){
+  const raw=BADGES[i][2];
+  const set=raw==null ? NaN : Number(raw);
+  const pct=Number.isFinite(set) ? set : (hash32(BADGES[i][0]+'-earned')%97)/10+0.3;
+  return Math.min(100, Math.max(0.1, pct));
+}
 
 /* ============================ texture kitchen ===========================
    Everything below turns one emoji glyph into the maps a die-struck,
@@ -1283,13 +1293,18 @@ const earnedEl=document.getElementById('earned');
 const plate=document.getElementById('plate');
 const hint=document.getElementById('hint');
 
-const order=BADGES.map((_,i)=>i);
-for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; }
+/* weighted shuffle (Efraimidis–Spirakis): each visit deals the whole case
+   in an order where a badge's chance of coming up early is proportional
+   to its earned %. Every badge still appears once per cycle — rare ones
+   just live near the end of the deck. */
+const order=BADGES.map((_,i)=>i)
+  .map(i=>({i,k:Math.pow(Math.random(),1/earnedOf(i))}))
+  .sort((a,b)=>b.k-a.k).map(o=>o.i);
 let cursor=0, taps=0;
 
 function setPlate(i){
   nameEl.textContent=BADGES[i][1];
-  earnedEl.textContent='Earned by '+earnedPct(BADGES[i][0])+'% of collectors';
+  earnedEl.textContent='Earned by '+earnedOf(i).toFixed(1)+'% of collectors';
 }
 
 /* the swap is a spin, never a pause: a tap accelerates the turn and the
