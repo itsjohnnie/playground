@@ -14,6 +14,13 @@
 <meta name="twitter:title" content="#5 · Embate — Argentina vs. Egypt · Johnnie&#x27;s studio">
 <meta name="twitter:description" content="Two ink fronts in still water — pharaonic ochre pressing from above, celeste rising to meet it. Egypt&#x27;s weight holds the line for an hour; a thrust at 21&#x27; dies against it, a surge at 58&#x27; is pulled…">
 <meta name="twitter:image" content="https://johnnies.life/art/og/005.png">
+<!-- the arrival must be COMPLETE in frame one: the room is dark before any
+     script runs, the view-transition opt-in is static (a script-injected rule
+     comes too late for the inbound morph), and rendering holds until the
+     closing marker has parsed - so the morph starts against the finished
+     page, never a white blank -->
+<style>html{background:#0d0a07}@view-transition{navigation:auto}</style>
+<link rel="expect" href="#fin" blocking="render">
 <body>
 <script src="art.js"></script>
 <script src="frame.js"></script>
@@ -702,4 +709,5 @@ function still() {
   requestAnimationFrame(step);
 }
 </script>
+<span id="fin" hidden></span>
 </body>

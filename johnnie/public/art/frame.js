@@ -76,7 +76,9 @@ inset:0 auto auto 0;width:auto;height:auto}
 ::view-transition-image-pair(sheet){overflow:hidden;
 border-radius:clamp(0px,3vw,40px)}
 ::view-transition-old(sheet),::view-transition-new(sheet){mix-blend-mode:normal}
-::view-transition-old(sheet){animation:none}
+/* only when the new face actually exists — a lone old face (an engine
+   that painted the new page early) must keep its fade, not freeze */
+::view-transition-old(sheet):not(:only-child){animation:none}
 @media (prefers-reduced-motion:reduce){
 ::view-transition-group(*),::view-transition-image-pair(*),
 ::view-transition-old(*),::view-transition-new(*){animation:none!important}}
