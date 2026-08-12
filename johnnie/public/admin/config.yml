@@ -213,3 +213,4 @@ collections:
             fields:
               - { name: emoji, label: "Emoji (one emoji, pasted as the character — e.g. 🦊)", widget: string }
               - { name: label, label: "Name (the line under the pin, e.g. \"Sly One\")", widget: string }
+              - { name: earned, label: "Earned by % (optional — also the badge's rarity: lower = shows up later/less; clamped to 0.1–100; blank = derived from the emoji, 0.3–9.9)", widget: number, value_type: float, required: false }
