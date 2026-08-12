@@ -8,6 +8,13 @@
       "port": 8917
     },
     {
+      "name": "johnnie-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "johnnie"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
       "name": "playground-static",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "8923", "--directory", "."],
