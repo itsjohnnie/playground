@@ -14,6 +14,13 @@
 <meta name="twitter:title" content="#2 · Sismógrafo — Argentina vs. Austria · Johnnie&#x27;s studio">
 <meta name="twitter:description" content="A plotter’s seismogram of the match, one tremor per minute: amplitude is intensity, ink weight is possession, and the two bookings cut below the line at 76’ and 90+2’. The record ends on its…">
 <meta name="twitter:image" content="https://johnnies.life/art/og/002.png">
+<!-- the arrival must be COMPLETE in frame one: the room is dark before any
+     script runs, the view-transition opt-in is static (a script-injected rule
+     comes too late for the inbound morph), and rendering holds until the
+     closing marker has parsed - so the morph starts against the finished
+     page, never a white blank -->
+<style>html{background:#0d0a07}@view-transition{navigation:auto}</style>
+<link rel="expect" href="#fin" blocking="render">
 <body>
 <script src="art.js"></script>
 <script src="frame.js"></script>
@@ -679,3 +686,4 @@ document.fonts.load(FONT(16)).then(() => {
   if (lines) build(); // build re-bakes the decor layer and, settled, re-renders
 });
 </script>
+<span id="fin" hidden></span>

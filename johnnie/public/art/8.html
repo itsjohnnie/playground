@@ -14,6 +14,13 @@
 <meta name="twitter:title" content="#8 · Once — Spain vs. Argentina · Johnnie&#x27;s studio">
 <meta name="twitter:description" content="The siege drawn shot by shot: Spain's twenty attempts as fire on the Argentine goal — eleven die on Martínez's line, the most saves any final has seen, and at 106′ the one that doesn't ends the dream under the crossbar. The eleven embers keep burning where the gloves were. Tap, and the siege runs again.">
 <meta name="twitter:image" content="https://johnnies.life/art/og/008.png">
+<!-- the arrival must be COMPLETE in frame one: the room is dark before any
+     script runs, the view-transition opt-in is static (a script-injected rule
+     comes too late for the inbound morph), and rendering holds until the
+     closing marker has parsed - so the morph starts against the finished
+     page, never a white blank -->
+<style>html{background:#0d0a07}@view-transition{navigation:auto}</style>
+<link rel="expect" href="#fin" blocking="render">
 <body>
 <script src="art.js"></script>
 <script src="frame.js"></script>
@@ -346,3 +353,4 @@ document.fonts.load("620 12px 'Geist Mono'").then(() => {
   setTimeout(start, 420);
 });
 </script>
+<span id="fin" hidden></span>

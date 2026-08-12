@@ -14,6 +14,13 @@
 <meta name="twitter:title" content="#3 · Resonancia — Jordan vs. Argentina · Johnnie&#x27;s studio">
 <meta name="twitter:description" content="Fine sand on a dark steel plate, driven through four Chladni resonances — one per goal, 19′ to 80′. The penalty lands as a single hard strike, Jordan&#x27;s answer at 55′ inks its figure a quiet…">
 <meta name="twitter:image" content="https://johnnies.life/art/og/003.png">
+<!-- the arrival must be COMPLETE in frame one: the room is dark before any
+     script runs, the view-transition opt-in is static (a script-injected rule
+     comes too late for the inbound morph), and rendering holds until the
+     closing marker has parsed - so the morph starts against the finished
+     page, never a white blank -->
+<style>html{background:#0d0a07}@view-transition{navigation:auto}</style>
+<link rel="expect" href="#fin" blocking="render">
 <body>
 <script src="art.js"></script>
 <script src="frame.js"></script>
@@ -306,3 +313,4 @@ if (!still) (function fingers() {
   el.addEventListener("pointercancel", lift);
 })();
 </script>
+<span id="fin" hidden></span>

@@ -65,7 +65,9 @@
   }
   ::view-transition-old(sheet), ::view-transition-new(sheet) { mix-blend-mode: normal; }
   ::view-transition-old(sheet) { z-index: 1; }
-  ::view-transition-new(sheet) { animation: none; }
+  /* only when the old face actually exists — a lone new face must keep
+     its fade, not pop in */
+  ::view-transition-new(sheet):not(:only-child) { animation: none; }
   @media (prefers-reduced-motion: reduce) {
     ::view-transition-group(*), ::view-transition-image-pair(*),
     ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
@@ -136,8 +138,10 @@
   /* inside a view-transition arrival the sheet's head must be complete
      in frame one — a blank surface mid-morph reads as flicker — but the
      days still walk in: the stagger IS the welcome home, starting on
-     the very first frame so there's never a dead moment */
-  .vt header.top, .vt .intro h1, .vt .intro p {
+     the very first frame so there's never a dead moment. The sheet
+     itself is included: its entrance fade would otherwise run INSIDE
+     the live snapshot and let the dark room bleed through mid-morph */
+  .vt .sheet, .vt header.top, .vt .intro h1, .vt .intro p {
     animation-duration: 0ms !important;
     animation-delay: 0ms !important;
   }

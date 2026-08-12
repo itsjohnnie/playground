@@ -14,6 +14,13 @@
 <meta name="twitter:title" content="#6 · Afiche — Argentina vs. Switzerland · Johnnie&#x27;s studio">
 <meta name="twitter:description" content="A matchday poster off an offset press, mailed folded to eighths: it arrives as a small packet wearing both federations' shields and opens fold by fold. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
 <meta name="twitter:image" content="https://johnnies.life/art/og/006.png">
+<!-- the arrival must be COMPLETE in frame one: the room is dark before any
+     script runs, the view-transition opt-in is static (a script-injected rule
+     comes too late for the inbound morph), and rendering holds until the
+     closing marker has parsed - so the morph starts against the finished
+     page, never a white blank -->
+<style>html{background:#0d0a07}@view-transition{navigation:auto}</style>
+<link rel="expect" href="#fin" blocking="render">
 <body>
 <style>
 /* the poster's own face: Inter (rsms) — the grotesk the Swiss style
@@ -1013,4 +1020,5 @@ function driftLoop(t) {
   el.addEventListener("pointercancel", up);
 })();
 </script>
+<span id="fin" hidden></span>
 </body>
