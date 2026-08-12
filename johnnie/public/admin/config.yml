@@ -9,8 +9,9 @@ backend:
   repo: itsjohnnie/playground
   branch: main # the branch your live site deploys from
   # Our own GitHub OAuth handler (the Cloudflare Worker), instead of Netlify's.
-  # Change this to https://johnnies.life once the domain is on Cloudflare.
-  base_url: https://playground.johnnie-885.workers.dev
+  # Must be the custom domain: the workers.dev subdomain went dead when the
+  # custom domains attached (wrangler disables it once routes are configured).
+  base_url: https://johnnies.life
   auth_endpoint: auth
 
 # Lets you edit locally without GitHub auth:
