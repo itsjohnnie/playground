@@ -65,6 +65,18 @@ animation-timing-function:cubic-bezier(0.23,1,0.32,1)}
 ::view-transition-image-pair(topbar){overflow:hidden}
 ::view-transition-old(topbar),::view-transition-new(topbar){
 inset:0 auto auto 0;width:auto;height:auto}
+/* the card is ONE clipped surface: the pair carries the corner itself
+   (the radius is the same on both pages), so the snapshots' baked-in
+   radii — which stretch with the flying box — never shape the corner.
+   Arriving at a piece the box SHRINKS, so the index face (only ever
+   scaled DOWN, its corner never wider than the clip) sits solid
+   underneath at full opacity and the piece face fades in on top: the
+   corner is always backed by opaque paper, never by a half-faded
+   sliver */
+::view-transition-image-pair(sheet){overflow:hidden;
+border-radius:clamp(0px,3vw,40px)}
+::view-transition-old(sheet),::view-transition-new(sheet){mix-blend-mode:normal}
+::view-transition-old(sheet){animation:none}
 @media (prefers-reduced-motion:reduce){
 ::view-transition-group(*),::view-transition-image-pair(*),
 ::view-transition-old(*),::view-transition-new(*){animation:none!important}}
