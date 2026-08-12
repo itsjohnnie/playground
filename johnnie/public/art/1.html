@@ -761,8 +761,10 @@ function tapZoom(cx, cy) {
 
 queueMicrotask(() => {
   if (!built) build();
-  if (REDUCED) finish();
-  else requestAnimationFrame(loop);
+  ART.whenVisible(() => {
+    if (REDUCED) finish();
+    else requestAnimationFrame(loop);
+  });
 });
 </script>
 <span id="fin" hidden></span>

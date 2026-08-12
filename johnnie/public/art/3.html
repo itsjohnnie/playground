@@ -260,7 +260,7 @@ const F = FRAME.mount({
       sh.draw(0, sf);
       return;
     }
-    if (!raf) { raf = true; requestAnimationFrame(loop); }
+    if (!raf) { raf = true; ART.whenVisible(() => requestAnimationFrame(loop)); }
   },
 });
 const sf = ART.rng(seed)() * 100;

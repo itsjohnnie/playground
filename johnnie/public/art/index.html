@@ -152,6 +152,13 @@
     animation-duration: 0ms !important;
     animation-delay: 0ms !important;
   }
+  /* leaving mid-entrance: a quick click while the days are still walking
+     in must not hand the morph a half-blurred list — the departure
+     snapshot settles everything first (pageswap adds .leave) */
+  .leave .day, .leave header.top, .leave .intro h1, .leave .intro p {
+    animation-duration: 0ms !important;
+    animation-delay: 0ms !important;
+  }
   .vt { --day-base: 40ms; --day-step: 45ms; }
   .vt .day {
     transform: translateY(14px);
@@ -300,6 +307,9 @@
   addEventListener("pagereveal", (e) => {
     if (e.viewTransition) document.documentElement.classList.add("vt");
   });
+  // departing, the sheet must be settled — the morph's old face is a
+  // snapshot, and a snapshot of rows mid-walk reads as a glitch
+  addEventListener("pageswap", () => document.documentElement.classList.add("leave"));
   // returning within the session (without a morph), the full choreography
   // has played once — the encore keeps the arrival animated at double
   // tempo instead of making the visitor sit through the performance again
@@ -314,6 +324,9 @@
   clearDepth();
   addEventListener("pageshow", (e) => {
     clearDepth();
+    // the departure settle must not outlive the departure — a bfcache
+    // return would otherwise find its encore zeroed
+    document.documentElement.classList.remove("leave");
     // restored from the back/forward cache the list arrives settled —
     // rewind just the days and let them walk in again, encore tempo:
     // the head stays put, the stagger welcomes you home
