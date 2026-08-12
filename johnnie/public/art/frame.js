@@ -56,6 +56,15 @@
 animation-duration:380ms;animation-timing-function:cubic-bezier(0.23,1,0.32,1)}
 ::view-transition-old(artwork),::view-transition-new(artwork){
 animation-duration:300ms}
+/* the masthead is the anchor of the morph: its snapshots render at
+   natural size, pinned to the top-left corner the two pages share, so
+   the type never rescales — the wordmark holds still while the bar's
+   box rides the sheet */
+::view-transition-group(topbar){animation-duration:380ms;
+animation-timing-function:cubic-bezier(0.23,1,0.32,1)}
+::view-transition-image-pair(topbar){overflow:hidden}
+::view-transition-old(topbar),::view-transition-new(topbar){
+inset:0 auto auto 0;width:auto;height:auto}
 @media (prefers-reduced-motion:reduce){
 ::view-transition-group(*),::view-transition-image-pair(*),
 ::view-transition-old(*),::view-transition-new(*){animation:none!important}}
