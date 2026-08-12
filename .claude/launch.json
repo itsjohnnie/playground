@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "admin-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8917", "--directory", "johnnie/public"],
+      "port": 8917
+    },
+    {
+      "name": "playground-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8923", "--directory", "."],
+      "port": 8923
+    }
+  ]
+}

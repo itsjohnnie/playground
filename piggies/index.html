@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#070510">
+    <title>The three little piggies — a scroll-along ASCII storybook</title>
+    <meta name="description" content="The classic tale, told live in characters: houses of straw, sticks and bricks build themselves as you scroll, and your thumb is the big bad wind.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gloock&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- The stage: one full-screen ASCII canvas behind everything -->
+    <canvas id="stage" aria-hidden="true"></canvas>
+
+    <!-- HUD -->
+    <div class="hud" aria-hidden="true">
+        <div class="hud-bar" id="hud-progress"></div>
+        <div class="hud-row">
+            <span class="hud-title">~/storybook</span>
+            <button class="hud-sound" id="sound-btn" aria-label="Toggle sound effects">♪ off</button>
+            <span class="hud-act" id="hud-act">✦</span>
+        </div>
+    </div>
+
+    <!-- The title, floating over the stage during the first act -->
+    <header class="title" id="title">
+        <p class="title-eyebrow" id="title-eyebrow">$ once --upon-a-time</p>
+        <h1>The three little <em>piggies</em></h1>
+        <p class="title-sub">a scroll-along storybook</p>
+    </header>
+
+    <!-- One caption line, crossfading per act -->
+    <p class="caption" id="caption" aria-live="polite"></p>
+
+    <!-- Screen-reader narrative -->
+    <p class="sr-only">A scroll-driven storybook rendered in ASCII characters: three little pigs leave home, build houses of straw, sticks and bricks, and a wolf huffs and puffs as you scroll — the straw and stick houses blow apart, the brick house holds, the wolf falls down the chimney into hot soup and runs away, and the pigs dance under fireworks. Scroll to advance; the credits below the animation have links and two interactive pieces.</p>
+
+    <!-- Scroll acts: transparent spacers that drive the scenes -->
+    <main>
+        <section class="act" data-scene="once"></section>
+        <section class="act" data-scene="setout"></section>
+        <section class="act" data-scene="straw"></section>
+        <section class="act act-huff" data-scene="huff1"></section>
+        <section class="act" data-scene="sticks"></section>
+        <section class="act act-huff" data-scene="huff2"></section>
+        <section class="act" data-scene="bricks"></section>
+        <section class="act act-tall" data-scene="huff3"></section>
+        <section class="act act-tall" data-scene="chimney"></section>
+        <section class="act" data-scene="everafter"></section>
+
+        <!-- The credits -->
+        <section class="epilogue" id="epilogue">
+            <div class="epi-inner">
+                <p class="epi-path">$ story --complete</p>
+                <h2>And they all lived happily ever&nbsp;after</h2>
+                <p class="epi-lead">Every pig, every house and every huff you just scrolled through was computed live from characters: no video, no images. The wind was your thumb the whole time. Two little toys below, to keep playing.</p>
+
+                <div class="credits">
+                    <h3>starring</h3>
+                    <div class="credit-row">
+                        <pre class="credit-art c-pink">  ,;;;;,
+  /)  (\
+ (  ..  )
+ ( (oo) ) </pre>
+                        <div class="credit-who"><strong>Sunny</strong><span>the straw architect</span></div>
+                    </div>
+                    <div class="credit-row">
+                        <pre class="credit-art c-pink">  /====\
+  /)  (\
+ (  ..  )
+ ( (oo) ) </pre>
+                        <div class="credit-who"><strong>Twiggy</strong><span>the stick engineer</span></div>
+                    </div>
+                    <div class="credit-row">
+                        <pre class="credit-art c-pink">  [####]
+  /)  (\
+ (  ..  )
+ ( (oo) ) </pre>
+                        <div class="credit-who"><strong>Bricky</strong><span>the brick mastermind</span></div>
+                    </div>
+                    <div class="credit-row">
+                        <pre class="credit-art c-slate">  /\___/\
+ ( o , o )
+ (  \_/  )
+  w|   |w </pre>
+                        <div class="credit-who"><strong>The Big Bad Wolf</strong><span>as himself</span></div>
+                    </div>
+
+                    <h3>featuring</h3>
+                    <ul class="credit-list">
+                        <li>mama pig <i>·</i> <span>wise words</span></li>
+                        <li>the soup pot <i>·</i> <span>too hot to handle</span></li>
+                        <li>huffs &amp; puffs <i>·</i> <span>you</span></li>
+                        <li>set construction <i>·</i> <span>also you</span></li>
+                    </ul>
+                    <p class="credit-note">no piggies (or wolves) were harmed in the telling of this story</p>
+                </div>
+
+                <div class="epi-card">
+                    <h3>Huff it yourself</h3>
+                    <p class="epi-note">Hold the button and be the wolf. Let go, and the little house puts itself back together. Bricks not included.</p>
+                    <div class="epi-window">
+                        <canvas class="ascii" id="d-huff" aria-label="A straw house that blows apart while you hold the button and reassembles when you let go"></canvas>
+                        <button class="epi-button" id="huff-btn">hold to huff</button>
+                    </div>
+                </div>
+
+                <div class="epi-card">
+                    <h3>Write in bricks</h3>
+                    <p class="epi-note">Whatever you type gets built the Bricky way. The wind keeps trying. The bricks don't care.</p>
+                    <div class="epi-window">
+                        <canvas class="ascii" id="d-bricks" aria-label="Text rendered as a brick wall; type below to change it"></canvas>
+                        <div class="epi-input-row">
+                            <label class="epi-prompt" for="bricks-input">&gt;</label>
+                            <input id="bricks-input" class="epi-input" type="text" value="BRICKY"
+                                   maxlength="10" autocomplete="off" autocapitalize="characters"
+                                   spellcheck="false" aria-label="Text to build in bricks">
+                        </div>
+                    </div>
+                </div>
+
+                <nav class="epi-links">
+                    <a href="../ascii/">the ascii odyssey <span>the same sky, much farther from home →</span></a>
+                    <a href="../">back to the playground <span>everything else lives here →</span></a>
+                </nav>
+
+                <p class="epi-sig">a playground production · told in 100% organic ASCII · <span id="epi-heart">♥</span></p>
+            </div>
+        </section>
+    </main>
+
+    <script src="story.js"></script>
+</body>
+</html>

@@ -76,7 +76,7 @@ jobs:
           cp index.html styles.css script.js johnnie/out/playground/
           cp -r truco/dist/. johnnie/out/playground/truco/
           for d in ascii cc dithered dots dott flyy generative-ui haiku jitter \
-                   liquid liquid-glass-icon mask orb os poetry pretext sizzle \
+                   liquid liquid-glass-icon mask os piggies poetry pretext sizzle \
                    toaster tyme waves; do
             if [ -d "$d" ]; then
               cp -r "$d" "johnnie/out/playground/$d"

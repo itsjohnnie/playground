@@ -189,6 +189,9 @@
             transition: opacity 0.3s ease;
         }
 
+        /* NOTE: no opacity/filter/will-change on this container — any of those
+           makes it a backdrop root and every child backdrop-filter goes blind.
+           The scroll fade drives --blur-fade, which each layer applies itself. */
         .progressive-blur {
             position: absolute;
             top: -3rem;
@@ -197,12 +200,82 @@
             bottom: 0;
             pointer-events: none;
             z-index: 0;
+        }
+
+        /* Layered gradient blur: each stacked layer doubles the blur and owns
+           one band of the mask, so the blur ramps smoothly instead of jumping */
+        .progressive-blur > div,
+        .progressive-blur::before,
+        .progressive-blur::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: var(--blur-fade, 1);
+            transition: opacity 0.3s ease;
+        }
+
+        .progressive-blur::before {
+            z-index: 1;
+            backdrop-filter: blur(0.5px);
+            -webkit-backdrop-filter: blur(0.5px);
+            mask: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 12.5%, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 37.5%);
+            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 12.5%, rgba(0,0,0,1) 25%, rgba(0,0,0,0) 37.5%);
+        }
+
+        .progressive-blur > div:nth-of-type(1) {
+            z-index: 2;
+            backdrop-filter: blur(1px);
+            -webkit-backdrop-filter: blur(1px);
+            mask: linear-gradient(to bottom, rgba(0,0,0,0) 12.5%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 37.5%, rgba(0,0,0,0) 50%);
+            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 12.5%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 37.5%, rgba(0,0,0,0) 50%);
+        }
+
+        .progressive-blur > div:nth-of-type(2) {
+            z-index: 3;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+            mask: linear-gradient(to bottom, rgba(0,0,0,0) 25%, rgba(0,0,0,1) 37.5%, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 62.5%);
+            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 25%, rgba(0,0,0,1) 37.5%, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 62.5%);
+        }
+
+        .progressive-blur > div:nth-of-type(3) {
+            z-index: 4;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            mask: linear-gradient(to bottom, rgba(0,0,0,0) 37.5%, rgba(0,0,0,1) 50%, rgba(0,0,0,1) 62.5%, rgba(0,0,0,0) 75%);
+            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 37.5%, rgba(0,0,0,1) 50%, rgba(0,0,0,1) 62.5%, rgba(0,0,0,0) 75%);
+        }
+
+        .progressive-blur > div:nth-of-type(4) {
+            z-index: 5;
             backdrop-filter: blur(8px);
             -webkit-backdrop-filter: blur(8px);
-            mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 100%);
-            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,1) 100%);
-            transition: opacity 0.3s ease;
-            will-change: opacity;
+            mask: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 62.5%, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 87.5%);
+            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 62.5%, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 87.5%);
+        }
+
+        .progressive-blur > div:nth-of-type(5) {
+            z-index: 6;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            mask: linear-gradient(to bottom, rgba(0,0,0,0) 62.5%, rgba(0,0,0,1) 75%, rgba(0,0,0,1) 87.5%, rgba(0,0,0,0) 100%);
+            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 62.5%, rgba(0,0,0,1) 75%, rgba(0,0,0,1) 87.5%, rgba(0,0,0,0) 100%);
+        }
+
+        .progressive-blur > div:nth-of-type(6) {
+            z-index: 7;
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            mask: linear-gradient(to bottom, rgba(0,0,0,0) 75%, rgba(0,0,0,1) 87.5%, rgba(0,0,0,1) 100%);
+            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 75%, rgba(0,0,0,1) 87.5%, rgba(0,0,0,1) 100%);
+        }
+
+        .progressive-blur::after {
+            z-index: 8;
+            backdrop-filter: blur(64px);
+            -webkit-backdrop-filter: blur(64px);
+            mask: linear-gradient(to bottom, rgba(0,0,0,0) 87.5%, rgba(0,0,0,1) 100%);
+            -webkit-mask: linear-gradient(to bottom, rgba(0,0,0,0) 87.5%, rgba(0,0,0,1) 100%);
         }
 
         .prompt-line {
@@ -554,6 +627,16 @@
                 <div class="output">
                     <ul class="project-list">
                         <li class="project-item">
+                            <a href="piggies/" class="project-link">
+                                <div class="project-header">
+                                    <span class="project-title">The Three Little Piggies</span>
+                                    <span class="project-time">new</span>
+                                </div>
+                                <span class="project-url">./piggies/</span>
+                                <p class="project-description">The three little piggies as a scroll-along ASCII storybook — houses of straw, sticks and bricks build themselves as you scroll, your thumb is the big bad wind, and the wolf goes down the chimney into the soup. Credits include two toys to keep playing</p>
+                            </a>
+                        </li>
+                        <li class="project-item">
                             <a href="tyme/" class="project-link">
                                 <div class="project-header">
                                     <span class="project-title">tyme</span>
@@ -634,16 +717,6 @@
                             </a>
                         </li>
                         <li class="project-item">
-                            <a href="orb/" class="project-link">
-                                <div class="project-header">
-                                    <span class="project-title">Orb</span>
-                                    <span class="project-time">~2h</span>
-                                </div>
-                                <span class="project-url">./orb/</span>
-                                <p class="project-description">3D orb visualization with shader effects</p>
-                            </a>
-                        </li>
-                        <li class="project-item">
                             <a href="toaster/" class="project-link">
                                 <div class="project-header">
                                     <span class="project-title">Toaster</span>
@@ -674,12 +747,12 @@
                             </a>
                         </li>
                         <li class="project-item">
-                            <a href="../Terminal/" class="project-link">
+                            <a href="../terminal/" class="project-link">
                                 <div class="project-header">
                                     <span class="project-title">Terminal</span>
                                     <span class="project-time">~2h</span>
                                 </div>
-                                <span class="project-url">../Terminal/</span>
+                                <span class="project-url">../terminal/</span>
                                 <p class="project-description">Terminal interface project</p>
                             </a>
                         </li>
@@ -719,7 +792,14 @@
             </div>
 
             <div class="terminal-input-wrapper">
-                <div class="progressive-blur"></div>
+                <div class="progressive-blur">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
                 <div class="prompt-line" style="padding-top: 2rem; margin-bottom: 0;">
                     <span class="user">johnnie</span><span class="prompt">@</span><span class="user">local</span><span class="prompt">:</span><span class="path">~/playground</span><span class="prompt">$</span> <span id="terminal-input" contenteditable="true" spellcheck="false"></span><span class="cursor">_</span>
                 </div>
@@ -1129,10 +1209,10 @@ Tip: Enter the Konami code (↑↑↓↓←→←→BA) to activate Matrix mode!
 
                 if (scrollPercentage > 0.9) {
                     const opacity = 1 - (scrollPercentage - 0.9) / 0.1;
-                    progressiveBlur.style.opacity = opacity;
+                    progressiveBlur.style.setProperty('--blur-fade', opacity);
                     blurFadedOut = true;
                 } else if (blurFadedOut) {
-                    progressiveBlur.style.opacity = 1;
+                    progressiveBlur.style.setProperty('--blur-fade', 1);
                     blurFadedOut = false;
                 }
             });

@@ -20,7 +20,7 @@ A collection of experimental web projects, prototypes, and interactive demos.
 | **liquid** | Liquid/fluid effects | [View](https://itsjohnnie.github.io/playground/liquid/) |
 | **liquid-glass-icon** | Liquid glass icon effect | [View](https://itsjohnnie.github.io/playground/liquid-glass-icon/) |
 | **mask** | CSS mask experiments | [View](https://itsjohnnie.github.io/playground/mask/) |
-| **orb** | Animated orb effects | [View](https://itsjohnnie.github.io/playground/orb/) |
+| **piggies** | The three little piggies as a scroll-along ASCII storybook | [View](https://itsjohnnie.github.io/playground/piggies/) |
 | **toaster** | Toast notification demos | [View](https://itsjohnnie.github.io/playground/toaster/) |
 | **tyme** | Six SVG watch faces (Omega, Tissot PRX, Timex, Bell & Ross, Braun, Citizen Tsuyosa) with live hands and accurate shadows | [View](https://itsjohnnie.github.io/playground/tyme/) |
 | **waves** | Full-screen banded gradient waves with a fresh harmonious palette each load | [View](https://itsjohnnie.github.io/playground/waves/) |
