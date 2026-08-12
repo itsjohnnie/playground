@@ -14,6 +14,12 @@
 <meta name="twitter:title" content="#6 · Afiche — Argentina vs. Switzerland · Johnnie&#x27;s studio">
 <meta name="twitter:description" content="A matchday poster off an offset press, mailed folded to eighths: it arrives as a small packet wearing both federations' shields and opens fold by fold. Ninety minutes scoreless; la prórroga gives it 3–1 in type.">
 <meta name="twitter:image" content="https://johnnies.life/art/og/006.png">
+<!-- the type the piece waits for starts loading with the page itself,
+     not after the scripts have run - no flash of the wrong face, and the
+     artwork's own fonts race the parser instead of following it -->
+<link rel="preload" href="lib/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="lib/fonts/InterVariable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="lib/fonts/InterVariable-alt1.woff2" as="font" type="font/woff2" crossorigin>
 <!-- the arrival must be COMPLETE in frame one: the room is dark before any
      script runs, the view-transition opt-in is static (a script-injected rule
      comes too late for the inbound morph), and rendering holds until the
