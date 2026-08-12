@@ -5,7 +5,9 @@
   "description": "Johnnie's Life \u2014 personal site built with Next.js (static export).",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/fetch-badge-glyphs.mjs",
     "build": "next build",
+    "badges:glyphs": "node scripts/fetch-badge-glyphs.mjs",
     "start": "next start",
     "lint": "next lint",
     "serve": "npx serve out",
