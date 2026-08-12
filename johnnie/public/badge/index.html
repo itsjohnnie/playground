@@ -178,14 +178,19 @@ if (new URLSearchParams(location.search).has('sim')){
 
 /* ============================== the roster ============================== */
 
-/* The roster lives in badges.json so the CMS (/admin/, "Badges") can add
-   one: append an emoji + name, publish, and the build vendors its Twemoji
-   glyph (scripts/fetch-badge-glyphs.mjs). Each badge carries its number on
-   the reverse, so the order in the file is permanent — append, never
-   reorder. */
+/* The roster is compiled from content/badges/ (the CMS's "Badges"
+   collection — one entry per badge) by scripts/build-badges.mjs, which
+   also vendors each emoji's Twemoji glyph. A badge's `number` is the №
+   engraved on its back — permanent, never reused. */
 const BADGES = await fetch('/badge/badges.json')
   .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(j => j.badges.map(b => [String(b.emoji).trim(), b.label, b.earned]))
+  .then(j => j.badges
+    .map(b => [String(b.emoji).trim(), b.label, b.earned, Number(b.number)])
+    .filter(b => {
+      if (Number.isInteger(b[3]) && b[3] >= 1) return true;
+      console.error('the case skipped "'+b[1]+'": no №');   // never invent a number
+      return false;
+    }))
   .catch(e => { console.error('the badge case failed to open:', e); return []; });
 
 /* seeded rng — grain and percentages must not shimmer between frames */
@@ -1175,7 +1180,7 @@ async function buildBadge(bi){
   if(!c) return null;
   await nextFrame();
   const img=c.getContext('2d').getImageData(0,0,TEX,TEX);
-  const res=await pressGlyph(img, hash32(slug+'-mint'), label, bi+1);
+  const res=await pressGlyph(img, hash32(slug+'-mint'), label, BADGES[bi][3]);
   if(!res) return null;
   await nextFrame();
   const shapes=silhouetteToShapes(res.sil);

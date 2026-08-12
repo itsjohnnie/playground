@@ -191,26 +191,26 @@ collections:
       - { name: note, label: "Note (optional — replaces the automatic \"a song by X, featured in the album Y.\" line)", widget: text, required: false, default: "" }
       - { name: slug, label: "URL override (optional — leave blank to use the title)", widget: string, required: false, default: "" }
 
-# Badges (johnnies.life/badge). A singleton, not a collection: the whole
-# case is one JSON file, so the sidebar entry opens the badge list
-# directly — no intermediate file screen. Each entry is an emoji + a
-# name, struck as a numbered hard-enamel pin. The number on the back is
-# the badge's position in this list, so APPEND new badges at the end —
-# never reorder or delete. On publish, the deploy vendors the emoji's
-# Twemoji SVG automatically (badge bot in the Cloudflare workflow /
-# scripts/fetch-badge-glyphs.mjs).
-singletons:
+  # Badges (johnnies.life/badge). One entry per badge, like Projects or
+  # Stuff. `number` is the № engraved on the back — give a new badge the
+  # next free number and never reuse one (gaps are fine; a deleted badge
+  # just retires its number). The build compiles these into the roster
+  # the page reads and vendors each emoji's Twemoji SVG automatically
+  # (badge bot in the Cloudflare workflow / scripts/build-badges.mjs).
   - name: badges
     label: "Badges"
+    label_singular: "Badge"
     icon: military_tech
-    file: "johnnie/public/badge/badges.json"
+    folder: "johnnie/content/badges"
+    extension: json
+    format: json
+    create: true
+    slug: "{{fields.number}}-{{slug}}"
+    identifier_field: label
+    sortable_fields: [number, label]
+    summary: "{{fields.number}} — {{fields.emoji}} {{fields.label}}"
     fields:
-      - name: badges
-        label: "Badges (append at the end — the number on the back is the position here)"
-        widget: list
-        label_singular: "Badge"
-        summary: "{{fields.emoji}} {{fields.label}}"
-        fields:
-          - { name: emoji, label: "Emoji (one emoji, pasted as the character — e.g. 🦊)", widget: string }
-          - { name: label, label: "Name (the line under the pin, e.g. \"Sly One\")", widget: string }
-          - { name: earned, label: "Earned by % (optional — also the badge's rarity: lower = shows up later/less; clamped to 0.1–100; blank = derived from the emoji, 0.3–9.9)", widget: number, value_type: float, required: false }
+      - { name: number, label: "Number (the № on the back — use the next free one, never reuse)", widget: number, value_type: int }
+      - { name: emoji, label: "Emoji (one emoji, pasted as the character — e.g. 🦊)", widget: string }
+      - { name: label, label: "Name (the line under the pin, e.g. \"Sly One\")", widget: string }
+      - { name: earned, label: "Earned by % (optional — also the badge's rarity: lower = shows up later/less; clamped to 0.1–100; blank = derived from the emoji, 0.3–9.9)", widget: number, value_type: float, required: false }

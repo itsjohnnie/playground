@@ -36,12 +36,15 @@ rAF-based frames and hangs at the ghost dot forever. Load it with the
 opt-in `?sim` param (drives rAF with a 16ms timer): e.g.
 `/badge/?sim&b=1f98a` forces a first strike of that glyph (must be a
 codepoint name present in the roster, or the param is silently ignored),
-`&a=150` poses the back (the engraved name + № = position in
-public/badge/badges.json, 1-based). A strike takes ~5-10s under sim;
-wait, then screenshot. The roster is fetched from /badge/badges.json;
-glyphs must exist in public/badge/lib/twemoji/ (`npm run badges:glyphs`
-vendors missing ones — needs direct network; node fetch can't use the
-sandbox proxy, so run it with the sandbox disabled).
+`&a=150` poses the back (engraved name + №, the entry's `number`
+field). A strike takes ~5-10s under sim; wait, then screenshot. The
+roster is compiled from content/badges/*.json into
+public/badge/badges.json by scripts/build-badges.mjs (`npm run
+badges:build`) — the compiled file is gitignored, so run that once
+before serving public/ raw or /badge/ has no roster. The script also
+vendors glyphs into public/badge/lib/twemoji/ — the vendoring needs
+direct network; node fetch can't use the sandbox proxy, so run it with
+the sandbox disabled when a new glyph is needed.
 
 ## The OAuth chain (admin login)
 

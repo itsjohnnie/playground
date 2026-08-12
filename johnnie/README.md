@@ -78,21 +78,25 @@ front-matter in `content/`. Two ways to edit:
 
 ## Badges (`/badge`)
 
-A case of numbered hard-enamel animal badges, struck in 3D from emoji. The
-roster is one file — `public/badge/badges.json`, a list of `{emoji, label}` —
-and the page (`public/badge/index.html`) fetches it at boot.
+A case of numbered hard-enamel animal badges, struck in 3D from emoji.
+Each badge is one file in `content/badges/` (`{number, emoji, label}`);
+the build compiles them into `public/badge/badges.json` — generated,
+not in git — which the page (`public/badge/index.html`) fetches at
+boot.
 
-**Adding a badge:** open `/admin/` → **Badges**, append an entry (paste the
-emoji, name it), publish. That's it — the deploy's badge bot
-(`scripts/fetch-badge-glyphs.mjs`, run by the Cloudflare workflow and by
-`npm run build`'s prebuild) downloads the Twemoji SVG the pin is struck from
-(pinned release, self-hosted under `public/badge/lib/twemoji/`) and commits
-it back. Or edit the JSON by hand and run `npm run badges:glyphs`.
+**Adding a badge:** open `/admin/` → **Badges** → **Create**, give it the
+next free number, paste the emoji, name it, publish. That's it — the
+deploy's badge bot (`scripts/build-badges.mjs`, run by the Cloudflare
+workflow and by `npm run build`'s prebuild) compiles the case and
+downloads the Twemoji SVG the pin is struck from (pinned release,
+self-hosted under `public/badge/lib/twemoji/`), committing both back. Or
+write the file by hand and run `npm run badges:build`.
 
-Two rules, because each badge's number on the back is its position in the
-list: **append at the end, never reorder, never delete.** An entry whose
-emoji has no Twemoji glyph (a typo, or text that isn't an emoji) doesn't
-break anything — the build warns and the page quietly skips it.
+One rule: the `number` is the № engraved on the back — **never reuse
+one**. Gaps are fine (a deleted badge just retires its number), and a
+duplicate gets a loud build warning. An entry whose emoji has no Twemoji
+glyph (a typo, or text that isn't an emoji) doesn't break anything — the
+build warns and the page quietly skips it.
 
 **Rarity:** the "Earned by X%" line doubles as the badge's draw weight —
 each visit deals the case in a weighted order, so a 0.5% badge genuinely

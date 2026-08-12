@@ -53,14 +53,15 @@ jobs:
           cache: npm
           cache-dependency-path: johnnie/package-lock.json
 
-      # The badge bot: a CMS edit to badges.json only carries the emoji +
-      # name. Vendor the Twemoji SVG the /badge/ page renders it from and
-      # commit it back, so the repo stays the complete, self-hosted source
-      # of truth. (npm's prebuild also runs this before every build, so the
-      # deploy works even when this push fails.)
+      # The badge bot: a CMS publish adds one file to content/badges/.
+      # Compiling the roster is a plain build step (npm's prebuild), but
+      # the Twemoji SVG each pin is struck from comes from the network,
+      # so vendor it and commit it back — the repo stays the complete,
+      # self-hosted source of truth. (prebuild re-runs this before every
+      # build, so the deploy works even when this push fails.)
       - name: Badge bot
         run: |
-          node johnnie/scripts/fetch-badge-glyphs.mjs
+          node johnnie/scripts/build-badges.mjs
           if [ -n "$(git status --porcelain johnnie/public/badge/lib/twemoji)" ]; then
             git config user.name "badge-bot"
             git config user.email "noreply@johnnies.life"
