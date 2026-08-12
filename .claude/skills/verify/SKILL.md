@@ -28,6 +28,21 @@ directly and drive it in the browser pane:
   click by coordinates instead; screenshot coordinate space is 800x450 (the
   returned image is 2x).
 
+## The badge page (/badge/)
+
+The preview pane loads pages with `document.hidden === true`, so
+requestAnimationFrame NEVER fires — the badge page's strike chain awaits
+rAF-based frames and hangs at the ghost dot forever. Load it with the
+opt-in `?sim` param (drives rAF with a 16ms timer): e.g.
+`/badge/?sim&b=1f98a` forces a first strike of that glyph (must be a
+codepoint name present in the roster, or the param is silently ignored),
+`&a=150` poses the back (the engraved name + № = position in
+public/badge/badges.json, 1-based). A strike takes ~5-10s under sim;
+wait, then screenshot. The roster is fetched from /badge/badges.json;
+glyphs must exist in public/badge/lib/twemoji/ (`npm run badges:glyphs`
+vendors missing ones — needs direct network; node fetch can't use the
+sandbox proxy, so run it with the sandbox disabled).
+
 ## The OAuth chain (admin login)
 
 Full chain, verifiable without signing in:

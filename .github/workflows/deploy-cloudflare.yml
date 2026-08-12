@@ -53,6 +53,28 @@ jobs:
           cache: npm
           cache-dependency-path: johnnie/package-lock.json
 
+      # The badge bot: a CMS edit to badges.json only carries the emoji +
+      # name. Vendor the Twemoji SVG the /badge/ page renders it from and
+      # commit it back, so the repo stays the complete, self-hosted source
+      # of truth. (npm's prebuild also runs this before every build, so the
+      # deploy works even when this push fails.)
+      - name: Badge bot
+        run: |
+          node johnnie/scripts/fetch-badge-glyphs.mjs
+          if [ -n "$(git status --porcelain johnnie/public/badge/lib/twemoji)" ]; then
+            git config user.name "badge-bot"
+            git config user.email "noreply@johnnies.life"
+            git add johnnie/public/badge/lib/twemoji
+            git commit -m "Badge bot: vendor Twemoji glyphs for new badges"
+            # A push race must not sink the deploy: the glyphs are already
+            # committed locally, so this build ships them either way. Abort
+            # any half-done rebase so the build never sees a conflicted tree.
+            git pull --rebase origin main && git push origin HEAD:main || {
+              git rebase --abort 2>/dev/null || true
+              echo "::warning::badge bot could not push the vendored glyphs — they still ship in this build"
+            }
+          fi
+
       # Root build: DO NOT set PAGES_BASE_PATH — the domain serves from "/".
       - name: Build johnnie (root)
         working-directory: johnnie

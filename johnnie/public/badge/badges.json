@@ -1,0 +1,404 @@
+{
+  "badges": [
+    {
+      "emoji": "🦊",
+      "label": "Sly One"
+    },
+    {
+      "emoji": "🐯",
+      "label": "Stripes Earned"
+    },
+    {
+      "emoji": "🐸",
+      "label": "Prince, Maybe"
+    },
+    {
+      "emoji": "🐙",
+      "label": "Multitasker"
+    },
+    {
+      "emoji": "🦁",
+      "label": "Main Character"
+    },
+    {
+      "emoji": "🐻",
+      "label": "Soft Launch"
+    },
+    {
+      "emoji": "🐼",
+      "label": "Balanced Diet"
+    },
+    {
+      "emoji": "🐨",
+      "label": "Slow Morning"
+    },
+    {
+      "emoji": "🐷",
+      "label": "Comfort First"
+    },
+    {
+      "emoji": "🐮",
+      "label": "Grass Fed"
+    },
+    {
+      "emoji": "🐵",
+      "label": "Chaos Agent"
+    },
+    {
+      "emoji": "🐔",
+      "label": "Early Riser"
+    },
+    {
+      "emoji": "🐧",
+      "label": "Formal Wear"
+    },
+    {
+      "emoji": "🦉",
+      "label": "Night Shift"
+    },
+    {
+      "emoji": "🦄",
+      "label": "One of One"
+    },
+    {
+      "emoji": "🐝",
+      "label": "Busy Season"
+    },
+    {
+      "emoji": "🐢",
+      "label": "On My Own Time"
+    },
+    {
+      "emoji": "🦀",
+      "label": "Sideways Progress"
+    },
+    {
+      "emoji": "🐡",
+      "label": "Full Send"
+    },
+    {
+      "emoji": "🦋",
+      "label": "Glow Up"
+    },
+    {
+      "emoji": "🐬",
+      "label": "Show Off"
+    },
+    {
+      "emoji": "🦈",
+      "label": "Closer"
+    },
+    {
+      "emoji": "🐺",
+      "label": "Lone Operator"
+    },
+    {
+      "emoji": "🦅",
+      "label": "Big Picture"
+    },
+    {
+      "emoji": "🦆",
+      "label": "Unbothered"
+    },
+    {
+      "emoji": "🐰",
+      "label": "Fast Twitch"
+    },
+    {
+      "emoji": "🦝",
+      "label": "Night Snacker"
+    },
+    {
+      "emoji": "🦔",
+      "label": "Boundaries"
+    },
+    {
+      "emoji": "🐲",
+      "label": "Rare Drop"
+    },
+    {
+      "emoji": "🐥",
+      "label": "Fresh Start"
+    },
+    {
+      "emoji": "🦙",
+      "label": "No Notes"
+    },
+    {
+      "emoji": "🦩",
+      "label": "Standing Tall"
+    },
+    {
+      "emoji": "🐌",
+      "label": "Shipped Anyway"
+    },
+    {
+      "emoji": "🐞",
+      "label": "Good Luck"
+    },
+    {
+      "emoji": "🐳",
+      "label": "Deep Work"
+    },
+    {
+      "emoji": "🐘",
+      "label": "Never Forgets"
+    },
+    {
+      "emoji": "🦒",
+      "label": "Long View"
+    },
+    {
+      "emoji": "🦓",
+      "label": "Fine Print"
+    },
+    {
+      "emoji": "🦜",
+      "label": "On Repeat"
+    },
+    {
+      "emoji": "🦌",
+      "label": "In Headlights"
+    },
+    {
+      "emoji": "🦥",
+      "label": "Slow Reply"
+    },
+    {
+      "emoji": "🦭",
+      "label": "Approved"
+    },
+    {
+      "emoji": "🦘",
+      "label": "Carry On"
+    },
+    {
+      "emoji": "🦢",
+      "label": "Late Bloomer"
+    },
+    {
+      "emoji": "🐍",
+      "label": "New Skin"
+    },
+    {
+      "emoji": "🐠",
+      "label": "Out of Office"
+    },
+    {
+      "emoji": "🐫",
+      "label": "Hump Day"
+    },
+    {
+      "emoji": "🐭",
+      "label": "Quiet One"
+    },
+    {
+      "emoji": "🐆",
+      "label": "Spot On"
+    },
+    {
+      "emoji": "🐱",
+      "label": "Nine Lives"
+    },
+    {
+      "emoji": "🐶",
+      "label": "Good Boy"
+    },
+    {
+      "emoji": "🐩",
+      "label": "Fresh Cut"
+    },
+    {
+      "emoji": "🦍",
+      "label": "Heavy Lifter"
+    },
+    {
+      "emoji": "🦧",
+      "label": "Hands On"
+    },
+    {
+      "emoji": "🐴",
+      "label": "Workhorse"
+    },
+    {
+      "emoji": "🐎",
+      "label": "Full Gallop"
+    },
+    {
+      "emoji": "🦏",
+      "label": "Thick Skin"
+    },
+    {
+      "emoji": "🦛",
+      "label": "Heavyweight"
+    },
+    {
+      "emoji": "🦣",
+      "label": "Old School"
+    },
+    {
+      "emoji": "🐹",
+      "label": "Cheeky Saver"
+    },
+    {
+      "emoji": "🐿",
+      "label": "Stash Ready"
+    },
+    {
+      "emoji": "🦫",
+      "label": "Side Project"
+    },
+    {
+      "emoji": "🦇",
+      "label": "Upside Down"
+    },
+    {
+      "emoji": "🦦",
+      "label": "Rock Collector"
+    },
+    {
+      "emoji": "🦨",
+      "label": "Strong Opinion"
+    },
+    {
+      "emoji": "🦡",
+      "label": "No Comment"
+    },
+    {
+      "emoji": "🐾",
+      "label": "Left a Mark"
+    },
+    {
+      "emoji": "🦃",
+      "label": "Cold Turkey"
+    },
+    {
+      "emoji": "🐣",
+      "label": "Almost There"
+    },
+    {
+      "emoji": "🐦",
+      "label": "Songbird"
+    },
+    {
+      "emoji": "🕊",
+      "label": "Olive Branch"
+    },
+    {
+      "emoji": "🦤",
+      "label": "Missed the Boat"
+    },
+    {
+      "emoji": "🪿",
+      "label": "Neighborhood Watch"
+    },
+    {
+      "emoji": "🦚",
+      "label": "Full Display"
+    },
+    {
+      "emoji": "🐟",
+      "label": "Current Mood"
+    },
+    {
+      "emoji": "🦑",
+      "label": "Ink Included"
+    },
+    {
+      "emoji": "🦐",
+      "label": "Little Guy"
+    },
+    {
+      "emoji": "🦞",
+      "label": "Fancy Now"
+    },
+    {
+      "emoji": "🦪",
+      "label": "Hidden Gem"
+    },
+    {
+      "emoji": "🦗",
+      "label": "Crickets"
+    },
+    {
+      "emoji": "🕷",
+      "label": "Web Presence"
+    },
+    {
+      "emoji": "🐜",
+      "label": "Team Player"
+    },
+    {
+      "emoji": "🦟",
+      "label": "Uninvited"
+    },
+    {
+      "emoji": "🪲",
+      "label": "Feature, Not Bug"
+    },
+    {
+      "emoji": "🪳",
+      "label": "Survivor"
+    },
+    {
+      "emoji": "🦂",
+      "label": "Handle With Care"
+    },
+    {
+      "emoji": "🪰",
+      "label": "On the Wall"
+    },
+    {
+      "emoji": "🪱",
+      "label": "Ground Floor"
+    },
+    {
+      "emoji": "🐛",
+      "label": "Work in Progress"
+    },
+    {
+      "emoji": "🐊",
+      "label": "In a While"
+    },
+    {
+      "emoji": "🦎",
+      "label": "Sun Seeker"
+    },
+    {
+      "emoji": "🦕",
+      "label": "Throwback"
+    },
+    {
+      "emoji": "🦖",
+      "label": "Short Reach"
+    },
+    {
+      "emoji": "🐂",
+      "label": "Pulls Weight"
+    },
+    {
+      "emoji": "🐗",
+      "label": "Wild One"
+    },
+    {
+      "emoji": "🐏",
+      "label": "Head First"
+    },
+    {
+      "emoji": "🐑",
+      "label": "Sleep Aid"
+    },
+    {
+      "emoji": "🐐",
+      "label": "The Goat"
+    },
+    {
+      "emoji": "🐋",
+      "label": "Makes Waves"
+    },
+    {
+      "emoji": "🐻‍❄️",
+      "label": "Cold Open"
+    }
+  ]
+}

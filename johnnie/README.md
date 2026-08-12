@@ -63,6 +63,8 @@ npm run serve          # preview the exported ./out locally
 **Projects**, **Features** and **A Song a Day** are markdown files with
 front-matter in `content/`. Two ways to edit:
 
+(The **Badges** case at `/badge/` is CMS-managed too — see below.)
+
 1. **Claude Code / any editor** — edit the `.md` files directly. Add a project
    by dropping an image in `public/images/` and creating a new file in
    `content/projects/` (copy an existing one; `order` controls position).
@@ -73,6 +75,24 @@ front-matter in `content/`. Two ways to edit:
    ```
    For the hosted admin, set up a GitHub OAuth app and point `/admin/config.yml`
    at it (see Sveltia docs). `repo`/`branch` are configured in that file.
+
+## Badges (`/badge`)
+
+A case of numbered hard-enamel animal badges, struck in 3D from emoji. The
+roster is one file — `public/badge/badges.json`, a list of `{emoji, label}` —
+and the page (`public/badge/index.html`) fetches it at boot.
+
+**Adding a badge:** open `/admin/` → **Badges**, append an entry (paste the
+emoji, name it), publish. That's it — the deploy's badge bot
+(`scripts/fetch-badge-glyphs.mjs`, run by the Cloudflare workflow and by
+`npm run build`'s prebuild) downloads the Twemoji SVG the pin is struck from
+(pinned release, self-hosted under `public/badge/lib/twemoji/`) and commits
+it back. Or edit the JSON by hand and run `npm run badges:glyphs`.
+
+Two rules, because each badge's number on the back is its position in the
+list: **append at the end, never reorder, never delete.** An entry whose
+emoji has no Twemoji glyph (a typo, or text that isn't an emoji) doesn't
+break anything — the build warns and the page quietly skips it.
 
 ## A Song a Day® (`/songs`)
 
