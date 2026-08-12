@@ -65,20 +65,22 @@ animation-timing-function:cubic-bezier(0.23,1,0.32,1)}
 ::view-transition-image-pair(topbar){overflow:hidden}
 ::view-transition-old(topbar),::view-transition-new(topbar){
 inset:0 auto auto 0;width:auto;height:auto}
-/* the card is ONE clipped surface: the pair carries the corner itself
-   (the radius is the same on both pages), so the snapshots' baked-in
-   radii — which stretch with the flying box — never shape the corner.
-   Arriving at a piece the box SHRINKS, so the index face (only ever
-   scaled DOWN, its corner never wider than the clip) sits solid
-   underneath at full opacity and the piece face fades in on top: the
-   corner is always backed by opaque paper, never by a half-faded
-   sliver */
+/* the card morphs by WIDTH alone: the pair is one clipped box with the
+   constant corner, and the faces render at natural size pinned to the
+   shared top-left — the masthead's recipe. Nothing ever rescales: not
+   the type, not the corners, not the paper; the box only wipes wider
+   or narrower over still faces */
 ::view-transition-image-pair(sheet){overflow:hidden;
 border-radius:clamp(0px,3vw,40px)}
+::view-transition-old(sheet),::view-transition-new(sheet){
+inset:0 auto auto 0;width:auto;height:auto}
+/* the index face sits solid underneath at full opacity (animation:none
+   also silences the UA's plus-lighter blend animation) and the piece
+   face fades in above it — the paper is never half-faded. Plain
+   selectors on purpose: structural guards like :only-child parse but
+   never match on these pseudos */
 ::view-transition-old(sheet),::view-transition-new(sheet){mix-blend-mode:normal}
-/* only when the new face actually exists — a lone old face (an engine
-   that painted the new page early) must keep its fade, not freeze */
-::view-transition-old(sheet):not(:only-child){animation:none}
+::view-transition-old(sheet){animation:none}
 @media (prefers-reduced-motion:reduce){
 ::view-transition-group(*),::view-transition-image-pair(*),
 ::view-transition-old(*),::view-transition-new(*){animation:none!important}}
