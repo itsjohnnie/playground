@@ -79,8 +79,8 @@ export default function StuffPage() {
 }
 .stuff { max-width: 600px; margin: 0 auto; padding: 0 2.1rem 3rem; }
 
-/* Full-bleed hero, flush at the top. */
-.stuff-hero { position: relative; width: 100%; margin: 0; }
+/* Hero matches the content column's width, flush at the top. */
+.stuff-hero { position: relative; width: 100%; max-width: 600px; margin: 0 auto; }
 .stuff-hero img, .stuff-hero video { width: 100%; height: auto; }
 /* Only one of these two is ever visible — CSS toggles by colour scheme,
    both stay mounted so the video can autoplay/loop before it's shown. Kept
