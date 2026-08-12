@@ -579,7 +579,7 @@ function alloc(w, h) {
   tau = 0; lifeT = 0; last = 0;
   ready = true;
   if (RM) { still(); return; }
-  if (!raf) raf = requestAnimationFrame(frame);
+  if (!raf) { raf = -1; ART.whenVisible(() => { raf = requestAnimationFrame(frame); }); }
 }
 
 /* ---------------- the tick: one step of the collision ---------------- */

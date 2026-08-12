@@ -523,9 +523,9 @@ document.fonts.load("520 12px 'Geist Mono'").then(() => {
   if (THUMB || RM) { entered = true; setRec(); render(performance.now()); drawDim(); return; }
   // let the viewport and any view transition settle, then a beat of dark
   // room before the face resolves — measured fresh at that moment
-  requestAnimationFrame(() => requestAnimationFrame(() => {
+  ART.whenVisible(() => requestAnimationFrame(() => requestAnimationFrame(() => {
     setTimeout(() => { metrics(); enter(); schedIdle(); }, 380);
-  }));
+  })));
 });
 </script>
 <span id="fin" hidden></span>

@@ -355,7 +355,9 @@ F.stage.addEventListener("pointerup", (e) => {
 document.fonts.load("620 12px 'Geist Mono'").then(() => {
   metrics();
   if (THUMB || RM) { finalState(); return; }
-  setTimeout(start, 420);
+  // a prerendered page runs this while hidden — hold the siege for the
+  // moment the room is actually seen (see ART.whenVisible)
+  ART.whenVisible(() => setTimeout(start, 420));
 });
 </script>
 <span id="fin" hidden></span>

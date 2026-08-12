@@ -665,7 +665,7 @@ function draw(tms) {
   } else renderArrival(pos, t);
   requestAnimationFrame(draw);
 }
-requestAnimationFrame(draw);
+ART.whenVisible(() => requestAnimationFrame(draw));
 // the instrument senses footsteps — pointer over the record stirs it;
 // reduced motion keeps the record fully still (no listeners at all)
 if (!RM) {
