@@ -28,7 +28,7 @@
     const og = new URLSearchParams(location.search).get("og") === "1";
     const num = "#" + (o.num || 0);   // one digit — five matches, not a hundred
     const edition = String(o.edition || "").replace(/^0+/, "");
-    document.title = num + " · " + (o.title || "") + " — johnnie’s atelier";
+    document.title = num + " · " + (o.title || "") + " — johnnie’s studio";
     const fav = document.createElement("link");
     fav.rel = "icon";
     fav.href = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>" +
@@ -226,7 +226,7 @@ h1{white-space:nowrap;font-size:62px}
     panel.setAttribute("aria-label", "about this piece");
     panel.innerHTML =
       '<header class="top">' +
-        '<div><span class="lab">Johnnie’s atelier</span><br><a href="./">← Art</a></div>' +
+        '<div><span class="lab">Johnnie’s studio</span><br><a href="./">← Art</a></div>' +
         '<div class="m-col"><span class="m">Daily Practice</span><br>' + date + "</div>" +
         '<div><a href="https://johnnies.life/art" tabindex="-1">johnnies.life/art</a><br>' + num + "</div>" +
       "</header>" +
