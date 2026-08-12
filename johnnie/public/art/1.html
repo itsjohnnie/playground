@@ -14,6 +14,11 @@
 <meta name="twitter:title" content="#1 · Terreno — Argentina vs. Algeria · Johnnie&#x27;s studio">
 <meta name="twitter:description" content="A survey plate of the opening match: attacking intensity raised into a bone-white contour landform afloat on the dark of the room. The three summits are Messi’s goals — 17′, 60′, 76′, his first…">
 <meta name="twitter:image" content="https://johnnies.life/art/og/001.png">
+<!-- the type the piece waits for starts loading with the page itself,
+     not after the scripts have run - no flash of the wrong face, and the
+     artwork's own fonts race the parser instead of following it -->
+<link rel="preload" href="lib/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="lib/fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin>
 <!-- the arrival must be COMPLETE in frame one: the room is dark before any
      script runs, the view-transition opt-in is static (a script-injected rule
      comes too late for the inbound morph), and rendering holds until the

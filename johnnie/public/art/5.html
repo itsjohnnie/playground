@@ -14,6 +14,10 @@
 <meta name="twitter:title" content="#5 · Embate — Argentina vs. Egypt · Johnnie&#x27;s studio">
 <meta name="twitter:description" content="Two ink fronts in still water — pharaonic ochre pressing from above, celeste rising to meet it. Egypt&#x27;s weight holds the line for an hour; a thrust at 21&#x27; dies against it, a surge at 58&#x27; is pulled…">
 <meta name="twitter:image" content="https://johnnies.life/art/og/005.png">
+<!-- the type the piece waits for starts loading with the page itself,
+     not after the scripts have run - no flash of the wrong face, and the
+     artwork's own fonts race the parser instead of following it -->
+<link rel="preload" href="lib/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
 <!-- the arrival must be COMPLETE in frame one: the room is dark before any
      script runs, the view-transition opt-in is static (a script-injected rule
      comes too late for the inbound morph), and rendering holds until the

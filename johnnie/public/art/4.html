@@ -14,6 +14,10 @@
 <meta name="twitter:title" content="#4 · Bronce — Argentina vs. Cabo Verde · Johnnie&#x27;s studio">
 <meta name="twitter:description" content="A commemorative slab, sand-cast in bronze: 120 minutes ring a sol de mayo — Argentina&#x27;s three goals raised from the metal, Cabo Verde&#x27;s two struck into it. One raking lamp crosses the relief; the…">
 <meta name="twitter:image" content="https://johnnies.life/art/og/004.png">
+<!-- the type the piece waits for starts loading with the page itself,
+     not after the scripts have run - no flash of the wrong face, and the
+     artwork's own fonts race the parser instead of following it -->
+<link rel="preload" href="lib/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
 <!-- the arrival must be COMPLETE in frame one: the room is dark before any
      script runs, the view-transition opt-in is static (a script-injected rule
      comes too late for the inbound morph), and rendering holds until the
