@@ -204,6 +204,13 @@ html {
 @media (orientation: landscape) and (max-height: 500px) {
   #root {
     max-width: 100%;
+    /* Guarantee a gutter once the width cap is gone. `max()` defers to
+       the real inset when the notch is wider (≈59 px on Pro models),
+       and still keeps content off the physical edge on notch-free
+       phones — or if the UA reports 0 insets, which some iOS
+       standalone builds do. */
+    padding-left: max(var(--safe-left), 20px);
+    padding-right: max(var(--safe-right), 20px);
   }
 }
 
