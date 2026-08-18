@@ -94,6 +94,52 @@ export function picaPicaPairs(seats: string[] | undefined): Array<[string, strin
   ]
 }
 
+/**
+ * Re-seat a 3v3 match after its lineup was edited.
+ *
+ * Editing who played invalidates `seats`, since the array records which
+ * chair each player sat in and the pica pica rival is whoever sat three
+ * chairs round. Rather than throw the arrangement away on any edit,
+ * anyone still on their original side keeps their chair and whoever is
+ * new fills the vacancies — so correcting one name in a six-player
+ * match leaves the other two duels exactly as they were played.
+ *
+ * Returns null when the result would no longer be a 3v3, which is the
+ * signal to clear `seats` entirely: better to drop the match out of
+ * Duelos than to credit duels nobody played.
+ */
+export function rebuildSeats(
+  seats: string[] | undefined,
+  teamAPlayerIds: string[],
+  teamBPlayerIds: string[],
+): string[] | null {
+  if (!seats || seats.length !== 6) return null
+  if (teamAPlayerIds.length !== 3 || teamBPlayerIds.length !== 3) return null
+
+  const out: Array<string | null> = [null, null, null, null, null, null]
+  const sides: Array<[0 | 1, string[]]> = [
+    [0, teamAPlayerIds], // even chairs
+    [1, teamBPlayerIds], // odd chairs
+  ]
+
+  for (const [parity, members] of sides) {
+    const chairs = [0, 2, 4].map((k) => k + parity)
+    const kept = new Set<string>()
+    for (const chair of chairs) {
+      if (members.includes(seats[chair])) {
+        out[chair] = seats[chair]
+        kept.add(seats[chair])
+      }
+    }
+    const newcomers = members.filter((id) => !kept.has(id))
+    for (const chair of chairs) {
+      if (out[chair] === null) out[chair] = newcomers.shift() ?? null
+    }
+  }
+
+  return out.every((s): s is string => s !== null) ? (out as string[]) : null
+}
+
 export interface AppState {
   schemaVersion: 2
   roster: Player[]
