@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence, animate, useMotionValue } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
-import { ChevronLeft, Trash2 } from 'lucide-react'
+import { ChevronLeft, Trash2, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Chip } from '@/components/ui/Chip'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen, staggerItem } from '@/components/ui/Screen'
 import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Match, Player } from '@/types/game'
+import { rebuildSeats } from '@/types/game'
 import { leaderboard, duels, type Duel } from '@/utils/scoring'
 import { SCORE_REASON_LABEL } from '@/types/game'
 
@@ -16,17 +18,30 @@ interface HistorialScreenProps {
   playerById: (id: string) => Player | undefined
   onBack: () => void
   onDeleteMatch: (id: string) => void
+  onUpdateTeams: (
+    id: string,
+    teamAPlayerIds: string[],
+    teamBPlayerIds: string[],
+    seats: string[] | null,
+  ) => void
 }
 
 type Tab = 'partidas' | 'stats' | 'duelos'
 
-export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteMatch }: HistorialScreenProps) {
+export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteMatch, onUpdateTeams }: HistorialScreenProps) {
   const [tab, setTab] = useState<Tab>('partidas')
   const [openMatch, setOpenMatch] = useState<Match | null>(null)
   const [swipedRowId, setSwipedRowId] = useState<string | null>(null)
   const finished = useMemo(() => matches.filter((m) => m.finishedAt !== null), [matches])
   const stats = useMemo(() => leaderboard(roster, matches), [roster, matches])
   const allDuels = useMemo(() => duels(matches), [matches])
+  // `openMatch` is the row as it was when tapped. Re-read it from
+  // `matches` so an edit made inside the sheet shows up immediately
+  // instead of the sheet holding a stale snapshot.
+  const openLive = useMemo(
+    () => (openMatch ? matches.find((m) => m.id === openMatch.id) ?? null : null),
+    [openMatch, matches],
+  )
   useEdgeSwipeBack(onBack, { enabled: !openMatch })
 
   return (
@@ -135,11 +150,19 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
       </AnimatePresence>
 
       <Sheet
-        open={!!openMatch}
+        open={!!openLive}
         onClose={() => setOpenMatch(null)}
-        title={openMatch ? `${openMatch.teamA.name} vs ${openMatch.teamB.name}` : ''}
+        title={openLive ? `${openLive.teamA.name} vs ${openLive.teamB.name}` : ''}
       >
-        {openMatch && <MatchDetail match={openMatch} playerById={playerById} onDelete={() => { onDeleteMatch(openMatch.id); setOpenMatch(null) }} />}
+        {openLive && (
+          <MatchDetail
+            match={openLive}
+            roster={roster}
+            playerById={playerById}
+            onUpdateTeams={onUpdateTeams}
+            onDelete={() => { onDeleteMatch(openLive.id); setOpenMatch(null) }}
+          />
+        )}
       </Sheet>
     </Screen>
   )
@@ -324,7 +347,21 @@ const DETAIL_FADE_MASK_BOTTOM =
   'rgba(0,0,0,0.6) 60%, ' +
   'transparent 100%)'
 
-function MatchDetail({ match, playerById, onDelete }: { match: Match; playerById: (id: string) => Player | undefined; onDelete: () => void }) {
+interface MatchDetailProps {
+  match: Match
+  roster: Player[]
+  playerById: (id: string) => Player | undefined
+  onUpdateTeams: (
+    id: string,
+    teamAPlayerIds: string[],
+    teamBPlayerIds: string[],
+    seats: string[] | null,
+  ) => void
+  onDelete: () => void
+}
+
+function MatchDetail({ match, roster, playerById, onUpdateTeams, onDelete }: MatchDetailProps) {
+  const [editing, setEditing] = useState(false)
   const dur = match.finishedAt
     ? Math.max(1, Math.round((match.finishedAt - match.startedAt) / 60000))
     : null
@@ -379,6 +416,25 @@ function MatchDetail({ match, playerById, onDelete }: { match: Match; playerById
         <TeamSummary side="A" match={match} playerById={playerById} />
         <TeamSummary side="B" match={match} playerById={playerById} />
       </div>
+
+      {editing ? (
+        <LineupEditor
+          match={match}
+          roster={roster}
+          onCancel={() => setEditing(false)}
+          onSave={(a, b) => {
+            onUpdateTeams(match.id, a, b, rebuildSeats(match.seats, a, b))
+            setEditing(false)
+          }}
+        />
+      ) : (
+        <button
+          onClick={() => setEditing(true)}
+          className="pressable inline-flex items-center justify-center gap-2 rounded-md border border-line bg-surface-hi px-3 py-2.5 text-sm text-ink hover-elevate"
+        >
+          <Users className="size-4" /> Editar equipos
+        </button>
+      )}
       <p className="text-xs text-ink-soft tabular text-center">
         {date}{dur ? ` · ${dur} min` : ''} · {match.events.length} jugadas
       </p>
@@ -441,6 +497,111 @@ function MatchDetail({ match, playerById, onDelete }: { match: Match; playerById
           WebkitMaskImage: DETAIL_FADE_MASK_BOTTOM,
         }}
       />
+    </div>
+  )
+}
+
+// ─── Lineup editor ──────────────────────────────────────────
+//
+// Rosters get logged wrong: a stand-in recorded under the regular's
+// name, someone put on the wrong side. This edits who a finished match
+// is attributed to without touching the score or the plays — the
+// result stands, only the names against it change.
+//
+// One tap target per player, cycling A → B → out → A, because the
+// three states are mutually exclusive and a chip that carries its own
+// state reads faster than a row of radio buttons per player.
+
+function LineupEditor({
+  match, roster, onSave, onCancel,
+}: {
+  match: Match
+  roster: Player[]
+  onSave: (teamAPlayerIds: string[], teamBPlayerIds: string[]) => void
+  onCancel: () => void
+}) {
+  type Side = 'A' | 'B' | null
+
+  const [assign, setAssign] = useState<Record<string, Side>>(() => {
+    const next: Record<string, Side> = {}
+    for (const id of match.teamA.playerIds) next[id] = 'A'
+    for (const id of match.teamB.playerIds) next[id] = 'B'
+    return next
+  })
+
+  // Everyone on the roster, plus anyone who played this match but has
+  // since been retired off it — otherwise editing a months-old match
+  // would silently drop a player who is no longer at the table.
+  const candidates = useMemo(() => {
+    const seen = new Set(roster.map((p) => p.id))
+    const extra = [...match.teamA.playerIds, ...match.teamB.playerIds]
+      .filter((id) => !seen.has(id))
+      .map((id) => ({ id, name: '—', joinedAt: 0 }) as Player)
+    return [...roster, ...extra].sort((a, b) =>
+      a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }),
+    )
+  }, [roster, match.teamA.playerIds, match.teamB.playerIds])
+
+  function cycle(id: string) {
+    setAssign((prev) => ({
+      ...prev,
+      [id]: prev[id] === 'A' ? 'B' : prev[id] === 'B' ? null : 'A',
+    }))
+  }
+
+  const teamA = candidates.filter((p) => assign[p.id] === 'A').map((p) => p.id)
+  const teamB = candidates.filter((p) => assign[p.id] === 'B').map((p) => p.id)
+  const valid = teamA.length > 0 && teamB.length > 0
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-line bg-surface-hi/40 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="eyebrow">Quién jugó</p>
+        <div className="flex items-center gap-3 text-[11px] text-ink-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden className="size-2 rounded-full bg-accent" />
+            {match.teamA.name}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span aria-hidden className="size-2 rounded-full bg-ink" />
+            {match.teamB.name}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        {candidates.map((p) => {
+          const side = assign[p.id] ?? null
+          return (
+            <Chip
+              key={p.id}
+              selected={side !== null}
+              tone={side === 'B' ? 'b' : 'a'}
+              onClick={() => cycle(p.id)}
+              className="w-full"
+              aria-label={`${p.name}. ${
+                side === 'A' ? match.teamA.name
+                  : side === 'B' ? match.teamB.name
+                    : 'no jugó'
+              }. Tocá para cambiar.`}
+            >
+              <span className="truncate">{p.name}</span>
+            </Chip>
+          )
+        })}
+      </div>
+
+      <p className="text-[11px] text-ink-soft">
+        Tocá un nombre para pasarlo de {match.teamA.name} a {match.teamB.name},
+        y otra vez para sacarlo de la partida.
+      </p>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
+        <Button variant="primary" disabled={!valid} onClick={() => onSave(teamA, teamB)}>
+          Guardar
+        </Button>
+      </div>
     </div>
   )
 }
