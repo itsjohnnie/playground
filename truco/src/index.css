@@ -188,6 +188,17 @@ html {
   overflow: hidden;
 }
 
+/* Landscape mobile — the 480 px cap keeps the app as a narrow
+   portrait column even on a device that's now much wider than tall.
+   When the viewport is landscape AND short (i.e. a phone rotated, not
+   a widescreen desktop), drop the width cap so the app fills the
+   available width and content has room to breathe. */
+@media (orientation: landscape) and (max-height: 500px) {
+  #root {
+    max-width: 100%;
+  }
+}
+
 /* ── Type ── */
 .font-display {
   font-family: 'Fraunces', ui-serif, Georgia, serif;
