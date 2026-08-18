@@ -23,8 +23,16 @@ export function ToastHost() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-stretch gap-2 px-3"
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 12px)', paddingTop: 12 }}
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-[60] flex flex-col items-stretch gap-2"
+      style={{
+        paddingBottom: 'max(env(safe-area-inset-bottom), 12px)',
+        paddingTop: 12,
+        // Toasts span the full viewport width, so on a landscape phone
+        // they'd otherwise run under the notch on one side and the
+        // home indicator on the other. Both insets are 0 in portrait.
+        paddingLeft: 'max(env(safe-area-inset-left), 12px)',
+        paddingRight: 'max(env(safe-area-inset-right), 12px)',
+      }}
     >
       <AnimatePresence initial={false}>
         {items.map((m) => (
