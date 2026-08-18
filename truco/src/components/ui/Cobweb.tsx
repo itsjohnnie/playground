@@ -1,6 +1,6 @@
 import { useId, useMemo } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { buildWeb, tierFor } from '@/lib/cobweb'
+import { buildWeb } from '@/lib/cobweb'
 
 /**
  * Ambient corner cobweb for a team that has gone cold — see
@@ -13,9 +13,11 @@ import { buildWeb, tierFor } from '@/lib/cobweb'
 export function Cobweb({ rounds }: { rounds: number }) {
   const maskId = useId()
   const reduced = useReducedMotion()
-  const tier = tierFor(rounds)
 
-  const { radialPaths, ringPaths, strand, opacity } = useMemo(() => buildWeb(tier), [tier])
+  const { radialPaths, ringPaths, strand, opacity, sizeScale } = useMemo(
+    () => buildWeb(rounds),
+    [rounds],
+  )
 
   return (
     <motion.svg
@@ -29,10 +31,13 @@ export function Cobweb({ rounds }: { rounds: number }) {
         height: 'clamp(76px, 26vw, 116px)',
         transformOrigin: '100% 0%',
       }}
-      initial={{ opacity: 0, scale: 0.985 }}
+      initial={{ opacity: 0, scale: sizeScale * 0.985 }}
       animate={{
+        // Growth rides on the transform rather than the box, so each
+        // extra dry round eases the web outward from the corner
+        // instead of snapping to a new size.
         opacity,
-        scale: 1,
+        scale: sizeScale,
         // A web this thin moves on room air. Mirrored so it drifts
         // rather than ticking back to a start frame.
         rotate: reduced ? 0 : [0, 0.55, 0],
@@ -40,7 +45,9 @@ export function Cobweb({ rounds }: { rounds: number }) {
       exit={{ opacity: 0, transition: { duration: 0.28, ease: [0.23, 1, 0.32, 1] } }}
       transition={{
         opacity: { duration: 0.6, ease: [0.23, 1, 0.32, 1] },
-        scale: { duration: 0.6, ease: [0.23, 1, 0.32, 1] },
+        // Slower than the fade: the web should be caught mid-creep on
+        // the round it grows, not seen to pop.
+        scale: { duration: 1.1, ease: [0.23, 1, 0.32, 1] },
         rotate: reduced
           ? { duration: 0 }
           : { duration: 9, ease: [0.77, 0, 0.175, 1], repeat: Infinity },
