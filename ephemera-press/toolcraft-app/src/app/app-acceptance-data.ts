@@ -613,7 +613,7 @@ export const appAcceptance: readonly ToolcraftComponentAcceptance[] = [
     componentType: "canvas",
     evidence: "exported-bytes",
     expectedObservable:
-      "In Infinity mode, PNG export crops to the constant 1080x1350 product sheet rect.",
+      "In Infinity mode, PNG export crops to the constant sheet-with-bleed product rect (1240x1510), distinct from the finite artboard.",
     fixture: "infinite mode export",
     id: "canvas.infinity-export",
     infinityCanvasCoverage: "scene-bounds-image-export",

@@ -229,12 +229,14 @@ export function readEphemeraParams(
 }
 
 /**
- * Infinite-mode product scene: one fixed portrait sheet matching the
- * default 1080x1350 artboard, centred on the world origin. The sheet
- * proportion is part of the product identity, so the rect is constant.
+ * Infinite-mode product scene: the portrait sheet with a deckle bleed
+ * on every side, centred on the world origin. The bleed distinguishes
+ * the infinite crop from the finite 1080x1350 artboard and gives the
+ * unbounded workspace a wider paper field around the composition.
  */
 export const EPHEMERA_SHEET_WIDTH = 1080;
 export const EPHEMERA_SHEET_HEIGHT = 1350;
+export const EPHEMERA_SHEET_BLEED = 80;
 
 export function getEphemeraSceneRect(_state: Readonly<ToolcraftState>): {
   height: number;
@@ -242,10 +244,12 @@ export function getEphemeraSceneRect(_state: Readonly<ToolcraftState>): {
   x: number;
   y: number;
 } {
+  const width = EPHEMERA_SHEET_WIDTH + EPHEMERA_SHEET_BLEED * 2;
+  const height = EPHEMERA_SHEET_HEIGHT + EPHEMERA_SHEET_BLEED * 2;
   return {
-    height: EPHEMERA_SHEET_HEIGHT,
-    width: EPHEMERA_SHEET_WIDTH,
-    x: -EPHEMERA_SHEET_WIDTH / 2,
-    y: -EPHEMERA_SHEET_HEIGHT / 2,
+    height,
+    width,
+    x: -width / 2,
+    y: -height / 2,
   };
 }

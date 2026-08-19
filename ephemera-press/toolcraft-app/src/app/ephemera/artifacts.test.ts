@@ -14,6 +14,7 @@ import { ephemeraExportRenderer } from "./export-renderer";
 import { paintEphemera, type EphemeraModel, type EphemeraTextOp } from "./ops";
 import {
   EPHEMERA_DEFAULTS,
+  EPHEMERA_SHEET_BLEED,
   EPHEMERA_SHEET_HEIGHT,
   EPHEMERA_SHEET_WIDTH,
   EPHEMERA_TARGETS,
@@ -278,11 +279,13 @@ describe("ephemera sheets, wheels, and artifacts", () => {
 
   it("scene bounds provider fixes the portrait sheet rect", () => {
     const rect = getEphemeraSceneRect(makeState({}));
+    const width = EPHEMERA_SHEET_WIDTH + EPHEMERA_SHEET_BLEED * 2;
+    const height = EPHEMERA_SHEET_HEIGHT + EPHEMERA_SHEET_BLEED * 2;
     expect(rect).toEqual({
-      height: EPHEMERA_SHEET_HEIGHT,
-      width: EPHEMERA_SHEET_WIDTH,
-      x: -EPHEMERA_SHEET_WIDTH / 2,
-      y: -EPHEMERA_SHEET_HEIGHT / 2,
+      height,
+      width,
+      x: -width / 2,
+      y: -height / 2,
     });
   });
 
@@ -292,7 +295,9 @@ describe("ephemera sheets, wheels, and artifacts", () => {
       makeState({ [EPHEMERA_TARGETS.sheetCell]: 10, [EPHEMERA_TARGETS.seed]: 99 }),
     );
     expect(reconfigured).toEqual(defaultRect);
-    expect(defaultRect.width / defaultRect.height).toBeCloseTo(1080 / 1350, 5);
+    // The bleed distinguishes the infinite crop from the finite sheet.
+    expect(defaultRect.width).not.toBe(EPHEMERA_SHEET_WIDTH);
+    expect(defaultRect.height).not.toBe(EPHEMERA_SHEET_HEIGHT);
   });
 
   it("paints every op kind through the shared painter", () => {

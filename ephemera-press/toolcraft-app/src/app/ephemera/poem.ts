@@ -116,9 +116,14 @@ export function poemOps(p: EphemeraParams): EphemeraOp[] {
 
   if (p.poemArrangement === "gaps") {
     // Keeps the authored line breaks but opens wide interior gaps, the
-    // way "All Life Long" scatters its phrases across the measure.
+    // way "All Life Long" scatters its phrases across the measure. The
+    // block sits vertically centred on the sheet.
     const usable = f.W - f.m * 2;
-    let y = f.m + lh;
+    const blockHeight = sourceLines.reduce(
+      (height, line) => height + (line.length === 0 ? lh * 0.6 : lh),
+      0,
+    );
+    let y = Math.max(f.m + lh, f.cy - blockHeight / 2);
     for (const line of sourceLines) {
       if (y > f.H - f.m) break;
       if (line.length === 0) {
@@ -133,8 +138,14 @@ export function poemOps(p: EphemeraParams): EphemeraOp[] {
       for (let k = 0; k < lineWords.length; k += per) {
         chunks.push(lineWords.slice(k, k + per).join(" "));
       }
+      // Chunks never overprint: each one starts past the previous
+      // chunk's right edge, and the right-aligned ending is used only
+      // when it clears that edge.
+      let lastRight = -Infinity;
       chunks.forEach((chunk, chunkIndex) => {
+        const width = estimateWidth(chunk, s, "serif");
         if (chunkIndex === 0) {
+          lastRight = f.m + width;
           ops.push(
             text({
               align: "left",
@@ -149,7 +160,11 @@ export function poemOps(p: EphemeraParams): EphemeraOp[] {
           );
           return;
         }
-        if (chunkIndex === chunks.length - 1 && rng() < 0.45) {
+        if (
+          chunkIndex === chunks.length - 1 &&
+          rng() < 0.45 &&
+          f.W - f.m - width > lastRight + s * 1.2
+        ) {
           ops.push(
             text({
               align: "right",
@@ -164,7 +179,13 @@ export function poemOps(p: EphemeraParams): EphemeraOp[] {
           );
           return;
         }
-        const x = f.m + (0.3 + rng() * 0.42) * usable * Math.max(0.25, p.poemSpread);
+        const wandered =
+          f.m + (0.3 + rng() * 0.42) * usable * Math.max(0.25, p.poemSpread);
+        const x = Math.max(
+          Math.min(wandered, f.W - f.m - width),
+          lastRight + s * 1.2,
+        );
+        lastRight = x + width;
         ops.push(
           text({
             align: "left",
@@ -173,7 +194,7 @@ export function poemOps(p: EphemeraParams): EphemeraOp[] {
             size: s,
             text: chunk,
             weight: 400,
-            x: Math.min(x, f.W - f.m - estimateWidth(chunk, s, "serif")),
+            x,
             y,
           }),
         );
@@ -203,9 +224,11 @@ export function poemOps(p: EphemeraParams): EphemeraOp[] {
     ) {
       continue;
     }
+    // Leading sets the vertical exclusion band between pinned words
+    // (lh * 0.9 equals the old s * 1.35 at the default leading).
     const collides = placed.some(
       (prev) =>
-        Math.abs(prev.y - y) < s * 1.35 &&
+        Math.abs(prev.y - y) < lh * 0.9 &&
         Math.abs(prev.x - x) < (prev.w + width) / 2 + s,
     );
     if (collides) continue;

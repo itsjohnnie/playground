@@ -56,6 +56,10 @@ test("browser: seed slider recomposes the piece in every mode", async ({
 }) => {
   const session = await openEphemeraSession(page);
 
+  // Alternate drag targets so consecutive visible branches never land
+  // on the same seed value (which would make the value assert vacuous).
+  const ratios = [0.75, 0.15, 0.9, 0.35, 0.55];
+  let visibleIndex = 0;
   for (const applicabilityCase of applicabilityCasesFor("piece.seed")) {
     const branch = makeBranchAction(session, applicabilityCase);
     await expectToolcraftControlApplicabilityState(
@@ -66,8 +70,10 @@ test("browser: seed slider recomposes the piece in every mode", async ({
     );
     if (applicabilityCase.expectation !== "visible") continue;
 
+    const ratio = ratios[visibleIndex % ratios.length]!;
+    visibleIndex += 1;
     const drag = session.controlAction("piece.seed", (_control, currentPage) =>
-      dragSliderWithLiveProductUpdate(currentPage, "piece.seed", 0.75),
+      dragSliderWithLiveProductUpdate(currentPage, "piece.seed", ratio),
     );
     await expectToolcraftProductObservableToChange(session, drag, {
       requirementId: caseRequirementId("piece.seed", applicabilityCase),

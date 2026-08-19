@@ -1,5 +1,6 @@
 import { expect, type Download, type Page } from "@playwright/test";
 
+import { getToolcraftApplicabilityPredicates } from "@/toolcraft/runtime";
 import {
   appControlSectionInventory,
   getToolcraftApplicabilityRequirementId,
@@ -78,15 +79,11 @@ export async function readCanvasPixelSum(page: Page): Promise<number> {
     if (!canvas) return -1;
     const context = canvas.getContext("2d");
     if (!context) return -1;
-    // Sample a centred window: the compositions sit in the middle of
-    // the sheet, so corners are often uniform paper.
-    const width = Math.min(canvas.width, 768);
-    const height = Math.min(canvas.height, 768);
-    const x = Math.max(0, Math.floor((canvas.width - width) / 2));
-    const y = Math.max(0, Math.floor((canvas.height - height) / 2));
-    const data = context.getImageData(x, y, width, height).data;
+    // Hash the whole canvas with a stride so any composed region counts,
+    // including top-anchored pieces whose centre is blank paper.
+    const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
     let sum = 0;
-    for (let index = 0; index < data.length; index += 1) {
+    for (let index = 0; index < data.length; index += 7) {
       sum = (sum + data[index]! * (index + 1)) % 0xffffffff;
     }
     return sum;
@@ -201,6 +198,9 @@ export async function dragSliderWithLiveProductUpdate(
   const field = await getToolcraftControlFieldByTarget(page, target);
   const slider = field.getByRole("slider").first();
   const track = field.locator('[data-slot="slider"]').first();
+  // Manual mouse moves do not auto-scroll like locator clicks do; make
+  // sure the slider is inside the panel viewport first.
+  await track.scrollIntoViewIfNeeded();
   const thumbBox = await slider.boundingBox();
   const trackBox = await track.boundingBox();
   if (!thumbBox || !trackBox) {
@@ -252,7 +252,58 @@ export function caseRequirementId(
   );
 }
 
-/** Builds the target-scoped branch action for one applicability case. */
+function findSchemaControl(target: string) {
+  for (const section of appSchema.panels.controls?.sections ?? []) {
+    for (const control of Object.values(section.controls)) {
+      if (control.target === target) return control;
+    }
+  }
+  return undefined;
+}
+
+/** Applies one selector value through the real UI, by control type. */
+async function applyControlValue(
+  page: Page,
+  target: string,
+  value: unknown,
+): Promise<void> {
+  const control = findSchemaControl(target);
+  if (!control) {
+    throw new Error(`No schema control owns applicability target "${target}".`);
+  }
+  if (control.type === "tabs" || control.type === "select") {
+    const label = control.options?.find(
+      (option) => option.value === value,
+    )?.label;
+    if (!label) {
+      throw new Error(
+        `Control "${target}" has no option for value "${String(value)}".`,
+      );
+    }
+    if (control.type === "tabs") {
+      const field = await getToolcraftControlFieldByTarget(page, target);
+      await field.getByRole("tab", { exact: true, name: label }).click();
+      return;
+    }
+    await selectOptionByTarget(page, target, label);
+    return;
+  }
+  if (control.type === "switch" || control.type === "checkbox") {
+    await setSwitchByTarget(page, target, value === true);
+    return;
+  }
+  throw new Error(
+    `Unsupported applicability selector control type "${control.type}".`,
+  );
+}
+
+/**
+ * Builds the target-scoped branch action for one applicability case.
+ * Cases are derived against the dependent control's satisfying baseline
+ * (every predicate met), varying one selector; the action therefore
+ * first establishes that baseline through the real UI, then applies the
+ * case's own selector value.
+ */
 export function makeBranchAction(
   session: ToolcraftBrowserProofSession,
   applicabilityCase: ToolcraftControlApplicabilityCase,
@@ -260,40 +311,20 @@ export function makeBranchAction(
   return session.targetAction(
     applicabilityCase.selectorTarget,
     async (page) => {
-      switch (applicabilityCase.selectorControlType) {
-        case "tabs": {
-          const field = await getToolcraftControlFieldByTarget(
-            page,
-            applicabilityCase.selectorTarget,
-          );
-          await field
-            .getByRole("tab", {
-              exact: true,
-              name: applicabilityCase.selectorOptionLabel ?? "",
-            })
-            .click();
-          return;
+      const dependent = findSchemaControl(applicabilityCase.target);
+      for (const predicate of getToolcraftApplicabilityPredicates(
+        dependent?.applicability,
+      )) {
+        if (predicate.target === applicabilityCase.selectorTarget) continue;
+        if ("equals" in predicate) {
+          await applyControlValue(page, predicate.target, predicate.equals);
         }
-        case "select":
-          await selectOptionByTarget(
-            page,
-            applicabilityCase.selectorTarget,
-            applicabilityCase.selectorOptionLabel ?? "",
-          );
-          return;
-        case "switch":
-        case "checkbox":
-          await setSwitchByTarget(
-            page,
-            applicabilityCase.selectorTarget,
-            applicabilityCase.selectorValue === true,
-          );
-          return;
-        default:
-          throw new Error(
-            `Unsupported applicability selector "${applicabilityCase.selectorControlType}".`,
-          );
       }
+      await applyControlValue(
+        page,
+        applicabilityCase.selectorTarget,
+        applicabilityCase.selectorValue,
+      );
     },
   );
 }

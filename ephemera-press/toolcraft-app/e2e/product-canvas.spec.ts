@@ -20,7 +20,7 @@ import {
   setSwitchByTarget,
 } from "./product-support";
 
-const EXPECTED_SCENE_RECT = { height: 1350, width: 1080, x: -540, y: -675 };
+const EXPECTED_SCENE_RECT = { height: 1510, width: 1240, x: -620, y: -755 };
 
 test.setTimeout(240_000);
 
