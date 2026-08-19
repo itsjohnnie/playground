@@ -1,0 +1,5 @@
+node_modules/
+.DS_Store
+toolcraft-app/dist/
+toolcraft-app/.toolcraft/
+test-results/

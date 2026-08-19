@@ -1,0 +1,306 @@
+{
+  "version": 3,
+  "owners": [
+    {
+      "acceptanceIds": [
+        "actions.copy-svg",
+        "actions.output",
+        "background.color",
+        "background.include",
+        "canvas.default-size",
+        "canvas.infinity",
+        "canvas.infinity-export",
+        "canvas.render-scale",
+        "export.image-format",
+        "export.image-resolution",
+        "ink.accent",
+        "ink.primary",
+        "persistence.reload",
+        "piece.mode",
+        "piece.seed",
+        "poem.arrangement",
+        "poem.leading",
+        "poem.spread",
+        "poem.text",
+        "poem.type-size",
+        "rings.count",
+        "rings.gather",
+        "rings.marks",
+        "rings.size",
+        "rings.style",
+        "rings.words",
+        "sheet.cell",
+        "sheet.emphasis",
+        "sheet.pattern",
+        "sheet.void",
+        "sheet.words",
+        "tour.artist",
+        "tour.dates",
+        "tour.layout",
+        "tour.leading",
+        "wheel.divisions",
+        "wheel.instrument",
+        "wheel.notches",
+        "wheel.rings"
+      ],
+      "kind": "functional",
+      "path": "src/app/app-schema.ts"
+    },
+    {
+      "acceptanceIds": [
+        "actions.copy-svg",
+        "actions.output",
+        "canvas.infinity",
+        "canvas.infinity-export",
+        "canvas.render-scale",
+        "piece.mode"
+      ],
+      "kind": "functional",
+      "path": "src/app/app-composition.tsx"
+    },
+    {
+      "acceptanceIds": [
+        "ink.accent",
+        "ink.primary",
+        "piece.mode",
+        "piece.seed",
+        "poem.arrangement",
+        "poem.leading",
+        "poem.spread",
+        "poem.text",
+        "poem.type-size",
+        "rings.count",
+        "rings.gather",
+        "rings.marks",
+        "rings.size",
+        "rings.style",
+        "rings.words",
+        "sheet.cell",
+        "sheet.emphasis",
+        "sheet.pattern",
+        "sheet.void",
+        "sheet.words",
+        "tour.artist",
+        "tour.dates",
+        "tour.layout",
+        "tour.leading",
+        "wheel.divisions",
+        "wheel.instrument",
+        "wheel.notches",
+        "wheel.rings"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "render-piece",
+        "export-frame"
+      ],
+      "path": "src/app/ephemera/engine.ts"
+    },
+    {
+      "acceptanceIds": [
+        "actions.copy-svg",
+        "actions.output",
+        "canvas.render-scale",
+        "ink.accent",
+        "ink.primary",
+        "piece.mode"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "render-piece",
+        "export-frame"
+      ],
+      "path": "src/app/ephemera/ops.ts"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "canvas.infinity",
+        "canvas.infinity-export",
+        "ink.accent",
+        "ink.primary",
+        "piece.mode",
+        "piece.seed",
+        "poem.arrangement",
+        "poem.leading",
+        "poem.spread",
+        "poem.text",
+        "poem.type-size",
+        "rings.count",
+        "rings.gather",
+        "rings.marks",
+        "rings.size",
+        "rings.style",
+        "rings.words",
+        "sheet.cell",
+        "sheet.emphasis",
+        "sheet.pattern",
+        "sheet.void",
+        "sheet.words",
+        "tour.artist",
+        "tour.dates",
+        "tour.layout",
+        "tour.leading",
+        "wheel.divisions",
+        "wheel.instrument",
+        "wheel.notches",
+        "wheel.rings"
+      ],
+      "kind": "functional",
+      "path": "src/app/ephemera/params.ts"
+    },
+    {
+      "acceptanceIds": [
+        "background.color",
+        "background.include",
+        "canvas.render-scale",
+        "piece.mode"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "render-piece"
+      ],
+      "path": "src/app/ephemera/ephemera-canvas.tsx"
+    },
+    {
+      "acceptanceIds": [
+        "actions.output",
+        "canvas.infinity-export",
+        "export.image-format",
+        "export.image-resolution"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "export-frame"
+      ],
+      "path": "src/app/ephemera/export-renderer.ts"
+    },
+    {
+      "acceptanceIds": [
+        "actions.copy-svg"
+      ],
+      "kind": "functional",
+      "path": "src/app/ephemera/svg-payload.ts"
+    },
+    {
+      "acceptanceIds": [
+        "actions.output",
+        "canvas.render-scale"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "render-piece",
+        "export-frame"
+      ],
+      "path": "src/app/ephemera/renderer-pipeline.ts"
+    },
+    {
+      "acceptanceIds": [
+        "ink.accent",
+        "ink.primary",
+        "piece.mode",
+        "piece.seed"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "render-piece",
+        "export-frame"
+      ],
+      "path": "src/app/ephemera/core.ts"
+    },
+    {
+      "acceptanceIds": [
+        "ink.accent",
+        "ink.primary",
+        "piece.mode",
+        "piece.seed",
+        "poem.arrangement",
+        "poem.leading",
+        "poem.spread",
+        "poem.text",
+        "poem.type-size"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "render-piece",
+        "export-frame"
+      ],
+      "path": "src/app/ephemera/poem.ts"
+    },
+    {
+      "acceptanceIds": [
+        "ink.accent",
+        "ink.primary",
+        "piece.mode",
+        "piece.seed",
+        "rings.count",
+        "rings.gather",
+        "rings.marks",
+        "rings.size",
+        "rings.style",
+        "rings.words"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "render-piece",
+        "export-frame"
+      ],
+      "path": "src/app/ephemera/rings.ts"
+    },
+    {
+      "acceptanceIds": [
+        "ink.accent",
+        "ink.primary",
+        "piece.mode",
+        "piece.seed",
+        "tour.artist",
+        "tour.dates",
+        "tour.layout",
+        "tour.leading"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "render-piece",
+        "export-frame"
+      ],
+      "path": "src/app/ephemera/tour.ts"
+    },
+    {
+      "acceptanceIds": [
+        "ink.accent",
+        "ink.primary",
+        "piece.mode",
+        "piece.seed",
+        "sheet.cell",
+        "sheet.emphasis",
+        "sheet.pattern",
+        "sheet.void",
+        "sheet.words"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "render-piece",
+        "export-frame"
+      ],
+      "path": "src/app/ephemera/sheet.ts"
+    },
+    {
+      "acceptanceIds": [
+        "ink.accent",
+        "ink.primary",
+        "piece.mode",
+        "piece.seed",
+        "wheel.divisions",
+        "wheel.instrument",
+        "wheel.notches",
+        "wheel.rings"
+      ],
+      "kind": "performance",
+      "passIds": [
+        "render-piece",
+        "export-frame"
+      ],
+      "path": "src/app/ephemera/wheel.ts"
+    }
+  ]
+}
