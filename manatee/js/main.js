@@ -84,7 +84,7 @@
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     lensCX = vw / 2;
     lensCY = vh * 0.47;
-    r0 = clamp(Math.min(vw, vh) * 0.31, 130, 330);
+    r0 = clamp(Math.min(vw, vh) * 0.34, 140, 360);
     const dx = Math.max(lensCX, vw - lensCX);
     const dy = Math.max(lensCY, vh - lensCY);
     coverR = Math.hypot(dx, dy) + 60;
@@ -212,9 +212,7 @@
 
     setVar("--hud-op", texReady && p < 0.04 ? 1 : 0);
     setVar("--intro-op", (1 - smooth(0.975, 1.0, p)).toFixed(4));
-    setVar("--ring-op", ((1 - smooth(0.66, 0.86, p)) * enter).toFixed(4));
     setVar("--glass-op", ((1 - smooth(0.68, 0.88, p)) * enter).toFixed(4));
-    setVar("--spill-op", ((1 - smooth(0.55, 0.75, p)) * enter).toFixed(4));
 
     if (released || !texReady) return;
 
@@ -226,8 +224,8 @@
 
     // pointer pan, idle drift, hand tremor (all in css px of the page)
     const idle = smooth(2.5, 5.5, t - lastInteract);
-    const driftX = Math.sin(t * 0.11) * 0.55 + Math.sin(t * 0.043 + 2.0) * 0.45;
-    const driftY = Math.cos(t * 0.09 + 1.0) * 0.6 + Math.sin(t * 0.061) * 0.4;
+    const driftX = (Math.sin(t * 0.11) * 0.55 + Math.sin(t * 0.043 + 2.0) * 0.45) * 0.38;
+    const driftY = (Math.cos(t * 0.09 + 1.0) * 0.6 + Math.sin(t * 0.061) * 0.4) * 0.38;
     const targetNX = lerp(pointerX, driftX, idle);
     const targetNY = lerp(pointerY, driftY, idle);
     panX = lerp(panX, targetNX, 0.055);
@@ -243,9 +241,12 @@
 
     let offX = headline.x - lensCX + panX * panRangeX + touchPanX + tremX;
     let offY = headline.y - lensCY + panY * panRangeY + touchPanY + tremY;
-    // keep the glass roughly on the paper (a hint of desk at the edges is fine)
-    offX = clamp(offX, -lensCX - 80, texW - lensCX + 80);
-    offY = clamp(offY, -lensCY - 80, texH - lensCY + 80);
+    // keep the glass interior on the paper — seeing past its edge reads as a crop
+    const reach = radiusCss * 0.8;
+    const minX = -lensCX + reach - 20, maxX = texW - lensCX - reach + 20;
+    const minY = -lensCY + reach - 20, maxY = texH - lensCY - reach + 20;
+    offX = minX < maxX ? clamp(offX, minX, maxX) : (minX + maxX) / 2;
+    offY = minY < maxY ? clamp(offY, minY, maxY) : (minY + maxY) / 2;
     // the paper glides home during the reveal so the page lands 1:1
     offX *= 1 - revP;
     offY *= 1 - revP;
@@ -255,10 +256,10 @@
     const magHi = vw < 640 ? 1.48 : 1.72;
     const magLo = vw < 640 ? 1.36 : 1.56;
     const mag = lerp(lerp(magHi, magLo, preP), 1.0, revP) * (1 + 0.004 * breathe) * lerp(1.14, 1, enter);
-    const k1 = 0.42 * (1 - revP);
-    const k2 = 0.85 * (1 - revP);
+    const k1 = 0.36 * (1 - revP);
+    const k2 = 0.68 * (1 - revP);
     const ca = 0.02 * (1 - revP);
-    const blur = (3.2 + 0.5 * Math.sin(t * 0.53)) * (1 - revP) + (1 - enter) * 9;
+    const blur = (2.7 + 0.5 * Math.sin(t * 0.53)) * (1 - revP) + (1 - enter) * 9;
     const edge = 1 - revP;
     const fall = 1 - revP;
     const grain = 0.032 * (1 - revP) + 0.006;

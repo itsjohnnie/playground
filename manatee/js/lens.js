@@ -52,13 +52,16 @@ void main() {
   float len = length(v);
   float r = len / uRadius;
 
-  float outMix = smoothstep(uRadius - 1.5, uRadius + 0.5, len);
+  float inMask = 1.0 - smoothstep(uRadius - 1.0, uRadius + 1.0, len);
   vec2 off = uOffset * (1.0 - uFlat);
   float live = 1.0 - uFlat;
   float spin = hash(p) * 6.2831853;
+  vec2 dirN = v / max(len, 0.001);
+  // key light lives low-left, where the specular crescent sits
+  float dirW = 0.55 + 0.45 * dot(dirN, normalize(vec2(-0.35, 0.75)));
 
   vec3 inside = vec3(0.0);
-  if (outMix < 1.0) {
+  if (inMask > 0.0) {
     float r2 = r * r;
 
     // refraction: magnified center, content squeezed toward the rim
@@ -69,7 +72,7 @@ void main() {
     float dB = dG * (1.0 + caAmt);
 
     // defocus grows toward the rim; slight base softness sells real glass
-    float focus = smoothstep(0.42, 1.0, r) * live;
+    float focus = smoothstep(0.45, 1.0, r) * live;
     float blurPx = uBlur * focus + 0.4 * live;
 
     vec3 acc = vec3(0.0);
@@ -86,51 +89,65 @@ void main() {
     vec3 col = acc / 6.0;
 
     // light: the glass gathers a bright pool in the middle
-    float gain = 1.10 + 0.10 * (1.0 - smoothstep(0.0, 0.85, r)) * live;
-    gain -= uFall * smoothstep(0.62, 1.0, r) * 0.20 * live;
+    float gain = 1.03 + 0.07 * (1.0 - smoothstep(0.0, 0.85, r)) * live;
+    gain -= uFall * smoothstep(0.72, 1.0, r) * 0.10 * live;
     col *= mix(1.0, gain, live);
 
     // glass tint (very slightly cool)
     col *= mix(vec3(1.0), vec3(0.985, 1.0, 0.996), live);
 
-    // edge burn: narrow darkening ring with an amber cast at the rim
-    float burn = smoothstep(0.90, 1.005, r) * uEdge * live;
-    col = mix(col, col * vec3(0.42, 0.32, 0.22), burn * 0.9);
-    float amber = smoothstep(0.93, 0.985, r) * (1.0 - smoothstep(0.985, 1.005, r));
-    col += amber * vec3(0.085, 0.038, 0.006) * uEdge * live;
+    // glass edge: a whisper of neutral shading, then a bright refraction arc
+    float edgeDark = smoothstep(0.955, 1.0, r);
+    col *= 1.0 - 0.28 * edgeDark * uEdge * live;
+    float arc = smoothstep(0.925, 0.972, r) * (1.0 - smoothstep(0.972, 1.0, r));
+    col += arc * dirW * vec3(0.055, 0.058, 0.065) * uEdge * live;
 
     inside = col;
   }
 
-  // outside the glass: the same sheet of paper, unlit and out of focus
+  // beyond the glass: darkness, with the lens light bleeding into it
   vec3 outside = vec3(0.0);
-  if (outMix > 0.0 && live > 0.001) {
-    float oBlur = 7.5 * uDpr;
-    vec3 acc = vec3(0.0);
-    for (int i = 0; i < 5; i++) {
-      float fi = float(i);
-      float ang = fi * 2.399963 + spin;
-      float rad = oBlur * sqrt((fi + 0.5) / 5.0);
-      vec2 tap = vec2(cos(ang), sin(ang)) * rad;
-      acc += samplePage((p + tap) / uDpr + off);
-    }
-    vec3 paper = acc / 5.0;
+  if (inMask < 1.0) {
+    // stage ground (matches the CSS backdrop under the canvas)
+    vec2 nq = (p / uRes - vec2(0.5, 0.42)) * vec2(uRes.x / uRes.y, 1.0);
+    vec3 bg = mix(vec3(0.075, 0.068, 0.057), vec3(0.023, 0.020, 0.019),
+                  smoothstep(0.0, 1.05, length(nq)));
 
-    // ambient level + a pool of light bleeding out around the barrel
-    float glow = exp(-max(len - uRadius, 0.0) / (uRadius * 0.85));
-    vec2 nq = p / uRes - 0.5;
-    float vig = 1.0 - smoothstep(0.18, 0.68, dot(nq, nq) * 2.0) * 0.8;
-    float lit = (0.062 + 0.055 * glow) * vig;
-    outside = paper * lit * vec3(1.0, 0.97, 0.90);
+    if (live > 0.001) {
+      // what's bleeding out is the content sitting at the rim, defocused
+      float rimScale = (1.0 / uMag) * (1.0 + uK1 + uK2);
+      vec3 acc = vec3(0.0);
+      for (int i = 0; i < 4; i++) {
+        float fi = float(i);
+        float ang = fi * 1.5707963 + spin;
+        vec2 tap = vec2(cos(ang), sin(ang)) * 5.0 * uDpr;
+        acc += samplePage((uCenter + dirN * uRadius * rimScale + tap) / uDpr + off);
+      }
+      vec3 rimCol = acc / 4.0;
+
+      float d = max(len - uRadius, 0.0);
+      float bleed = exp(-d / (uRadius * 0.085));
+      float wash  = exp(-d / (uRadius * 0.5));
+      outside = bg
+        + rimCol * bleed * 0.15 * dirW * live
+        + rimCol * wash * 0.03 * live
+        + vec3(0.05, 0.044, 0.035) * wash * live;
+    } else {
+      outside = bg;
+    }
   }
 
-  vec3 col = mix(inside, outside, outMix);
+  vec3 col = mix(outside, inside, inMask);
+
+  // the polished edge of the glass disc catches the light
+  float rimLine = exp(-abs(len - uRadius) / (1.7 * uDpr));
+  col += rimLine * dirW * vec3(0.09, 0.093, 0.10) * uEdge * live;
 
   // film grain
   float g = hash(p * 0.7 + fract(uTime) * 61.7) - 0.5;
   col += g * uGrain;
 
-  float alpha = max(1.0 - outMix, live);
+  float alpha = max(inMask, live);
   col = clamp(col, 0.0, 1.0) * uFade;
   gl_FragColor = vec4(col * alpha, alpha);
 }
