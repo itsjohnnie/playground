@@ -1,0 +1,274 @@
+/* ============ Loupe intro ============
+   Geometry driven from JS via CSS custom properties:
+   --lx / --ly  lens center (px)   --lr  lens radius (px)
+   --ring-op    ring opacity       --hud-op  hint opacity
+   --spill-op   light spill        --intro-op  whole overlay fade */
+
+#intro-track {
+  position: relative;
+  height: 320vh;
+  z-index: 2;
+}
+
+html.no-intro #intro-track { display: none; }
+
+#intro {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 42%, #14120f 0%, #0b0a08 55%, #060505 100%);
+  opacity: var(--intro-op, 1);
+}
+
+#intro.released { visibility: hidden; pointer-events: none; }
+
+#lens-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ---------- light spill on the desk ---------- */
+
+.intro-spill {
+  position: absolute;
+  left: calc(var(--lx, 0) * 1px);
+  top: calc(var(--ly, 0) * 1px);
+  width: calc(var(--lr, 300) * 5.2px);
+  height: calc(var(--lr, 300) * 5.2px);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: var(--spill-op, 0);
+  background: radial-gradient(circle,
+    rgba(255, 246, 226, 0.055) 0%,
+    rgba(255, 244, 222, 0.028) 34%,
+    rgba(255, 240, 214, 0.0) 62%);
+}
+
+/* ---------- loupe body ---------- */
+
+#loupe {
+  position: absolute;
+  left: calc(var(--lx, 0) * 1px);
+  top: calc(var(--ly, 0) * 1px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+#intro * { pointer-events: none; }
+#intro #intro-skip { pointer-events: auto; }
+
+.loupe-shadow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--lr) * 3.1px);
+  height: calc(var(--lr) * 3.1px);
+  transform: translate(-50%, -47%);
+  border-radius: 50%;
+  opacity: var(--ring-op, 0);
+  background: radial-gradient(circle,
+    rgba(0, 0, 0, 0.55) 0%,
+    rgba(0, 0, 0, 0.42) 46%,
+    rgba(0, 0, 0, 0) 68%);
+}
+
+/* barrel: an annulus from the glass edge out to ~1.42r */
+.loupe-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--lr) * 2.92px);
+  height: calc(var(--lr) * 2.92px);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  opacity: var(--ring-op, 0);
+  background:
+    /* inner rim light catch, strongest at the bottom (where the specular sits) */
+    radial-gradient(circle,
+      transparent 0 67.4%,
+      rgba(126, 122, 112, 0.55) 68.2%,
+      rgba(58, 56, 52, 0.35) 69.4%,
+      transparent 71.5%),
+    conic-gradient(from 140deg,
+      rgba(255, 255, 255, 0) 0deg,
+      rgba(255, 250, 238, 0.05) 55deg,
+      rgba(255, 250, 238, 0.12) 85deg,
+      rgba(255, 255, 255, 0) 130deg,
+      rgba(255, 255, 255, 0) 360deg),
+    /* body shading: matte black cylinder, faint top sheen */
+    radial-gradient(circle at 42% 34%,
+      #21201d 0%,
+      #161513 34%,
+      #0e0d0c 58%,
+      #080807 78%,
+      #050504 100%);
+  /* cut the disc into an annulus */
+  -webkit-mask: radial-gradient(circle, transparent 0 66.8%, #000 67.6%, #000 98%, transparent 100%);
+          mask: radial-gradient(circle, transparent 0 66.8%, #000 67.6%, #000 98%, transparent 100%);
+  filter: blur(1.1px);
+}
+
+/* ---------- on-glass overlays (clipped to the glass disc) ---------- */
+
+.loupe-glass {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--lr) * 2px);
+  height: calc(var(--lr) * 2px);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  overflow: hidden;
+  opacity: var(--glass-op, 0);
+}
+
+/* amber edge burn hugging the rim — sits on top of the shader's own burn */
+.glass-burn {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    transparent 0 87%,
+    rgba(122, 66, 12, 0.07) 92%,
+    rgba(70, 34, 6, 0.20) 96.5%,
+    rgba(18, 9, 3, 0.45) 100%);
+}
+
+/* dust + smudges live on the glass: they do NOT move with the paper */
+.glass-dust {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: 0.5;
+  background:
+    radial-gradient(2px 2px at 31% 24%, rgba(255,255,255,0.20) 0 45%, transparent 60%),
+    radial-gradient(1.6px 1.6px at 68% 71%, rgba(255,255,255,0.16) 0 45%, transparent 60%),
+    radial-gradient(1.4px 1.4px at 57% 18%, rgba(255,255,255,0.12) 0 45%, transparent 60%),
+    radial-gradient(2.4px 1.2px at 22% 62%, rgba(255,255,255,0.10) 0 45%, transparent 60%),
+    radial-gradient(28% 7% at 62% 38%, rgba(255,255,255,0.028) 0 60%, transparent 100%);
+  filter: blur(0.4px);
+}
+
+/* specular reflections on the glass surface */
+.glass-spec {
+  position: absolute;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  transform: translate(calc(var(--specx, 0) * 1px), calc(var(--specy, 0) * 1px));
+}
+
+/* the big soft crescent low on the glass (like the reference photo) */
+.spec-a {
+  left: 18%;
+  top: 58%;
+  width: 64%;
+  height: 34%;
+  background: radial-gradient(58% 46% at 50% 68%,
+    rgba(235, 242, 255, 0.45) 0%,
+    rgba(220, 232, 255, 0.16) 42%,
+    rgba(220, 232, 255, 0) 70%);
+  -webkit-mask: radial-gradient(85% 90% at 50% 12%, transparent 0 55%, #000 76%);
+          mask: radial-gradient(85% 90% at 50% 12%, transparent 0 55%, #000 76%);
+  filter: blur(5px);
+}
+
+/* small hard glint upper-left */
+.spec-b {
+  left: 24%;
+  top: 17%;
+  width: 13%;
+  height: 7%;
+  background: radial-gradient(50% 50% at 50% 50%,
+    rgba(255, 253, 246, 0.34) 0%,
+    rgba(255, 253, 246, 0.06) 55%,
+    transparent 75%);
+  filter: blur(2px);
+  transform: translate(calc(var(--specx, 0) * -0.6px), calc(var(--specy, 0) * -0.6px)) rotate(-24deg);
+}
+
+/* faint broad sheen across the middle */
+.spec-c {
+  left: -6%;
+  top: 30%;
+  width: 70%;
+  height: 46%;
+  background: radial-gradient(60% 42% at 42% 50%,
+    rgba(228, 238, 255, 0.05) 0%,
+    rgba(228, 238, 255, 0) 70%);
+  filter: blur(8px);
+  transform: translate(calc(var(--specx, 0) * 0.4px), calc(var(--specy, 0) * 0.4px)) rotate(-18deg);
+}
+
+/* ---------- HUD ---------- */
+
+.intro-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  opacity: var(--hud-op, 0);
+  transition: opacity 0.6s ease;
+}
+
+.intro-hint .hint-text {
+  font-family: "Styrene B", Helvetica, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(240, 236, 226, 0.6);
+  animation: hint-pulse 3.2s ease-in-out infinite;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .intro-hint .hint-text { font-size: 10px; letter-spacing: 0.24em; }
+  .intro-hint .hint-rule { width: 22px; }
+}
+
+.intro-hint .hint-rule {
+  width: 44px;
+  height: 1px;
+  background: rgba(240, 236, 226, 0.18);
+}
+
+@keyframes hint-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+#intro-skip {
+  position: absolute;
+  right: 26px;
+  top: 24px;
+  appearance: none;
+  background: none;
+  border: 1px solid rgba(240, 236, 226, 0.22);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-family: "Styrene B", Helvetica, sans-serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(240, 236, 226, 0.62);
+  cursor: pointer;
+  opacity: var(--hud-op, 0);
+  transition: opacity 0.6s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+#intro-skip:hover {
+  border-color: rgba(240, 236, 226, 0.55);
+  color: rgba(240, 236, 226, 0.95);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-hint .hint-text { animation: none; }
+}

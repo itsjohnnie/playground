@@ -82,3 +82,23 @@ scratchpad/frame_server.py pattern: python http server on 8924 that decodes
 base64 PNG bodies to files), then Read the PNGs as images. After an emulated
 resize, dispatch `new Event('resize')` and wait ~400ms so the engine
 re-measures its act spacers before stepping.
+
+### manatee/ (loupe intro over the Fable X launch page)
+
+- A hidden pane can report a 0x0 viewport; the page defers its boot until the
+  viewport is real. Force one with resize_window (e.g. 1440x840) — the
+  override sticks while hidden — before driving it.
+- `/?debug` exposes `await window.__lensDebug(over)` — captures the DOM→WebGL
+  texture on first call, then renders exactly one frame; `over` overrides
+  `{p (scroll progress 0..1), t (seconds), enter (0..1 load-in), panX, panY}`.
+- GL presents usually reach screenshots even while hidden, but DOM/CSS-var
+  changes may not (stale rasters). Arm the render in a rAF loop right before
+  screenshotting so the frame draws during the raster:
+  `window.__armKeep=true; const re=()=>{__lensDebug(over); if(window.__armKeep) requestAnimationFrame(re)}; requestAnimationFrame(re)`.
+- `/?flat` skips the intro entirely (real page from the top; `#specimen`
+  anchor works). After a programmatic scroll the raster may still be stale —
+  bump the viewport height by 1px with resize_window to force a repaint.
+- Canvas layers (meadow/ascii) can be proven without screenshots: composite
+  them onto an offscreen canvas, return `toDataURL(...) + '#'.repeat(30000)`
+  (padding forces the tool result into a file instead of inline), decode the
+  saved tool-results file with python, then Read the image.

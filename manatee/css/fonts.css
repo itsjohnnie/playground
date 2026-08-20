@@ -1,0 +1,42 @@
+@font-face {
+  font-family: "Styrene A";
+  src: url("../fonts/StyreneA-Medium-Web.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Styrene B";
+  src: url("../fonts/StyreneB-Regular-Web.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Styrene B";
+  src: url("../fonts/StyreneB-Medium-Web.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Tiempos Text";
+  src: url("../fonts/TiemposText-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Tiempos Text";
+  src: url("../fonts/TiemposText-RegularItalic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Tiempos Text";
+  src: url("../fonts/TiemposText-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
