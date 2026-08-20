@@ -8,6 +8,10 @@
   const track = document.getElementById("intro-track");
   const canvas = document.getElementById("lens-canvas");
   const skipBtn = document.getElementById("intro-skip");
+  const scopeMag = document.getElementById("scope-mag");
+  const scopeScale = document.getElementById("scope-scale-label");
+  const scopeStage = document.getElementById("scope-stage");
+  let scopeMagText = "", scopeScaleText = "", scopeStageText = "";
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -222,6 +226,20 @@
     setVar("--ly", lensCY.toFixed(1));
     setVar("--lr", radiusCss.toFixed(1));
 
+    // optics
+    const breathe = Math.sin(t * 0.8) * (1 - revP);
+    const magHi = vw < 640 ? 1.3 : 1.72;
+    const magLo = vw < 640 ? 1.22 : 1.56;
+    const mag = lerp(lerp(magHi, magLo, preP), 1.0, revP) * (1 + 0.004 * breathe) * lerp(1.14, 1, enter);
+    const k1 = 0.22 * (1 - revP);
+    const k2 = 0.45 * (1 - revP);
+    const ca = 0.02 * (1 - revP);
+    const blur = (2.7 + 0.5 * Math.sin(t * 0.53)) * (1 - revP) + (1 - enter) * 9;
+    const edge = 1 - revP;
+    const fall = 1 - revP;
+    const grain = 0.032 * (1 - revP) + 0.006;
+    const flat = smooth(0.9, 0.985, p);
+
     // pointer pan, idle drift, hand tremor (all in css px of the page)
     const idle = smooth(2.5, 5.5, t - lastInteract);
     const driftX = (Math.sin(t * 0.11) * 0.55 + Math.sin(t * 0.043 + 2.0) * 0.45) * 0.38;
@@ -241,29 +259,30 @@
 
     let offX = headline.x - lensCX + panX * panRangeX + touchPanX + tremX;
     let offY = headline.y - lensCY + panY * panRangeY + touchPanY + tremY;
-    // keep the glass interior on the paper — seeing past its edge reads as a crop
-    const reach = radiusCss * 0.8;
-    const minX = -lensCX + reach - 20, maxX = texW - lensCX - reach + 20;
-    const minY = -lensCY + reach - 20, maxY = texH - lensCY - reach + 20;
+    // keep the glass interior on the paper — the rim's true sampling reach is
+    // radius * (1/mag)(1 + k1 + k2); seeing past the paper edge reads as a crop
+    const reach = radiusCss * Math.min(1.3, (1 / mag) * (1 + k1 + k2));
+    const minX = -lensCX + reach - 25, maxX = texW - lensCX - reach + 25;
+    const minY = -lensCY + reach - 25, maxY = texH - lensCY - reach + 25;
     offX = minX < maxX ? clamp(offX, minX, maxX) : (minX + maxX) / 2;
     offY = minY < maxY ? clamp(offY, minY, maxY) : (minY + maxY) / 2;
     // the paper glides home during the reveal so the page lands 1:1
     offX *= 1 - revP;
     offY *= 1 - revP;
 
-    // optics
-    const breathe = Math.sin(t * 0.8) * (1 - revP);
-    const magHi = vw < 640 ? 1.3 : 1.72;
-    const magLo = vw < 640 ? 1.22 : 1.56;
-    const mag = lerp(lerp(magHi, magLo, preP), 1.0, revP) * (1 + 0.004 * breathe) * lerp(1.14, 1, enter);
-    const k1 = 0.22 * (1 - revP);
-    const k2 = 0.45 * (1 - revP);
-    const ca = 0.02 * (1 - revP);
-    const blur = (2.7 + 0.5 * Math.sin(t * 0.53)) * (1 - revP) + (1 - enter) * 9;
-    const edge = 1 - revP;
-    const fall = 1 - revP;
-    const grain = 0.032 * (1 - revP) + 0.006;
-    const flat = smooth(0.9, 0.985, p);
+    // instrument readouts
+    const suiOp = (1 - smooth(0.45, 0.68, p)) * enter;
+    setVar("--sui-op", suiOp.toFixed(3));
+    if (scopeMag && suiOp > 0.02) {
+      const magText = "obj ×" + mag.toFixed(2);
+      if (magText !== scopeMagText) { scopeMag.textContent = magText; scopeMagText = magText; }
+      const scaleText = Math.round(120 / mag) + " px";
+      if (scaleText !== scopeScaleText) { scopeScale.textContent = scaleText; scopeScaleText = scaleText; }
+      const stageText =
+        "stage x " + String(Math.max(0, Math.round(lensCX + offX))).padStart(4, "0") +
+        " y " + String(Math.max(0, Math.round(lensCY + offY))).padStart(4, "0");
+      if (stageText !== scopeStageText) { scopeStage.textContent = stageText; scopeStageText = stageText; }
+    }
 
     // specular drifts a touch with the pointer (reflection, not content)
     setVar("--specx", (panX * 7).toFixed(2));

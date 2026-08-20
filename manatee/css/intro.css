@@ -57,6 +57,129 @@ html.no-intro #intro-track { display: none; }
   opacity: var(--glass-op, 0);
 }
 
+/* eyepiece reticle etched into the glass — never moves with the paper */
+.glass-reticle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  opacity: var(--sui-op, 0);
+  background:
+    radial-gradient(circle at center,
+      transparent 0 9px,
+      rgba(20, 20, 19, 0.14) 9.5px 10px,
+      transparent 10.5px),
+    linear-gradient(to right,
+      transparent calc(50% - 0.5px),
+      rgba(20, 20, 19, 0.085) calc(50% - 0.5px) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom,
+      transparent calc(50% - 0.5px),
+      rgba(20, 20, 19, 0.085) calc(50% - 0.5px) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px));
+}
+
+/* graduation ticks floating just outside the glass */
+.scope-ticks {
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: var(--sui-op, 0);
+}
+
+.scope-ticks i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 7px;
+  background: rgba(235, 231, 222, 0.22);
+  transform-origin: 50% 0;
+}
+
+.scope-ticks i:nth-child(1)  { transform: rotate(0deg)   translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(2)  { transform: rotate(30deg)  translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(3)  { transform: rotate(60deg)  translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(4)  { transform: rotate(90deg)  translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(5)  { transform: rotate(120deg) translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(6)  { transform: rotate(150deg) translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(7)  { transform: rotate(180deg) translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(8)  { transform: rotate(210deg) translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(9)  { transform: rotate(240deg) translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(10) { transform: rotate(270deg) translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(11) { transform: rotate(300deg) translateY(calc(var(--lr, 300) * -1px - 17px)); }
+.scope-ticks i:nth-child(12) { transform: rotate(330deg) translateY(calc(var(--lr, 300) * -1px - 17px)); }
+
+/* cardinals read a touch stronger and longer */
+.scope-ticks i:nth-child(1),
+.scope-ticks i:nth-child(4),
+.scope-ticks i:nth-child(7),
+.scope-ticks i:nth-child(10) {
+  height: 11px;
+  background: rgba(235, 231, 222, 0.32);
+}
+
+/* ---------- instrument readouts in the dark ---------- */
+
+.scope-ui {
+  position: absolute;
+  inset: 0;
+  opacity: var(--sui-op, 0);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(235, 231, 222, 0.38);
+  pointer-events: none;
+}
+
+.scope-block {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  line-height: 1;
+}
+
+.scope-tl { left: 30px; top: 28px; }
+.scope-bl { left: 30px; bottom: 30px; }
+.scope-br { right: 30px; bottom: 30px; align-items: flex-end; }
+
+.scope-tl span:first-child,
+.scope-br span:last-child { color: rgba(235, 231, 222, 0.24); }
+
+.scope-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.scope-scale em { font-style: normal; }
+
+.scope-scale .bar {
+  position: relative;
+  width: 120px;
+  height: 5px;
+  border-left: 1px solid rgba(235, 231, 222, 0.34);
+  border-right: 1px solid rgba(235, 231, 222, 0.34);
+}
+
+.scope-scale .bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 2px;
+  height: 1px;
+  background: rgba(235, 231, 222, 0.30);
+}
+
+@media (max-width: 640px) {
+  .scope-bl { display: none; }
+  .scope-tl { left: 20px; top: 22px; }
+  .scope-br { right: 20px; bottom: 72px; }
+  .scope-ui { font-size: 9px; letter-spacing: 0.12em; }
+}
+
 /* dust + smudges live on the glass: they do NOT move with the paper */
 .glass-dust {
   position: absolute;

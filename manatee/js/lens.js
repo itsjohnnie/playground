@@ -122,7 +122,7 @@ void main() {
       for (int i = 0; i < 6; i++) {
         float fi = float(i);
         float ang = fi * 1.0471976 + spin;
-        vec2 tap = vec2(cos(ang), sin(ang)) * (14.0 + fi * 5.0) * uDpr;
+        vec2 tap = vec2(cos(ang), sin(ang)) * (22.0 + fi * 9.0) * uDpr;
         acc += samplePage((uCenter + dirN * uRadius * rimScale + tap) / uDpr + off);
       }
       vec3 rimCol = acc / 6.0;
@@ -131,7 +131,7 @@ void main() {
       float bleed = exp(-d / (uRadius * 0.085));
       float wash  = exp(-d / (uRadius * 0.5));
       outside = bg
-        + rimCol * bleed * 0.15 * dirW * live
+        + rimCol * bleed * 0.12 * dirW * live
         + rimCol * wash * 0.03 * live
         + vec3(0.05, 0.044, 0.035) * wash * live;
     } else {

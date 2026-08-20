@@ -47,26 +47,25 @@ html.no-intro main#page { margin-top: 0; }
 .site-header {
   display: flex;
   align-items: center;
-  padding: 18px clamp(20px, 5.5vw, 80px);
-  min-height: 72px;
+  height: 72px;
+  padding: 0 clamp(20px, 5.5vw, 80px);
 }
 
 .wordmark {
-  font-family: var(--font-brand);
-  font-weight: 500;
-  font-size: 19px;
-  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
   color: var(--carbon);
-  text-decoration: none;
   flex-shrink: 0;
 }
+
+.wordmark svg { display: block; }
 
 .site-nav {
   display: flex;
   align-items: center;
-  gap: 32px;
+  gap: 8px;
   margin-left: auto;
-  margin-right: 44px;
+  margin-right: 32px;
 }
 
 .site-nav a {
@@ -75,27 +74,30 @@ html.no-intro main#page { margin-top: 0; }
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  height: 28px;
+  padding: 0 13px;
   gap: 6px;
   white-space: nowrap;
 }
 
-.site-nav a svg { margin-top: 2px; opacity: 0.8; }
+.site-nav a svg { margin-top: 2px; }
 
 .try-claude {
   display: inline-flex;
   align-items: stretch;
+  height: 36px;
   background: var(--carbon);
   color: var(--bone);
   text-decoration: none;
   font-size: 15px;
-  border-radius: 9px;
+  border-radius: 8px;
   overflow: hidden;
   flex-shrink: 0;
 }
 
-.try-claude .tc-label { padding: 10px 16px 11px; display: inline-flex; align-items: center; }
+.try-claude .tc-label { padding: 0 16px; display: inline-flex; align-items: center; }
 .try-claude .tc-divider { width: 1px; background: rgba(250, 249, 245, 0.28); }
-.try-claude .tc-caret { padding: 0 13px; display: inline-flex; align-items: center; }
+.try-claude .tc-caret { width: 38px; display: inline-flex; align-items: center; justify-content: center; }
 
 /* ---------- hero ---------- */
 
@@ -218,17 +220,17 @@ html.no-intro main#page { margin-top: 0; }
     "version results results"
     "version consid  consid";
   grid-template-rows: auto auto 1fr;
-  background: var(--cream);
-  border: 1px solid var(--line);
+  gap: 2px;
 }
 
-.spec-card .cell { padding: 13px 16px 15px; }
+/* the seams between cells are open — the meadow shows through them */
+.spec-card .cell { padding: 13px 16px 15px; background: var(--cream); }
 
-.c-name    { grid-area: name;    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.c-date    { grid-area: date;    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.c-status  { grid-area: status;  border-bottom: 1px solid var(--line); }
-.c-version { grid-area: version; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
-.c-results { grid-area: results; border-bottom: 1px solid var(--line); }
+.c-name    { grid-area: name; }
+.c-date    { grid-area: date; }
+.c-status  { grid-area: status; }
+.c-version { grid-area: version; display: flex; flex-direction: column; }
+.c-results { grid-area: results; }
 .c-considerations { grid-area: consid; }
 
 .spec-card .label {
@@ -336,8 +338,8 @@ html.no-intro main#page { margin-top: 0; }
     display: block;
     margin: 90px 20px;
   }
-  .spec-card .cell { border: none !important; border-bottom: 1px solid var(--line) !important; }
-  .spec-card .cell:last-child { border-bottom: none !important; }
+  .spec-card .cell { margin-bottom: 2px; }
+  .spec-card .cell:last-child { margin-bottom: 0; }
   .c-version .close { padding-top: 26px; }
   .results .v { white-space: normal; text-align: right; }
 }
