@@ -63,16 +63,18 @@ void main() {
   vec3 inside = vec3(0.0);
   if (inMask > 0.0) {
     float r2 = r * r;
+    float r4 = r2 * r2;
 
-    // refraction: magnified center, content squeezed toward the rim
-    float base = (1.0 / uMag) * (1.0 + uK1 * r2 + uK2 * r2 * r2);
+    // refraction: flat, rectilinear magnification through the middle of the
+    // glass (so type keeps its tracking), curving away only near the rim
+    float base = (1.0 / uMag) * (1.0 + uK1 * r4 + uK2 * r4 * r2);
     float dG = mix(base, 1.0, uFlat);
     float caAmt = uCA * r2 * (1.0 - uFlat);
     float dR = dG * (1.0 - caAmt);
     float dB = dG * (1.0 + caAmt);
 
     // defocus grows toward the rim; slight base softness sells real glass
-    float focus = smoothstep(0.45, 1.0, r) * live;
+    float focus = smoothstep(0.6, 1.0, r) * live;
     float blurPx = uBlur * focus + 0.4 * live;
 
     vec3 acc = vec3(0.0);
@@ -89,7 +91,7 @@ void main() {
     vec3 col = acc / 6.0;
 
     // light: the glass gathers a bright pool in the middle
-    float gain = 1.03 + 0.07 * (1.0 - smoothstep(0.0, 0.85, r)) * live;
+    float gain = 1.03 + 0.05 * (1.0 - smoothstep(0.0, 0.85, r)) * live;
     gain -= uFall * smoothstep(0.72, 1.0, r) * 0.10 * live;
     col *= mix(1.0, gain, live);
 
@@ -114,16 +116,16 @@ void main() {
                   smoothstep(0.0, 1.05, length(nq)));
 
     if (live > 0.001) {
-      // what's bleeding out is the content sitting at the rim, defocused
+      // what's bleeding out is the content sitting at the rim, heavily defocused
       float rimScale = (1.0 / uMag) * (1.0 + uK1 + uK2);
       vec3 acc = vec3(0.0);
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < 6; i++) {
         float fi = float(i);
-        float ang = fi * 1.5707963 + spin;
-        vec2 tap = vec2(cos(ang), sin(ang)) * 5.0 * uDpr;
+        float ang = fi * 1.0471976 + spin;
+        vec2 tap = vec2(cos(ang), sin(ang)) * (14.0 + fi * 5.0) * uDpr;
         acc += samplePage((uCenter + dirN * uRadius * rimScale + tap) / uDpr + off);
       }
-      vec3 rimCol = acc / 4.0;
+      vec3 rimCol = acc / 6.0;
 
       float d = max(len - uRadius, 0.0);
       float bleed = exp(-d / (uRadius * 0.085));

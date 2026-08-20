@@ -84,7 +84,7 @@
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     lensCX = vw / 2;
     lensCY = vh * 0.47;
-    r0 = clamp(Math.min(vw, vh) * 0.34, 140, 360);
+    r0 = clamp(Math.min(vw, vh) * 0.34, 148, 360);
     const dx = Math.max(lensCX, vw - lensCX);
     const dy = Math.max(lensCY, vh - lensCY);
     coverR = Math.hypot(dx, dy) + 60;
@@ -253,11 +253,11 @@
 
     // optics
     const breathe = Math.sin(t * 0.8) * (1 - revP);
-    const magHi = vw < 640 ? 1.48 : 1.72;
-    const magLo = vw < 640 ? 1.36 : 1.56;
+    const magHi = vw < 640 ? 1.3 : 1.72;
+    const magLo = vw < 640 ? 1.22 : 1.56;
     const mag = lerp(lerp(magHi, magLo, preP), 1.0, revP) * (1 + 0.004 * breathe) * lerp(1.14, 1, enter);
-    const k1 = 0.36 * (1 - revP);
-    const k2 = 0.68 * (1 - revP);
+    const k1 = 0.22 * (1 - revP);
+    const k2 = 0.45 * (1 - revP);
     const ca = 0.02 * (1 - revP);
     const blur = (2.7 + 0.5 * Math.sin(t * 0.53)) * (1 - revP) + (1 - enter) * 9;
     const edge = 1 - revP;
