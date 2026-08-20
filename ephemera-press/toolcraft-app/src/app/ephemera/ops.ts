@@ -38,7 +38,7 @@ export type EphemeraTextOp = Readonly<{
   text: string;
   /** Extra letter spacing in px. */
   tracking?: number;
-  weight: 400 | 700;
+  weight: 300 | 400 | 700;
   x: number;
   y: number;
 }>;
@@ -88,8 +88,18 @@ export type EphemeraPolyOp = Readonly<{
   width: number;
 }>;
 
+export type EphemeraBoxOp = Readonly<{
+  fill: string;
+  kind: "box";
+  h: number;
+  w: number;
+  x: number;
+  y: number;
+}>;
+
 export type EphemeraOp =
   | EphemeraArcOp
+  | EphemeraBoxOp
   | EphemeraCircleOp
   | EphemeraDotOp
   | EphemeraLineOp
@@ -149,6 +159,11 @@ export function paintEphemera(
         ctx.fillStyle = op.color;
         ctx.arc(op.x, op.y, op.r, 0, Math.PI * 2);
         ctx.fill();
+        break;
+      }
+      case "box": {
+        ctx.fillStyle = op.fill;
+        ctx.fillRect(op.x, op.y, op.w, op.h);
         break;
       }
       case "circle": {
@@ -253,6 +268,11 @@ export function ephemeraOpsToSvg(
       case "dot":
         parts.push(
           `<circle cx="${round2(op.x)}" cy="${round2(op.y)}" r="${round2(op.r)}" fill="${op.color}"/>`,
+        );
+        break;
+      case "box":
+        parts.push(
+          `<rect x="${round2(op.x)}" y="${round2(op.y)}" width="${round2(op.w)}" height="${round2(op.h)}" fill="${op.fill}"/>`,
         );
         break;
       case "circle":

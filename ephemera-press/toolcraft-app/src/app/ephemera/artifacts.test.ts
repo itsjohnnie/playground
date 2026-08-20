@@ -152,7 +152,7 @@ describe("ephemera sheets, wheels, and artifacts", () => {
     const gauge = piece({ mode: "wheel", wheelInstrument: "gauge" });
     expect(textStrings(gauge)).toContain("U.S. STANDARD GAUGE");
     const knitting = piece({ mode: "wheel", wheelInstrument: "knitting" });
-    expect(textStrings(knitting)).toContain("KNITTING PIN");
+    expect(textStrings(knitting)).toContain("KNITTING PIN AND STITCH GAUGE");
     const dose = piece({ mode: "wheel", wheelInstrument: "dose" });
     expect(textStrings(dose)).toContain("START");
     const dial = piece({ mode: "wheel", wheelInstrument: "dial" });

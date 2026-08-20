@@ -84,7 +84,7 @@ describe("ephemera engine", () => {
       { mode: "rings", ringMarks: true },
       { mode: "tour", tourLayout: "ledger" },
       { mode: "sheet", sheetPattern: "ledger" },
-      { mode: "wheel", wheelInstrument: "dose" },
+      { mode: "wheel", wheelInstrument: "knitting" },
     ];
     for (const overrides of cases) {
       const accented = piece({ ...overrides, accent: "#00aa88" });
@@ -146,8 +146,9 @@ describe("ephemera engine", () => {
       ),
     );
     expect(signatures.size).toBe(ALL_RING_STYLES.length);
+    // Stitched circles are sewn from short thread segments.
     const stitched = piece({ mode: "rings", ringStyle: "stitched" });
-    expect(stitched.ops.some((op) => op.kind === "circle")).toBe(true);
+    expect(stitched.ops.some((op) => op.kind === "line")).toBe(true);
     const orbits = piece({ mode: "rings", ringStyle: "orbits" });
     expect(orbits.ops.some((op) => op.kind === "dot")).toBe(true);
   });
@@ -173,11 +174,13 @@ describe("ephemera engine", () => {
   it("ring size rescales the ring set", () => {
     const small = piece({ mode: "rings", ringSize: 0.3, ringStyle: "stitched" });
     const large = piece({ mode: "rings", ringSize: 0.9, ringStyle: "stitched" });
-    const maxRadius = (model: EphemeraModel): number =>
-      Math.max(
-        ...model.ops.flatMap((op) => (op.kind === "circle" ? [op.r] : [])),
+    const stitchSpanX = (model: EphemeraModel): number => {
+      const xs = model.ops.flatMap((op) =>
+        op.kind === "line" ? [op.x1, op.x2] : [],
       );
-    expect(maxRadius(large)).toBeGreaterThan(maxRadius(small));
+      return Math.max(...xs) - Math.min(...xs);
+    };
+    expect(stitchSpanX(large)).toBeGreaterThan(stitchSpanX(small));
   });
 
   it("ring gather pulls rings into one another", () => {
@@ -187,14 +190,14 @@ describe("ephemera engine", () => {
       ringGather: 1,
       ringStyle: "stitched",
     });
-    const centerSpread = (model: EphemeraModel): number => {
-      const centers = model.ops.flatMap((op) =>
-        op.kind === "circle" ? [[op.x, op.y] as const] : [],
+    // Circle centres approximated by averaging each thread's extent.
+    const stitchSpanX = (model: EphemeraModel): number => {
+      const xs = model.ops.flatMap((op) =>
+        op.kind === "line" ? [op.x1, op.x2] : [],
       );
-      const xs = centers.map(([x]) => x);
       return Math.max(...xs) - Math.min(...xs);
     };
-    expect(centerSpread(loose)).toBeGreaterThan(centerSpread(knotted));
+    expect(stitchSpanX(loose)).toBeGreaterThan(stitchSpanX(knotted));
   });
 
   it("ring marks add accent stitches at crossings", () => {
@@ -209,8 +212,9 @@ describe("ephemera engine", () => {
   });
 
   it("tour artist prints the billing line", () => {
+    // The diagonal bill letterspaces the artist in lowercase.
     const diagonal = piece({ mode: "tour", tourArtist: "NOVA TIDE" });
-    expect(textStrings(diagonal)).toContain("NOVA TIDE");
+    expect(textStrings(diagonal)).toContain("Nova tide");
     const ledger = piece({
       mode: "tour",
       tourArtist: "nova tide",
@@ -251,10 +255,13 @@ describe("ephemera engine", () => {
   });
 
   it("tour leading respaces the bill", () => {
+    // Only the accent show blocks respace; the headline and folio stay.
     const spanFor = (leading: number): number => {
       const ys = textOps(
         piece({ mode: "tour", tourLayout: "ledger", tourLeading: leading }),
-      ).map((op) => op.y);
+      )
+        .filter((op) => op.color === d.accent)
+        .map((op) => op.y);
       return Math.max(...ys) - Math.min(...ys);
     };
     expect(spanFor(1.8)).toBeGreaterThan(spanFor(0.8));
