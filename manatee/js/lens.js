@@ -53,7 +53,7 @@ void main() {
   float r = len / uRadius;
 
   float inMask = 1.0 - smoothstep(uRadius - 1.0, uRadius + 1.0, len);
-  vec2 off = uOffset * (1.0 - uFlat);
+  vec2 off = uOffset;
   float live = 1.0 - uFlat;
   float spin = hash(p) * 6.2831853;
   vec2 dirN = v / max(len, 0.001);
@@ -78,17 +78,17 @@ void main() {
     float blurPx = uBlur * focus + 0.4 * live;
 
     vec3 acc = vec3(0.0);
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 9; i++) {
       float fi = float(i);
       float ang = fi * 2.399963 + spin;
-      float rad = blurPx * sqrt((fi + 0.5) / 6.0);
+      float rad = blurPx * sqrt((fi + 0.5) / 9.0);
       vec2 tap = vec2(cos(ang), sin(ang)) * rad;
       vec2 cssR = (uCenter + v * dR + tap) / uDpr + off;
       vec2 cssG = (uCenter + v * dG + tap) / uDpr + off;
       vec2 cssB = (uCenter + v * dB + tap) / uDpr + off;
       acc += vec3(samplePage(cssR).r, samplePage(cssG).g, samplePage(cssB).b);
     }
-    vec3 col = acc / 6.0;
+    vec3 col = acc / 9.0;
 
     // light: the glass gathers a bright pool in the middle
     float gain = 1.03 + 0.05 * (1.0 - smoothstep(0.0, 0.85, r)) * live;

@@ -6,7 +6,7 @@
 
 #intro-track {
   position: relative;
-  height: 320vh;
+  height: 420vh;
   z-index: 2;
 }
 
@@ -116,6 +116,21 @@ html.no-intro #intro-track { display: none; }
 .scope-ticks i:nth-child(10) {
   height: 11px;
   background: rgba(235, 231, 222, 0.32);
+}
+
+/* the right side belongs to the magnification dial */
+.scope-ticks i:nth-child(3),
+.scope-ticks i:nth-child(4),
+.scope-ticks i:nth-child(5) { display: none; }
+
+.scope-dial {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  opacity: var(--sui-op, 0);
+  overflow: visible;
+  pointer-events: none;
 }
 
 /* ---------- instrument readouts in the dark ---------- */

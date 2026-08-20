@@ -13,6 +13,78 @@
   const scopeStage = document.getElementById("scope-stage");
   let scopeMagText = "", scopeScaleText = "", scopeStageText = "";
 
+  // ---------- magnification dial hugging the glass ----------
+  const dial = document.querySelector(".scope-dial");
+  const SVGNS = "http://www.w3.org/2000/svg";
+  let dialParts = null;
+
+  const objectiveStages = () => (window.innerWidth < 640 ? [1.8, 1.45, 1.15] : [2.4, 1.7, 1.32]);
+  const dialStops = () => objectiveStages().concat(1.0);
+  const DIAL_A0 = (-50 * Math.PI) / 180;   // ×max, upper right
+  const DIAL_A1 = (50 * Math.PI) / 180;    // ×1, lower right
+
+  function dialAngle(m) {
+    const maxM = dialStops()[0];
+    const tt = Math.log(Math.max(m, 1)) / Math.log(maxM);
+    return DIAL_A1 + (DIAL_A0 - DIAL_A1) * Math.min(tt, 1);
+  }
+
+  function buildDial() {
+    if (!dial) return;
+    dial.textContent = "";
+    const mk = (n, attrs) => {
+      const el = document.createElementNS(SVGNS, n);
+      for (const k in attrs) el.setAttribute(k, attrs[k]);
+      dial.appendChild(el);
+      return el;
+    };
+    dialParts = {
+      arc: mk("path", { fill: "none", stroke: "rgba(235,231,222,0.26)", "stroke-width": "1" }),
+      marks: dialStops().map(() => mk("line", { stroke: "rgba(235,231,222,0.36)", "stroke-width": "1" })),
+      labels: dialStops().map((m) => {
+        const tx = mk("text", {
+          fill: "rgba(235,231,222,0.42)",
+          "font-size": "9",
+          "font-family": "ui-monospace, 'SF Mono', Menlo, monospace",
+          "letter-spacing": "0.08em",
+        });
+        tx.textContent = "×" + (Math.round(m * 10) / 10);
+        return tx;
+      }),
+      needle: mk("circle", { r: "2.4", fill: "rgba(235,231,222,0.92)" }),
+    };
+  }
+
+  function updateDial(lr, m) {
+    if (!dialParts) return;
+    const S = Math.ceil(2 * (lr + 56));
+    dial.setAttribute("width", S);
+    dial.setAttribute("height", S);
+    dial.setAttribute("viewBox", `${-S / 2} ${-S / 2} ${S} ${S}`);
+    const compactDial = vw > 0 && vw < 640;
+    const rA = lr + (compactDial ? 14 : 22);
+    const x0 = rA * Math.cos(DIAL_A0), y0 = rA * Math.sin(DIAL_A0);
+    const x1 = rA * Math.cos(DIAL_A1), y1 = rA * Math.sin(DIAL_A1);
+    dialParts.arc.setAttribute("d", `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${rA} ${rA} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`);
+    dialStops().forEach((stop, i) => {
+      const a = dialAngle(stop);
+      const c = Math.cos(a), s = Math.sin(a);
+      const ln = dialParts.marks[i];
+      ln.setAttribute("x1", ((rA - 4) * c).toFixed(1));
+      ln.setAttribute("y1", ((rA - 4) * s).toFixed(1));
+      ln.setAttribute("x2", ((rA + 4) * c).toFixed(1));
+      ln.setAttribute("y2", ((rA + 4) * s).toFixed(1));
+      const tx = dialParts.labels[i];
+      const isEndStop = i === 0 || i === dialParts.labels.length - 1;
+      tx.setAttribute("display", compactDial && !isEndStop ? "none" : "");
+      tx.setAttribute("x", ((rA + 11) * c + 3).toFixed(1));
+      tx.setAttribute("y", ((rA + 11) * s + 3).toFixed(1));
+    });
+    const a = dialAngle(m);
+    dialParts.needle.setAttribute("cx", (rA * Math.cos(a)).toFixed(1));
+    dialParts.needle.setAttribute("cy", (rA * Math.sin(a)).toFixed(1));
+  }
+
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   // ---------- helpers ----------
@@ -100,6 +172,7 @@
     const hr = head.getBoundingClientRect();
     headline.x = hr.left + hr.width / 2 - cr.left;
     headline.y = hr.top + hr.height * 0.62 - cr.top;
+    buildDial();
   }
 
   let capTries = 0;
@@ -203,19 +276,19 @@
     if (over && over.p != null) p = over.p;
 
     // release / re-arm the overlay
-    if (p > 0.995 && !released) { released = true; intro.classList.add("released"); }
-    if (p < 0.99 && released) { released = false; intro.classList.remove("released"); }
+    if (p > 0.999 && !released) { released = true; intro.classList.add("released"); }
+    if (p < 0.995 && released) { released = false; intro.classList.remove("released"); }
 
     const setVar = (n, v) => intro.style.setProperty(n, v);
 
     // HUD + fades are cheap, keep them updated even when released
     let enter = texReady ? easeOutCubic(clamp((t - enterT0) / 1.5, 0, 1)) : 0;
     if (over && over.enter != null) enter = over.enter;
-    const revP = easeInOutCubic(smooth(0.60, 0.97, p));
-    const preP = easeInOutCubic(clamp(p / 0.60, 0, 1));
+    const revP = easeInOutCubic(smooth(0.68, 0.97, p));
+    const preP = easeInOutCubic(clamp(p / 0.68, 0, 1));
 
     setVar("--hud-op", texReady && p < 0.04 ? 1 : 0);
-    setVar("--intro-op", (1 - smooth(0.975, 1.0, p)).toFixed(4));
+    setVar("--intro-op", (1 - smooth(0.985, 0.999, p)).toFixed(4));
     setVar("--glass-op", ((1 - smooth(0.68, 0.88, p)) * enter).toFixed(4));
 
     if (released || !texReady) return;
@@ -226,19 +299,31 @@
     setVar("--ly", lensCY.toFixed(1));
     setVar("--lr", radiusCss.toFixed(1));
 
-    // optics
+    // objectives: the scope steps down through three magnifications, and each
+    // step is a refocus — the image swims, the mag snaps inside the blur,
+    // focus racks back. No continuous zooming until the final dive.
+    const STAGES = objectiveStages();
+    const RF1 = [0.24, 0.34], RF2 = [0.50, 0.60];
+    const stepEase = (w) => smooth(0.3, 0.7, clamp((p - w[0]) / (w[1] - w[0]), 0, 1));
+    let objMag = STAGES[0];
+    if (p >= RF2[0]) objMag = lerp(STAGES[1], STAGES[2], stepEase(RF2));
+    else if (p >= RF1[0]) objMag = lerp(STAGES[0], STAGES[1], stepEase(RF1));
+    const pulse1 = Math.sin(Math.PI * clamp((p - RF1[0]) / (RF1[1] - RF1[0]), 0, 1));
+    const pulse2 = Math.sin(Math.PI * clamp((p - RF2[0]) / (RF2[1] - RF2[0]), 0, 1));
+    const refocus = Math.max(pulse1, pulse2) * (1 - revP);
+
+    // optics: a microscope field is flat — rectilinear magnification, only a
+    // whisper of curvature and softness at the very edge of the field
     const breathe = Math.sin(t * 0.8) * (1 - revP);
-    const magHi = vw < 640 ? 1.3 : 1.72;
-    const magLo = vw < 640 ? 1.22 : 1.56;
-    const mag = lerp(lerp(magHi, magLo, preP), 1.0, revP) * (1 + 0.004 * breathe) * lerp(1.14, 1, enter);
-    const k1 = 0.22 * (1 - revP);
-    const k2 = 0.45 * (1 - revP);
-    const ca = 0.02 * (1 - revP);
-    const blur = (2.7 + 0.5 * Math.sin(t * 0.53)) * (1 - revP) + (1 - enter) * 9;
+    const mag = lerp(objMag, 1.0, revP) * (1 + 0.004 * breathe) * lerp(1.1, 1, enter);
+    const k1 = 0.055 * (1 - revP);
+    const k2 = 0.10 * (1 - revP);
+    const ca = (0.016 + 0.012 * refocus) * (1 - revP);
+    const blur = (1.9 + 0.4 * Math.sin(t * 0.53)) * (1 - revP) + refocus * 11 + (1 - enter) * 9;
     const edge = 1 - revP;
     const fall = 1 - revP;
-    const grain = 0.032 * (1 - revP) + 0.006;
     const flat = smooth(0.9, 0.985, p);
+    const grain = 0.03 * (1 - revP) + 0.006 * (1 - flat);
 
     // pointer pan, idle drift, hand tremor (all in css px of the page)
     const idle = smooth(2.5, 5.5, t - lastInteract);
@@ -253,26 +338,32 @@
     const panRangeX = Math.min(texW * 0.30, 480);
     const panRangeY = Math.min(texH * 0.32, 460);
 
+    // touching the objective wheel shakes the frame a little
     const tremorOn = 1 - revP;
-    const tremX = (Math.sin(t * 1.7) * 0.6 + Math.sin(t * 3.1 + 1.3) * 0.3 + Math.sin(t * 13.7) * 0.1) * 1.5 * tremorOn;
-    const tremY = (Math.cos(t * 1.4) * 0.6 + Math.sin(t * 2.7 + 0.5) * 0.3 + Math.cos(t * 11.9) * 0.1) * 1.5 * tremorOn;
+    const tremX = (Math.sin(t * 1.7) * 0.6 + Math.sin(t * 3.1 + 1.3) * 0.3 + Math.sin(t * 13.7) * 0.1) * 1.5 * tremorOn
+      + refocus * Math.sin(t * 23) * 2.2;
+    const tremY = (Math.cos(t * 1.4) * 0.6 + Math.sin(t * 2.7 + 0.5) * 0.3 + Math.cos(t * 11.9) * 0.1) * 1.5 * tremorOn
+      + refocus * Math.cos(t * 19) * 1.8;
 
     let offX = headline.x - lensCX + panX * panRangeX + touchPanX + tremX;
     let offY = headline.y - lensCY + panY * panRangeY + touchPanY + tremY;
-    // keep the glass interior on the paper — the rim's true sampling reach is
+    // keep the field on the paper — the rim's true sampling reach is
     // radius * (1/mag)(1 + k1 + k2); seeing past the paper edge reads as a crop
-    const reach = radiusCss * Math.min(1.3, (1 / mag) * (1 + k1 + k2));
-    const minX = -lensCX + reach - 25, maxX = texW - lensCX - reach + 25;
-    const minY = -lensCY + reach - 25, maxY = texH - lensCY - reach + 25;
+    const reach = radiusCss * Math.min(1.3, (1 / mag) * (1 + k1 + k2)) + 8;
+    const minX = -lensCX + reach, maxX = texW - lensCX - reach;
+    const minY = -lensCY + reach, maxY = texH - lensCY - reach;
     offX = minX < maxX ? clamp(offX, minX, maxX) : (minX + maxX) / 2;
     offY = minY < maxY ? clamp(offY, minY, maxY) : (minY + maxY) / 2;
-    // the paper glides home during the reveal so the page lands 1:1
+    // during the dive the sample locks onto where the real page actually sits,
+    // so the final crossfade is between two identical images
+    const pageTopY = (1 - p) * denom;
     offX *= 1 - revP;
-    offY *= 1 - revP;
+    offY = offY * (1 - revP) - pageTopY * revP;
 
     // instrument readouts
-    const suiOp = (1 - smooth(0.45, 0.68, p)) * enter;
+    const suiOp = (1 - smooth(0.62, 0.72, p)) * enter;
     setVar("--sui-op", suiOp.toFixed(3));
+    if (suiOp > 0.02) updateDial(radiusCss, mag);
     if (scopeMag && suiOp > 0.02) {
       const magText = "obj ×" + mag.toFixed(2);
       if (magText !== scopeMagText) { scopeMag.textContent = magText; scopeMagText = magText; }
