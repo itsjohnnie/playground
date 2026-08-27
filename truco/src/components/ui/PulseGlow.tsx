@@ -70,11 +70,22 @@ void main() {
   );
   vec2 cd = c + (d - 0.5) * 0.42;
 
-  float r = length(cd);
+  // Normalise the radius against the distance to a corner, so r is
+  // 0 at the centre and ~1 at the corners *at any aspect ratio*.
+  // Without this the falloff is aspect-dependent: a tall portrait
+  // panel (ar ~ 0.33) keeps r small and reads as a subtle rim, while
+  // a wide landscape panel (ar ~ 1.7) pushes r past the upper
+  // threshold across most of its surface and the glow saturates into
+  // a flat wash. Dividing by the corner distance makes the rim occupy
+  // the same proportion of the panel either way.
+  float maxR = length(vec2(ar, 1.0));
+  float r = length(cd) / maxR;
 
   // Edge-leaning falloff — the rim picks up most of the glow, with a
   // gentle bleed inward so the panel feels lit rather than ringed.
-  float edge = smoothstep(0.55, 1.3, r);
+  // Upper bound is 1.22 rather than 1.3 to keep the portrait rim at
+  // the brightness it had before r was normalised.
+  float edge = smoothstep(0.55, 1.22, r);
 
   // Modulate by another noise octave so the rim itself shimmers
   // softly rather than reading as a uniform band.
