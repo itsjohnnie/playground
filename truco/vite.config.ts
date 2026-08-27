@@ -8,6 +8,17 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // `autoUpdate` alone still parks the new service worker in
+      // "waiting" until every open instance is closed — and for a
+      // home-screen PWA, backgrounding the app doesn't count, you have
+      // to swipe it out of the app switcher. That's why a deploy can
+      // look like it "didn't ship". `skipWaiting` activates the new
+      // worker as soon as it installs and `clientsClaim` lets it take
+      // over the already-open page, so a plain relaunch is enough.
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+      },
       includeAssets: [
         'favicon-64.png',
         'apple-touch-icon.png',
