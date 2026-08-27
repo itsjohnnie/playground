@@ -200,6 +200,7 @@ export default function App() {
             playerById={store.playerById}
             onBack={() => setRoute('home')}
             onDeleteMatch={store.deleteMatch}
+            onUpdateTeams={store.updateMatchTeams}
           />
         </Suspense>
       )}

@@ -710,6 +710,56 @@ export function useStore() {
     })
   }, [])
 
+  /**
+   * Rewrite who played on each side of a match after the fact — someone
+   * was recorded on the wrong team, or a stand-in got logged under the
+   * regular's name. Scores and events are untouched: this only changes
+   * *who* the result is attributed to, which is enough for Estadísticas
+   * and Duelos to pick it up, since both derive from the roster arrays
+   * rather than from anything stored alongside them.
+   *
+   * `seats` is passed through for 3v3 so the pica pica pairings follow
+   * the lineup. Callers that can't produce a valid 6-seat arrangement
+   * pass `null` to clear it, which drops the match out of Duelos rather
+   * than leaving it there crediting duels that nobody played.
+   */
+  const updateMatchTeams = useCallback(
+    (
+      id: string,
+      teamAPlayerIds: string[],
+      teamBPlayerIds: string[],
+      seats: string[] | null = null,
+    ) => {
+      setState((s) => ({
+        ...s,
+        matches: s.matches.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                teamA: { ...m.teamA, playerIds: teamAPlayerIds },
+                teamB: { ...m.teamB, playerIds: teamBPlayerIds },
+                seats: seats ?? undefined,
+              }
+            : m,
+        ),
+      }))
+      execOp(
+        {
+          kind: 'update',
+          table: 'matches',
+          patch: {
+            team_a_player_ids: teamAPlayerIds,
+            team_b_player_ids: teamBPlayerIds,
+            seats,
+          },
+          eq: [['id', id]],
+        },
+        'editar equipos',
+      )
+    },
+    [],
+  )
+
   const deleteMatch = useCallback((id: string) => {
     // Tombstone first, so an echo that lands between here and the
     // server delete can't put the match back into Estadísticas.
@@ -805,6 +855,7 @@ export function useStore() {
     undo,
     finishMatch,
     abandonMatch,
+    updateMatchTeams,
     deleteMatch,
     clearAll,
     mesa: getMesa(),
