@@ -747,7 +747,7 @@ html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
    the panel's own edges give the line something to align to. */
 @media (min-width: 768px) {
   .way-label {
-    top: calc(50% + var(--way-band, 60vh) / 2 + 1.1rem);
+    top: calc(50% + var(--way-band, 60vh) / 2 + 1rem);
     left: 50%; right: auto;
     width: var(--way-open, 50vw);
     margin-left: calc(var(--way-open, 50vw) / -2);
