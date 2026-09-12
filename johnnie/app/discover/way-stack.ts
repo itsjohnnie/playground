@@ -42,12 +42,19 @@ const ASPECT = 16 / 9;
 // open panel always fits on screen so the image is never clipped. On the
 // vertical layout the band is the full width: a phone has no width to spare,
 // and insetting it there just shrinks the picture for nothing.
+//
+// These two numbers trade against each other and OPEN_FRAC is the one that
+// governs on desktop. The sources are 16:9 landscape, so showing one WHOLE ties
+// the panel's width to the band's height times 1.78 — a deeper band is a wider
+// panel, and the panel eats the room the slivers live in. At 0.86 the band was
+// 697px but only ~202px of slivers were left (about 10 a side); at 0.70 it is
+// 567px with ~432px of slivers (about 43 a side at the thickness below).
 const BAND_FRAC_X = 0.82;
 const BAND_FRAC_Y = 1;
-const OPEN_FRAC = 0.86;
-// Collapsed thickness. Fixed now rather than derived: the strip is longer than
-// the viewport by design, so slivers no longer have to divide up what's left.
-const SLIVER_X = 10;
+const OPEN_FRAC = 0.7;
+// Collapsed thickness. Fixed rather than derived: the strip is longer than the
+// viewport by design, so slivers no longer have to divide up what's left.
+const SLIVER_X = 5;
 const SLIVER_Y = 7;
 // Input distance that advances the focus by one item.
 const DRAG_UNITS = 86;
