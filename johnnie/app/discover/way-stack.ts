@@ -52,10 +52,21 @@ const ASPECT = 16 / 9;
 const BAND_FRAC_X = 0.82;
 const BAND_FRAC_Y = 1;
 const OPEN_FRAC = 0.7;
-// Collapsed thickness. Fixed rather than derived: the strip is longer than the
-// viewport by design, so slivers no longer have to divide up what's left.
-const SLIVER_X = 5;
-const SLIVER_Y = 7;
+// Floor on collapsed thickness. The real thickness is derived per viewport in
+// measure() — see PAINT_BUDGET.
+const SLIVER_MIN_X = 6;
+const SLIVER_MIN_Y = 7;
+// Rasteriser budget, in painted pixels, and the knob that keeps this at 60fps.
+// Each painted sliver holds a photo drawn at the OPEN panel's size and clipped
+// down — that overhang is what the window slides open to reveal — so the work
+// is (number of slivers on screen) x (area of the open panel), NOT the area
+// actually visible. A fixed thickness therefore can't hold across viewports:
+// measured on the production build during a continuous wheel, 1440x900 ran 54
+// slivers of a 1008x567 panel at 60fps, while 1920x1080 ran 72 of a 1344x756
+// panel at 30. A phone survives 90 slivers only because its panel is 390x219.
+// Deriving thickness from this budget spends the frame on fewer, thicker
+// slivers as the display grows, instead of dropping frames.
+const PAINT_BUDGET = 32e6;
 // Input distance that advances the focus by one item.
 const DRAG_UNITS = 86;
 const WHEEL_UNITS = 96;
@@ -76,7 +87,7 @@ export class WayStack {
   private target = 0;
 
   private axis: Axis = "x";
-  private sliver = SLIVER_X;
+  private sliver = SLIVER_MIN_X;
   private openSize = 0;
   private band = 0;
   private view = 0;
@@ -164,7 +175,7 @@ export class WayStack {
   private measure() {
     const horizontal = getComputedStyle(this.root).flexDirection !== "column";
     this.axis = horizontal ? "x" : "y";
-    this.sliver = horizontal ? SLIVER_X : SLIVER_Y;
+
 
     const w = this.root.clientWidth || window.innerWidth;
     const h = this.root.clientHeight || window.innerHeight;
@@ -185,6 +196,14 @@ export class WayStack {
     }
     this.openSize = open;
     this.band = band;
+    // Thickness that keeps the on-screen sliver count inside the paint budget.
+    const panelArea = (horizontal ? open * band : band * open) || 1;
+    const affordable = Math.max(12, Math.floor(PAINT_BUDGET / panelArea));
+    const leftover = Math.max(0, long - open);
+    this.sliver = Math.max(
+      horizontal ? SLIVER_MIN_X : SLIVER_MIN_Y,
+      leftover / affordable,
+    );
     this.root.style.setProperty("--way-open", open.toFixed(2) + "px");
     this.root.style.setProperty("--way-band", band.toFixed(2) + "px");
   }
