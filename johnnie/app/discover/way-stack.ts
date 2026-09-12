@@ -25,8 +25,13 @@ type Row = {
 // viewports; normally ACTIVE_FRAC governs and this just stops the stack
 // collapsing into a smear.
 const MIN_SLIVER = 2;
-// Target share of the long edge for the open sliver, before that clamp.
+// Target share of the long edge for the open sliver, before the clamps.
 const ACTIVE_FRAC = 0.5;
+// Aspect of the source screenshots (they are 16:9 almost without exception).
+// It sets the shape of the open panel and therefore the depth of the band; the
+// handful of odd sizes letterbox inside their slot via object-fit:contain
+// rather than being cropped.
+const ASPECT = 16 / 9;
 // Drag distance / wheel delta that advances the focus by one.
 const DRAG_STEP = 38;
 const WHEEL_STEP = 42;
@@ -160,24 +165,40 @@ export class WayStack {
     const total = horizontal
       ? this.root.clientWidth || window.innerWidth
       : this.root.clientHeight || window.innerHeight;
+    const cross = horizontal
+      ? this.root.clientHeight || window.innerHeight
+      : this.root.clientWidth || window.innerWidth;
     const n = this.rows.length;
     if (!n) return;
 
-    // The size the OPEN sliver settles at. Published as --way-open so the CSS
-    // can render every image at exactly that size whether it is open or a
-    // hairline: the sliver is then a moving WINDOW over a fixed-size picture,
-    // which is what makes the expand a pure crop. Sizing images to their own
-    // sliver instead let the binding constraint of object-fit:cover flip
-    // between the two states on a narrow viewport — measured, the same photo
-    // rendered at scale 0.24 as a sliver and 0.47 open, so it visibly zoomed
-    // as it grew. It only changes on resize, never per step.
-    const openSize = Math.min(
-      total * ACTIVE_FRAC,
-      Math.max(total / n, total - (n - 1) * MIN_SLIVER),
-    );
+    // Geometry of the OPEN sliver. It shows the image WHOLE — uncropped and
+    // unclipped — so the open panel is the image's own box, and the stack is a
+    // band exactly as deep as that box. Every image is then rendered at this one
+    // size whatever its own sliver is doing (published as --way-open and
+    // --way-band), and a sliver is a WINDOW sliding over a picture that never
+    // moves or resizes: fully open reveals all of it, collapsed reveals a strip.
+    //
+    // That fixed size is what keeps the expand a true crop. Sizing images to
+    // their own sliver instead let object-fit's binding constraint flip between
+    // the two states on a narrow viewport — measured, the same photo rendered at
+    // scale 0.2437 collapsed and 0.4689 open, so it visibly zoomed as it grew.
+    let openSize = total * ACTIVE_FRAC;
+    let band = horizontal ? openSize / ASPECT : openSize * ASPECT;
+    // The band can't outgrow the short edge of the screen…
+    if (band > cross) {
+      band = cross;
+      openSize = horizontal ? cross * ASPECT : cross / ASPECT;
+    }
+    // …nor eat the room the slivers need.
+    const maxOpen = total - (n - 1) * MIN_SLIVER;
+    if (openSize > maxOpen) {
+      openSize = Math.max(total / n, maxOpen);
+      band = horizontal ? openSize / ASPECT : openSize * ASPECT;
+    }
     if (openSize !== this.openSize) {
       this.openSize = openSize;
       this.root.style.setProperty("--way-open", openSize + "px");
+      this.root.style.setProperty("--way-band", band + "px");
     }
 
     // Before the entrance frame everything is even — there is no open sliver.

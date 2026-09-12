@@ -627,6 +627,11 @@ html.is-way .hero-gradient { display: none; }
      iOS standalone instead of stopping at the short visual viewport. */
   position: absolute; inset: 0;
   display: flex; flex-direction: row;
+  /* The stack is a BAND as deep as one whole image, centred on the screen —
+     see --way-band in way-stack.ts. The open panel is then exactly the picture,
+     with no letterboxing inside it; the space above and below the band is just
+     the page. */
+  align-items: center;
   overflow: hidden;
   cursor: ew-resize;
   touch-action: none;   /* we drive the drag ourselves */
@@ -639,10 +644,8 @@ html.is-way .hero-gradient { display: none; }
 
 .way-row {
   position: relative;
-  flex: none;           /* the inline size is authoritative — no redistribution */
+  flex: none;           /* the main-axis size is authoritative */
   min-width: 0; min-height: 0;
-  /* The cross axis always fills; only the main axis is written by the script. */
-  align-self: stretch;
   overflow: hidden;
   /* Tint behind an image that hasn't decoded, under the per-item LQIP gradient
      way-stack.ts carries over. Matches .hero-item so both views agree. */
@@ -656,30 +659,43 @@ html.is-way .hero-gradient { display: none; }
      against a 16.7ms frame budget. */
   transition: width .5s var(--ease-out), height .5s var(--ease-out);
 }
+/* Cross axis: every sliver is exactly as deep as the band. */
+@media (min-width: 768px) { .way-row { height: var(--way-band, 100%); } }
+@media (max-width: 767px) { .way-row { width: var(--way-band, 100%); } }
 html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
 /* Entrance: the stack starts evenly split and the focused sliver opens out of
    it, so arriving on #way is a movement. Suppressed until the script adds
    .is-ready so the very first layout doesn't animate from zero. */
 .way:not(.is-ready) .way-row { transition: none; }
 
-/* Every image is rendered at the size the OPEN sliver settles at (--way-open,
-   published by way-stack.ts), whatever its own sliver is currently doing, and
-   centred on the cross axis. The sliver is then a WINDOW that slides open and
-   shut over a picture that never moves or changes size — a true crop.
+/* Every image is rendered at the size the OPEN sliver settles at — its own
+   whole box, --way-open across by --way-band deep — whatever its own sliver is
+   currently doing. The sliver is then a WINDOW that slides open and shut over a
+   picture that never moves or changes size, so opening one reveals the image
+   ENTIRE: uncropped, unclipped, and never zoomed on the way there.
 
-   Sizing each image to its own sliver instead looks equivalent but isn't: with
-   object-fit:cover the binding constraint flips between the two states on a
-   narrow viewport, and the photo visibly zooms as the strip grows (measured on
-   a 390px-wide phone: scale 0.2437 as a hairline, 0.4689 open). Pinning the box
-   to the open size keeps one scale for both, and still fills the open panel
-   edge to edge — which a plain natural-aspect box would not. */
+   contain, not cover, is what guarantees the whole frame is inside the box. The
+   box is already 16:9, so the common case fills it exactly and letterboxes
+   nothing; the handful of odd source ratios sit inside their slot rather than
+   being cut.
+
+   Sizing each image to its own sliver instead looks equivalent but isn't: the
+   binding constraint flips between the two states on a narrow viewport, and the
+   photo visibly zooms as the strip grows (measured on a 390px-wide phone: scale
+   0.2437 as a hairline, 0.4689 open). */
 .way-img {
   position: absolute;
-  object-fit: cover; object-position: center;
+  object-fit: contain; object-position: center;
+  /* site.css puts max-width:100% on images. The picture is deliberately WIDER
+     than the sliver holding it — that overhang is the part the window slides
+     open to reveal — so the inherited clamp would squeeze it back down to the
+     sliver's own width and undo the whole effect. Measured before this line: a
+     5px sliver rendered its image 5px wide instead of 720. */
+  max-width: none; max-height: none;
   pointer-events: none; user-select: none; -webkit-user-drag: none;
 }
-/* Horizontal stack: the window widens, so the picture is pinned to the full
-   height and to --way-open across. */
+/* Horizontal stack: the window widens across a picture pinned to the band's
+   depth and to --way-open across. */
 @media (min-width: 768px) {
   .way-img {
     top: 0; height: 100%;
@@ -687,12 +703,12 @@ html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
     transform: translateX(-50%);
   }
 }
-/* Vertical stack: the window deepens, so the picture is pinned to the full
-   width and to --way-open down. */
+/* Vertical stack: the window deepens over a picture pinned to the band's width
+   and to --way-open down. */
 @media (max-width: 767px) {
   .way-img {
     left: 0; width: 100%;
-    top: 50%; height: var(--way-open, 50vh);
+    top: 50%; height: var(--way-open, 28vh);
     transform: translateY(-50%);
   }
 }
