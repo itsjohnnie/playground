@@ -30,6 +30,7 @@ type Row = {
   offset: number; // last main-axis translate written
   on: boolean;    // last is-active state written
   vis: boolean;   // last display state written — see the culling note in render()
+  meta: string;   // caption markup, shown by the container's single label
 };
 
 // Aspect of the source screenshots (they are 16:9 almost without exception).
@@ -91,6 +92,12 @@ const SETTLE_MS = 130;
 // How far past each edge a sliver is kept alive before being culled. One
 // sliver's worth of slack so nothing pops in at the boundary.
 const CULL_PAD = 8;
+// How close the focus must be to its target before the caption appears. The
+// smoothing has a long numerical tail — EPSILON above is ~0.75s — but the panel
+// looks settled well before that, so the caption waits on "visually arrived"
+// rather than "arithmetically arrived". It hides again the moment focus moves,
+// so nothing is left labelling an item mid-flight.
+const LABEL_EPS = 0.02;
 
 export class WayStack {
   root: HTMLElement;
@@ -108,6 +115,9 @@ export class WayStack {
   private band = 0;
   private view = 0;
 
+  private label!: HTMLElement;
+  private labelFor = -1;
+  private labelShown = false;
   private raf = 0;
   private running = false;
   private reduced = false;
@@ -144,15 +154,20 @@ export class WayStack {
       }
 
       const meta = src.querySelector(".hero-meta_data");
-      if (meta) {
-        const m = document.createElement("div");
-        m.className = "way-meta";
-        m.innerHTML = meta.innerHTML;
-        el.appendChild(m);
-      }
-      this.rows.push({ el, size: -1, offset: NaN, on: false, vis: true });
+      // The caption is NOT put inside the sliver. It belongs under the open
+      // panel, and a sliver is clipped to its own width for the crop — a label
+      // below the image would be cut off by that same overflow. One label lives
+      // on the container instead and takes whichever item is open.
+      this.rows.push({
+        el, size: -1, offset: NaN, on: false, vis: true,
+        meta: meta ? meta.innerHTML : "",
+      });
       this.root.appendChild(el);
     }
+
+    this.label = document.createElement("div");
+    this.label.className = "way-label";
+    this.root.appendChild(this.label);
 
     mount.appendChild(this.root);
 
@@ -184,6 +199,27 @@ export class WayStack {
     this.focus = this.target = Math.floor(this.rows.length / 2);
     this.measure();
     this.render();
+    this.setLabel(this.active(), true);
+  }
+
+  /** Index of the item currently open. */
+  private active() {
+    const n = this.rows.length;
+    return ((Math.round(this.focus) % n) + n) % n;
+  }
+
+  // One caption for the whole strip, under the open panel. It carries the open
+  // item's name and category, and only ever appears once that item has finished
+  // growing — see LABEL_EPS.
+  private setLabel(i: number, show: boolean) {
+    if (show && i !== this.labelFor) {
+      this.label.innerHTML = this.rows[i]?.meta ?? "";
+      this.labelFor = i;
+    }
+    if (show !== this.labelShown) {
+      this.label.classList.toggle("is-shown", show);
+      this.labelShown = show;
+    }
   }
 
   // CSS is the single source of truth for the breakpoint: .way is a row on wide
@@ -316,6 +352,7 @@ export class WayStack {
 
   private tick() {
     const d = this.target - this.focus;
+    this.setLabel(this.active(), Math.abs(d) < LABEL_EPS);
     if (Math.abs(d) < EPSILON) {
       this.focus = this.target;
       this.render();

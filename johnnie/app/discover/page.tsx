@@ -715,52 +715,51 @@ html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
   }
 }
 
-/* Name + category, only on the open sliver. They sit bottom-left over a soft
-   bottom-up scrim — these are screenshots of real sites, so the label lands on
-   anything from black hero art to near-white marketing pages and a text-shadow
-   alone could not carry it. The scrim rides on the label itself, so it fades in
-   and out with it and never touches a collapsed sliver. The fade waits for the
-   panel to finish opening: nothing should try to read while it is still too
-   narrow to hold a line of type. */
-.way-meta {
-  position: absolute; left: 0; right: 0; bottom: 0;
-  display: flex; align-items: baseline; gap: .6rem;
-  padding: 2.75rem 1rem .8rem;
-  background: linear-gradient(to top, rgba(0, 0, 0, .55), rgba(0, 0, 0, 0));
+/* Caption for the open panel: name and category, UNDER the picture rather than
+   over it. One element on the container, not one per sliver — a sliver is
+   clipped to its own width for the crop, so a label hung below the image inside
+   it would be cut off by that same overflow.
+
+   It sits just past the band's edge and inherits the page's text colour, so it
+   rides the light/dark clock with everything else. way-stack.ts shows it only
+   once the open panel has finished growing, and hides it again the moment the
+   focus moves, so nothing is ever labelling an item mid-flight. */
+.way-label {
+  position: absolute; left: 0; right: 0;
+  display: flex; flex-direction: column; align-items: center; gap: .2rem;
+  padding: 0 1rem;
+  text-align: center;
   font-family: franklin-gothic-urw-cond, sans-serif;
   font-size: .8125rem; letter-spacing: .06rem; text-transform: uppercase;
-  color: #fff; text-shadow: 0 1px 10px rgba(0, 0, 0, .4);
   pointer-events: none;
-  opacity: 0; transform: translateY(6px);
-  transition: opacity .28s ease, transform .4s var(--ease-out);
+  opacity: 0; transform: translateY(5px);
+  transition: opacity .3s ease, transform .45s var(--ease-out);
 }
-/* Desktop panels are tall and narrow, so the label wraps onto two lines rather
-   than being clipped; phone strips are wide and short, so it stays on one. */
-.way-row.is-active .way-meta {
-  opacity: 1; transform: none;
-  transition-delay: .22s;
-}
-.way-meta .hero-meta_data-lighter { opacity: .72; }
-
-@media (max-width: 767px) {
-  .way-meta { flex-wrap: nowrap; white-space: nowrap; }
-}
+.way-label.is-shown { opacity: 1; transform: none; }
+.way-label .hero-meta_data-lighter { opacity: .5; }
+/* Horizontal strip: the picture's lower edge is the band's lower edge. */
 @media (min-width: 768px) {
-  .way-meta { flex-direction: column; gap: .15rem; }
+  .way-label { top: calc(50% + var(--way-band, 60vh) / 2 + 1.35rem); }
 }
-/* Phones: keep the label clear of the control bar floating over the stack. */
-@media (max-width: 479px) {
-  .way-meta {
-    padding: 2.25rem .75rem .7rem;
+/* Vertical strip: the open panel is what ends, not the band — and there is no
+   empty page below it, because the strip carries on down the screen. The
+   caption gets its own ground in the page colour so it reads as a rail cut
+   through the strip rather than text dropped on top of slivers. Desktop needs
+   none of this: the band is inset there, so the caption already lands on the
+   page itself. */
+@media (max-width: 767px) {
+  .way-label {
+    top: calc(50% + var(--way-open, 28vh) / 2);
+    padding: .85rem 1rem .95rem;
+    background: var(--bg, #fff);
     font-size: .75rem; letter-spacing: .04rem;
   }
-  .way-row.is-active:last-child .way-meta { bottom: 3.5rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   /* The strip's own movement is rAF-driven and way-stack.ts snaps it instead of
      easing; only the label's entrance is CSS. */
-  .way-meta { transform: none; transition: opacity .2s ease; }
+  .way-label { transform: none; transition: opacity .2s ease; }
 }
 `,
         }}
