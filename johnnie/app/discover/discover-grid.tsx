@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { WayStack } from "./way-stack";
 
 // Draggable, infinitely-wrapping 2D gallery for the Discover page. This is a
 // from-scratch reimplementation of the original site's grid (the markup is
@@ -990,19 +991,50 @@ export default function DiscoverGrid() {
     const list = document.querySelector<HTMLElement>(".hero-list");
     if (!wrapper || !list) return;
 
-    const grid = new InfiniteGrid(wrapper, list, {
-      itemWidth: 996,
-      itemHeight: 560,
-      gap: 80,
-      mobileBreakpoint: 768,
-      mobileWidthPercent: 0.8,
-    });
+    // Snapshot the server-rendered source items BEFORE either view mounts.
+    // InfiniteGrid empties .hero-list to fill it with clones, so once the grid
+    // has run the originals are detached — #way would have nothing to build
+    // from, and switching back would find an empty pool.
+    const sources = Array.from(list.children) as HTMLElement[];
+    const restoreSources = () => {
+      list.innerHTML = "";
+      for (const s of sources) list.appendChild(s);
+    };
+
+    const root = document.documentElement;
+    let grid: InfiniteGrid | null = null;
+    let way: WayStack | null = null;
+
+    // Exactly one view is mounted at a time; #way picks the vertical accordion
+    // (way-stack.ts), anything else the infinite grid.
+    const mountView = () => {
+      const wantWay = location.hash.replace(/^#/, "").toLowerCase() === "way";
+      if (wantWay === !!way && (wantWay || grid)) return;
+      grid?.destroy();
+      grid = null;
+      way?.destroy();
+      way = null;
+      restoreSources();
+      root.classList.toggle("is-way", wantWay);
+      if (wantWay) {
+        way = new WayStack(sources, document.body);
+      } else {
+        grid = new InfiniteGrid(wrapper, list, {
+          itemWidth: 996,
+          itemHeight: 560,
+          gap: 80,
+          mobileBreakpoint: 768,
+          mobileWidthPercent: 0.8,
+        });
+      }
+    };
+    mountView();
+    window.addEventListener("hashchange", mountView);
 
     // Light/dark: follow the OS preference by default; a manual toggle overrides
     // it and persists in localStorage (so a refresh keeps the chosen mode). The
     // pre-paint head script already applied the same initial state to <html>.
     const THEME_KEY = "discover-theme";
-    const root = document.documentElement;
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const readSaved = (): string | null => {
       try {
@@ -1047,10 +1079,12 @@ export default function DiscoverGrid() {
     mq.addEventListener("change", onSystem);
 
     return () => {
-      grid.destroy();
+      grid?.destroy();
+      way?.destroy();
+      window.removeEventListener("hashchange", mountView);
       toggle?.removeEventListener("click", onToggle);
       mq.removeEventListener("change", onSystem);
-      root.classList.remove("is-dark");
+      root.classList.remove("is-dark", "is-way");
       root.style.colorScheme = "";
     };
   }, []);

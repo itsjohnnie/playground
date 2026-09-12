@@ -609,6 +609,100 @@ html:not(.is-dark) .discover-stage .hero-image {
    keeps enough contrast on the pale backdrop. */
 html:not(.is-dark) .discover-stage .hero-meta_data { color: #1b1b1b; }
 html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opacity: 1; }
+
+/* ── #way: the vertical accordion ────────────────────────────────────────────
+   Same gallery, stacked instead of scattered. Every item is a full-width
+   horizontal strip and the whole set fits the viewport with no page scroll, so
+   the focused row can only grow by taking height from the others — which is
+   what turns the rest into slivers. Heights are written by way-stack.ts;
+   everything here is presentation. */
+html.is-way .hero,
+html.is-way .hero-gradient { display: none; }
+
+.way {
+  /* Absolute, not fixed, for the same reason as .hero-list-wrapper: it sizes to
+     the corrected document box, so the stack reaches the true screen bottom in
+     iOS standalone instead of stopping at the short visual viewport. */
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  cursor: ns-resize;
+  touch-action: none;   /* we drive the drag ourselves */
+  contain: layout paint;
+}
+.way.is-dragging { cursor: grabbing; }
+
+.way-row {
+  position: relative;
+  flex: none;           /* height is authoritative — no flex redistribution */
+  min-height: 0;
+  overflow: hidden;
+  /* Tint behind an image that hasn't decoded, under the per-item LQIP gradient
+     way-stack.ts carries over. Matches .hero-item so both views agree. */
+  background-color: rgba(0, 0, 0, .05);
+  background-size: cover;
+  /* The open/close move. --ease-out is the page's movement curve; height is the
+     dimension the eye actually tracks here, so it eases directly rather than
+     via flex-grow (whose mapping to height is hyperbolic, not linear, and
+     lands soft in the wrong place). */
+  transition: height .5s var(--ease-out);
+}
+html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
+/* Entrance: the stack starts evenly split and the first row opens out of it, so
+   arriving on #way is a movement. Suppressed until the script adds .is-ready so
+   the very first layout doesn't animate from zero. */
+.way:not(.is-ready) .way-row { transition: none; }
+
+.way-img {
+  display: block; width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+  /* A collapsed strip is ~4px of a photo scaled down: without this the browser
+     picks a high-quality downsample for all 100 of them on every frame of the
+     transition. Speed is the right trade at that size — the open row is large
+     enough that the difference is invisible. */
+  image-rendering: auto;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+}
+
+/* Name + category, only on the open row. They sit bottom-left over a soft
+   bottom-up scrim — these are screenshots of real sites, so the label lands on
+   anything from black hero art to near-white marketing pages and a text-shadow
+   alone could not carry it. The scrim rides on the label itself, so it fades in
+   and out with it and never touches a collapsed strip. The fade waits for the
+   row to finish growing: nothing should try to read while the strip is still
+   too short to hold a line of type. */
+.way-meta {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: baseline; gap: .6rem;
+  padding: 2.75rem 1rem .8rem;
+  background: linear-gradient(to top, rgba(0, 0, 0, .55), rgba(0, 0, 0, 0));
+  font-family: franklin-gothic-urw-cond, sans-serif;
+  font-size: .8125rem; letter-spacing: .06rem; text-transform: uppercase;
+  color: #fff; text-shadow: 0 1px 10px rgba(0, 0, 0, .4);
+  pointer-events: none; white-space: nowrap;
+  opacity: 0; transform: translateY(6px);
+  transition: opacity .28s ease, transform .4s var(--ease-out);
+}
+.way-row.is-active .way-meta {
+  opacity: 1; transform: none;
+  transition-delay: .22s;
+}
+.way-meta .hero-meta_data-lighter { opacity: .72; }
+
+/* Phones: the strips are thinner and the label needs to stay clear of the
+   control bar, which floats over the bottom of the stack. */
+@media (max-width: 479px) {
+  .way-meta {
+    padding: .6rem .75rem;
+    font-size: .75rem; letter-spacing: .04rem;
+  }
+  .way-row.is-active:last-child .way-meta { bottom: 3.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .way-row { transition: none; }
+  .way-meta { transform: none; transition: opacity .2s ease; }
+}
 `,
         }}
       />
