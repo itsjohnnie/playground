@@ -609,6 +609,166 @@ html:not(.is-dark) .discover-stage .hero-image {
    keeps enough contrast on the pale backdrop. */
 html:not(.is-dark) .discover-stage .hero-meta_data { color: #1b1b1b; }
 html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opacity: 1; }
+
+/* ── #way: the accordion ─────────────────────────────────────────────────────
+   Same gallery, packed instead of scattered. Every item is a sliver and the
+   whole set fits the viewport with no page scroll, so the focused one can only
+   grow by taking room from the others — which is what turns the rest into
+   hairlines. The stack runs along the viewport's LONG edge: slivers side by
+   side on desktop, stacked top-to-bottom on phones. This flex-direction is the
+   only place that breakpoint lives — way-stack.ts reads it back to decide which
+   dimension to animate, so there is no second copy of the number to drift. */
+html.is-way .hero,
+html.is-way .hero-gradient { display: none; }
+
+.way {
+  /* Absolute, not fixed, for the same reason as .hero-list-wrapper: it sizes to
+     the corrected document box, so the strip reaches the true screen edge in
+     iOS standalone instead of stopping at the short visual viewport.
+     display:flex carries no layout here — slivers are absolutely positioned —
+     but flex-direction is how the breakpoint is declared, and way-stack.ts
+     reads it back to know which way the strip runs. */
+  position: absolute; inset: 0;
+  display: flex; flex-direction: row;
+  overflow: hidden;
+  cursor: ew-resize;
+  touch-action: none;   /* we drive the drag ourselves */
+  contain: layout paint;
+}
+@media (max-width: 767px) {
+  .way { flex-direction: column; cursor: ns-resize; }
+}
+.way.is-dragging { cursor: grabbing; }
+
+.way-row {
+  /* Absolutely positioned: the rAF loop owns every sliver's offset, because
+     items wrap by jumping a whole strip-length and flex flow can't express
+     that. Centred on the band via the margin trick so the transform is free to
+     carry position alone. */
+  position: absolute;
+  overflow: hidden;
+  will-change: transform;
+  /* Tint behind an image that hasn't decoded, under the per-item LQIP gradient
+     way-stack.ts carries over. Matches .hero-item so both views agree. */
+  background-color: rgba(0, 0, 0, .05);
+  background-size: cover;
+}
+/* Cross axis: every sliver is exactly as deep as the band, and centred on it. */
+@media (min-width: 768px) {
+  .way-row {
+    top: 50%; left: 0;
+    height: var(--way-band, 60vh);
+    margin-top: calc(var(--way-band, 60vh) / -2);
+  }
+}
+@media (max-width: 767px) {
+  .way-row {
+    left: 50%; top: 0;
+    width: var(--way-band, 100vw);
+    margin-left: calc(var(--way-band, 100vw) / -2);
+  }
+}
+html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
+
+/* Every image is rendered at the size the OPEN sliver settles at — its own
+   whole box, --way-open across by --way-band deep — whatever its own sliver is
+   currently doing. The sliver is then a WINDOW that slides open and shut over a
+   picture that never moves or changes size, so opening one reveals the image
+   ENTIRE: uncropped, unclipped, and never zoomed on the way there.
+
+   contain, not cover, is what guarantees the whole frame is inside the box. The
+   box is already 16:9, so the common case fills it exactly and letterboxes
+   nothing; the handful of odd source ratios sit inside their slot rather than
+   being cut.
+
+   Sizing each image to its own sliver instead looks equivalent but isn't: the
+   binding constraint flips between the two states on a narrow viewport, and the
+   photo visibly zooms as the strip grows (measured on a 390px-wide phone: scale
+   0.2437 as a hairline, 0.4689 open). */
+.way-img {
+  position: absolute;
+  object-fit: contain; object-position: center;
+  /* site.css puts max-width:100% on images. The picture is deliberately WIDER
+     than the sliver holding it — that overhang is the part the window slides
+     open to reveal — so the inherited clamp would squeeze it back down to the
+     sliver's own width and undo the whole effect. Measured before this line: a
+     5px sliver rendered its image 5px wide instead of 720. */
+  max-width: none; max-height: none;
+  pointer-events: none; user-select: none; -webkit-user-drag: none;
+}
+/* Horizontal stack: the window widens across a picture pinned to the band's
+   depth and to --way-open across. */
+@media (min-width: 768px) {
+  .way-img {
+    top: 0; height: 100%;
+    left: 50%; width: var(--way-open, 50vw);
+    /* Deliberately NOT promoted to its own layer (no translateZ / will-change).
+       It looked like it should help — the picture never changes size, only the
+       sliver clipping it does — but A/B'd in isolation it made no measurable
+       difference at 1440 or 1920, and it would cost one full-size compositor
+       layer per live image. */
+    transform: translateX(-50%);
+  }
+}
+/* Vertical stack: the window deepens over a picture pinned to the band's width
+   and to --way-open down. */
+@media (max-width: 767px) {
+  .way-img {
+    left: 0; width: 100%;
+    top: 50%; height: var(--way-open, 28vh);
+    transform: translateY(-50%);
+  }
+}
+
+/* Caption for the open panel: name and category, UNDER the picture rather than
+   over it. One element on the container, not one per sliver — a sliver is
+   clipped to its own width for the crop, so a label hung below the image inside
+   it would be cut off by that same overflow.
+
+   It sits just past the band's edge and inherits the page's text colour, so it
+   rides the light/dark clock with everything else. way-stack.ts shows it only
+   once the open panel has finished growing, and hides it again the moment the
+   focus moves, so nothing is ever labelling an item mid-flight. */
+.way-label {
+  position: absolute; left: 0; right: 0;
+  display: flex; flex-direction: column; align-items: center; gap: .2rem;
+  padding: 0 1rem;
+  text-align: center;
+  font-family: franklin-gothic-urw-cond, sans-serif;
+  font-size: .8125rem; letter-spacing: .06rem; text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0; transform: translateY(5px);
+  transition: opacity .3s ease, transform .45s var(--ease-out);
+}
+.way-label.is-shown { opacity: 1; transform: none; }
+.way-label .hero-meta_data-lighter { opacity: .5; }
+/* Horizontal strip: one line the width of the open panel, name hard left and
+   category hard right. Stacking them cost vertical space the band wants, and
+   the panel's own edges give the line something to align to. */
+@media (min-width: 768px) {
+  .way-label {
+    top: calc(50% + var(--way-band, 60vh) / 2 + 1rem);
+    left: 50%; right: auto;
+    width: var(--way-open, 50vw);
+    margin-left: calc(var(--way-open, 50vw) / -2);
+    padding: 0;
+    flex-direction: row; align-items: baseline; justify-content: space-between;
+    gap: 1rem;
+    text-align: left;
+  }
+}
+/* Vertical strip: no caption. The strip runs the full height of a phone, so
+   there is no page left under the open panel to put one on — it would have to
+   sit over other slivers, and the screen is too tight to spend on that. */
+@media (max-width: 767px) {
+  .way-label { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The strip's own movement is rAF-driven and way-stack.ts snaps it instead of
+     easing; only the label's entrance is CSS. */
+  .way-label { transform: none; transition: opacity .2s ease; }
+}
 `,
         }}
       />
