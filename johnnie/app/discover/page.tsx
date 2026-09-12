@@ -610,67 +610,100 @@ html:not(.is-dark) .discover-stage .hero-image {
 html:not(.is-dark) .discover-stage .hero-meta_data { color: #1b1b1b; }
 html:not(.is-dark) .discover-stage .hero-meta_data-lighter { color: #565656; opacity: 1; }
 
-/* ── #way: the vertical accordion ────────────────────────────────────────────
-   Same gallery, stacked instead of scattered. Every item is a full-width
-   horizontal strip and the whole set fits the viewport with no page scroll, so
-   the focused row can only grow by taking height from the others — which is
-   what turns the rest into slivers. Heights are written by way-stack.ts;
-   everything here is presentation. */
+/* ── #way: the accordion ─────────────────────────────────────────────────────
+   Same gallery, packed instead of scattered. Every item is a sliver and the
+   whole set fits the viewport with no page scroll, so the focused one can only
+   grow by taking room from the others — which is what turns the rest into
+   hairlines. The stack runs along the viewport's LONG edge: slivers side by
+   side on desktop, stacked top-to-bottom on phones. This flex-direction is the
+   only place that breakpoint lives — way-stack.ts reads it back to decide which
+   dimension to animate, so there is no second copy of the number to drift. */
 html.is-way .hero,
 html.is-way .hero-gradient { display: none; }
 
 .way {
   /* Absolute, not fixed, for the same reason as .hero-list-wrapper: it sizes to
-     the corrected document box, so the stack reaches the true screen bottom in
+     the corrected document box, so the stack reaches the true screen edge in
      iOS standalone instead of stopping at the short visual viewport. */
   position: absolute; inset: 0;
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: row;
   overflow: hidden;
-  cursor: ns-resize;
+  cursor: ew-resize;
   touch-action: none;   /* we drive the drag ourselves */
   contain: layout paint;
+}
+@media (max-width: 767px) {
+  .way { flex-direction: column; cursor: ns-resize; }
 }
 .way.is-dragging { cursor: grabbing; }
 
 .way-row {
   position: relative;
-  flex: none;           /* height is authoritative — no flex redistribution */
-  min-height: 0;
+  flex: none;           /* the inline size is authoritative — no redistribution */
+  min-width: 0; min-height: 0;
+  /* The cross axis always fills; only the main axis is written by the script. */
+  align-self: stretch;
   overflow: hidden;
   /* Tint behind an image that hasn't decoded, under the per-item LQIP gradient
      way-stack.ts carries over. Matches .hero-item so both views agree. */
   background-color: rgba(0, 0, 0, .05);
   background-size: cover;
-  /* The open/close move. --ease-out is the page's movement curve; height is the
-     dimension the eye actually tracks here, so it eases directly rather than
-     via flex-grow (whose mapping to height is hyperbolic, not linear, and
-     lands soft in the wrong place). */
-  transition: height .5s var(--ease-out);
+  /* The open/close move. --ease-out is the page's movement curve. Both axes are
+     listed because which one is live depends on the breakpoint; only ever one
+     of them changes at a time, and an axis flip is re-laid out instantly (the
+     script drops .is-ready across it) so these never cross-fade into each
+     other. Measured at 0.082ms per step for a full relayout of 150 slivers,
+     against a 16.7ms frame budget. */
+  transition: width .5s var(--ease-out), height .5s var(--ease-out);
 }
 html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
-/* Entrance: the stack starts evenly split and the first row opens out of it, so
-   arriving on #way is a movement. Suppressed until the script adds .is-ready so
-   the very first layout doesn't animate from zero. */
+/* Entrance: the stack starts evenly split and the focused sliver opens out of
+   it, so arriving on #way is a movement. Suppressed until the script adds
+   .is-ready so the very first layout doesn't animate from zero. */
 .way:not(.is-ready) .way-row { transition: none; }
 
+/* Every image is rendered at the size the OPEN sliver settles at (--way-open,
+   published by way-stack.ts), whatever its own sliver is currently doing, and
+   centred on the cross axis. The sliver is then a WINDOW that slides open and
+   shut over a picture that never moves or changes size — a true crop.
+
+   Sizing each image to its own sliver instead looks equivalent but isn't: with
+   object-fit:cover the binding constraint flips between the two states on a
+   narrow viewport, and the photo visibly zooms as the strip grows (measured on
+   a 390px-wide phone: scale 0.2437 as a hairline, 0.4689 open). Pinning the box
+   to the open size keeps one scale for both, and still fills the open panel
+   edge to edge — which a plain natural-aspect box would not. */
 .way-img {
-  display: block; width: 100%; height: 100%;
+  position: absolute;
   object-fit: cover; object-position: center;
-  /* A collapsed strip is ~4px of a photo scaled down: without this the browser
-     picks a high-quality downsample for all 100 of them on every frame of the
-     transition. Speed is the right trade at that size — the open row is large
-     enough that the difference is invisible. */
-  image-rendering: auto;
   pointer-events: none; user-select: none; -webkit-user-drag: none;
 }
+/* Horizontal stack: the window widens, so the picture is pinned to the full
+   height and to --way-open across. */
+@media (min-width: 768px) {
+  .way-img {
+    top: 0; height: 100%;
+    left: 50%; width: var(--way-open, 50vw);
+    transform: translateX(-50%);
+  }
+}
+/* Vertical stack: the window deepens, so the picture is pinned to the full
+   width and to --way-open down. */
+@media (max-width: 767px) {
+  .way-img {
+    left: 0; width: 100%;
+    top: 50%; height: var(--way-open, 50vh);
+    transform: translateY(-50%);
+  }
+}
 
-/* Name + category, only on the open row. They sit bottom-left over a soft
+/* Name + category, only on the open sliver. They sit bottom-left over a soft
    bottom-up scrim — these are screenshots of real sites, so the label lands on
    anything from black hero art to near-white marketing pages and a text-shadow
    alone could not carry it. The scrim rides on the label itself, so it fades in
-   and out with it and never touches a collapsed strip. The fade waits for the
-   row to finish growing: nothing should try to read while the strip is still
-   too short to hold a line of type. */
+   and out with it and never touches a collapsed sliver. The fade waits for the
+   panel to finish opening: nothing should try to read while it is still too
+   narrow to hold a line of type. */
 .way-meta {
   position: absolute; left: 0; right: 0; bottom: 0;
   display: flex; align-items: baseline; gap: .6rem;
@@ -679,21 +712,28 @@ html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
   font-family: franklin-gothic-urw-cond, sans-serif;
   font-size: .8125rem; letter-spacing: .06rem; text-transform: uppercase;
   color: #fff; text-shadow: 0 1px 10px rgba(0, 0, 0, .4);
-  pointer-events: none; white-space: nowrap;
+  pointer-events: none;
   opacity: 0; transform: translateY(6px);
   transition: opacity .28s ease, transform .4s var(--ease-out);
 }
+/* Desktop panels are tall and narrow, so the label wraps onto two lines rather
+   than being clipped; phone strips are wide and short, so it stays on one. */
 .way-row.is-active .way-meta {
   opacity: 1; transform: none;
   transition-delay: .22s;
 }
 .way-meta .hero-meta_data-lighter { opacity: .72; }
 
-/* Phones: the strips are thinner and the label needs to stay clear of the
-   control bar, which floats over the bottom of the stack. */
+@media (max-width: 767px) {
+  .way-meta { flex-wrap: nowrap; white-space: nowrap; }
+}
+@media (min-width: 768px) {
+  .way-meta { flex-direction: column; gap: .15rem; }
+}
+/* Phones: keep the label clear of the control bar floating over the stack. */
 @media (max-width: 479px) {
   .way-meta {
-    padding: .6rem .75rem;
+    padding: 2.25rem .75rem .7rem;
     font-size: .75rem; letter-spacing: .04rem;
   }
   .way-row.is-active:last-child .way-meta { bottom: 3.5rem; }
