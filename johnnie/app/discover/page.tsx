@@ -623,15 +623,13 @@ html.is-way .hero-gradient { display: none; }
 
 .way {
   /* Absolute, not fixed, for the same reason as .hero-list-wrapper: it sizes to
-     the corrected document box, so the stack reaches the true screen edge in
-     iOS standalone instead of stopping at the short visual viewport. */
+     the corrected document box, so the strip reaches the true screen edge in
+     iOS standalone instead of stopping at the short visual viewport.
+     display:flex carries no layout here — slivers are absolutely positioned —
+     but flex-direction is how the breakpoint is declared, and way-stack.ts
+     reads it back to know which way the strip runs. */
   position: absolute; inset: 0;
   display: flex; flex-direction: row;
-  /* The stack is a BAND as deep as one whole image, centred on the screen —
-     see --way-band in way-stack.ts. The open panel is then exactly the picture,
-     with no letterboxing inside it; the space above and below the band is just
-     the page. */
-  align-items: center;
   overflow: hidden;
   cursor: ew-resize;
   touch-action: none;   /* we drive the drag ourselves */
@@ -643,30 +641,34 @@ html.is-way .hero-gradient { display: none; }
 .way.is-dragging { cursor: grabbing; }
 
 .way-row {
-  position: relative;
-  flex: none;           /* the main-axis size is authoritative */
-  min-width: 0; min-height: 0;
+  /* Absolutely positioned: the rAF loop owns every sliver's offset, because
+     items wrap by jumping a whole strip-length and flex flow can't express
+     that. Centred on the band via the margin trick so the transform is free to
+     carry position alone. */
+  position: absolute;
   overflow: hidden;
+  will-change: transform;
   /* Tint behind an image that hasn't decoded, under the per-item LQIP gradient
      way-stack.ts carries over. Matches .hero-item so both views agree. */
   background-color: rgba(0, 0, 0, .05);
   background-size: cover;
-  /* The open/close move. --ease-out is the page's movement curve. Both axes are
-     listed because which one is live depends on the breakpoint; only ever one
-     of them changes at a time, and an axis flip is re-laid out instantly (the
-     script drops .is-ready across it) so these never cross-fade into each
-     other. Measured at 0.082ms per step for a full relayout of 150 slivers,
-     against a 16.7ms frame budget. */
-  transition: width .5s var(--ease-out), height .5s var(--ease-out);
 }
-/* Cross axis: every sliver is exactly as deep as the band. */
-@media (min-width: 768px) { .way-row { height: var(--way-band, 100%); } }
-@media (max-width: 767px) { .way-row { width: var(--way-band, 100%); } }
+/* Cross axis: every sliver is exactly as deep as the band, and centred on it. */
+@media (min-width: 768px) {
+  .way-row {
+    top: 50%; left: 0;
+    height: var(--way-band, 60vh);
+    margin-top: calc(var(--way-band, 60vh) / -2);
+  }
+}
+@media (max-width: 767px) {
+  .way-row {
+    left: 50%; top: 0;
+    width: var(--way-band, 100vw);
+    margin-left: calc(var(--way-band, 100vw) / -2);
+  }
+}
 html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
-/* Entrance: the stack starts evenly split and the focused sliver opens out of
-   it, so arriving on #way is a movement. Suppressed until the script adds
-   .is-ready so the very first layout doesn't animate from zero. */
-.way:not(.is-ready) .way-row { transition: none; }
 
 /* Every image is rendered at the size the OPEN sliver settles at — its own
    whole box, --way-open across by --way-band deep — whatever its own sliver is
@@ -756,7 +758,8 @@ html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .way-row { transition: none; }
+  /* The strip's own movement is rAF-driven and way-stack.ts snaps it instead of
+     easing; only the label's entrance is CSS. */
   .way-meta { transform: none; transition: opacity .2s ease; }
 }
 `,
