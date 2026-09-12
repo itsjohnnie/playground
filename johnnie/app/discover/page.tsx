@@ -702,11 +702,12 @@ html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
   .way-img {
     top: 0; height: 100%;
     left: 50%; width: var(--way-open, 50vw);
-    /* translateZ pins the picture to its own compositor layer. The layer never
-       changes size — only the sliver clipping it does — so opening a panel
-       re-CLIPS an existing layer instead of re-rastering a growing one, which
-       is what made large panels expensive. */
-    transform: translateX(-50%) translateZ(0);
+    /* Deliberately NOT promoted to its own layer (no translateZ / will-change).
+       It looked like it should help — the picture never changes size, only the
+       sliver clipping it does — but A/B'd in isolation it made no measurable
+       difference at 1440 or 1920, and it would cost one full-size compositor
+       layer per live image. */
+    transform: translateX(-50%);
   }
 }
 /* Vertical stack: the window deepens over a picture pinned to the band's width
@@ -715,7 +716,7 @@ html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
   .way-img {
     left: 0; width: 100%;
     top: 50%; height: var(--way-open, 28vh);
-    transform: translateY(-50%) translateZ(0);
+    transform: translateY(-50%);
   }
 }
 
