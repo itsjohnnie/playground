@@ -77,6 +77,19 @@ const PAINT_BUDGET = 24e6;
 const NATIVE_FALLBACK_W = 1600;
 // Input distance that advances the focus by one item.
 const DRAG_UNITS = 86;
+// Fling on release. The release velocity (px/ms, low-passed over the last few
+// moves) is projected forward and the focus then eases there on the same
+// exponential approach as everything else — so the coast is the existing
+// engine, not a second animation system. FLING is the gain that converts a
+// velocity into a distance; it is set so a decay at the grid's own friction
+// (0.94 a frame at 60fps: sum = v * 0.94/0.06 ≈ 15.7 frames' travel) lands the
+// same place. A flick of ~2px/ms coasts about six items.
+const FLING = 260;
+// Never coast further than this many items on one flick, however violent.
+const FLING_MAX = 12;
+// A pause before lifting is a stop, not a throw: no move within this window
+// and the release velocity is treated as zero.
+const FLING_STALE_MS = 80;
 const WHEEL_UNITS = 96;
 // Exponential approach per frame, and the point at which we call it arrived.
 const SMOOTH = 0.16;
@@ -123,18 +136,28 @@ export class WayStack {
   private pointerId = -1;
   private lastPos = 0;
   private moved = 0;
+  private vel = 0;      // px/ms along the strip's axis, low-passed
+  private lastT = 0;    // timestamp of the last pointermove
   private ro: ResizeObserver | null = null;
 
   constructor(sources: HTMLElement[], mount: HTMLElement) {
     this.root = document.createElement("div");
     this.root.className = "way";
-    this.root.setAttribute("role", "list");
+    // WAI-ARIA carousel shape rather than a list: a region a keyboard user can
+    // land on, slides that are hidden from assistive tech unless open, and a
+    // status region for the caption so the open item's name is announced.
+    this.root.setAttribute("role", "region");
+    this.root.setAttribute("aria-roledescription", "carousel");
+    this.root.setAttribute("aria-label", "Discovery Area");
+    this.root.setAttribute("tabindex", "0");
 
     for (let i = 0; i < sources.length; i++) {
       const src = sources[i];
       const el = document.createElement("div");
       el.className = "way-row";
-      el.setAttribute("role", "listitem");
+      el.setAttribute("role", "group");
+      el.setAttribute("aria-roledescription", "slide");
+      el.setAttribute("aria-hidden", "true");
       el.dataset.i = String(i);
       // The LQIP gradient rides on the source ITEM (page.tsx sets it inline),
       // not inside its markup — carry it over so a sliver shows the incoming
@@ -155,6 +178,8 @@ export class WayStack {
       // panel, and a sliver is clipped to its own width for the crop — a label
       // below the image would be cut off by that same overflow. One label lives
       // on the container instead and takes whichever item is open.
+      const name = meta?.firstElementChild?.textContent?.trim() ?? "";
+      if (name) el.setAttribute("aria-label", name);
       this.rows.push({
         el, size: -1, offset: NaN, on: false, vis: true,
         meta: meta ? meta.innerHTML : "",
@@ -164,6 +189,9 @@ export class WayStack {
 
     this.label = document.createElement("div");
     this.label.className = "way-label";
+    // status = a polite live region; screen readers announce the caption each
+    // time it changes, i.e. once the open panel has settled on an item.
+    this.label.setAttribute("role", "status");
     this.root.appendChild(this.label);
 
     mount.appendChild(this.root);
@@ -344,6 +372,8 @@ export class WayStack {
       if (on !== row.on) {
         row.el.classList.toggle("is-active", on);
         row.el.setAttribute("aria-current", on ? "true" : "false");
+        // Only the open slide is exposed; 149 slivers are not navigable content.
+        row.el.setAttribute("aria-hidden", on ? "false" : "true");
         row.on = on;
       }
     }
@@ -416,8 +446,18 @@ export class WayStack {
     this.dragging = true;
     this.lastPos = this.pos(e);
     this.moved = 0;
+    this.vel = 0;
+    this.lastT = e.timeStamp;
+    // A press catches the strip where it is: if it was still coasting from a
+    // previous flick, that coast ends under the finger rather than continuing
+    // beneath it.
+    this.target = this.focus;
     clearTimeout(this.settleTimer);
-    this.root.setPointerCapture?.(e.pointerId);
+    // Capture can throw (NotFoundError) if the pointer is already gone by the
+    // time this runs — a lifted pen, a cancelled touch. Never let that abort the
+    // handler: everything after it must still run, or the drag state is left
+    // half-set.
+    try { this.root.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
     this.root.classList.add("is-dragging");
   }
 
@@ -427,6 +467,11 @@ export class WayStack {
     const d = p - this.lastPos;
     this.lastPos = p;
     this.moved += Math.abs(d);
+    // Low-pass the velocity the same way the grid does: raw per-event deltas
+    // are noisy and arrive unevenly, which made flings feel inconsistent.
+    const dt = Math.max(1, e.timeStamp - this.lastT);
+    this.lastT = e.timeStamp;
+    this.vel = this.vel * 0.7 + (d / dt) * 0.3;
     // The strip follows the finger: dragging right/down walks backwards.
     this.target -= d / DRAG_UNITS;
     this.start();
@@ -434,7 +479,9 @@ export class WayStack {
 
   private onPointerUp(e: PointerEvent) {
     if (e.pointerId !== this.pointerId) return;
-    this.root.releasePointerCapture?.(e.pointerId);
+    // Same as capture: if this throws and aborts the handler, pointerId never
+    // resets and every later press is ignored — the carousel goes dead.
+    try { this.root.releasePointerCapture(e.pointerId); } catch { /* already released */ }
     this.pointerId = -1;
     this.dragging = false;
     this.root.classList.remove("is-dragging");
@@ -443,6 +490,11 @@ export class WayStack {
       const i = this.rowIndexAt(e);
       if (i >= 0) { this.setActive(i); return; }
     }
+    // Throw: project the release velocity forward, then land on an item. A
+    // finger that paused before lifting has no throw in it.
+    const fresh = e.timeStamp - this.lastT < FLING_STALE_MS;
+    const items = fresh ? (this.vel * FLING) / DRAG_UNITS : 0;
+    this.target -= Math.max(-FLING_MAX, Math.min(FLING_MAX, items));
     this.target = Math.round(this.target);
     this.start();
   }
