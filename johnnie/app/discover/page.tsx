@@ -702,7 +702,11 @@ html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
   .way-img {
     top: 0; height: 100%;
     left: 50%; width: var(--way-open, 50vw);
-    transform: translateX(-50%);
+    /* translateZ pins the picture to its own compositor layer. The layer never
+       changes size — only the sliver clipping it does — so opening a panel
+       re-CLIPS an existing layer instead of re-rastering a growing one, which
+       is what made large panels expensive. */
+    transform: translateX(-50%) translateZ(0);
   }
 }
 /* Vertical stack: the window deepens over a picture pinned to the band's width
@@ -711,7 +715,7 @@ html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
   .way-img {
     left: 0; width: 100%;
     top: 50%; height: var(--way-open, 28vh);
-    transform: translateY(-50%);
+    transform: translateY(-50%) translateZ(0);
   }
 }
 
@@ -737,23 +741,26 @@ html.is-dark .way-row { background-color: rgba(255, 255, 255, .06); }
 }
 .way-label.is-shown { opacity: 1; transform: none; }
 .way-label .hero-meta_data-lighter { opacity: .5; }
-/* Horizontal strip: the picture's lower edge is the band's lower edge. */
+/* Horizontal strip: one line the width of the open panel, name hard left and
+   category hard right. Stacking them cost vertical space the band wants, and
+   the panel's own edges give the line something to align to. */
 @media (min-width: 768px) {
-  .way-label { top: calc(50% + var(--way-band, 60vh) / 2 + 1.35rem); }
-}
-/* Vertical strip: the open panel is what ends, not the band — and there is no
-   empty page below it, because the strip carries on down the screen. The
-   caption gets its own ground in the page colour so it reads as a rail cut
-   through the strip rather than text dropped on top of slivers. Desktop needs
-   none of this: the band is inset there, so the caption already lands on the
-   page itself. */
-@media (max-width: 767px) {
   .way-label {
-    top: calc(50% + var(--way-open, 28vh) / 2);
-    padding: .85rem 1rem .95rem;
-    background: var(--bg, #fff);
-    font-size: .75rem; letter-spacing: .04rem;
+    top: calc(50% + var(--way-band, 60vh) / 2 + 1.1rem);
+    left: 50%; right: auto;
+    width: var(--way-open, 50vw);
+    margin-left: calc(var(--way-open, 50vw) / -2);
+    padding: 0;
+    flex-direction: row; align-items: baseline; justify-content: space-between;
+    gap: 1rem;
+    text-align: left;
   }
+}
+/* Vertical strip: no caption. The strip runs the full height of a phone, so
+   there is no page left under the open panel to put one on — it would have to
+   sit over other slivers, and the screen is too tight to spend on that. */
+@media (max-width: 767px) {
+  .way-label { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

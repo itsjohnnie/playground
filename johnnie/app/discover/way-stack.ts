@@ -71,16 +71,10 @@ const SLIVER_MIN_Y = 7;
 // rather than for the cliff edge: at 32e6 a 1920x1080 display sat exactly on it,
 // giving 60fps twice and 30fps twice across four identical passes.
 const PAINT_BUDGET = 24e6;
-// Hard cap on the open panel's AREA, in pixels. This is the other half of the
-// frame budget and it turned out to be the dominant one on large displays: the
-// open panel is the one element whose size changes every frame while the
-// accordion runs, so it re-rasters every frame, and that cost scales with its
-// area. Measured across a viewport sweep during a continuous wheel, frames over
-// 20ms climbed monotonically with panel area — 0.36Mpx none, 0.56Mpx 18,
-// 0.82Mpx 42 — and 0.85Mpx fell off a cliff to 30fps. Cutting sliver COUNT did
-// not help there, which is what pointed at the panel rather than the strip.
-// 0.62Mpx keeps a 1920x1080 display comfortably inside it.
-const PANEL_MAX_PX = 0.62e6;
+// The open panel never grows past the source image's own pixels — upscaling a
+// screenshot past 1:1 only makes it soft. Read from the first source image that
+// reports a size, so it follows the artwork rather than a number written here.
+const NATIVE_FALLBACK_W = 1600;
 // Input distance that advances the focus by one item.
 const DRAG_UNITS = 86;
 const WHEEL_UNITS = 96;
@@ -114,6 +108,8 @@ export class WayStack {
   private openSize = 0;
   private band = 0;
   private view = 0;
+  private nativeW = NATIVE_FALLBACK_W;
+  private firstImg: HTMLImageElement | null = null;
 
   private label!: HTMLElement;
   private labelFor = -1;
@@ -145,7 +141,8 @@ export class WayStack {
       // photo's colours while the image decodes.
       if (src.style.backgroundImage) el.style.backgroundImage = src.style.backgroundImage;
 
-      const srcImg = src.querySelector("img");
+      const srcImg = src.querySelector("img") as HTMLImageElement | null;
+      if (srcImg && !this.firstImg) this.firstImg = srcImg;
       if (srcImg) {
         const img = srcImg.cloneNode(true) as HTMLImageElement;
         img.className = "way-img";
@@ -225,6 +222,7 @@ export class WayStack {
   // CSS is the single source of truth for the breakpoint: .way is a row on wide
   // viewports and a column on narrow ones, and the strip runs along that axis.
   private measure() {
+    if (this.firstImg?.naturalWidth) this.nativeW = this.firstImg.naturalWidth;
     const horizontal = getComputedStyle(this.root).flexDirection !== "column";
     this.axis = horizontal ? "x" : "y";
 
@@ -246,15 +244,16 @@ export class WayStack {
       open = openCap;
       band = horizontal ? open / ASPECT : open * ASPECT;
     }
+    // Stop at 1:1 with the source. On a big display that is the panel at full
+    // size rather than a stretched one, and the strip simply shows fewer, wider
+    // slivers beside it.
+    const nativeLong = horizontal ? this.nativeW : this.nativeW / ASPECT;
+    if (open > nativeLong) {
+      open = nativeLong;
+      band = horizontal ? open / ASPECT : open * ASPECT;
+    }
     this.openSize = open;
     this.band = band;
-    // Keep the panel inside the area cap — the re-raster cost above.
-    if (open * band > PANEL_MAX_PX) {
-      open = Math.sqrt(PANEL_MAX_PX * (horizontal ? ASPECT : 1 / ASPECT));
-      band = horizontal ? open / ASPECT : open * ASPECT;
-      this.openSize = open;
-      this.band = band;
-    }
     // Thickness that keeps the on-screen sliver count inside the paint budget.
     const panelArea = (horizontal ? open * band : band * open) || 1;
     const affordable = Math.max(12, Math.floor(PAINT_BUDGET / panelArea));
