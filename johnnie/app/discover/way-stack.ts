@@ -101,15 +101,15 @@ export class WayStack {
     // Open somewhere in the middle rather than at the very top — the first row
     // expanded against the top edge reads as a banner, not as a stack.
     this.active = Math.floor(this.rows.length / 2);
+    // Entrance: lay the stack out evenly, force that state to be computed, then
+    // open the focused row so the transition has a real start value to run from.
+    // The forced reflow is what makes this synchronous and reliable — doing it
+    // across two rAFs left the stack sitting in the even split for SECONDS,
+    // because those callbacks queue behind decoding 150 images on first load.
     this.layout(true);
-    // Let the first frame paint the collapsed stack, then ease the opening one
-    // out of it, so arriving on #way is a move rather than a static state.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        this.root.classList.add("is-ready");
-        this.layout();
-      });
-    });
+    void this.root.offsetHeight;
+    this.root.classList.add("is-ready");
+    this.layout();
   }
 
   // Write every row's height. Two things matter for this to stay smooth with
