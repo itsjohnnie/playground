@@ -29,6 +29,7 @@ type Row = {
   size: number;   // last main-axis size written
   offset: number; // last main-axis translate written
   on: boolean;    // last is-active state written
+  vis: boolean;   // last display state written — see the culling note in render()
 };
 
 // Aspect of the source screenshots (they are 16:9 almost without exception).
@@ -65,8 +66,20 @@ const SLIVER_MIN_Y = 7;
 // slivers of a 1008x567 panel at 60fps, while 1920x1080 ran 72 of a 1344x756
 // panel at 30. A phone survives 90 slivers only because its panel is 390x219.
 // Deriving thickness from this budget spends the frame on fewer, thicker
-// slivers as the display grows, instead of dropping frames.
-const PAINT_BUDGET = 32e6;
+// slivers as the display grows, instead of dropping frames. Sized for headroom
+// rather than for the cliff edge: at 32e6 a 1920x1080 display sat exactly on it,
+// giving 60fps twice and 30fps twice across four identical passes.
+const PAINT_BUDGET = 24e6;
+// Hard cap on the open panel's AREA, in pixels. This is the other half of the
+// frame budget and it turned out to be the dominant one on large displays: the
+// open panel is the one element whose size changes every frame while the
+// accordion runs, so it re-rasters every frame, and that cost scales with its
+// area. Measured across a viewport sweep during a continuous wheel, frames over
+// 20ms climbed monotonically with panel area — 0.36Mpx none, 0.56Mpx 18,
+// 0.82Mpx 42 — and 0.85Mpx fell off a cliff to 30fps. Cutting sliver COUNT did
+// not help there, which is what pointed at the panel rather than the strip.
+// 0.62Mpx keeps a 1920x1080 display comfortably inside it.
+const PANEL_MAX_PX = 0.62e6;
 // Input distance that advances the focus by one item.
 const DRAG_UNITS = 86;
 const WHEEL_UNITS = 96;
@@ -75,6 +88,9 @@ const SMOOTH = 0.16;
 const EPSILON = 0.0004;
 // Quiet time after the last wheel tick before the focus snaps to one item.
 const SETTLE_MS = 130;
+// How far past each edge a sliver is kept alive before being culled. One
+// sliver's worth of slack so nothing pops in at the boundary.
+const CULL_PAD = 8;
 
 export class WayStack {
   root: HTMLElement;
@@ -134,7 +150,7 @@ export class WayStack {
         m.innerHTML = meta.innerHTML;
         el.appendChild(m);
       }
-      this.rows.push({ el, size: -1, offset: NaN, on: false });
+      this.rows.push({ el, size: -1, offset: NaN, on: false, vis: true });
       this.root.appendChild(el);
     }
 
@@ -196,6 +212,13 @@ export class WayStack {
     }
     this.openSize = open;
     this.band = band;
+    // Keep the panel inside the area cap — the re-raster cost above.
+    if (open * band > PANEL_MAX_PX) {
+      open = Math.sqrt(PANEL_MAX_PX * (horizontal ? ASPECT : 1 / ASPECT));
+      band = horizontal ? open / ASPECT : open * ASPECT;
+      this.openSize = open;
+      this.band = band;
+    }
     // Thickness that keeps the on-screen sliver count inside the paint budget.
     const panelArea = (horizontal ? open * band : band * open) || 1;
     const affordable = Math.max(12, Math.floor(PAINT_BUDGET / panelArea));
@@ -256,6 +279,19 @@ export class WayStack {
       // items leave one edge and arrive at the other without a visible jump.
       x = ((x % L) + L) % L;
       if (x > (L + this.view) / 2) x -= L;
+
+      // Cull. Only a fraction of the strip is ever on screen — at 1440x900,
+      // about 57 of 150 — and every one left in play holds a composited layer
+      // and a raster of a photo drawn at the OPEN panel's size, whether or not
+      // any of it is visible. That is where the GPU was going. display:none
+      // costs nothing to carry and drops the layer, the raster and the decode
+      // claim; these are absolutely positioned, so nothing else reflows.
+      const vis = x > -size[i] - CULL_PAD && x < this.view + CULL_PAD;
+      if (vis !== row.vis) {
+        row.el.style.display = vis ? "" : "none";
+        row.vis = vis;
+      }
+      if (!vis) continue;
 
       const s = Math.round(size[i] * 100) / 100;
       const o = Math.round(x * 100) / 100;
