@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence, animate, useMotionValue } from 'framer-motion'
 import type { PanInfo } from 'framer-motion'
-import { ChevronLeft, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen, staggerItem } from '@/components/ui/Screen'
 import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Match, Player } from '@/types/game'
-import { leaderboard, duels, type Duel } from '@/utils/scoring'
+import { leaderboard, duels, sortLeaderboard, type Duel, type LeaderboardSort } from '@/utils/scoring'
 import { SCORE_REASON_LABEL } from '@/types/game'
 
 interface HistorialScreenProps {
@@ -462,27 +462,65 @@ function TeamSummary({ side, match, playerById }: { side: 'A' | 'B'; match: Matc
 }
 
 function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard>; playerById: (id: string) => Player | undefined }) {
-  // Fixed widths for the three numeric columns so the header letters and
-  // the row values share the same column track. With auto widths each
-  // row sized to its own digits ("PJ" wider than "2", "%" narrower than
+  // Fixed widths for the numeric columns so the header letters and the
+  // row values share the same column track. With auto widths each row
+  // sized to its own digits ("PJ" wider than "2", "%" narrower than
   // "50%") and the headers drifted relative to the numbers below.
-  const gridTemplate = { gridTemplateColumns: '1fr 2.5rem 2.5rem 3rem' }
+  const gridTemplate = { gridTemplateColumns: '1fr 2.25rem 2.25rem 2.75rem 2.5rem' }
+
+  // Which column the table is ordered by. Tapping a header sorts by it
+  // descending; tapping the one already active flips direction, so
+  // "who has played the fewest" is reachable without a second control.
+  const [sort, setSort] = useState<LeaderboardSort>('winRate')
+  const [dir, setDir] = useState<'asc' | 'desc'>('desc')
+  const ordered = useMemo(() => sortLeaderboard(rows, sort, dir), [rows, sort, dir])
+
+  function toggle(key: LeaderboardSort) {
+    if (key === sort) setDir((d) => (d === 'desc' ? 'asc' : 'desc'))
+    else { setSort(key); setDir('desc') }
+  }
+
+  const columns: Array<{ key: LeaderboardSort; label: string; title: string }> = [
+    { key: 'matches', label: 'PJ',  title: 'Partidas jugadas' },
+    { key: 'wins',    label: 'G',   title: 'Ganadas' },
+    { key: 'winRate', label: '%',   title: 'Porcentaje de victorias' },
+    { key: 'points',  label: 'PTS', title: 'Puntos de liga: 1 por jugar, 2 por ganar, 3 si el rival no pasó de 15' },
+  ]
+
   return (
     <div className="rounded-md border border-line bg-surface overflow-hidden">
-      <div className="grid gap-3 px-4 py-2 border-b border-line/70 text-[11px] eyebrow" style={gridTemplate}>
+      <div className="grid gap-2 px-4 py-2 border-b border-line/70 text-[11px] eyebrow" style={gridTemplate}>
         <span>Jugador</span>
-        <span className="text-right">PJ</span>
-        <span className="text-right">G</span>
-        <span className="text-right">%</span>
+        {columns.map((c) => {
+          const active = sort === c.key
+          const Caret = dir === 'desc' ? ChevronDown : ChevronUp
+          return (
+            <button
+              key={c.key}
+              onClick={() => toggle(c.key)}
+              title={c.title}
+              aria-label={`Ordenar por ${c.title}`}
+              aria-sort={active ? (dir === 'desc' ? 'descending' : 'ascending') : 'none'}
+              className={`pressable eyebrow inline-flex items-center justify-end gap-0.5 ${
+                active ? 'text-accent' : 'text-ink-muted'
+              }`}
+            >
+              {c.label}
+              {active && <Caret className="size-3 shrink-0" aria-hidden />}
+            </button>
+          )
+        })}
       </div>
-      {rows.map((s) => {
+      {ordered.map((s) => {
         const p = playerById(s.playerId)
         return (
           <motion.div
             key={s.playerId}
+            layout
             variants={staggerItem}
+            transition={{ layout: { duration: 0.28, ease: [0.23, 1, 0.32, 1] } }}
             style={gridTemplate}
-            className="grid gap-3 px-4 py-3 border-b border-line/40 last:border-b-0 items-center"
+            className="grid gap-2 px-4 py-3 border-b border-line/40 last:border-b-0 items-center"
           >
             <div className="min-w-0">
               <p className="font-display text-ink text-base truncate">{p?.name ?? '?'}</p>
@@ -497,7 +535,8 @@ function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard
             </div>
             <span className="tabular text-ink-muted text-sm text-right">{s.matches}</span>
             <span className="tabular text-ink text-sm text-right">{s.wins}</span>
-            <span className="tabular text-accent font-semibold text-right">{Math.round(s.winRate * 100)}%</span>
+            <span className="tabular text-ink-muted text-sm text-right">{Math.round(s.winRate * 100)}%</span>
+            <span className="tabular text-accent font-semibold text-right">{s.points}</span>
           </motion.div>
         )
       })}
