@@ -72,6 +72,32 @@ export function dryRounds(events: ScoreEvent[], team: 'A' | 'B'): number {
   return rounds
 }
 
+// ─── Puntos de liga ───────────────────────────────────────────
+//
+// Table standings, separate from the points scored inside a match.
+// Turning up and losing is still worth something, so every finished
+// match pays out:
+//
+//   1  played
+//   2  won
+//   3  won while the other side never left malas
+//
+// These are tiers, not a running total — a win pays 2 instead of 1,
+// not on top of it. The 3-point tier keys off BUENAS_THRESHOLD rather
+// than a loose number: holding a team under 15 means they never made
+// it to buenas, which is the blowout the table already has a word for.
+export const LEAGUE_POINTS = {
+  played: 1,
+  won: 2,
+  blowout: 3,
+} as const
+
+/** What one finished match paid a player. */
+export function leaguePointsFor(won: boolean, opponentScore: number): number {
+  if (!won) return LEAGUE_POINTS.played
+  return opponentScore <= BUENAS_THRESHOLD ? LEAGUE_POINTS.blowout : LEAGUE_POINTS.won
+}
+
 // ─── Stats ────────────────────────────────────────────────────
 
 export interface PlayerStats {
@@ -80,6 +106,8 @@ export interface PlayerStats {
   wins: number
   losses: number
   winRate: number
+  /** League-table points: 1 played / 2 won / 3 won by a blowout. */
+  points: number
   pointsFor: number
   pointsAgainst: number
   longestStreak: number
@@ -94,6 +122,7 @@ export function computePlayerStats(playerId: string, matches: Match[]): PlayerSt
 
   let wins = 0
   let losses = 0
+  let points = 0
   let pointsFor = 0
   let pointsAgainst = 0
   let longestStreak = 0
@@ -111,6 +140,7 @@ export function computePlayerStats(playerId: string, matches: Match[]): PlayerSt
     const their = onA ? m.scoreB : m.scoreA
     pointsFor += my
     pointsAgainst += their
+    points += leaguePointsFor(won, their)
 
     if (won) wins++
     else losses++
@@ -129,6 +159,7 @@ export function computePlayerStats(playerId: string, matches: Match[]): PlayerSt
     wins,
     losses,
     winRate: totalMatches > 0 ? wins / totalMatches : 0,
+    points,
     pointsFor,
     pointsAgainst,
     longestStreak,
@@ -140,15 +171,41 @@ export function computePlayerStats(playerId: string, matches: Match[]): PlayerSt
   }
 }
 
+/** Columns the standings table can be ordered by. */
+export type LeaderboardSort = 'points' | 'winRate' | 'matches' | 'wins'
+
 export function leaderboard(roster: Player[], matches: Match[]): PlayerStats[] {
-  return roster
-    .map((p) => computePlayerStats(p.id, matches))
-    .filter((s) => s.matches > 0)
-    .sort((a, b) => {
-      if (b.winRate !== a.winRate) return b.winRate - a.winRate
-      if (b.matches !== a.matches) return b.matches - a.matches
-      return 0
-    })
+  return sortLeaderboard(
+    roster.map((p) => computePlayerStats(p.id, matches)).filter((s) => s.matches > 0),
+    'winRate',
+    'desc',
+  )
+}
+
+/**
+ * Order the standings. Kept pure and separate from `leaderboard` so the
+ * table can re-sort on tap without recomputing every player's stats.
+ *
+ * Ties always fall through to the same chain — points, then win rate,
+ * then matches played — so two players level on the sorted column keep
+ * a stable, meaningful order rather than whatever the roster happened
+ * to be in. The chain is skipped for whichever column is being sorted,
+ * since it has already been compared.
+ */
+export function sortLeaderboard(
+  rows: PlayerStats[],
+  key: LeaderboardSort,
+  dir: 'asc' | 'desc' = 'desc',
+): PlayerStats[] {
+  const flip = dir === 'asc' ? -1 : 1
+  return [...rows].sort((a, b) => {
+    const primary = (b[key] - a[key]) * flip
+    if (primary !== 0) return primary
+    if (key !== 'points' && b.points !== a.points) return b.points - a.points
+    if (key !== 'winRate' && b.winRate !== a.winRate) return b.winRate - a.winRate
+    if (key !== 'matches' && b.matches !== a.matches) return b.matches - a.matches
+    return 0
+  })
 }
 
 // ─── Duelos (pica pica head-to-head) ─────────────────────────
