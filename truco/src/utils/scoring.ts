@@ -208,6 +208,63 @@ export function sortLeaderboard(
   })
 }
 
+// ─── Season progress ──────────────────────────────────────────
+//
+// League points accumulated over the season, one running total per
+// player, sampled after every finished match. Players who sat a match
+// out carry their previous total forward — a flat segment, which is
+// the honest shape: you don't gain ground on a night you didn't play,
+// but you don't lose it either.
+//
+// Every series is sampled at the same points so the lines are directly
+// comparable, which is the whole reason to draw them together.
+
+export interface SeasonSeries {
+  playerId: string
+  /** Running points total after each match in `timeline`. */
+  values: number[]
+}
+
+export interface SeasonProgress {
+  /** Finished matches, oldest first — the x axis. */
+  timeline: Match[]
+  series: SeasonSeries[]
+  /** Highest total any player reaches, for scaling the y axis. */
+  max: number
+}
+
+export function seasonProgress(roster: Player[], matches: Match[]): SeasonProgress {
+  const timeline = matches
+    .filter((m) => m.winner !== null && !m.abandoned)
+    .sort((a, b) => a.startedAt - b.startedAt)
+
+  const series: SeasonSeries[] = []
+  let max = 0
+
+  for (const p of roster) {
+    let running = 0
+    let played = false
+    const values: number[] = []
+    for (const m of timeline) {
+      const onA = m.teamA.playerIds.includes(p.id)
+      const onB = m.teamB.playerIds.includes(p.id)
+      if (onA || onB) {
+        played = true
+        const won = (onA && m.winner === 'A') || (onB && m.winner === 'B')
+        running += leaguePointsFor(won, onA ? m.scoreB : m.scoreA)
+      }
+      values.push(running)
+    }
+    // Someone who never played would draw a flat line along zero and
+    // say nothing, so they're left off.
+    if (!played) continue
+    series.push({ playerId: p.id, values })
+    if (running > max) max = running
+  }
+
+  return { timeline, series, max }
+}
+
 // ─── Duelos (pica pica head-to-head) ─────────────────────────
 //
 // For every finished match that has a `seats` array (3v3 only),

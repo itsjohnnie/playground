@@ -5,9 +5,10 @@ import { ChevronDown, ChevronLeft, ChevronUp, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen, staggerItem } from '@/components/ui/Screen'
+import { SeasonChart } from '@/components/ui/SeasonChart'
 import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Match, Player } from '@/types/game'
-import { leaderboard, duels, sortLeaderboard, type Duel, type LeaderboardSort } from '@/utils/scoring'
+import { leaderboard, duels, seasonProgress, sortLeaderboard, type Duel, type LeaderboardSort } from '@/utils/scoring'
 import { SCORE_REASON_LABEL } from '@/types/game'
 
 interface HistorialScreenProps {
@@ -27,6 +28,10 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
   const finished = useMemo(() => matches.filter((m) => m.finishedAt !== null), [matches])
   const stats = useMemo(() => leaderboard(roster, matches), [roster, matches])
   const allDuels = useMemo(() => duels(matches), [matches])
+  const progress = useMemo(() => seasonProgress(roster, matches), [roster, matches])
+  // Which player the chart draws in full. Defaults to whoever leads
+  // the table, and follows whatever row you tap.
+  const [focusId, setFocusId] = useState<string | null>(null)
   useEdgeSwipeBack(onBack, { enabled: !openMatch })
 
   return (
@@ -104,7 +109,23 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
                 Las estadísticas aparecen cuando termina la primera partida.
               </p>
             ) : (
-              <Leaderboard rows={stats} playerById={playerById} />
+              <>
+                {/* One match is a dot, not a trend — the chart only
+                    earns its space once there's a shape to read. */}
+                {progress.timeline.length > 1 && (
+                  <SeasonChart
+                    progress={progress}
+                    selectedId={focusId ?? stats[0]?.playerId ?? null}
+                    playerById={playerById}
+                  />
+                )}
+                <Leaderboard
+                  rows={stats}
+                  playerById={playerById}
+                  focusId={focusId ?? stats[0]?.playerId ?? null}
+                  onFocus={setFocusId}
+                />
+              </>
             )}
           </motion.div>
         )}
@@ -461,7 +482,12 @@ function TeamSummary({ side, match, playerById }: { side: 'A' | 'B'; match: Matc
   )
 }
 
-function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard>; playerById: (id: string) => Player | undefined }) {
+function Leaderboard({ rows, playerById, focusId, onFocus }: {
+  rows: ReturnType<typeof leaderboard>
+  playerById: (id: string) => Player | undefined
+  focusId: string | null
+  onFocus: (id: string) => void
+}) {
   // Fixed widths for the numeric columns so the header letters and the
   // row values share the same column track. With auto widths each row
   // sized to its own digits ("PJ" wider than "2", "%" narrower than
@@ -514,13 +540,18 @@ function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard
       {ordered.map((s) => {
         const p = playerById(s.playerId)
         return (
-          <motion.div
+          <motion.button
             key={s.playerId}
+            type="button"
             layout
+            onClick={() => onFocus(s.playerId)}
+            aria-pressed={focusId === s.playerId}
             variants={staggerItem}
             transition={{ layout: { duration: 0.28, ease: [0.23, 1, 0.32, 1] } }}
             style={gridTemplate}
-            className="grid gap-2 px-4 py-3 border-b border-line/40 last:border-b-0 items-center"
+            className={`pressable grid w-full gap-2 px-4 py-3 text-left border-b border-line/40 last:border-b-0 items-center transition-colors ${
+              focusId === s.playerId ? 'bg-accent/10' : ''
+            }`}
           >
             <div className="min-w-0">
               <p className="font-display text-ink text-base truncate">{p?.name ?? '?'}</p>
@@ -537,7 +568,7 @@ function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard
             <span className="tabular text-ink text-sm text-right">{s.wins}</span>
             <span className="tabular text-ink-muted text-sm text-right">{Math.round(s.winRate * 100)}%</span>
             <span className="tabular text-accent font-semibold text-right">{s.points}</span>
-          </motion.div>
+          </motion.button>
         )
       })}
     </div>
