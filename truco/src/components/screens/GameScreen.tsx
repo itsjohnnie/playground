@@ -6,6 +6,7 @@ import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
 import { PulseGlow } from '@/components/ui/PulseGlow'
 import { Cobweb } from '@/components/ui/Cobweb'
+import { JugadaRow } from '@/components/ui/JugadaRow'
 import {
   type Match,
   type Player,
@@ -202,20 +203,7 @@ export function GameScreen({ match, playerById, onScore, onUndo, onLeave, onAban
         ) : (
           <div className="flex flex-col gap-1 max-h-[55vh] overflow-y-auto pb-2">
             {[...match.events].reverse().map((ev, i) => (
-              <div
-                key={i}
-                className="grid grid-cols-[7rem_1fr_3rem] items-center gap-2 rounded-sm bg-surface-hi px-3 py-2"
-              >
-                <span className="font-display text-ink text-base truncate">
-                  {ev.team === 'A' ? match.teamA.name : match.teamB.name}
-                </span>
-                <span className="text-xs text-ink-muted text-center truncate">
-                  {SCORE_REASON_LABEL[ev.reason]}
-                </span>
-                <span className="tabular text-accent font-semibold text-right">
-                  {ev.points >= 0 ? '+' : ''}{ev.points}
-                </span>
-              </div>
+              <JugadaRow key={i} event={ev} match={match} />
             ))}
           </div>
         )}
