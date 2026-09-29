@@ -78,7 +78,7 @@ export function HomeScreen({
                     number. The card reads as the same kind of row, so
                     it keeps the same relationship: names at body size,
                     the score one step down. */}
-                <span className="tabular text-sm font-semibold text-ink shrink-0">
+                <span className="tabular text-sm font-medium text-ink shrink-0">
                   {activeMatch.scoreA}
                   <span className="text-ink-soft mx-1.5">—</span>
                   {activeMatch.scoreB}
