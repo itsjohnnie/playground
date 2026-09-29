@@ -40,8 +40,7 @@ export function HomeScreen({
         >
           <SuitMark className="mb-1 opacity-90" />
           <h1
-            className="font-display font-normal leading-none text-ink text-center text-balance"
-            style={{ fontSize: 'var(--fs-display-xl)' }}
+            className="font-display text-display-xl font-normal leading-none text-ink text-center text-balance"
           >
             <span className="block">Monday’s</span>
             <span className="block">Truco League</span>

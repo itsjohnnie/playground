@@ -559,7 +559,7 @@ function SeatPicker({ players, defaultTeamNames, onStart }: SeatPickerProps) {
         <p className="eyebrow">Esperando silla</p>
         <div className="flex flex-wrap gap-2 min-h-[44px]">
           {unseated.length === 0 ? (
-            <p className="text-[11px] text-ink-soft self-center">Todos sentados.</p>
+            <p className="text-eyebrow text-ink-soft self-center">Todos sentados.</p>
           ) : (
             unseated.map((p) => (
               <PoolChip
@@ -617,7 +617,7 @@ function SeatSlot({ tone, player, refCb, onDragEnd, onTap }: SeatSlotProps) {
           onTap={() => onTap(player.id)}
         />
       ) : (
-        <span className="text-[11px] text-ink-soft">Sentate acá</span>
+        <span className="text-eyebrow text-ink-soft">Sentate acá</span>
       )}
     </div>
   )
@@ -748,7 +748,7 @@ const TeamColumn = function TeamColumn({
         />
         <span
           className={cn(
-            'tabular text-[11px] tracking-wider font-medium',
+            'tabular text-eyebrow tracking-wider font-medium',
             balanced ? 'text-ink-muted' : 'text-danger',
           )}
           aria-label={`${count} de ${expected}`}
@@ -759,7 +759,7 @@ const TeamColumn = function TeamColumn({
 
       <div className="flex flex-col gap-1.5 min-h-[64px]">
         {ids.length === 0 ? (
-          <p className="text-[11px] text-ink-soft self-center w-full text-center py-3">
+          <p className="text-eyebrow text-ink-soft self-center w-full text-center py-3">
             Soltá un nombre acá
           </p>
         ) : (

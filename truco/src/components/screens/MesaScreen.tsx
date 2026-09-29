@@ -307,7 +307,7 @@ function AuthRow({
   return (
     <div className="flex items-center justify-between rounded-md border border-line/70 bg-surface-hi/70 px-3.5 py-2.5">
       <div className="flex flex-col min-w-0">
-        <span className="text-[11px] text-ink-soft">Sesión</span>
+        <span className="text-eyebrow text-ink-soft">Sesión</span>
         <span className="text-sm text-ink truncate">{user.email}</span>
       </div>
       <button
