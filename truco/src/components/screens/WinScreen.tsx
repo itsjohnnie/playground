@@ -42,8 +42,7 @@ export function WinScreen({ match, playerById, onHome, onRevancha }: WinScreenPr
       >
         <p className="eyebrow">Ganaron</p>
         <h1
-          className="font-display font-normal text-ink leading-[0.95]"
-          style={{ fontSize: 'var(--fs-display-xl)' }}
+          className="font-display text-display-xl font-normal text-ink leading-[0.95]"
         >
           {winnerTeam.name}
         </h1>
@@ -94,7 +93,7 @@ export function WinScreen({ match, playerById, onHome, onRevancha }: WinScreenPr
         <Button variant="ghost" size="lg" onClick={onRevancha}>
           Revancha
         </Button>
-        <p className="text-[11px] text-ink-soft">
+        <p className="text-eyebrow text-ink-soft">
           Mismos equipos · {loserTeam.name} sale primero
         </p>
       </motion.div>

@@ -168,7 +168,7 @@ export function GameScreen({ match, playerById, onScore, onUndo, onLeave, onAban
           </Button>
           {/* Spelled out because the neighbouring action destroys the
               match, and the two must not be confusable at a glance. */}
-          <p className="text-[11px] text-ink-soft -mt-1 pl-3">
+          <p className="text-eyebrow text-ink-soft -mt-1 pl-3">
             La partida sigue en juego. Volvés cuando quieras.
           </p>
           <Button
@@ -387,8 +387,7 @@ function TeamPanel({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
-              className={`tabular leading-none font-semibold tracking-[-0.03em] ${highlight ? 'text-ink' : 'text-ink/85'}`}
-              style={{ fontSize: 'clamp(72px, 22vw, 104px)' }}
+              className={`tabular text-score leading-none font-semibold tracking-[-0.03em] ${highlight ? 'text-ink' : 'text-ink/85'}`}
             >
               {score}
             </motion.span>

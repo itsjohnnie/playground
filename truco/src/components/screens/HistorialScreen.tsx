@@ -274,12 +274,12 @@ function MatchRow({ match, playerById, onClick, onDelete, swipeOpen, onSwipeOpen
       >
         <div className="flex items-center justify-between">
           <span className="text-xs eyebrow">{dateStr}</span>
-          {match.abandoned && <span className="text-[11px] text-danger">Abandonada</span>}
+          {match.abandoned && <span className="text-eyebrow text-danger">Abandonada</span>}
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
           <div className="min-w-0">
             <p className={`font-display truncate ${aWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamA.name}</p>
-            {playersA && <p className="text-[11px] text-ink-soft truncate">{playersA}</p>}
+            {playersA && <p className="text-eyebrow text-ink-soft truncate">{playersA}</p>}
           </div>
           <div className="font-display tabular text-ink">
             <span className={aWon ? 'text-accent' : ''}>{match.scoreA}</span>
@@ -288,7 +288,7 @@ function MatchRow({ match, playerById, onClick, onDelete, swipeOpen, onSwipeOpen
           </div>
           <div className="min-w-0 text-right">
             <p className={`font-display truncate ${bWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamB.name}</p>
-            {playersB && <p className="text-[11px] text-ink-soft truncate">{playersB}</p>}
+            {playersB && <p className="text-eyebrow text-ink-soft truncate">{playersB}</p>}
           </div>
         </div>
       </motion.button>
@@ -489,7 +489,7 @@ function Leaderboard({ rows, playerById }: { rows: ReturnType<typeof leaderboard
 
   return (
     <div className="rounded-md border border-line bg-surface overflow-hidden">
-      <div className="grid gap-2 px-4 py-2 border-b border-line/70 text-[11px] eyebrow" style={gridTemplate}>
+      <div className="grid gap-2 px-4 py-2 border-b border-line/70 text-eyebrow eyebrow" style={gridTemplate}>
         <span>Jugador</span>
         {columns.map((c) => {
           const active = sort === c.key
@@ -551,7 +551,7 @@ function DuelsList({ duels: rows, playerById }: { duels: Duel[]; playerById: (id
   // the digits around when the grid widths vary.
   return (
     <div className="rounded-md border border-line bg-surface overflow-hidden">
-      <div className="grid grid-cols-[1fr_auto_1fr] gap-3 px-4 py-2 border-b border-line/70 text-[11px] eyebrow">
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-3 px-4 py-2 border-b border-line/70 text-eyebrow eyebrow">
         <span className="text-right">Jugador</span>
         <span className="text-center">Duelos</span>
         <span>Jugador</span>
@@ -578,7 +578,7 @@ function DuelsList({ duels: rows, playerById }: { duels: Duel[]; playerById: (id
                 <span className="text-ink-soft mx-1.5">—</span>
                 <span className={bLeads ? 'text-accent' : ''}>{d.winsB}</span>
               </div>
-              <p className="text-[11px] text-ink-soft tabular">
+              <p className="text-eyebrow text-ink-soft tabular">
                 {d.matches === 1 ? '1 duelo' : `${d.matches} duelos`}
               </p>
             </div>

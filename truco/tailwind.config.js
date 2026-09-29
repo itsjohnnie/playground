@@ -34,10 +34,19 @@ export default {
       },
       fontSize: {
         'display-xl': 'var(--fs-display-xl)',
+        score:        'var(--fs-score)',
         display:      'var(--fs-display)',
         h1:           'var(--fs-h1)',
         h2:           'var(--fs-h2)',
         eyebrow:      'var(--fs-eyebrow)',
+        // Tailwind's own names re-pointed at the scale, so the tokens
+        // are the single source of truth and `text-sm` can't drift
+        // from --fs-small. Line heights are carried over verbatim from
+        // Tailwind's defaults — dropping them would silently hand 60+
+        // call sites the inherited 1.5 body leading.
+        base: ['var(--fs-body)',    { lineHeight: '1.5rem' }],
+        sm:   ['var(--fs-small)',   { lineHeight: '1.25rem' }],
+        xs:   ['var(--fs-caption)', { lineHeight: '1rem' }],
       },
       borderRadius: {
         sm: 'var(--radius-sm)',

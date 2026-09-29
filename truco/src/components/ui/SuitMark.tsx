@@ -5,7 +5,7 @@ import { Oro, Copa, Espada, Basto } from './Suits'
 export function SuitMark({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`flex items-center gap-3 text-xl no-select ${className}`}
+      className={`flex items-center gap-3 text-h2 no-select ${className}`}
       aria-hidden="true"
     >
       <Oro    className="text-accent" />
