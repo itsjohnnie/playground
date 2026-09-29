@@ -73,7 +73,12 @@ export function HomeScreen({
               </span>
               <span className="mt-2 flex items-baseline justify-between gap-3">
                 <span className="font-display text-ink truncate">{activeMatch.teamA.name}</span>
-                <span className="tabular font-semibold text-ink shrink-0">
+                {/* text-sm to match the counts on the Mesa / Historial
+                    tiles below, which pair a 16px label with a 14px
+                    number. The card reads as the same kind of row, so
+                    it keeps the same relationship: names at body size,
+                    the score one step down. */}
+                <span className="tabular text-sm font-semibold text-ink shrink-0">
                   {activeMatch.scoreA}
                   <span className="text-ink-soft mx-1.5">—</span>
                   {activeMatch.scoreB}
