@@ -53,7 +53,7 @@ export function WinScreen({ match, playerById, onHome, onRevancha }: WinScreenPr
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3, delay: 0.18 }}
-        className="flex items-baseline gap-3 font-display tabular text-ink"
+        className="flex items-baseline gap-3 tabular font-semibold tracking-[-0.02em] text-ink"
       >
         <CountUp to={winnerScore} className="text-h1 text-accent" />
         <span className="text-ink-soft">—</span>
