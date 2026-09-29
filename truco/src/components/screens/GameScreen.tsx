@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence, animate, useMotionValue, useTransform } from 'framer-motion'
-import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown, Plus, Minus, ArrowLeftRight } from 'lucide-react'
+import { MoreVertical, Undo2, Clock, X, ChevronUp, ChevronDown, Plus, Minus, ArrowLeftRight, Home } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen } from '@/components/ui/Screen'
@@ -20,10 +20,12 @@ interface GameScreenProps {
   playerById: (id: string) => Player | undefined
   onScore: (team: 'A' | 'B', points: number, reason: ScoreReason) => void
   onUndo: () => void
+  /** Step out of the scoreboard; the match stays open and live. */
+  onLeave: () => void
   onAbandon: () => void
 }
 
-export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: GameScreenProps) {
+export function GameScreen({ match, playerById, onScore, onUndo, onLeave, onAbandon }: GameScreenProps) {
   const [menu, setMenu] = useState(false)
   const [confirmAbandon, setConfirmAbandon] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
@@ -157,10 +159,23 @@ export function GameScreen({ match, playerById, onScore, onUndo, onAbandon }: Ga
             <ArrowLeftRight className="size-4" /> Cambiar lados
           </Button>
           <Button
+            variant="ghost"
+            size="lg"
+            onClick={() => { setMenu(false); onLeave() }}
+            className="justify-start gap-3"
+          >
+            <Home className="size-4" /> Ir al inicio
+          </Button>
+          {/* Spelled out because the neighbouring action destroys the
+              match, and the two must not be confusable at a glance. */}
+          <p className="text-[11px] text-ink-soft -mt-1 pl-3">
+            La partida sigue en juego. Volvés cuando quieras.
+          </p>
+          <Button
             variant="danger"
             size="lg"
             onClick={() => { setMenu(false); setConfirmAbandon(true) }}
-            className="justify-start gap-3"
+            className="justify-start gap-3 mt-1"
           >
             <X className="size-4" /> Abandonar partida
           </Button>

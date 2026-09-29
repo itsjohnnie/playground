@@ -1,10 +1,12 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { SuitMark } from '@/components/ui/SuitMark'
 import { Screen } from '@/components/ui/Screen'
+import type { Match } from '@/types/game'
 
 interface HomeScreenProps {
-  hasActiveMatch: boolean
+  /** The match currently being played, if any. Null once it's won. */
+  activeMatch: Match | null
   rosterSize: number
   matchCount: number
   onContinue: () => void
@@ -16,7 +18,7 @@ interface HomeScreenProps {
 const stagger = (i: number) => ({ delay: i * 0.04 })
 
 export function HomeScreen({
-  hasActiveMatch,
+  activeMatch,
   rosterSize,
   matchCount,
   onContinue,
@@ -24,6 +26,8 @@ export function HomeScreen({
   onMesa,
   onHistorial,
 }: HomeScreenProps) {
+  const reduced = useReducedMotion()
+  const hasActiveMatch = activeMatch !== null
   return (
     <Screen className="px-5 pb-6">
       <div className="flex-1 flex flex-col justify-center gap-10">
@@ -47,16 +51,37 @@ export function HomeScreen({
 
         {/* Primary CTAs */}
         <div className="flex flex-col gap-3">
-          {hasActiveMatch && (
-            <motion.div
+          {activeMatch && (
+            <motion.button
+              type="button"
+              onClick={onContinue}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...stagger(0), duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
+              aria-label={`Partida en juego, ${activeMatch.teamA.name} ${activeMatch.scoreA} a ${activeMatch.teamB.name} ${activeMatch.scoreB}. Tocá para volver.`}
+              className="pressable w-full rounded-md border border-accent/50 bg-accent/10 px-4 py-3 text-left hover-elevate"
             >
-              <Button variant="primary" size="lg" className="w-full" onClick={onContinue}>
-                Continuar partida
-              </Button>
-            </motion.div>
+              <span className="flex items-center gap-2">
+                {/* Breathing dot — the match is live right now, and a
+                    static label reads like a leftover from last week. */}
+                <motion.span
+                  aria-hidden
+                  className="size-1.5 rounded-full bg-accent shrink-0"
+                  animate={reduced ? {} : { opacity: [1, 0.35, 1] }}
+                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                <span className="eyebrow text-accent">Partida en juego</span>
+              </span>
+              <span className="mt-2 flex items-baseline justify-between gap-3">
+                <span className="font-display text-ink truncate">{activeMatch.teamA.name}</span>
+                <span className="font-display tabular text-ink shrink-0">
+                  {activeMatch.scoreA}
+                  <span className="text-ink-soft mx-1.5">—</span>
+                  {activeMatch.scoreB}
+                </span>
+                <span className="font-display text-ink truncate text-right">{activeMatch.teamB.name}</span>
+              </span>
+            </motion.button>
           )}
 
           <motion.div

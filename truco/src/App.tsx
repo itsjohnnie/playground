@@ -47,15 +47,14 @@ export default function App() {
     try { window.localStorage.setItem(ROUTE_KEY, route) } catch { /* private mode etc. */ }
   }, [route])
 
-  // Once loaded, jump into an active match if there is one — but
-  // only when the user landed on `home`. If they had something else
-  // open (Historial, Mesa, …) when they refreshed, respect that.
-  useEffect(() => {
-    if (loading) return
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (activeMatch?.winner && route === 'home') setRoute('win')
-    else if (activeMatch && !activeMatch.winner && route === 'home') setRoute('game')
-  }, [loading, activeMatch, route])
+  // No auto-jump into a live match from home. It used to pull you into
+  // `game` whenever an active match existed, and since `route` was a
+  // dependency it re-fired every time you landed on home — so leaving a
+  // match in progress was impossible, and a guest who only wanted to
+  // read the stats got dragged into the scoreboard. Resuming is covered
+  // without it: the scorer's route is persisted, so reopening the app
+  // puts them back where they were, and anyone on home gets the live
+  // card to tap back in.
 
   // Sync screen with match state mid-session. Also covers the
   // "restored route is `game` / `win` but the match was deleted
@@ -101,7 +100,7 @@ export default function App() {
       {route === 'home' && (
         <HomeScreen
           key="home"
-          hasActiveMatch={!!activeMatch && !activeMatch.winner}
+          activeMatch={activeMatch && !activeMatch.winner ? activeMatch : null}
           rosterSize={store.activeRoster.length}
           matchCount={store.finishedMatches.length}
           onContinue={() => setRoute('game')}
@@ -163,6 +162,7 @@ export default function App() {
             })
           }
           onUndo={store.undo}
+          onLeave={() => setRoute('home')}
           onAbandon={() => { store.abandonMatch(); setRoute('home') }}
         />
       )}
