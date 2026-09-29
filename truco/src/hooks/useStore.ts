@@ -16,7 +16,7 @@ import {
   type EventRow,
   type AppStateRow,
 } from '@/lib/supabase'
-import { execOp } from '@/lib/writeQueue'
+import { execOp, hasUnackedWrites } from '@/lib/writeQueue'
 import { getMesa, setMesa as persistMesa, makeMesaId, idBelongsToMesa } from '@/lib/mesa'
 import { optimizeAvatar } from '@/lib/photoOptim'
 import { toast } from '@/lib/toast'
@@ -239,9 +239,31 @@ export function useStore() {
             if (!idBelongsToMesa(row.id)) return s
             // Deleted here — never let a trailing echo resurrect it.
             if (deletedMatchIds.current.has(row.id)) return s
-            const m = rowToMatch(row, eventsRef.current)
-            const exists = s.matches.some((x) => x.id === m.id)
-            const next = exists
+            const incoming = rowToMatch(row, eventsRef.current)
+            const prev = s.matches.find((x) => x.id === incoming.id)
+            // Our own writes echo back here, one per write and well
+            // behind the local state. Applying the echo of an earlier
+            // tap would drag the score backwards — visibly, since the
+            // score span is keyed on its value and animates every
+            // change. While this device still has writes in flight for
+            // the match, keep our copy of everything those writes
+            // touch and take the rest of the row, so a lineup edit or
+            // rename from the other phone still lands mid-rally.
+            const m =
+              prev && hasUnackedWrites(incoming.id)
+                ? {
+                    ...incoming,
+                    scoreA: prev.scoreA,
+                    scoreB: prev.scoreB,
+                    winner: prev.winner,
+                    finishedAt: prev.finishedAt,
+                    // Optimistic events aren't in eventsRef until their
+                    // own inserts echo back, so rebuilding from it here
+                    // would drop the taps we just made.
+                    events: prev.events,
+                  }
+                : incoming
+            const next = prev
               ? s.matches.map((x) => (x.id === m.id ? m : x))
               : [m, ...s.matches]
             return { ...s, matches: next.sort((a, b) => b.startedAt - a.startedAt) }
@@ -263,6 +285,13 @@ export function useStore() {
           if (!eventsRef.current.some((e) => e.id === row.id)) {
             eventsRef.current = [...eventsRef.current, row]
           }
+          // Same echo problem as `matches`: while our own inserts are
+          // still landing, `eventsRef` holds only the ones that have
+          // come back, so rebuilding from it would drop the taps we
+          // made after this one and make the jugadas count stutter.
+          // The local list already has them, and a later echo rebuilds
+          // once the run is acked.
+          if (hasUnackedWrites(row.match_id)) return
           setState((s) => ({
             ...s,
             matches: s.matches.map((m) =>
@@ -598,7 +627,7 @@ export function useStore() {
             at: new Date(at).toISOString(),
           },
         },
-        'sumar punto',
+        'sumar punto', matchId,
       )
       execOp(
         {
@@ -612,7 +641,7 @@ export function useStore() {
           },
           eq: [['id', matchId]],
         },
-        'sumar punto',
+        'sumar punto', matchId,
       )
       return { ...s, matches: s.matches.map((x) => (x.id === matchId ? m : x)) }
     })
@@ -647,7 +676,7 @@ export function useStore() {
             ['at', new Date(last.at).toISOString()],
           ],
         },
-        'deshacer',
+        'deshacer', matchId,
       )
       execOp(
         {
@@ -656,7 +685,7 @@ export function useStore() {
           patch: { score_a: newA, score_b: newB, winner: null, finished_at: null },
           eq: [['id', matchId]],
         },
-        'deshacer',
+        'deshacer', matchId,
       )
       return {
         ...s,
@@ -689,7 +718,7 @@ export function useStore() {
           patch: { abandoned: true, finished_at: new Date().toISOString() },
           eq: [['id', matchId]],
         },
-        'abandonar partida',
+        'abandonar partida', matchId,
       )
       execOp(
         {
