@@ -74,7 +74,7 @@ export function HomeScreen({
               </span>
               <span className="mt-2 flex items-baseline justify-between gap-3">
                 <span className="font-display text-ink truncate">{activeMatch.teamA.name}</span>
-                <span className="font-display tabular text-ink shrink-0">
+                <span className="tabular font-semibold text-ink shrink-0">
                   {activeMatch.scoreA}
                   <span className="text-ink-soft mx-1.5">—</span>
                   {activeMatch.scoreB}

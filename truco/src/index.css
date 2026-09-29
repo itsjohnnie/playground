@@ -224,7 +224,16 @@ html {
   color: hsl(var(--ink-muted));
 }
 
-.tabular { font-variant-numeric: tabular-nums; }
+/* Every number in the app carries this, so it's also where the
+   "numbers are always sans" rule lives. Fraunces is a display serif —
+   its numerals sit unevenly on the baseline and read as decorative
+   next to a score, which is the one place you want to read a value at
+   a glance. Declared after .font-display at equal specificity, so a
+   number nested in serif type still comes out sans. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+}
 
 /* ── Focus ── */
 :focus { outline: none; }

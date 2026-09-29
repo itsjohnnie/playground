@@ -119,7 +119,7 @@ export function MesaScreen({
         <span className="inline-flex items-center gap-2 text-xs text-ink-soft">
           <KeyRound className="size-3.5" /> Código de mesa
         </span>
-        <span className="font-display text-ink tabular text-sm">
+        <span className="tabular font-medium text-ink text-sm">
           {mesa === MESA_DEFAULT ? '—' : mesa}
         </span>
       </button>

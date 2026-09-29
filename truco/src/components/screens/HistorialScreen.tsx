@@ -281,7 +281,7 @@ function MatchRow({ match, playerById, onClick, onDelete, swipeOpen, onSwipeOpen
             <p className={`font-display truncate ${aWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamA.name}</p>
             {playersA && <p className="text-[11px] text-ink-soft truncate">{playersA}</p>}
           </div>
-          <div className="font-display tabular text-ink">
+          <div className="tabular font-semibold text-ink">
             <span className={aWon ? 'text-accent' : ''}>{match.scoreA}</span>
             <span className="text-ink-soft mx-1.5">—</span>
             <span className={bWon ? 'text-accent' : ''}>{match.scoreB}</span>
@@ -453,7 +453,7 @@ function TeamSummary({ side, match, playerById }: { side: 'A' | 'B'; match: Matc
   return (
     <div className={`rounded-md border ${won ? 'border-accent/60 bg-accent/5' : 'border-line bg-surface'} p-3`}>
       <p className="eyebrow mb-2">{team.name}</p>
-      <p className={`font-display tabular ${won ? 'text-accent' : 'text-ink'} text-h1`}>{score}</p>
+      <p className={`tabular font-semibold tracking-[-0.02em] ${won ? 'text-accent' : 'text-ink'} text-h1`}>{score}</p>
       {players.length > 0 && (
         <p className="text-xs text-ink-muted mt-1">{players.map((p) => p.name).join(' · ')}</p>
       )}
@@ -573,7 +573,7 @@ function DuelsList({ duels: rows, playerById }: { duels: Duel[]; playerById: (id
               </p>
             </div>
             <div className="flex flex-col items-center">
-              <div className="font-display tabular text-ink text-base">
+              <div className="tabular font-semibold text-ink text-base">
                 <span className={aLeads ? 'text-accent' : ''}>{d.winsA}</span>
                 <span className="text-ink-soft mx-1.5">—</span>
                 <span className={bLeads ? 'text-accent' : ''}>{d.winsB}</span>
