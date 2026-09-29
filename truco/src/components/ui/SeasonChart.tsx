@@ -20,8 +20,16 @@ import type { SeasonProgress } from '@/utils/scoring'
 
 const VIEW_W = 320
 const VIEW_H = 132
-// Room for the end-cap dot and the peak label without clipping.
-const PAD = { top: 12, right: 10, bottom: 14, left: 10 }
+// Vertical room for the peak label and the baseline's own weight. No
+// horizontal pad: the plot spans the card's content box edge to edge,
+// so the baseline lines up with the label above it and with the
+// standings table below, which share the same 16px gutter. What would
+// have overhung — half the line stroke, and the end-cap dot — is let
+// out into the card padding instead of being inset away from it.
+const PAD = { top: 12, right: 0, bottom: 14, left: 0 }
+// Units of slack around the plot for that overhang: the end-cap dot is
+// the widest thing at r 2.75.
+const BLEED = 4
 
 export function SeasonChart({
   progress,
@@ -62,7 +70,7 @@ export function SeasonChart({
   const selectedPlayer = selected ? playerById(selected.playerId) : undefined
 
   return (
-    <div className="rounded-md border border-line bg-surface p-3">
+    <div className="rounded-md border border-line bg-surface p-4">
       <div className="flex items-baseline justify-between gap-3">
         <p className="eyebrow">Puntos acumulados</p>
         {selected && (
@@ -75,7 +83,7 @@ export function SeasonChart({
 
       <svg
         viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-        className="mt-2 w-full"
+        className="mt-2 w-full overflow-visible"
         style={{ height: 'auto' }}
         role="img"
         aria-label={
@@ -86,7 +94,7 @@ export function SeasonChart({
       >
         <defs>
           <clipPath id={clipId}>
-            <rect x="0" y="0" width={VIEW_W} height={VIEW_H} />
+            <rect x={-BLEED} y={0} width={VIEW_W + BLEED * 2} height={VIEW_H} />
           </clipPath>
         </defs>
 
@@ -142,7 +150,7 @@ export function SeasonChart({
         </g>
       </svg>
 
-      <p className="text-[11px] text-ink-soft">
+      <p className="text-eyebrow text-ink-soft">
         {timeline.length} partidas · tocá un jugador abajo
       </p>
     </div>

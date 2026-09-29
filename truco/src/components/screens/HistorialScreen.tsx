@@ -102,7 +102,11 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
               animate: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.23, 1, 0.32, 1], staggerChildren: 0.04, delayChildren: 0.04 } },
               exit:    { opacity: 0, y: -4, transition: { duration: 0.18, ease: [0.23, 1, 0.32, 1] } },
             }}
-            className="flex flex-col gap-2"
+            /* gap-5, not the gap-2 the other two tabs use: those stack
+               rows of one list, this stacks two separate cards. Matching
+               the Screen's own gap keeps the chart-to-table step the
+               same size as the tabs-to-chart step above it. */
+            className="flex flex-col gap-5"
           >
             {stats.length === 0 ? (
               <p className="text-ink-muted text-center pt-6">
