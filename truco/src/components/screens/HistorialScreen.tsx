@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen, staggerItem } from '@/components/ui/Screen'
 import { SeasonChart } from '@/components/ui/SeasonChart'
+import { JugadaRow } from '@/components/ui/JugadaRow'
 import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Match, Player } from '@/types/game'
 import { leaderboard, duels, seasonProgress, sortLeaderboard, type Duel, type LeaderboardSort } from '@/utils/scoring'
-import { SCORE_REASON_LABEL } from '@/types/game'
+import { formatClock } from '@/utils/time'
 
 interface HistorialScreenProps {
   matches: Match[]
@@ -349,9 +350,10 @@ function MatchDetail({ match, playerById, onDelete }: { match: Match; playerById
   const dur = match.finishedAt
     ? Math.max(1, Math.round((match.finishedAt - match.startedAt) / 60000))
     : null
-  const date = new Date(match.startedAt).toLocaleString('es-AR', {
-    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  const day = new Date(match.startedAt).toLocaleDateString('es-AR', {
+    day: 'numeric', month: 'short',
   })
+  const date = `${day}, ${formatClock(match.startedAt)}`
 
   // Soft-fade the top + bottom of the scroll area instead of letting
   // the jugadas list hard-crop against the sheet's edges. Mirrors the
@@ -408,20 +410,7 @@ function MatchDetail({ match, playerById, onDelete }: { match: Match; playerById
           <p className="eyebrow">Jugadas</p>
           <div className="flex flex-col gap-1">
             {match.events.map((ev, i) => (
-              <div
-                key={i}
-                className="grid grid-cols-[6.5rem_1fr_2.75rem] items-center gap-2 rounded-sm bg-surface-hi px-3 py-2"
-              >
-                <span className="font-display text-ink text-sm truncate">
-                  {ev.team === 'A' ? match.teamA.name : match.teamB.name}
-                </span>
-                <span className="text-xs text-ink-muted text-center truncate">
-                  {SCORE_REASON_LABEL[ev.reason]}
-                </span>
-                <span className="tabular text-accent text-sm font-semibold text-right">
-                  {ev.points >= 0 ? '+' : ''}{ev.points}
-                </span>
-              </div>
+              <JugadaRow key={i} event={ev} match={match} />
             ))}
           </div>
         </section>
