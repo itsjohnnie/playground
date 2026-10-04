@@ -190,12 +190,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--buoy); outl
         <button data-cam="names" aria-pressed="false">Names</button>
       </div>
     </div>
-    <div class="ctl"><span>Look</span>
-      <div class="seg" id="looks">
-        <button data-look="real" aria-pressed="true">Real</button>
-        <button data-look="mc" aria-pressed="false">In-game</button>
-      </div>
-    </div>
     <div class="ctl"><span>Sky</span>
       <div class="seg" id="skies">
         <button data-sky="day" aria-pressed="true">Day</button>
@@ -298,21 +292,20 @@ const DATA = {"atlas":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACAAAAAeACAY
     return;
   }
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  // Everything is drawn the way Minecraft draws it: flat colours, no
+  // realistic lighting, so what you see here is what the game shows.
   renderer.outputEncoding = THREE.sRGBEncoding;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.95;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(36, 1, 1, 8000);
+  const camera = new THREE.PerspectiveCamera(36, 1, 1, 9000);
   const controls = new THREE.OrbitControls(camera, canvas);
   controls.enableDamping = true;
   controls.maxPolarAngle = Math.PI * 0.49;
   const clamp = (x, a, b) => Math.min(Math.max(x, a), b);
 
-  // --- waves: one definition shared by the water shader and the boat's bobbing
+  // a gentle swell for bobbing boats (Minecraft water itself stays flat)
   const WAVES = [ // direction x, z, amplitude, wavelength, speed
-    [1.0, 0.35, 0.75, 120, 0.9], [-0.45, 1.0, 0.45, 64, 1.25],
-    [0.75, -0.65, 0.22, 33, 1.8], [0.15, 1.0, 0.12, 15, 2.6],
+    [1.0, 0.35, 0.22, 120, 0.9], [-0.45, 1.0, 0.12, 64, 1.25],
   ].map(([dx, dz, a, len, w]) => {
     const n = Math.hypot(dx, dz);
     return { dx: dx / n, dz: dz / n, a, k: 2 * Math.PI / len, w };
@@ -325,139 +318,127 @@ const DATA = {"atlas":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACAAAAAeACAY
     for (const v of WAVES) h += v.a * Math.sin((v.dx * x + v.dz * (z + travelled)) * v.k + time * v.w);
     return h;
   }
-  const glslWaves = WAVES.map(v =>
-    `acc(vec2(${v.dx.toFixed(4)}, ${v.dz.toFixed(4)}), ${v.a.toFixed(3)}, ${v.k.toFixed(5)}, ${v.w.toFixed(3)}, q, h, dh);`
-  ).join("\n");
 
+  // Minecraft's sky, fog, water and cloud colours (sRGB, used as they are)
   const SKIES = {
-    day: {
-      top: 0x2f78d0, horizon: 0xbfdcf2, sun: [0.45, 0.62, -0.64], sunColor: 0xfff2d6,
-      deep: 0x0b3d63, shallow: 0x1f7aa6, cloudLit: 0xffffff, cloudShade: 0xb7c6d6,
-      light: 1.9, hemi: [0xcfe6ff, 0x1d4566, 0.6],
-    },
-    sunset: {
-      top: 0x26386e, horizon: 0xf2a477, sun: [-0.62, 0.11, -0.78], sunColor: 0xffb26b,
-      deep: 0x13223d, shallow: 0x43506e, cloudLit: 0xffc79a, cloudShade: 0x6b5a7a,
-      light: 2.0, hemi: [0xffc49a, 0x221a33, 0.55],
-    },
+    day: { top: 0x78a7ff, horizon: 0xc0d8ff, sun: [0.3, 0.72, -0.62], sunColor: 0xfffbe2,
+           water: 0x3f76e4, cloud: 0xffffff, light: 0xffffff },
+    sunset: { top: 0x4b5f9f, horizon: 0xf2ac6e, sun: [-0.55, 0.06, -0.83], sunColor: 0xffe9a8,
+              water: 0x3a5aa8, cloud: 0xf6caa8, light: 0xffd9b4 },
   };
   const U = {
     uTime: { value: 0 }, uOff: { value: 0 },
     uSunDir: { value: new THREE.Vector3() }, uSunColor: { value: new THREE.Color() },
     uSkyTop: { value: new THREE.Color() }, uSkyHorizon: { value: new THREE.Color() },
-    uDeep: { value: new THREE.Color() }, uShallow: { value: new THREE.Color() },
-    uCloudLit: { value: new THREE.Color() }, uCloudShade: { value: new THREE.Color() },
+    uWater: { value: new THREE.Color() }, uCloud: { value: new THREE.Color() },
   };
-  const NOISE = `float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  const HASH = `float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
         return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
-      float fbm(vec2 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { s += a * noise(p); p *= 2.03; a *= 0.5; } return s; }`;
+      // distance fog, like Minecraft's render distance
+      vec3 fogged(vec3 col, vec3 pos) {
+        return mix(col, uSkyHorizon, smoothstep(900.0, 2700.0, length(pos.xz - cameraPosition.xz))); }`;
 
-  // --- sky dome with sun and drifting clouds
+  // --- sky: a plain gradient with Minecraft's square sun
   const skyMat = new THREE.ShaderMaterial({
     uniforms: U, side: THREE.BackSide, depthWrite: false,
     vertexShader: `varying vec3 vDir;
       void main() { vDir = normalize(position);
         vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`,
-    fragmentShader: `uniform float uTime, uOff; uniform vec3 uSunDir, uSunColor, uSkyTop, uSkyHorizon, uCloudLit, uCloudShade;
-      varying vec3 vDir;
-      ${NOISE}
+    fragmentShader: `uniform vec3 uSunDir, uSunColor, uSkyTop, uSkyHorizon; varying vec3 vDir;
       void main() {
-        vec3 d = normalize(vDir); float y = d.y;
-        vec3 col = mix(uSkyHorizon, uSkyTop, pow(clamp(y, 0.0, 1.0), 0.55));
-        if (y < 0.0) col = uSkyHorizon * 0.92;
-        float sd = max(dot(d, normalize(uSunDir)), 0.0);
-        col += uSunColor * (pow(sd, 900.0) * 30.0 + pow(sd, 10.0) * 0.28);
-        if (y > 0.0) {
-          vec2 uv = d.xz / (y + 0.12) * 1.1 + vec2(uTime * 0.006, -uOff * 0.00004);
-          float c = fbm(uv * 1.3);
-          c = smoothstep(0.48, 0.82, c) * smoothstep(0.0, 0.22, y);
-          float lit = fbm(uv * 1.3 + normalize(uSunDir).xz * 0.06);
-          vec3 cloud = mix(uCloudShade, uCloudLit, clamp(0.55 + (c - lit) * 3.0 + sd * 0.4, 0.0, 1.0));
-          col = mix(col, cloud, c * 0.92);
-        }
+        vec3 d = normalize(vDir);
+        vec3 col = mix(uSkyHorizon, uSkyTop, smoothstep(-0.02, 0.4, d.y));
+        vec3 s = normalize(uSunDir), r = normalize(cross(vec3(0.0, 1.0, 0.0), s)), u = cross(s, r);
+        if (dot(d, s) > 0.0 && max(abs(dot(d, r)), abs(dot(d, u))) < 0.055) col = uSunColor;
         gl_FragColor = vec4(col, 1.0);
-        #include <tonemapping_fragment>
-        #include <encodings_fragment>
       }`,
   });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(5000, 48, 24), skyMat);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(6000, 48, 24), skyMat);
   sky.frustumCulled = false;
   scene.add(sky);
 
-  // --- water: the same waves, a fresnel sky reflection and a sun glint
-  const waterGeo = new THREE.PlaneGeometry(3200, 3200, 320, 320);
-  waterGeo.rotateX(-Math.PI / 2);
-  const waterMat = new THREE.ShaderMaterial({
-    uniforms: U,
-    vertexShader: `uniform float uTime, uOff; varying vec3 vPos, vN; varying float vH;
-      void acc(vec2 d, float a, float k, float w, vec2 q, inout float h, inout vec2 dh) {
-        float ph = dot(d, q) * k + uTime * w; h += a * sin(ph); dh += a * k * cos(ph) * d; }
-      void main() {
-        vec3 p = position; vec2 q = vec2(p.x, p.z + uOff); float h = 0.0; vec2 dh = vec2(0.0);
-        ${glslWaves}
-        p.y += h; vH = h; vN = normalize(vec3(-dh.x, 1.0, -dh.y));
-        vec4 wp = modelMatrix * vec4(p, 1.0); vPos = wp.xyz;
-        gl_Position = projectionMatrix * viewMatrix * wp; }`,
-    fragmentShader: `uniform vec3 uSunDir, uSunColor, uSkyTop, uSkyHorizon, uDeep, uShallow;
-      varying vec3 vPos, vN; varying float vH;
-      void main() {
-        vec3 N = normalize(vN), V = normalize(cameraPosition - vPos);
-        float fres = 0.02 + 0.98 * pow(1.0 - max(dot(N, V), 0.0), 5.0);
-        vec3 R = reflect(-V, N);
-        vec3 skyc = mix(uSkyHorizon, uSkyTop, pow(clamp(R.y, 0.0, 1.0), 0.55));
-        vec3 body = mix(uDeep, uShallow, clamp(vH * 0.5 + 0.45, 0.0, 1.0));
-        float spec = pow(max(dot(R, normalize(uSunDir)), 0.0), 240.0) * 5.0;
-        vec3 col = mix(body, skyc, fres) + uSunColor * spec;
-        float far = smoothstep(500.0, 1500.0, length(vPos.xz - cameraPosition.xz));
-        col = mix(col, uSkyHorizon, far);
-        gl_FragColor = vec4(col, 1.0);
-        #include <tonemapping_fragment>
-        #include <encodings_fragment>
-      }`,
-  });
-  const water = new THREE.Mesh(waterGeo, waterMat);
-  water.position.y = WATER_Y;
-  scene.add(water);
-
-  // --- ground: grass with a one-lane road (an airstrip for aircraft) that scrolls by
-  const groundGeo = new THREE.PlaneGeometry(3200, 3200, 1, 1);
-  groundGeo.rotateX(-Math.PI / 2);
-  const groundMat = new THREE.ShaderMaterial({
-    uniforms: { ...U, uRoad: { value: 40 } },
+  // --- clouds: Minecraft's flat layer of 12-block cells, drifting slowly
+  const cloudGeo = new THREE.PlaneGeometry(12000, 12000, 1, 1);
+  cloudGeo.rotateX(-Math.PI / 2);
+  const clouds = new THREE.Mesh(cloudGeo, new THREE.ShaderMaterial({
+    uniforms: U, transparent: true, depthWrite: false, side: THREE.DoubleSide,
     vertexShader: `varying vec3 vPos;
       void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vPos = wp.xyz;
         gl_Position = projectionMatrix * viewMatrix * wp; }`,
-    fragmentShader: `uniform float uOff, uRoad; uniform vec3 uSkyHorizon, uSunColor; varying vec3 vPos;
-      ${NOISE}
+    fragmentShader: `uniform float uTime, uOff; uniform vec3 uCloud, uSkyHorizon; varying vec3 vPos;
+      ${HASH}
       void main() {
-        float x = vPos.x, z = vPos.z + uOff;
-        vec3 grass = mix(vec3(0.11, 0.22, 0.06), vec3(0.2, 0.33, 0.09), fbm(vec2(x, z) * 0.02));
-        grass *= 0.85 + 0.3 * hash(floor(vec2(x, z) / 2.0));
-        float road = step(abs(x), uRoad);
-        vec3 asphalt = vec3(0.05, 0.055, 0.06) * (0.85 + 0.3 * hash(floor(vec2(x, z) * 2.0)));
-        // a single-lane road has no centre line; the wide airstrip keeps its dashes
-        float dash = step(60.0, uRoad) * step(abs(x), 0.9) * step(fract(z / 56.0), 0.45);
-        float edge = step(abs(abs(x) - (uRoad - 3.0)), 0.9);
-        vec3 col = mix(grass, asphalt, road);
-        col = mix(col, vec3(0.75, 0.6, 0.18), dash * road);
-        col = mix(col, vec3(0.7), edge * road);
-        col *= uSunColor * 1.2;
-        float far = smoothstep(500.0, 1500.0, length(vPos.xz - cameraPosition.xz));
-        gl_FragColor = vec4(mix(col, uSkyHorizon, far), 1.0);
-        #include <tonemapping_fragment>
-        #include <encodings_fragment>
+        vec2 cell = floor((vPos.xz + vec2(uTime * 8.0, uOff)) / 192.0);
+        if (noise(cell * 0.31) < 0.56) discard;
+        float fade = 1.0 - smoothstep(2500.0, 5800.0, length(vPos.xz - cameraPosition.xz));
+        gl_FragColor = vec4(uCloud, 0.85 * fade);
+      }`,
+  }));
+  clouds.position.y = 640;           // 40 blocks up
+  scene.add(clouds);
+
+  // --- water: flat, see-through and pixelly, over a sandy floor
+  const flatGeo = () => { const g = new THREE.PlaneGeometry(6000, 6000, 1, 1); g.rotateX(-Math.PI / 2); return g; };
+  const pixelVert = `varying vec3 vPos;
+      void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vPos = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp; }`;
+  const water = new THREE.Mesh(flatGeo(), new THREE.ShaderMaterial({
+    uniforms: U, transparent: true, depthWrite: false,
+    vertexShader: pixelVert,
+    fragmentShader: `uniform float uTime, uOff; uniform vec3 uWater, uSkyHorizon; varying vec3 vPos;
+      ${HASH}
+      void main() {
+        vec2 px = floor(vec2(vPos.x, vPos.z + uOff));           // one texel per pixel, 16 a block
+        float frame = floor(uTime * 8.0);                       // the texture's animation frames
+        float ripple = noise(px * 0.23 + vec2(0.0, frame * 0.5)) * 0.65 + hash(px) * 0.35;
+        vec3 col = uWater * (0.78 + 0.3 * ripple);
+        gl_FragColor = vec4(fogged(col, vPos), 0.82);
+      }`,
+  }));
+  water.position.y = WATER_Y;
+  water.renderOrder = 2;
+  scene.add(water);
+  const seabed = new THREE.Mesh(flatGeo(), new THREE.ShaderMaterial({
+    uniforms: U, vertexShader: pixelVert,
+    fragmentShader: `uniform float uOff; uniform vec3 uSkyHorizon; varying vec3 vPos;
+      ${HASH}
+      void main() {
+        vec2 px = floor(vec2(vPos.x, vPos.z + uOff));
+        vec3 sand = vec3(0.86, 0.81, 0.62) * (0.84 + 0.2 * hash(px));
+        gl_FragColor = vec4(fogged(sand * 0.55, vPos), 1.0);  // darker under the water
+      }`,
+  }));
+  seabed.position.y = WATER_Y - 48;
+  scene.add(seabed);
+
+  // --- ground: grass blocks with a one-lane road of smooth stone (a wider strip for aircraft)
+  const groundMat = new THREE.ShaderMaterial({
+    uniforms: { ...U, uRoad: { value: 24 } },
+    vertexShader: pixelVert,
+    fragmentShader: `uniform float uOff, uRoad; uniform vec3 uSkyHorizon; varying vec3 vPos;
+      ${HASH}
+      void main() {
+        vec2 p = vec2(vPos.x, vPos.z + uOff), px = floor(p);
+        // grass: Minecraft's plains-green tint over a speckled texture
+        float g = hash(px);
+        vec3 col = vec3(0.45, 0.68, 0.29) * (0.78 + 0.26 * g);
+        if (g > 0.93) col *= 0.82;
+        if (abs(p.x) < uRoad) {
+          // smooth stone blocks, each with its darker rim
+          vec2 inBlock = mod(p + 8.0, 16.0);
+          float rim = (inBlock.x < 1.0 || inBlock.x >= 15.0 || inBlock.y < 1.0 || inBlock.y >= 15.0) ? 0.82 : 1.0;
+          col = vec3(0.62) * (0.9 + 0.12 * hash(px + 7.0)) * rim;
+          // the airstrip's centre line: white blocks, every other three
+          if (uRoad > 60.0 && abs(p.x) < 8.0 && mod(floor((p.y + 8.0) / 16.0), 6.0) < 3.0) col = vec3(0.92) * rim;
+        }
+        gl_FragColor = vec4(fogged(col, vPos), 1.0);
       }`,
   });
-  const ground = new THREE.Mesh(groundGeo, groundMat);
+  const ground = new THREE.Mesh(flatGeo(), groundMat);
   scene.add(ground);
 
-  // --- lights for the realistic look
-  const sun = new THREE.DirectionalLight(0xffffff, 2);
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x223344, 0.7);
-  scene.add(sun, hemi);
-
-  // --- wake: foam particles that stream back from the hull and spread
+  // --- splashes: little square particles, like Minecraft's boat splashes
   const WAKE_N = 5000;
   const wPos = new Float32Array(WAKE_N * 3), wAlpha = new Float32Array(WAKE_N), wSize = new Float32Array(WAKE_N);
   const wVel = new Float32Array(WAKE_N), wAge = new Float32Array(WAKE_N).fill(99), wLife = new Float32Array(WAKE_N);
@@ -470,12 +451,12 @@ const DATA = {"atlas":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACAAAAAeACAY
     uniforms: { uScale: { value: 1 } },
     vertexShader: `attribute float aAlpha, aSize; uniform float uScale; varying float vA;
       void main() { vA = aAlpha; vec4 mv = modelViewMatrix * vec4(position, 1.0);
-        gl_PointSize = aSize * uScale / -mv.z; gl_Position = projectionMatrix * mv; }`,
+        gl_PointSize = aSize * 0.7 * uScale / -mv.z; gl_Position = projectionMatrix * mv; }`,
     fragmentShader: `varying float vA;
-      void main() { float d = length(gl_PointCoord - 0.5); if (d > 0.5) discard;
-        gl_FragColor = vec4(vec3(0.96, 0.98, 1.0), vA * smoothstep(0.5, 0.1, d)); }`,
+      void main() { gl_FragColor = vec4(0.93, 0.96, 1.0, vA > 0.3 ? 0.95 : 0.0); }`,
   }));
   wake.frustumCulled = false;
+  wake.renderOrder = 3;
   scene.add(wake);
   let wakeCursor = 0;
   function emit(x, z, vx, life, size) {
@@ -483,28 +464,21 @@ const DATA = {"atlas":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACAAAAAeACAY
     wPos[i * 3] = x; wPos[i * 3 + 2] = z; wVel[i] = vx; wAge[i] = 0; wLife[i] = life; wSize[i] = size;
   }
 
-  // --- the shared paint atlas and its two looks
+  // --- the shared paint atlas, lit the way Minecraft lights entities
   const tex = new THREE.TextureLoader().load(DATA.atlas);
   tex.encoding = THREE.sRGBEncoding;
-  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
   tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestMipmapLinearFilter;
   const MATS = {
-    mc: {
-      solid: new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, vertexColors: true }),
-      glass: new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, vertexColors: true }),
-    },
-    real: {
-      solid: new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, roughness: 0.38, metalness: 0.05 }),
-      glass: new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 0.04, metalness: 0.1 }),
-    },
+    solid: new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, vertexColors: true }),
+    glass: new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, vertexColors: true }),
   };
 
   // --- the vehicle
   let vehicle = null;
   function loadVehicle(id) {
     const v = DATA.vehicles[id];
-    const built = buildBedrockModel(v.geo, MATS.mc, { mcShade: true });
-    built.model.traverse(o => { if (o.isMesh) o.userData.glass = o.material === MATS.mc.glass; });
+    const built = buildBedrockModel(v.geo, MATS, { mcShade: true });
     if (vehicle) scene.remove(vehicle.holder);
     const holder = new THREE.Group();
     holder.add(built.model);
@@ -514,46 +488,27 @@ const DATA = {"atlas":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACAAAAAeACAY
     vehicle = { id, info: v.info, holder, bones: built.bones, acc: [], alt: 0, yaw: 0,
                 box, center, size, reach: Math.max(size.x, size.z, size.y) };
     const mode = v.info.mode;
-    water.visible = mode === "water" || mode === "seaplane";
+    water.visible = seabed.visible = mode === "water" || mode === "seaplane";
     ground.visible = !water.visible;
-    // one lane (about 3 blocks wide) for driving, a wide strip for aircraft
-    groundMat.uniforms.uRoad.value = mode === "air" ? 90 : Math.max(24, size.x * 0.9);
+    // a road a whole number of blocks wide (3 or more), a wide strip for aircraft
+    groundMat.uniforms.uRoad.value = mode === "air" ? 88 : Math.max(24, Math.ceil(size.x * 0.9 / 16) * 16 + 8);
     wAge.fill(99);
     controls.minDistance = vehicle.reach * 0.5;
     controls.maxDistance = vehicle.reach * 6 + 60;
-    applyLook();
   }
 
   // --- controls and state
-  const state = { throttle: 0.45, cam: "orbit", look: "real", sky: "day" };
+  const state = { throttle: 0.45, cam: "orbit", sky: "day" };
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) state.throttle = 0;
   $("throttle").value = Math.round(state.throttle * 100);
 
-  function applyLook() {
-    if (!vehicle) return;
-    const set = MATS[state.look];
-    vehicle.holder.traverse(o => { if (o.isMesh) o.material = o.userData.glass ? set.glass : set.solid; });
-    renderer.toneMappingExposure = state.look === "real" ? 0.95 : 0.9;
-  }
-
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  let envRT = null;
   function applySky() {
     const s = SKIES[state.sky];
     U.uSunDir.value.set(...s.sun).normalize();
     for (const [k, v] of [["uSunColor", s.sunColor], ["uSkyTop", s.top], ["uSkyHorizon", s.horizon],
-      ["uDeep", s.deep], ["uShallow", s.shallow], ["uCloudLit", s.cloudLit], ["uCloudShade", s.cloudShade]]) {
-      U[k].value.setHex(v).convertSRGBToLinear();
-    }
-    sun.position.copy(U.uSunDir.value).multiplyScalar(200);
-    sun.color.setHex(s.sunColor); sun.intensity = s.light;
-    hemi.color.setHex(s.hemi[0]); hemi.groundColor.setHex(s.hemi[1]); hemi.intensity = s.hemi[2];
-    // reflections on the vehicle come from this sky
-    const envScene = new THREE.Scene();
-    envScene.add(new THREE.Mesh(sky.geometry, skyMat));
-    if (envRT) envRT.dispose();
-    envRT = pmrem.fromScene(envScene, 0.02);
-    scene.environment = envRT.texture;
+      ["uWater", s.water], ["uCloud", s.cloud]]) U[k].value.setHex(v);
+    // vehicles take on the time of day's light, as entities do in the game
+    MATS.solid.color.setHex(s.light); MATS.glass.color.setHex(s.light);
   }
 
   // cameras are directions from the vehicle's centre, scaled to its size
@@ -590,10 +545,6 @@ const DATA = {"atlas":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACAAAAAeACAY
     const b = e.target.closest("button"); if (!b) return;
     state.cam = b.dataset.cam; pressGroup("cams", "cam", state.cam); moveCamera(state.cam);
     foundNames = false;
-  });
-  $("looks").addEventListener("click", e => {
-    const b = e.target.closest("button"); if (!b) return;
-    state.look = b.dataset.look; pressGroup("looks", "look", state.look); applyLook();
   });
   $("skies").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
@@ -726,18 +677,18 @@ const DATA = {"atlas":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACAAAAAeACAY
     const dy = v.holder.position.y - prevY;
     if (!camTween && !VIDEO) { camera.position.y += dy; controls.target.y += dy; }
 
-    // wake from the stern corners, the stern, and the bow shoulders
+    // splashes from the stern corners, the stern, and the bow shoulders
     if (onWater && state.throttle > 0.02) {
       const r = state.throttle, b = v.box, hw = v.size.x * 0.45, stern = b.max.z, bow = b.min.z + v.size.z * 0.3;
       const k = Math.max(1, v.size.x / 20);
       for (let n = 0; n < Math.ceil(r * 4); n++) {
         const j = Math.random() - 0.5;
-        emit(-hw + j * 2, stern - 2 + Math.random() * 3, -6 - r * 10, 2.6, (3 + r * 3) * k);
-        emit(hw + j * 2, stern - 2 + Math.random() * 3, 6 + r * 10, 2.6, (3 + r * 3) * k);
-        emit(j * hw, stern + 4 + Math.random() * 3, j * 6, 1.6, (4 + r * 4) * k);
+        emit(-hw + j * 2, stern - 2 + Math.random() * 3, -6 - r * 10, 1.2, (0.9 + r) * k);
+        emit(hw + j * 2, stern - 2 + Math.random() * 3, 6 + r * 10, 1.2, (0.9 + r) * k);
+        emit(j * hw, stern + 4 + Math.random() * 3, j * 6, 0.9, (1.1 + r) * k);
         if (Math.random() < r) {
-          emit(-hw * 0.9, bow + j * 6, -10 - r * 14, 1.8, 2.5 * k);
-          emit(hw * 0.9, bow + j * 6, 10 + r * 14, 1.8, 2.5 * k);
+          emit(-hw * 0.9, bow + j * 6, -10 - r * 14, 0.8, 0.9 * k);
+          emit(hw * 0.9, bow + j * 6, 10 + r * 14, 0.8, 0.9 * k);
         }
       }
     }
@@ -746,9 +697,8 @@ const DATA = {"atlas":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACAAAAAeACAY
       wAge[i] += dt;
       wPos[i * 3] += wVel[i] * dt;
       wPos[i * 3 + 2] += speed * 16 * dt;
-      wPos[i * 3 + 1] = WATER_Y + waveHeight(wPos[i * 3], wPos[i * 3 + 2]) + 0.25;
+      wPos[i * 3 + 1] = WATER_Y + 0.3 + wAge[i] * 1.5;   // a little hop off the surface
       wAlpha[i] = (1 - wAge[i] / wLife[i]) * 0.75;
-      wSize[i] *= 1 + dt * 0.6;
     }
     wakeGeo.attributes.position.needsUpdate = true;
     wakeGeo.attributes.aAlpha.needsUpdate = true;
@@ -791,7 +741,6 @@ const DATA = {"atlas":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACAAAAAeACAY
         return { center: v.center.toArray(), reach: v.reach, lift: v.holder.position.y, alt: v.alt };
       },
       settle(alt) { vehicle.alt = alt; },
-      setLook(name) { state.look = name; applyLook(); },
       look(eye, at) { camera.position.set(...eye); camera.lookAt(...at); },
     };
   } else {

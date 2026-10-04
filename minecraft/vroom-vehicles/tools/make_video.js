@@ -90,7 +90,6 @@ function director() {
     current = id;
     g.setSky(sky);
     g.select(id);
-    g.setLook("mc");      // vehicles exactly as Minecraft lights them
     const info = g.info(id);
     g.setThrottle(throttle(info));
     if (info.mode === "air") g.settle(24 + throttle(info) * 110);
