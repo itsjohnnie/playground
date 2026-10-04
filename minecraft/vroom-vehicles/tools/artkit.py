@@ -679,12 +679,15 @@ def _resolve_face(f, origin):
     span = TILE - 2
     r = lambda n: round(n, 3)
     if MATERIALS[m][1] == "stretch":
+        # keep 3 px clear of the tile edge, so the neighbouring material
+        # never bleeds onto big faces when the texture is filtered
+        pad, span = 3, TILE - 6
         if band:
             lo, hi = band
             v0 = (hi - at[1] - b) / (hi - lo) * span
-            return {"uv": [tx + 1, r(ty + 1 + min(max(0, v0), span - 0.5))],
+            return {"uv": [tx + pad, r(ty + pad + min(max(0, v0), span - 0.5))],
                     "uv_size": [span, r(max(0.25, min(b / (hi - lo) * span, span)))]}
-        return {"uv": [tx + 1, ty + 1], "uv_size": [span, span]}
+        return {"uv": [tx + pad, ty + pad], "uv_size": [span, span]}
     a, b = min(a, span), min(b, span)
     u0 = (at[0] + 31) % (span - a) if span > a else 0
     v0 = (at[1] + 31) % (span - b) if span > b else 0
