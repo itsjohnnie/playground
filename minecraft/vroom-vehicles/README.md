@@ -3,10 +3,15 @@
 A Minecraft **Bedrock** add-on for Looney & Indy. They play on Nintendo Switch.
 First up is a **speedboat**: a white runabout with a teak deck, cream leather
 seats, a wrap-around windshield and a big outboard motor whose propeller spins
-as you drive. The bow lifts when you speed up. The roadmap below covers the
-rest of the garage.
+as you drive. The bow lifts when you speed up. (Look at the back of the
+motor.) The fleet below plans out all 20 vehicles.
 
 ![Speedboat preview](previews/speedboat-2.png)
+
+**Vroom Garage** (`garage/index.html`) is a live 3D previewer. It shows each
+finished vehicle on animated water with a sky, clouds and a wake. You can
+change the throttle, the camera, the time of day, and switch between a
+realistic look and the in-game look. Open it in any browser.
 
 ## The Switch catch (and the way around it)
 
@@ -49,6 +54,7 @@ need them, and Realms work best without them.
 ```
 python3 tools/gen_art.py   # rebuild the model, paint job and item icon
 node tools/preview.js      # render previews/ + pack icons (needs Playwright)
+python3 tools/build_garage.py   # rebuild the Vroom Garage previewer
 python3 tools/build.py     # check JSON, package dist/VroomVehicles.mcaddon
 ```
 
@@ -71,18 +77,49 @@ planks, tufted leather, chrome reflections, and see-through glass.
 When you change a pack, bump `version` in **both** `manifest.json` files.
 Otherwise devices that already have the old version won't take the new one.
 
-## Roadmap: easiest to hardest
+## The fleet: 20 vehicles
 
-| # | Vehicle | New trick it teaches |
-|---|---|---|
-| 1 | ✅ Speedboat | Floating, riding, steering, a recipe |
-| 2 | Jet ski | Same as the boat but faster, with one seat and a smaller model |
-| 3 | Go-kart → car → motorcycle | Driving on land, and engine sounds (`sounds.json`) |
-| 4 | Supercar (the "Lamborghini") | Same as the car with a fancy model and paint, and more speed |
-| 5 | Cyber plow truck | Breaking the blocks in front of it, using the Script API (`@minecraft/server`) |
-| 6 | Hot air balloon | Going up and down slowly (script-controlled flight) |
-| 7 | Airplane | Takeoff speed, pitch and turning. The hardest one |
-| 8 | Catamaran / big ship | Lots of seats, a big hitbox and storage chests |
+Lengths are in blocks (one block is one metre). We build them roughly in this
+order. Each one teaches the add-on a new trick, and the next ones reuse it.
+
+| Class | Vehicle | Length | New trick |
+|---|---|---|---|
+| Water | ✅ Speedboat | 3 | Floating, riding, steering, spinning propeller |
+| Small | Jet Ski | 2 | Stand-up riding, spray |
+| Water | Center Console | 4 | Twin outboards, T-top roof |
+| Water | Offshore Racer | 6 | Very fast and long, nose lifts high at speed |
+| Water | Wake Boat | 4 | Wakeboard tower, a big wake |
+| Water | Pontoon Party Boat | 5 | Two floats, lots of seats |
+| Water | Power Catamaran | 8 | Two hulls, a cabin you can walk in |
+| Water | Superyacht | 14 | Several decks, built from parts |
+| Small | Go-Kart | 2 | Driving on land, engine sounds |
+| Small | Quad ATV | 2 | Off-road bouncing |
+| Small | Dirt Bike | 2 | Leaning into turns |
+| Small | Sport Bike | 2 | Speed, a wheelie when you boost |
+| Land | Supercar | 3 | Opening doors, headlights |
+| Land | Off-Road 4x4 | 3 | Climbing one-block steps |
+| Land | Farm Tractor | 3 | Tilling farmland (starts the farm mod) |
+| Land | Cyber Plow | 4 | Breaks blocks in front of it, using the Script API |
+| Land | Monster Truck | 4 | Huge wheels, drives over cars |
+| Air | Hot Air Balloon | 3 | Rising and sinking slowly |
+| Air | Helicopter | 6 | Hovering |
+| Air | Seaplane | 7 | Takeoff from water, flying |
+
+## Realistic water, sky and clouds
+
+Shaders, the add-ons that make Minecraft look photo-real on PC, can't run on
+the Switch. What a resource pack can change on any device, the Switch
+included:
+
+- **Water:** colour, how clear it is, and its fog (per biome).
+- **Sky:** sky and fog colours, a hand-painted cloud texture, and sun and
+  moon textures.
+
+Mojang's own realistic mode is called **Vibrant Visuals**. If the
+kids' Switch offers it (Settings → Video → Graphics Mode), our vehicles get
+its lighting too. A **Vroom Skies** pack that sets up the water and sky is
+planned as a separate optional pack. That way it changes the whole world only
+for people who want it.
 
 **Jobs for Looney & Indy:** design each vehicle in Blockbench (it runs on an
 iPad too), pick the colours and names, invent the recipes, and test-drive

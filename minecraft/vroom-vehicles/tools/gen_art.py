@@ -61,14 +61,15 @@ def scale(c, k):
 
 
 # --- materials ----------------------------------------------------------------
-# The texture is a 4x4 grid of 64x64 material tiles. Geometry UVs are in a
-# 256x256 space; the PNG is drawn at 2x (512x512) for extra detail.
+# The texture is a grid of 64x64 material tiles, four across and as many rows
+# as needed. Geometry UVs are in that 256-wide space; the PNG is drawn at 2x
+# for extra detail.
 #
 # "stretch" materials are squeezed onto each face whole, so every face gets
 # the full gradient (gloss paint, chrome). "tile" materials are mapped 1:1,
 # so planks and stitching stay the same size on every face.
 
-UV = 256
+COLS = 4
 SCALE = 2
 TILE = 64
 rand = random.Random(7)
@@ -141,10 +142,7 @@ def m_black(u, v):
 
 
 def m_decal(u, v):
-    """Black cowling with red and white pinstripes and a chevron badge.
-
-    Kept left-right symmetric because Minecraft mirrors it on one side.
-    """
+    """Black cowling with red and white pinstripes and a chevron badge."""
     c = m_black(u, v)
     if 0.66 < v < 0.72:
         return rgb("#D3262E")
@@ -153,6 +151,28 @@ def m_decal(u, v):
     dx = abs(u - 0.5)
     if 0.22 < v < 0.56 and abs((v - 0.22) - (0.34 - dx * 1.4)) < 0.07 and dx < 0.24:
         return rgb("#F5F5F5")
+    return c
+
+
+LETTERS = {  # bold 6x7 pixel font, just the letters we need
+    "L": ["110000", "110000", "110000", "110000", "110000", "111111", "111111"],
+    "U": ["110011", "110011", "110011", "110011", "110011", "111111", "011110"],
+    "N": ["110011", "111011", "111011", "110111", "110111", "110011", "110011"],
+    "A": ["011110", "111111", "110011", "110011", "111111", "110011", "110011"],
+}
+
+
+def m_luna(u, v):
+    """Easter egg: the back of the outboard says LUNA."""
+    c = m_black(u, v)
+    word = "LUNA"
+    cols = len(word) * 7 - 1                       # 6 px letters + 1 px gaps
+    cx, cy = (u - 0.08) / 0.84 * cols, (v - 0.22) / 0.36 * 7
+    if 0 <= cx < cols and 0 <= cy < 7 and int(cx) % 7 < 6:
+        if LETTERS[word[int(cx) // 7]][int(cy)][int(cx) % 7] == "1":
+            return rgb("#F7F7F7")
+    if 0.68 < v < 0.73 and 0.08 < u < 0.92:
+        return rgb("#D3262E")
     return c
 
 
@@ -195,6 +215,7 @@ MATERIALS = {  # name: (painter, mapping)
     "glass":     (m_glass, "stretch"),
     "black":     (m_black, "stretch"),
     "decal":     (m_decal, "stretch"),
+    "luna":      (m_luna, "stretch"),
     "rubber":    (m_rubber, "stretch"),
     "gunmetal":  (m_gunmetal, "stretch"),
     "deck":      (m_deck_white, "stretch"),
@@ -202,12 +223,13 @@ MATERIALS = {  # name: (painter, mapping)
     "nav_green": (m_nav_green, "stretch"),
     "screen":    (m_screen, "stretch"),
 }
-TILE_ORIGIN = {name: ((i % 4) * TILE, (i // 4) * TILE) for i, name in enumerate(MATERIALS)}
+TILE_ORIGIN = {name: ((i % COLS) * TILE, (i // COLS) * TILE)
+               for i, name in enumerate(MATERIALS)}
+UV_W, UV_H = COLS * TILE, -(-len(MATERIALS) // COLS) * TILE
 
 
 def paint_texture():
-    size = UV * SCALE
-    px = [[(0, 0, 0, 0)] * size for _ in range(size)]
+    px = [[(0, 0, 0, 0)] * (UV_W * SCALE) for _ in range(UV_H * SCALE)]
     tp = TILE * SCALE
     for name, (painter, _) in MATERIALS.items():
         ox, oy = (TILE_ORIGIN[name][0] * SCALE, TILE_ORIGIN[name][1] * SCALE)
@@ -501,10 +523,10 @@ def build_motor():
     ]
     # cowling: rounded by stacking three boxes of shrinking size
     cubes += [
-        box("decal", -3.6, 9.2, STERN + 1.2, 3.6, 15, STERN + 8.4, top="black"),
+        box("decal", -3.6, 9.2, STERN + 1.2, 3.6, 15, STERN + 8.4, top="black", aft="luna"),
         box("black", -3.2, 15, STERN + 1.6, 3.2, 16, STERN + 8.0),
         box("black", -2.4, 16, STERN + 2.4, 2.4, 16.5, STERN + 7.2),
-        box("chrome", -3.65, 11.6, STERN + 8.1, 3.65, 12.0, STERN + 8.45),
+        box("chrome", -3.65, 9.3, STERN + 8.1, 3.65, 9.7, STERN + 8.45),
     ]
     hub = (0, -1.0, STERN + 6.6)
     prop = [box("chrome", -0.5, hub[1] - 0.5, STERN + 6.2, 0.5, hub[1] + 0.5, STERN + 7.6)]
@@ -549,8 +571,8 @@ def geometry(identifier, bones):
         "minecraft:geometry": [{
             "description": {
                 "identifier": identifier,
-                "texture_width": UV,
-                "texture_height": UV,
+                "texture_width": UV_W,
+                "texture_height": UV_H,
                 "visible_bounds_width": 5,
                 "visible_bounds_height": 3,
                 "visible_bounds_offset": [0, 0.75, 0],
