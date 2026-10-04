@@ -340,7 +340,7 @@ const DATA = /*__DATA__*/;
   water.position.y = WATER_Y;
   scene.add(water);
 
-  // --- ground: grass with a road (an airstrip for aircraft) that scrolls by
+  // --- ground: grass with a one-lane road (an airstrip for aircraft) that scrolls by
   const groundGeo = new THREE.PlaneGeometry(3200, 3200, 1, 1);
   groundGeo.rotateX(-Math.PI / 2);
   const groundMat = new THREE.ShaderMaterial({
@@ -356,7 +356,8 @@ const DATA = /*__DATA__*/;
         grass *= 0.85 + 0.3 * hash(floor(vec2(x, z) / 2.0));
         float road = step(abs(x), uRoad);
         vec3 asphalt = vec3(0.05, 0.055, 0.06) * (0.85 + 0.3 * hash(floor(vec2(x, z) * 2.0)));
-        float dash = step(abs(x), 0.9) * step(fract(z / 56.0), 0.45);
+        // a single-lane road has no centre line; the wide airstrip keeps its dashes
+        float dash = step(60.0, uRoad) * step(abs(x), 0.9) * step(fract(z / 56.0), 0.45);
         float edge = step(abs(abs(x) - (uRoad - 3.0)), 0.9);
         vec3 col = mix(grass, asphalt, road);
         col = mix(col, vec3(0.75, 0.6, 0.18), dash * road);
@@ -435,7 +436,8 @@ const DATA = /*__DATA__*/;
     const mode = v.info.mode;
     water.visible = mode === "water" || mode === "seaplane";
     ground.visible = !water.visible;
-    groundMat.uniforms.uRoad.value = mode === "air" ? 90 : 40;
+    // one lane (about 3 blocks wide) for driving, a wide strip for aircraft
+    groundMat.uniforms.uRoad.value = mode === "air" ? 90 : Math.max(24, size.x * 0.9);
     wAge.fill(99);
     controls.minDistance = vehicle.reach * 0.5;
     controls.maxDistance = vehicle.reach * 6 + 60;
