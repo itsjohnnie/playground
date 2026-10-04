@@ -615,7 +615,7 @@ class Hull:
                 out.append(box(self.boot, -w, y, z0, w, y + 0.8, z1))
                 y += 0.8
             top = self.floor if inside else d
-            fore = z1 <= cockpit[0]
+            fore = self.cockpit is not None and z1 <= cockpit[0]   # foredeck ahead of the cockpit
             deck_mat = self.foredeck if fore else self.deck_top
             out.append(box(self.topsides, -w, y, z0, w, top, z1, band=top_band,
                            top=deck_mat, aft=deck_mat if fore else None))
