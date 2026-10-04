@@ -79,7 +79,8 @@ h1 {
 
 /* fleet list */
 .fleet {
-  position: absolute; top: 16px; right: 16px; bottom: 112px;
+  /* sits between the top and the controls, whatever height they wrap to */
+  position: absolute; top: 16px; right: 16px; bottom: calc(var(--dock-h, 80px) + 32px);
   width: 280px; padding: 14px 0 6px;
   display: flex; flex-direction: column; min-height: 0;
 }
@@ -136,12 +137,13 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--buoy); outl
 @media (max-width: 900px) {
   .fleet-toggle { display: inline-block; }
   .fleet {
-    top: auto; left: 16px; right: 16px; bottom: 150px; width: auto; max-height: 52%;
+    top: calc(var(--hud-h, 120px) + 28px); left: 16px; right: 16px; width: auto;
     background: var(--glass-strong);
   }
   .fleet[data-open="false"] { display: none; }
   h1 { font-size: 36px; }
-  .hud { gap: 8px; padding: 14px 16px 12px; }
+  /* the card spans the screen, lined up with the controls below */
+  .hud { right: 16px; width: auto; gap: 8px; padding: 14px 16px 12px; }
   .specs, .hint { font-size: 12px; }
 }
 @media (max-width: 560px) {
@@ -664,6 +666,13 @@ const DATA = {"atlas":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAACAAAAAeACAY
     wake.material.uniforms.uScale.value = h / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
   }
   addEventListener("resize", resize);
+  // the fleet list fits between the spec card and the controls
+  const dock = document.querySelector(".dock"), hud = document.querySelector(".hud");
+  const measure = new ResizeObserver(() => {
+    document.documentElement.style.setProperty("--dock-h", `${dock.offsetHeight}px`);
+    document.documentElement.style.setProperty("--hud-h", `${hud.offsetHeight}px`);
+  });
+  measure.observe(dock); measure.observe(hud);
 
   const clock = new THREE.Clock();
   function frame() {
