@@ -8,23 +8,54 @@
       "is_experimental": false
     },
     "components": {
-      "minecraft:type_family": { "family": ["vroom_vehicle", "boat", "inanimate"] },
-      "minecraft:collision_box": { "width": 1.4, "height": 0.7 },
-      "minecraft:health": { "value": 8, "max": 8 },
+      "minecraft:type_family": {
+        "family": [
+          "vroom_vehicle",
+          "boat",
+          "inanimate"
+        ]
+      },
+      "minecraft:collision_box": {
+        "width": 1.5,
+        "height": 0.8
+      },
+      "minecraft:health": {
+        "value": 8,
+        "max": 8
+      },
       "minecraft:damage_sensor": {
         "triggers": [
           {
-            "on_damage": { "filters": { "test": "is_family", "subject": "other", "value": "player" } },
+            "on_damage": {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "player"
+              }
+            },
             "deals_damage": true
           },
-          { "cause": "all", "deals_damage": false }
+          {
+            "cause": "all",
+            "deals_damage": false
+          }
         ]
       },
-      "minecraft:loot": { "table": "loot_tables/entities/speedboat.json" },
+      "minecraft:loot": {
+        "table": "loot_tables/entities/speedboat.json"
+      },
       "minecraft:physics": {},
-      "minecraft:pushable": { "is_pushable": true, "is_pushable_by_piston": true },
-      "minecraft:knockback_resistance": { "value": 1.0 },
-      "minecraft:breathable": { "breathes_air": true, "breathes_water": true },
+      "minecraft:pushable": {
+        "is_pushable": true,
+        "is_pushable_by_piston": true
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      },
+      "minecraft:breathable": {
+        "breathes_air": true,
+        "breathes_water": true
+      },
       "minecraft:fire_immune": {},
       "minecraft:buoyant": {
         "base_buoyancy": 1.0,
@@ -32,24 +63,58 @@
         "simulate_waves": true,
         "big_wave_probability": 0.03,
         "big_wave_speed": 10.0,
-        "liquid_blocks": ["minecraft:water", "minecraft:flowing_water"]
+        "liquid_blocks": [
+          "minecraft:water",
+          "minecraft:flowing_water"
+        ]
       },
       "minecraft:rideable": {
-        "seat_count": 2,
+        "seat_count": 3,
         "controlling_seat": 0,
-        "family_types": ["player"],
+        "family_types": [
+          "player"
+        ],
         "interact_text": "action.interact.ride.boat",
         "crouching_skip_interact": true,
         "pull_in_entities": false,
         "seats": [
-          { "position": [0.0, 0.35, 0.0], "min_rider_count": 0, "max_rider_count": 2 },
-          { "position": [0.0, 0.35, -0.55], "min_rider_count": 1, "max_rider_count": 2 }
+          {
+            "position": [
+              -0.31,
+              0.3,
+              -0.03
+            ],
+            "min_rider_count": 0,
+            "max_rider_count": 3
+          },
+          {
+            "position": [
+              0.31,
+              0.3,
+              -0.03
+            ],
+            "min_rider_count": 1,
+            "max_rider_count": 3
+          },
+          {
+            "position": [
+              0.0,
+              0.3,
+              -0.68
+            ],
+            "min_rider_count": 2,
+            "max_rider_count": 3
+          }
         ]
       },
       "minecraft:input_ground_controlled": {},
-      "minecraft:movement": { "value": 0.35 },
+      "minecraft:movement": {
+        "value": 0.35
+      },
       "minecraft:movement.basic": {},
-      "minecraft:water_movement": { "drag_factor": 0.25 },
+      "minecraft:water_movement": {
+        "drag_factor": 0.25
+      },
       "minecraft:conditional_bandwidth_optimization": {}
     }
   }

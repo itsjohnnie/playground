@@ -3,11 +3,17 @@
   "minecraft:client_entity": {
     "description": {
       "identifier": "vroom:speedboat",
-      "materials": { "default": "entity_alphatest" },
+      "materials": { "default": "entity_alphatest", "glass": "entity_alphablend" },
       "textures": { "default": "textures/entity/speedboat" },
       "geometry": { "default": "geometry.vroom.speedboat" },
-      "render_controllers": ["controller.render.default"],
-      "spawn_egg": { "base_color": "#F2F2EE", "overlay_color": "#D3262E" }
+      "scripts": {
+        "initialize": ["variable.prop = 0.0;"],
+        "pre_animation": ["variable.prop = variable.prop + query.ground_speed * 25.0;"],
+        "animate": ["drive"]
+      },
+      "animations": { "drive": "animation.vroom.speedboat.drive" },
+      "render_controllers": ["controller.render.vroom.vehicle"],
+      "spawn_egg": { "base_color": "#F2F2EE", "overlay_color": "#24365E" }
     }
   }
 }

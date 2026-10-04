@@ -1,7 +1,12 @@
 # Vroom! Vehicles
 
 A Minecraft **Bedrock** add-on for Looney & Indy. They play on Nintendo Switch.
-First up is a **speedboat**. The roadmap below covers the rest of the garage.
+First up is a **speedboat**: a white runabout with a teak deck, cream leather
+seats, a wrap-around windshield and a big outboard motor whose propeller spins
+as you drive. The bow lifts when you speed up. The roadmap below covers the
+rest of the garage.
+
+![Speedboat preview](previews/speedboat-2.png)
 
 ## The Switch catch (and the way around it)
 
@@ -33,7 +38,8 @@ need them, and Realms work best without them.
    - **Creative:** search the inventory for "Speedboat", or use its spawn egg.
    - **Survival:** craft **Oak Boat + Iron Ingot + Redstone**.
 4. Place it next to the water and push it in, or place it on a block at the
-   shoreline. Tap or right-click it to hop in. It has two seats.
+   shoreline. Tap or right-click it to hop in. It seats three: a driver, a
+   passenger and one on the back bench.
 5. **Steering:** move forward, and the boat goes where you look.
    **Getting out:** sneak.
    **Picking it up:** punch it a few times and it drops the Speedboat item.
@@ -41,17 +47,25 @@ need them, and Realms work best without them.
 ## Make changes
 
 ```
-python3 tools/gen_art.py   # rebuild model + paint + icons from the box list
+python3 tools/gen_art.py   # rebuild the model, paint job and item icon
+node tools/preview.js      # render previews/ + pack icons (needs Playwright)
 python3 tools/build.py     # check JSON, package dist/VroomVehicles.mcaddon
 ```
+
+**How it looks realistic in a blocky game:** the model is about 500 small
+boxes instead of 20. The curved bow is sliced half a pixel at a time and
+covered with angled panels. Windshield, seat backs and steering wheel are
+tilted. The paint is drawn at double resolution: gloss gradients, teak
+planks, tufted leather, chrome reflections, and see-through glass.
 
 | Want to change… | Edit |
 |---|---|
 | Speed | `minecraft:movement` → `value` in `packs/VroomVehicles_BP/entities/speedboat.json` |
 | How slippery the water is | `minecraft:water_movement` → `drag_factor` (lower = glides further) |
 | Where riders sit | `minecraft:rideable` → `seats[].position` (`[x, up, forward]` in blocks) |
-| Colours | `PAINT` in `tools/gen_art.py` |
-| Shape | the `SPEEDBOAT` box list in `tools/gen_art.py`, or open the `.geo.json` in [Blockbench](https://www.blockbench.net) |
+| Colours and materials | the `m_*` painters in `tools/gen_art.py` |
+| Shape | `half_width`, `deck_height`, `bottom_lift` and the `build_*` functions in `tools/gen_art.py`, or open the `.geo.json` in [Blockbench](https://www.blockbench.net) |
+| Bow lift / propeller speed | `packs/VroomVehicles_RP/animations/speedboat.animation.json` |
 | Recipe | `packs/VroomVehicles_BP/recipes/speedboat.json` |
 
 When you change a pack, bump `version` in **both** `manifest.json` files.
