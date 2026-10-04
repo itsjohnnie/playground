@@ -220,7 +220,7 @@ const INFO = {
     name: "Speedboat", kind: "Runabout · water",
     specs: [["Length", "3 blocks"], ["Beam", "1¼ blocks"], ["Seats", "3"],
             ["Recipe", "Oak Boat + Iron + Redstone"]],
-    hint: "Swing the camera to the <b>Stern</b> and read the back of the motor.",
+    hint: "Two names are hidden on this boat. Swing the camera to the <b>Stern</b> to find them.",
   },
 };
 </script>
@@ -592,7 +592,7 @@ const INFO = {
     }
     if (state.cam === "stern" && !camTween && !shownLuna) {
       shownLuna = true;
-      const n = $("notice"); n.textContent = "Found it: the motor is named Luna."; n.hidden = false;
+      const n = $("notice"); n.textContent = "Found them: Luna on the motor, Indi on the boat."; n.hidden = false;
       setTimeout(() => { n.hidden = true; }, 3800);
     }
     sky.position.copy(camera.position);

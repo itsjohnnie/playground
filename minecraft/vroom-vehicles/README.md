@@ -3,8 +3,12 @@
 A Minecraft **Bedrock** add-on for Looney & Indy. They play on Nintendo Switch.
 First up is a **speedboat**: a white runabout with a teak deck, cream leather
 seats, a wrap-around windshield and a big outboard motor whose propeller spins
-as you drive. The bow lifts when you speed up. (Look at the back of the
-motor.) The fleet below plans out all 20 vehicles.
+as you drive. The bow lifts when you speed up. The fleet below plans out all
+20 vehicles.
+
+**Easter eggs:** every vehicle hides the names **LUNA** and **INDI**
+somewhere. On the speedboat, LUNA is on the back of the motor and INDI is
+the boat's name on the transom.
 
 ![Speedboat preview](previews/speedboat-2.png)
 

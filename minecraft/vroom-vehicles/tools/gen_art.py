@@ -159,21 +159,37 @@ LETTERS = {  # bold 6x7 pixel font, just the letters we need
     "U": ["110011", "110011", "110011", "110011", "110011", "111111", "011110"],
     "N": ["110011", "111011", "111011", "110111", "110111", "110011", "110011"],
     "A": ["011110", "111111", "110011", "110011", "111111", "110011", "110011"],
+    "I": ["111111", "111111", "001100", "001100", "001100", "111111", "111111"],
+    "D": ["111100", "111110", "110011", "110011", "110011", "111110", "111100"],
 }
+
+
+def lettering(word, u, v, box=(0.08, 0.22, 0.84, 0.36)):
+    """True where the pixel font draws `word` inside the (x, y, w, h) box."""
+    x, y, w, h = box
+    cols = len(word) * 7 - 1                       # 6 px letters + 1 px gaps
+    cx, cy = (u - x) / w * cols, (v - y) / h * 7
+    if 0 <= cx < cols and 0 <= cy < 7 and int(cx) % 7 < 6:
+        return LETTERS[word[int(cx) // 7]][int(cy)][int(cx) % 7] == "1"
+    return False
 
 
 def m_luna(u, v):
     """Easter egg: the back of the outboard says LUNA."""
-    c = m_black(u, v)
-    word = "LUNA"
-    cols = len(word) * 7 - 1                       # 6 px letters + 1 px gaps
-    cx, cy = (u - 0.08) / 0.84 * cols, (v - 0.22) / 0.36 * 7
-    if 0 <= cx < cols and 0 <= cy < 7 and int(cx) % 7 < 6:
-        if LETTERS[word[int(cx) // 7]][int(cy)][int(cx) % 7] == "1":
-            return rgb("#F7F7F7")
+    if lettering("LUNA", u, v):
+        return rgb("#F7F7F7")
     if 0.68 < v < 0.73 and 0.08 < u < 0.92:
         return rgb("#D3262E")
-    return c
+    return m_black(u, v)
+
+
+def m_indi(u, v):
+    """Easter egg: the boat's name, INDI, painted on the transom in navy."""
+    if lettering("INDI", u, v, box=(0.08, 0.2, 0.84, 0.5)):
+        return rgb("#1E2F55")
+    if 0.8 < v < 0.86 and 0.08 < u < 0.92:
+        return rgb("#D3262E")
+    return m_deck_white(u, v)
 
 
 def m_rubber(u, v):
@@ -216,6 +232,7 @@ MATERIALS = {  # name: (painter, mapping)
     "black":     (m_black, "stretch"),
     "decal":     (m_decal, "stretch"),
     "luna":      (m_luna, "stretch"),
+    "indi":      (m_indi, "stretch"),
     "rubber":    (m_rubber, "stretch"),
     "gunmetal":  (m_gunmetal, "stretch"),
     "deck":      (m_deck_white, "stretch"),
@@ -516,6 +533,7 @@ def build_motor():
         box("teak", -9, 3.2, STERN, -3, 4.2, STERN + 3.5),
         box("teak", 3, 3.2, STERN, 9, 4.2, STERN + 3.5),
         box("gunmetal", -2, 3, STERN, 2, 9.5, STERN + 1.5),           # bracket
+        box("white", -8.8, 5.4, STERN, -2.6, 8.2, STERN + 0.06, aft="indi"),  # name plate
         box("black", -1.6, -0.5, STERN + 2.2, 1.6, 9.2, STERN + 4.8),  # midsection
         box("chrome", -3, 0.6, STERN + 1.6, 3, 1.0, STERN + 6.2),       # cavitation plate
         box("gunmetal", -1.2, -2.6, STERN + 1.6, 1.2, 0.6, STERN + 6.4),  # gearcase

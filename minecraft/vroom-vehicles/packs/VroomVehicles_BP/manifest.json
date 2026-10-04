@@ -4,13 +4,13 @@
     "name": "Vroom! Vehicles",
     "description": "Boats, cars, planes and more - made for Looney & Indy",
     "uuid": "e37d3f26-efad-4198-9f96-c2961764d14f",
-    "version": [1, 2, 0],
+    "version": [1, 3, 0],
     "min_engine_version": [1, 21, 0]
   },
   "modules": [
-    { "type": "data", "uuid": "ebbd1f00-ae0b-4642-832d-6a77c457503e", "version": [1, 2, 0] }
+    { "type": "data", "uuid": "ebbd1f00-ae0b-4642-832d-6a77c457503e", "version": [1, 3, 0] }
   ],
   "dependencies": [
-    { "uuid": "766a1000-56e4-4988-a99d-4727f7a22c3e", "version": [1, 2, 0] }
+    { "uuid": "766a1000-56e4-4988-a99d-4727f7a22c3e", "version": [1, 3, 0] }
   ]
 }
