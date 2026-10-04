@@ -192,7 +192,7 @@ function encode(total, count) {
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
   execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-framerate", String(FPS),
     "-i", path.join(FRAMES, "f%05d.jpg"), "-i", music,
-    "-c:v", "libx264", "-preset", "slow", "-crf", "20", "-pix_fmt", "yuv420p",
+    "-c:v", "libx264", "-preset", "slow", "-crf", "27", "-tune", "animation", "-pix_fmt", "yuv420p",
     "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", OUT], { stdio: "inherit" });
   console.log(`wrote ${OUT} (${total.toFixed(1)}s, ${count} frames)`);
 }
