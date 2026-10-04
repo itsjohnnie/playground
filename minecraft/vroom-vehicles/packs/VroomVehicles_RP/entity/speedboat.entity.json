@@ -1,0 +1,13 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:speedboat",
+      "materials": { "default": "entity_alphatest" },
+      "textures": { "default": "textures/entity/speedboat" },
+      "geometry": { "default": "geometry.vroom.speedboat" },
+      "render_controllers": ["controller.render.default"],
+      "spawn_egg": { "base_color": "#F2F2EE", "overlay_color": "#D3262E" }
+    }
+  }
+}
