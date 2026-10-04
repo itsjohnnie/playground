@@ -498,7 +498,11 @@ def wheel_bone(name, center, radius, width, parent="root", tire="tire", rim="rim
 
 
 def steering_wheel(name, hub, radius=2.0, tilt=-25, parent="root", rim="black", n=12):
-    """A round steering wheel facing the driver (+z), tilted back by `tilt`."""
+    """A round steering wheel facing the driver (+z), tilted back by `tilt`.
+
+    Bedrock turns boxes about z the opposite way to the usual maths
+    convention, hence the minus signs on the ring pieces.
+    """
     ring = []
     chord = 2 * radius * math.sin(math.pi / n) + 0.15
     for k in range(n):
@@ -506,13 +510,13 @@ def steering_wheel(name, hub, radius=2.0, tilt=-25, parent="root", rim="black", 
         cx, cy = hub[0] + radius * math.cos(a), hub[1] + radius * math.sin(a)
         ring.append(box(rim, cx - chord / 2, cy - 0.25, hub[2] - 0.25,
                         cx + chord / 2, cy + 0.25, hub[2] + 0.25,
-                        rotation=(0, 0, math.degrees(a) + 90), pivot=(cx, cy, hub[2])))
+                        rotation=(0, 0, -(math.degrees(a) + 90)), pivot=(cx, cy, hub[2])))
     for k in range(3):                                            # spokes
         a = math.pi / 2 + 2 * math.pi * k / 3
         cx, cy = hub[0] + radius / 2 * math.cos(a), hub[1] + radius / 2 * math.sin(a)
         ring.append(box("chrome", cx - radius / 2, cy - 0.15, hub[2] - 0.1,
                         cx + radius / 2, cy + 0.15, hub[2] + 0.1,
-                        rotation=(0, 0, math.degrees(a)), pivot=(cx, cy, hub[2])))
+                        rotation=(0, 0, -math.degrees(a)), pivot=(cx, cy, hub[2])))
     ring.append(box("chrome", hub[0] - 0.45, hub[1] - 0.45, hub[2] - 0.3,
                     hub[0] + 0.45, hub[1] + 0.45, hub[2] + 0.3))
     return {"name": name, "parent": parent, "pivot": list(hub), "rotation": [tilt, 0, 0],
