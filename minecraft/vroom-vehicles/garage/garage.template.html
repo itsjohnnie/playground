@@ -596,9 +596,11 @@ const DATA = /*__DATA__*/;
   });
   measure.observe(dock); measure.observe(hud);
 
+  // tools/make_video.js sets window.VIDEO_MODE: it steps time itself, frame by
+  // frame, and moves the camera, so the clip is smooth however slow rendering is
+  const VIDEO = window.VIDEO_MODE === true;
   const clock = new THREE.Clock();
-  function frame() {
-    const dt = Math.min(clock.getDelta(), 0.05);
+  function step(dt) {
     time += dt;
     const v = vehicle, info = v.info, mode = info.mode;
     // top speed in metres (blocks) per second, roughly what the add-on's speed gives
@@ -642,7 +644,7 @@ const DATA = /*__DATA__*/;
     animate(v, dt, speed, yawSpeed, rider);
     // keep the camera with an aircraft as it climbs
     const dy = v.holder.position.y - prevY;
-    if (!camTween) { camera.position.y += dy; controls.target.y += dy; }
+    if (!camTween && !VIDEO) { camera.position.y += dy; controls.target.y += dy; }
 
     // wake from the stern corners, the stern, and the bow shoulders
     if (onWater && state.throttle > 0.02) {
@@ -685,8 +687,11 @@ const DATA = /*__DATA__*/;
       clearTimeout(n._t); n._t = setTimeout(() => { n.hidden = true; }, 4200);
     }
     sky.position.copy(camera.position);
-    controls.update();
+    if (!VIDEO) controls.update();
     renderer.render(scene, camera);
+  }
+  function frame() {
+    step(Math.min(clock.getDelta(), 0.05));
     requestAnimationFrame(frame);
   }
 
@@ -694,6 +699,23 @@ const DATA = /*__DATA__*/;
   applySky();
   const first = location.hash.slice(1);
   select(DATA.vehicles[first] ? first : rows.find(i => i.ready).id);
-  requestAnimationFrame(frame);
+  if (VIDEO) {
+    window.garage = {
+      select, step, ids: rows.filter(i => i.ready).map(i => i.id),
+      info: id => DATA.vehicles[id].info,
+      setThrottle(t) { state.throttle = t; },
+      setSky(name) { state.sky = name; applySky(); },
+      // where the current vehicle is, for framing the camera
+      frame() {
+        const v = vehicle;
+        return { center: v.center.toArray(), reach: v.reach, lift: v.holder.position.y, alt: v.alt };
+      },
+      settle(alt) { vehicle.alt = alt; },
+      setLook(name) { state.look = name; applyLook(); },
+      look(eye, at) { camera.position.set(...eye); camera.lookAt(...at); },
+    };
+  } else {
+    requestAnimationFrame(frame);
+  }
 })();
 </script>
