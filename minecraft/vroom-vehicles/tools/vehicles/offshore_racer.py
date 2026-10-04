@@ -26,7 +26,7 @@ INFO = {
         {"bone": "prop_r", "type": "spin", "axis": "z", "idle": 0, "ridden": 0,
          "per_speed": -1900},
     ],
-    "eggs": "LUNA and INDI on top of the two outboard cowlings (LUNA left, INDI right from behind)",
+    "eggs": "INDI on top of both outboard cowlings",
     "egg_cam": {"eye": [-6, 46, 78], "at": [0, 14, 42]},
 }
 
@@ -71,7 +71,7 @@ material("offshore_racer_flat", lambda u, v: scale(rgb("#FFD21F"), noise(0.03)))
 material("offshore_racer_stripe", lambda u, v: scale(rgb("#17181C"), noise(0.05)))
 paint("offshore_racer_orange", "#FF9A2E", "#C2410C", gloss=0.5)
 paint("offshore_racer_bottom", "#3B3F46", "#121316", gloss=0.2)
-decal("offshore_racer_luna", "LUNA", "#14151A", "offshore_racer_flat",
+decal("offshore_racer_luna", "INDI", "#14151A", "offshore_racer_flat",
       box=(0.1, 0.3, 0.8, 0.26), underline="#FF7A1A")
 decal("offshore_racer_indi", "INDI", "#14151A", "offshore_racer_flat",
       box=(0.1, 0.3, 0.8, 0.26), underline="#FF7A1A")

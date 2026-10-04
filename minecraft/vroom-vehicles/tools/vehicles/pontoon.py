@@ -27,7 +27,7 @@ INFO = {
         {"bone": "root", "type": "lift", "k": 0.5, "max": 3},
         {"bone": "prop", "type": "spin", "axis": "z", "idle": 0, "ridden": 0, "per_speed": 1500},
     ],
-    "eggs": "LUNA on the back of the outboard's cowling, INDI on the stern gate badge",
+    "eggs": "INDI on the back of the outboard and on the stern gate badge",
     "egg_cam": {"eye": [-26, 30, 100], "at": [-2, 12, 36]},
 }
 
@@ -107,8 +107,8 @@ material("pontoon_canvas", _canvas, "tile")
 material("pontoon_floor", _floor, "tile")
 material("pontoon_cowling", _cowling)
 material("pontoon_accent", _accent)
-decal("pontoon_luna", "LUNA", "#1B2F57", "pontoon_cowling",
-      box=_word_box("LUNA", 7.6, 8.2, 0.34, lift=0.12), underline="#1E9CB0")
+decal("pontoon_luna", "INDI", "#1B2F57", "pontoon_cowling",
+      box=_word_box("INDI", 7.6, 8.2, 0.34, lift=0.12), underline="#1E9CB0")
 decal("pontoon_indi", "INDI", "#F4F6F8", "pontoon_accent",
       box=_word_box("INDI", 7.0, 4.0, 0.5, max_w=0.8))
 

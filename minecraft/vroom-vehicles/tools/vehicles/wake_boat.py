@@ -24,7 +24,7 @@ INFO = {
         {"bone": "root", "type": "lift", "k": 0.7, "max": 5},
         {"bone": "prop", "type": "spin", "axis": "z", "idle": 0, "ridden": 0, "per_speed": 1400},
     ],
-    "eggs": "LUNA on the wakeboard in the tower's left-side rack, INDI on the transom",
+    "eggs": "LUNA on the wakeboard in the tower rack and across the transom",
     "egg_cam": {"eye": [-46, 34, 78], "at": [0, 15, 12]},
 }
 
@@ -90,7 +90,7 @@ material("wake_boat_seat", _seat, "tile")
 paint("wake_boat_purple", "#9A5CF0", "#3B137A", gloss=0.5)
 paint("wake_boat_orange", "#FFAA3E", "#D6520A", gloss=0.5)
 decal("wake_boat_luna", "LUNA", "#FFFFFF", "wake_boat_board", box=(0.12, 0.2, 0.76, 0.5))
-decal("wake_boat_indi", "INDI", "#3B137A", "white", box=(0.1, 0.18, 0.8, 0.48),
+decal("wake_boat_indi", "LUNA", "#3B137A", "white", box=(0.1, 0.18, 0.8, 0.48),
       underline="#FF8A1E")
 
 HULL = Hull(bow_tip=-32, bow_start=-12, stern=STERN, beam=12, deck=13, sheer=1.4, rise=6,

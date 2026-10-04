@@ -27,7 +27,7 @@ INFO = {
         {"bone": "prop_l", "type": "spin", "axis": "z", "idle": 0, "ridden": 0, "per_speed": 1500},
         {"bone": "prop_r", "type": "spin", "axis": "z", "idle": 0, "ridden": 0, "per_speed": 1500},
     ],
-    "eggs": "LUNA and INDI are the names on the two hull transoms, one on each hull",
+    "eggs": "LUNA on both hull transoms",
     "egg_cam": {"eye": [0, 24, 112], "at": [0, 14, 58]},
 }
 
@@ -64,8 +64,8 @@ paint("power_catamaran_grey", "#8A939C", "#454C55", gloss=0.55)
 material("power_catamaran_port", _hull_window)
 decal("power_catamaran_luna", "LUNA", "#F4F5F7", "black",
       box=_word_box("LUNA", 9.0, 5.0, 0.42, lift=0.06), underline="#C8A15A")
-decal("power_catamaran_indi", "INDI", "#F4F5F7", "black",
-      box=_word_box("INDI", 9.0, 5.0, 0.42, lift=0.06), underline="#C8A15A")
+decal("power_catamaran_indi", "LUNA", "#F4F5F7", "black",
+      box=_word_box("LUNA", 9.0, 5.0, 0.42, lift=0.06), underline="#C8A15A")
 
 
 def shift(cubes, dx):

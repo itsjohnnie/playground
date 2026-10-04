@@ -28,7 +28,7 @@ INFO = {
         {"bone": "prop_l", "type": "spin", "axis": "z", "idle": 0, "ridden": 0, "per_speed": 1500},
         {"bone": "prop_r", "type": "spin", "axis": "z", "idle": 0, "ridden": 0, "per_speed": 1500},
     ],
-    "eggs": "LUNA is the yacht's name across the transom, INDI is her home port lettered below it",
+    "eggs": "INDI is the yacht's name across the transom (her home port, Miami, is below it)",
     "egg_cam": {"eye": [-22, 25, 168], "at": [0, 14, 100]},
 }
 
@@ -104,10 +104,10 @@ material("superyacht_antifoul", _antifoul)
 material("superyacht_helipad", _helipad)
 material("superyacht_water", _water)
 material("superyacht_garage", _garage)
-decal("superyacht_luna", "LUNA", "#1B2430", "white",
-      box=_word_box("LUNA", 22.0, 5.0, 0.62, lift=0.08), underline="#B8913F")
-decal("superyacht_indi", "INDI", "#B8913F", "white",
-      box=_word_box("INDI", 12.0, 3.4, 0.62))
+decal("superyacht_luna", "INDI", "#1B2430", "white",
+      box=_word_box("INDI", 22.0, 5.0, 0.62, lift=0.08), underline="#B8913F")
+decal("superyacht_indi", "MIAMI", "#B8913F", "white",
+      box=_word_box("MIAMI", 12.0, 3.4, 0.62))
 
 
 # --- hull ----------------------------------------------------------------------------

@@ -19,7 +19,7 @@ INFO = {
         {"bone": "root", "type": "lift", "k": 0.9, "max": 7},
         {"bone": "prop", "type": "spin", "axis": "z", "idle": 0, "ridden": 0, "per_speed": 1500},
     ],
-    "eggs": "LUNA on the back of the motor, INDI on the transom",
+    "eggs": "LUNA on the back of the motor and across the transom",
     "egg_cam": {"eye": [12, 17, 74], "at": [0, 10, 24]},
 }
 
@@ -44,7 +44,7 @@ def _cowling(u, v):
 
 material("speedboat_cowling", _cowling)
 decal("speedboat_luna", "LUNA", "#F7F7F7", "black", underline="#D3262E")
-decal("speedboat_indi", "INDI", "#1E2F55", "deck", box=(0.08, 0.2, 0.84, 0.5),
+decal("speedboat_indi", "LUNA", "#1E2F55", "deck", box=(0.08, 0.2, 0.84, 0.5),
       underline="#D3262E")
 
 

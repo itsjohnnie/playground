@@ -29,7 +29,7 @@ INFO = {
         {"bone": "wheel_rl", "type": "roll", "radius": 3.1},
         {"bone": "wheel_rr", "type": "roll", "radius": 3.1},
     ],
-    "eggs": "LUNA on both side pods, INDI on the number plate on the front panel",
+    "eggs": "LUNA on both side pods and the front number plate",
     "egg_cam": {"eye": [-26, 13, -30], "at": [-1, 3, -4]},
 }
 
@@ -73,7 +73,7 @@ def _wbox(word, w, h, fill=0.8, cy=0.5):
 material("go_kart_pod", _pod)
 material("go_kart_plate", _plate)
 decal("go_kart_luna", "LUNA", "#FFFFFF", "go_kart_pod", box=_wbox("LUNA", 10.0, 3.2, 0.62, 0.4))
-decal("go_kart_indi", "INDI", "#1B1C20", "go_kart_plate", box=_wbox("INDI", 5.4, 3.4, 0.8))
+decal("go_kart_indi", "LUNA", "#1B1C20", "go_kart_plate", box=_wbox("LUNA", 5.4, 3.4, 0.8))
 
 
 # --- helpers ------------------------------------------------------------------------

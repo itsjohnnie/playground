@@ -24,7 +24,7 @@ INFO = {
     "anim": [
         {"bone": "prop", "type": "spin", "axis": "z", "idle": 0, "ridden": 1800, "per_speed": 0},
     ],
-    "eggs": "Registration LUNA on the left of the tail cone, INDI on the right",
+    "eggs": "Registration INDI on both sides of the tail cone",
     "egg_cam": {"eye": [-62, 44, 56], "at": [0, 38, 17]},
 }
 
@@ -69,7 +69,7 @@ def _reg(u, v):
 
 material("seaplane_reg", _reg)
 REG_BOX = (0.04, 0.14, 0.92, 0.72)
-decal("seaplane_luna", "LUNA", "#173B7A", "seaplane_reg", box=REG_BOX)
+decal("seaplane_luna", "INDI", "#173B7A", "seaplane_reg", box=REG_BOX)
 decal("seaplane_indi", "INDI", "#173B7A", "seaplane_reg", box=REG_BOX)
 
 BAND = (24, 54)

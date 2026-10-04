@@ -31,7 +31,7 @@ INFO = {
         {"bone": "wheel_rl", "type": "roll", "radius": 5.4},
         {"bone": "wheel_rr", "type": "roll", "radius": 5.4},
     ],
-    "eggs": "LUNA on the front grille between the headlights, INDI on the side covers under the seat",
+    "eggs": "INDI on the front grille and on the side covers under the seat",
     "egg_cam": {"eye": [-26, 22, -38], "at": [0, 10, -4]},
 }
 
@@ -87,7 +87,7 @@ material("quad_atv_cover", _cover)
 material("quad_atv_seat", _seat)
 material("quad_atv_grip", _grip, "tile")
 material("quad_atv_flat", lambda u, v: scale(mix(rgb("#7EDC48"), rgb("#6CC83A"), v), noise(0.02)))
-decal("quad_atv_luna", "LUNA", "#9BFF5C", "quad_atv_grille", box=_wbox("LUNA", 6.8, 2.6, 0.84))
+decal("quad_atv_luna", "INDI", "#9BFF5C", "quad_atv_grille", box=_wbox("INDI", 6.8, 2.6, 0.84))
 decal("quad_atv_indi", "INDI", "#1C1D20", "quad_atv_cover", box=_wbox("INDI", 6.0, 3.6, 0.7, 0.4))
 
 

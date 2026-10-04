@@ -26,7 +26,7 @@ INFO = {
         {"bone": "wheel_f", "type": "roll", "radius": 6.4},
         {"bone": "wheel_r", "type": "roll", "radius": 6.3},
     ],
-    "eggs": "LUNA on the front number plate, INDI on the side number boards",
+    "eggs": "LUNA on the front number plate and both side number boards",
     "egg_cam": {"eye": [-30, 22, -34], "at": [0, 14, -4]},
 }
 
@@ -98,7 +98,7 @@ material("dirt_bike_seat", _seat)
 material("dirt_bike_board", _white_board)
 material("dirt_bike_yellow", _yellow_board)
 decal("dirt_bike_luna", "LUNA", "#1D1E21", "dirt_bike_yellow", box=_wbox("LUNA", 6.0, 4.4))
-decal("dirt_bike_indi", "INDI", "#1D1E21", "dirt_bike_board", box=_wbox("INDI", 6.6, 4.2),
+decal("dirt_bike_indi", "LUNA", "#1D1E21", "dirt_bike_board", box=_wbox("LUNA", 6.6, 4.2),
       underline="#FF8E26")
 
 

@@ -27,7 +27,7 @@ INFO = {
         {"bone": "wheel_f", "type": "roll", "radius": 5.5},
         {"bone": "wheel_r", "type": "roll", "radius": 5.7},
     ],
-    "eggs": "LUNA on both side fairings, INDI on the rear number plate",
+    "eggs": "INDI on both side fairings and the rear number plate",
     "egg_cam": {"eye": [-30, 20, 40], "at": [0, 11, 4]},
 }
 
@@ -81,7 +81,7 @@ def _wbox(word, w, h, fill=0.8):
 
 material("sport_bike_livery", _livery)
 material("sport_bike_seat", _seat)
-decal("sport_bike_luna", "LUNA", "#FFFFFF", "sport_bike_blue", box=_wbox("LUNA", 7.0, 2.8),
+decal("sport_bike_luna", "INDI", "#FFFFFF", "sport_bike_blue", box=_wbox("INDI", 7.0, 2.8),
       underline="#38D6FF")
 decal("sport_bike_indi", "INDI", "#1F2F5A", "plate", box=_wbox("INDI", 4.8, 2.8, 0.76))
 

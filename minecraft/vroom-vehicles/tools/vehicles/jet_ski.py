@@ -26,7 +26,7 @@ INFO = {
         {"bone": "impeller", "type": "spin", "axis": "z", "idle": 90, "ridden": 360,
          "per_speed": 2200},
     ],
-    "eggs": "LUNA across the back of the seat, INDI on the stern above the jet nozzle",
+    "eggs": "INDI across the back of the seat and on the stern above the jet nozzle",
     "egg_cam": {"eye": [-9, 15, 46], "at": [0, 7.5, 12]},
 }
 
@@ -81,7 +81,7 @@ material("jet_ski_seat", _seat, "tile")
 material("jet_ski_graphic", _graphic)
 material("jet_ski_flat", lambda u, v: scale(rgb("#94DA34"), noise(0.03)))
 paint("jet_ski_black", "#383C44", "#0E0F12", gloss=0.5)
-decal("jet_ski_luna", "LUNA", "#F7F7F2", "jet_ski_black", box=(0.1, 0.18, 0.8, 0.48),
+decal("jet_ski_luna", "INDI", "#F7F7F2", "jet_ski_black", box=(0.1, 0.18, 0.8, 0.48),
       underline="#8BE02C")
 decal("jet_ski_indi", "INDI", "#16181C", "white", box=(0.12, 0.16, 0.76, 0.46),
       underline="#6DB81E")

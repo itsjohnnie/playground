@@ -27,7 +27,7 @@ INFO = {
         {"bone": "flame", "type": "bob", "axis": "z", "amp": 7, "freq": 4.1},
         {"bone": "flame", "type": "bob", "axis": "x", "amp": 5, "freq": 3.3},
     ],
-    "eggs": "LUNA in big letters on the front of the envelope, INDI on the back",
+    "eggs": "INDI in big letters on the front and the back of the envelope",
     "egg_cam": {"eye": [0, 62, -175], "at": [0, 52, 0]},
 }
 
@@ -72,9 +72,9 @@ def _band(u, v):
 
 
 material("hot_air_balloon_band", _band)
-for _word in ("LUNA", "INDI"):
-    for _i, _ch in enumerate(_word):
-        decal(f"hot_air_balloon_{_word.lower()}{_i}", _ch, "#22356A", _band,
+for _side in ("luna", "indi"):              # both sides of the envelope say INDI
+    for _i, _ch in enumerate("INDI"):
+        decal(f"hot_air_balloon_{_side}{_i}", _ch, "#22356A", _band,
               box=(0.16, 0.16, 0.68, 0.68))
 
 

@@ -26,7 +26,7 @@ INFO = {
         {"bone": "tail_rotor", "type": "spin", "axis": "x", "idle": 0, "ridden": 2400,
          "per_speed": 0},
     ],
-    "eggs": "Tail number LUNA on the left of the tail boom, INDI on the right",
+    "eggs": "Tail number LUNA on both sides of the tail boom",
     "egg_cam": {"eye": [-78, 30, -40], "at": [0, 17, -2]},
 }
 
@@ -60,7 +60,7 @@ def _tail_panel(u, v):
 material("helicopter_panel", _tail_panel)
 TAIL_BOX = (0.06, 0.16, 0.88, 0.68)
 decal("helicopter_luna", "LUNA", "#1C2A4F", "helicopter_panel", box=TAIL_BOX)
-decal("helicopter_indi", "INDI", "#1C2A4F", "helicopter_panel", box=TAIL_BOX)
+decal("helicopter_indi", "LUNA", "#1C2A4F", "helicopter_panel", box=TAIL_BOX)
 
 BAND = (6, 40)
 

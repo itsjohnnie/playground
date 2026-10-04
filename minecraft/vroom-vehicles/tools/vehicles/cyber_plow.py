@@ -36,7 +36,7 @@ INFO = {
         {"bone": "wheel_rr", "type": "roll", "radius": 6.2},
     ],
     "script": "plow",
-    "eggs": "LUNA and INDI on the two black name plates on the front of the plow blade (LUNA also on the rear number plate)",
+    "eggs": "INDI on both name plates on the plow blade and on the rear number plate",
     "egg_cam": {"eye": [-22, 21, -100], "at": [0, 7, -40]},
 }
 
@@ -108,8 +108,8 @@ material("cyber_plow_hazard", _hazard)
 material("cyber_plow_lightbar", _lightbar)
 material("cyber_plow_rim", _aero_rim)
 material("cyber_plow_beacon", _beacon)
-decal("cyber_plow_luna", "LUNA", "#FFC21A", "matte_black", box=(0.07, 0.2, 0.86, 0.6))
-decal("cyber_plow_plate", "LUNA", "#1F2F5A", "plate", box=(0.12, 0.28, 0.76, 0.44))
+decal("cyber_plow_luna", "INDI", "#FFC21A", "matte_black", box=(0.07, 0.2, 0.86, 0.6))
+decal("cyber_plow_plate", "INDI", "#1F2F5A", "plate", box=(0.12, 0.28, 0.76, 0.44))
 decal("cyber_plow_indi", "INDI", "#FFC21A", "matte_black", box=(0.07, 0.2, 0.86, 0.6))
 
 

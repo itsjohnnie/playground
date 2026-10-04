@@ -34,7 +34,7 @@ INFO = {
         {"bone": "wheel_rl", "type": "roll", "radius": 17},
         {"bone": "wheel_rr", "type": "roll", "radius": 17},
     ],
-    "eggs": "LUNA on both doors, INDI on both sides of the pickup bed",
+    "eggs": "LUNA on both doors and both sides of the pickup bed",
     "egg_cam": {"eye": [-118, 54, 2], "at": [0, 40, 6]},
 }
 
@@ -120,7 +120,7 @@ material("monster_truck_grille", _grille)
 material("monster_truck_net", _net)
 decal("monster_truck_luna", "LUNA", "#FFE23A", _panel, box=(0.08, 0.2, 0.84, 0.56),
       underline="#FF6A1E")
-decal("monster_truck_indi", "INDI", "#FFE23A", _panel, box=(0.08, 0.2, 0.84, 0.56),
+decal("monster_truck_indi", "LUNA", "#FFE23A", _panel, box=(0.08, 0.2, 0.84, 0.56),
       underline="#FF6A1E")
 
 

@@ -24,7 +24,7 @@ INFO = {
         {"bone": "prop_l", "type": "spin", "axis": "z", "idle": 0, "ridden": 0, "per_speed": 1500},
         {"bone": "prop_r", "type": "spin", "axis": "z", "idle": 0, "ridden": 0, "per_speed": -1500},
     ],
-    "eggs": "LUNA and INDI on the backs of the twin outboards (LUNA left, INDI right)",
+    "eggs": "LUNA on the backs of both outboards",
     "egg_cam": {"eye": [-10, 22, 84], "at": [0, 11, 30]},
 }
 
@@ -80,7 +80,7 @@ material("center_console_nonskid",
 paint("center_console_white", "#FFFFFF", "#D2D5D6", gloss=0.6)
 decal("center_console_luna", "LUNA", "#163E6B", "center_console_cowl",
       box=(0.1, 0.14, 0.8, 0.34), underline="#2F7FC4")
-decal("center_console_indi", "INDI", "#163E6B", "center_console_cowl",
+decal("center_console_indi", "LUNA", "#163E6B", "center_console_cowl",
       box=(0.1, 0.14, 0.8, 0.34), underline="#2F7FC4")
 
 
