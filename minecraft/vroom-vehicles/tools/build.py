@@ -42,7 +42,7 @@ def package():
     with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED) as z:
         for pack in sorted(PACKS.iterdir()):
             for f in sorted(pack.rglob("*")):
-                if f.is_file():
+                if f.is_file() and f.name != "fleet.json":
                     z.write(f, f.relative_to(PACKS))
     print(f"built   {OUT.relative_to(ROOT)} ({OUT.stat().st_size // 1024} KB)")
 

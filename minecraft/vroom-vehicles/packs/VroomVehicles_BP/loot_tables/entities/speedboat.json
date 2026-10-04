@@ -1,5 +1,14 @@
 {
   "pools": [
-    { "rolls": 1, "entries": [{ "type": "item", "name": "vroom:speedboat", "weight": 1 }] }
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "vroom:speedboat",
+          "weight": 1
+        }
+      ]
+    }
   ]
 }

@@ -11,7 +11,7 @@
       "minecraft:type_family": {
         "family": [
           "vroom_vehicle",
-          "boat",
+          "water",
           "inanimate"
         ]
       },
@@ -57,17 +57,6 @@
         "breathes_water": true
       },
       "minecraft:fire_immune": {},
-      "minecraft:buoyant": {
-        "base_buoyancy": 1.0,
-        "apply_gravity": true,
-        "simulate_waves": true,
-        "big_wave_probability": 0.03,
-        "big_wave_speed": 10.0,
-        "liquid_blocks": [
-          "minecraft:water",
-          "minecraft:flowing_water"
-        ]
-      },
       "minecraft:rideable": {
         "seat_count": 3,
         "controlling_seat": 0,
@@ -80,18 +69,18 @@
         "seats": [
           {
             "position": [
-              -0.31,
-              0.3,
-              -0.03
+              -0.312,
+              0.306,
+              -0.031
             ],
             "min_rider_count": 0,
             "max_rider_count": 3
           },
           {
             "position": [
-              0.31,
-              0.3,
-              -0.03
+              0.312,
+              0.306,
+              -0.031
             ],
             "min_rider_count": 1,
             "max_rider_count": 3
@@ -99,23 +88,34 @@
           {
             "position": [
               0.0,
-              0.3,
-              -0.68
+              0.281,
+              -0.65
             ],
             "min_rider_count": 2,
             "max_rider_count": 3
           }
         ]
       },
-      "minecraft:input_ground_controlled": {},
       "minecraft:movement": {
         "value": 0.35
       },
       "minecraft:movement.basic": {},
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:buoyant": {
+        "base_buoyancy": 1.0,
+        "apply_gravity": true,
+        "simulate_waves": true,
+        "big_wave_probability": 0.03,
+        "big_wave_speed": 10.0,
+        "liquid_blocks": [
+          "minecraft:water",
+          "minecraft:flowing_water"
+        ]
+      },
       "minecraft:water_movement": {
         "drag_factor": 0.25
       },
-      "minecraft:conditional_bandwidth_optimization": {}
+      "minecraft:input_ground_controlled": {}
     }
   }
 }

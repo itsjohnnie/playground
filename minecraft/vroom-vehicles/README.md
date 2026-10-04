@@ -56,30 +56,51 @@ need them, and Realms work best without them.
 ## Make changes
 
 ```
-python3 tools/gen_art.py   # rebuild the model, paint job and item icon
-node tools/preview.js      # render previews/ + pack icons (needs Playwright)
+python3 tools/gen_art.py        # build every model and the shared paint atlas
+python3 tools/gen_packs.py      # write the Minecraft files (entities, items, recipes, animations)
+node tools/preview.js <id>      # render previews/<id>-*.png and the item icon (needs Playwright)
 python3 tools/build_garage.py   # rebuild the Vroom Garage previewer
-python3 tools/build.py     # check JSON, package dist/VroomVehicles.mcaddon
+python3 tools/build.py          # check JSON, package dist/VroomVehicles.mcaddon
 ```
 
-**How it looks realistic in a blocky game:** the model is about 500 small
-boxes instead of 20. The curved bow is sliced half a pixel at a time and
-covered with angled panels. Windshield, seat backs and steering wheel are
-tilted. The paint is drawn at double resolution: gloss gradients, teak
-planks, tufted leather, chrome reflections, and see-through glass.
+Every vehicle is one file, `tools/vehicles/<id>.py`. Its `INFO` block holds
+what the game needs (seats, speed, recipe, how it moves and animates) and
+`build()` makes its model from the kit in `tools/artkit.py`. The kit has
+painted materials (gloss paint, teak, leather, chrome, glass, tyre tread,
+carbon fibre, brushed steel), helpers for wheels, seats, steering wheels and
+boat hulls, and a pixel font for the LUNA and INDI decals. Everything else is
+generated from those files, so changing a vehicle means editing one file and
+running the commands above.
 
-| Want to change… | Edit |
+**How it looks realistic in a blocky game:** each model is hundreds of small
+boxes. Curves are sliced thin, some boxes are tilted, and the paint is drawn
+at double resolution with gradients and reflections instead of flat colours.
+
+| Want to change… | Edit (in `tools/vehicles/<id>.py`) |
 |---|---|
-| Speed | `minecraft:movement` → `value` in `packs/VroomVehicles_BP/entities/speedboat.json` |
-| How slippery the water is | `minecraft:water_movement` → `drag_factor` (lower = glides further) |
-| Where riders sit | `minecraft:rideable` → `seats[].position` (`[x, up, forward]` in blocks) |
-| Colours and materials | the `m_*` painters in `tools/gen_art.py` |
-| Shape | `half_width`, `deck_height`, `bottom_lift` and the `build_*` functions in `tools/gen_art.py`, or open the `.geo.json` in [Blockbench](https://www.blockbench.net) |
-| Bow lift / propeller speed | `packs/VroomVehicles_RP/animations/speedboat.animation.json` |
-| Recipe | `packs/VroomVehicles_BP/recipes/speedboat.json` |
+| Speed | `speed` (driving and boats), `fly_speed` (aircraft) |
+| How slippery the water is | `water_drag` (lower glides further) |
+| How high it climbs | `step` (1.0625 drives up one block) |
+| Where riders sit | `seats` |
+| Colours and shape | the `paint(...)` lines and `build()` |
+| Spinning, leaning, nose lift | `anim` |
+| Recipe | `recipe` and `recipe_text` |
 
 When you change a pack, bump `version` in **both** `manifest.json` files.
 Otherwise devices that already have the old version won't take the new one.
+
+### How each kind of vehicle moves
+
+- **Boats** float and go where the driver looks.
+- **Land vehicles** drive where the driver looks and climb up blocks (the
+  monster truck climbs two).
+- **Aircraft** sit on the ground when empty. With someone aboard they fly
+  where the pilot looks (look up to climb). The seaplane floats and taxis on
+  water too.
+- **Cyber Plow** clears natural blocks in front of it while it's driven:
+  dirt, stone, sand, plants, trees and snow. It never touches anything people
+  build with (planks, glass, bricks, crops, chests).
+- **Farm Tractor** turns grass and dirt behind it into farmland.
 
 ## The fleet: 20 vehicles
 
@@ -88,7 +109,7 @@ order. Each one teaches the add-on a new trick, and the next ones reuse it.
 
 | Class | Vehicle | Length | New trick |
 |---|---|---|---|
-| Water | ✅ Speedboat | 3 | Floating, riding, steering, spinning propeller |
+| Water | Speedboat | 3 | Floating, riding, steering, spinning propeller |
 | Small | Jet Ski | 2 | Stand-up riding, spray |
 | Water | Center Console | 4 | Twin outboards, T-top roof |
 | Water | Offshore Racer | 6 | Very fast and long, nose lifts high at speed |

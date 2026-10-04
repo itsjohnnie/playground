@@ -177,7 +177,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--buoy); outl
         <button data-cam="orbit" aria-pressed="true">Orbit</button>
         <button data-cam="chase" aria-pressed="false">Chase</button>
         <button data-cam="side" aria-pressed="false">Side</button>
-        <button data-cam="stern" aria-pressed="false">Stern</button>
+        <button data-cam="names" aria-pressed="false">Names</button>
       </div>
     </div>
     <div class="ctl"><span>Look</span>
@@ -200,29 +200,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--buoy); outl
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script>/*__MODEL_LIB__*/</script>
 <script>
-const MODELS = /*__MODELS__*/;
-
-// One block is one metre. Lengths are the planned in-game sizes.
-const FLEET = [
-  { group: "Small", items: [
-    ["Jet Ski", 2], ["Dirt Bike", 2], ["Sport Bike", 2], ["Go-Kart", 2], ["Quad ATV", 2]] },
-  { group: "Water", items: [
-    ["Speedboat", 3, "speedboat"], ["Center Console", 4], ["Offshore Racer", 6], ["Wake Boat", 4],
-    ["Pontoon Party Boat", 5], ["Power Catamaran", 8], ["Superyacht", 14]] },
-  { group: "Land", items: [
-    ["Supercar", 3], ["Cyber Plow", 4], ["Off-Road 4x4", 3], ["Farm Tractor", 3], ["Monster Truck", 4]] },
-  { group: "Air", items: [
-    ["Hot Air Balloon", 3], ["Seaplane", 7], ["Helicopter", 6]] },
-];
-
-const INFO = {
-  speedboat: {
-    name: "Speedboat", kind: "Runabout · water",
-    specs: [["Length", "3 blocks"], ["Beam", "1¼ blocks"], ["Seats", "3"],
-            ["Recipe", "Oak Boat + Iron + Redstone"]],
-    hint: "Two names are hidden on this boat. Swing the camera to the <b>Stern</b> to find them.",
-  },
-};
+// Built by tools/build_garage.py: the paint atlas, every finished model, and the fleet list.
+const DATA = /*__DATA__*/;
 </script>
 <script>
 (() => {
@@ -242,13 +221,11 @@ const INFO = {
   renderer.toneMappingExposure = 0.95;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(36, 1, 1, 6000);
-  camera.position.set(70, 42, -62);
+  const camera = new THREE.PerspectiveCamera(36, 1, 1, 8000);
   const controls = new THREE.OrbitControls(camera, canvas);
-  controls.target.set(0, 7, 0);
   controls.enableDamping = true;
-  controls.minDistance = 25; controls.maxDistance = 260;
   controls.maxPolarAngle = Math.PI * 0.49;
+  const clamp = (x, a, b) => Math.min(Math.max(x, a), b);
 
   // --- waves: one definition shared by the water shader and the boat's bobbing
   const WAVES = [ // direction x, z, amplitude, wavelength, speed
@@ -289,6 +266,10 @@ const INFO = {
     uDeep: { value: new THREE.Color() }, uShallow: { value: new THREE.Color() },
     uCloudLit: { value: new THREE.Color() }, uCloudShade: { value: new THREE.Color() },
   };
+  const NOISE = `float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+      float fbm(vec2 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { s += a * noise(p); p *= 2.03; a *= 0.5; } return s; }`;
 
   // --- sky dome with sun and drifting clouds
   const skyMat = new THREE.ShaderMaterial({
@@ -298,10 +279,7 @@ const INFO = {
         vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`,
     fragmentShader: `uniform float uTime, uOff; uniform vec3 uSunDir, uSunColor, uSkyTop, uSkyHorizon, uCloudLit, uCloudShade;
       varying vec3 vDir;
-      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-      float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-        return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
-      float fbm(vec2 p) { float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { s += a * noise(p); p *= 2.03; a *= 0.5; } return s; }
+      ${NOISE}
       void main() {
         vec3 d = normalize(vDir); float y = d.y;
         vec3 col = mix(uSkyHorizon, uSkyTop, pow(clamp(y, 0.0, 1.0), 0.55));
@@ -321,12 +299,12 @@ const INFO = {
         #include <encodings_fragment>
       }`,
   });
-  const sky = new THREE.Mesh(new THREE.SphereGeometry(3000, 48, 24), skyMat);
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(5000, 48, 24), skyMat);
   sky.frustumCulled = false;
   scene.add(sky);
 
   // --- water: the same waves, a fresnel sky reflection and a sun glint
-  const waterGeo = new THREE.PlaneGeometry(2400, 2400, 300, 300);
+  const waterGeo = new THREE.PlaneGeometry(3200, 3200, 320, 320);
   waterGeo.rotateX(-Math.PI / 2);
   const waterMat = new THREE.ShaderMaterial({
     uniforms: U,
@@ -349,7 +327,7 @@ const INFO = {
         vec3 body = mix(uDeep, uShallow, clamp(vH * 0.5 + 0.45, 0.0, 1.0));
         float spec = pow(max(dot(R, normalize(uSunDir)), 0.0), 240.0) * 5.0;
         vec3 col = mix(body, skyc, fres) + uSunColor * spec;
-        float far = smoothstep(380.0, 1150.0, length(vPos.xz - cameraPosition.xz));
+        float far = smoothstep(500.0, 1500.0, length(vPos.xz - cameraPosition.xz));
         col = mix(col, uSkyHorizon, far);
         gl_FragColor = vec4(col, 1.0);
         #include <tonemapping_fragment>
@@ -360,13 +338,44 @@ const INFO = {
   water.position.y = WATER_Y;
   scene.add(water);
 
+  // --- ground: grass with a road (an airstrip for aircraft) that scrolls by
+  const groundGeo = new THREE.PlaneGeometry(3200, 3200, 1, 1);
+  groundGeo.rotateX(-Math.PI / 2);
+  const groundMat = new THREE.ShaderMaterial({
+    uniforms: { ...U, uRoad: { value: 40 } },
+    vertexShader: `varying vec3 vPos;
+      void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vPos = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: `uniform float uOff, uRoad; uniform vec3 uSkyHorizon, uSunColor; varying vec3 vPos;
+      ${NOISE}
+      void main() {
+        float x = vPos.x, z = vPos.z + uOff;
+        vec3 grass = mix(vec3(0.11, 0.22, 0.06), vec3(0.2, 0.33, 0.09), fbm(vec2(x, z) * 0.02));
+        grass *= 0.85 + 0.3 * hash(floor(vec2(x, z) / 2.0));
+        float road = step(abs(x), uRoad);
+        vec3 asphalt = vec3(0.05, 0.055, 0.06) * (0.85 + 0.3 * hash(floor(vec2(x, z) * 2.0)));
+        float dash = step(abs(x), 0.9) * step(fract(z / 56.0), 0.45);
+        float edge = step(abs(abs(x) - (uRoad - 3.0)), 0.9);
+        vec3 col = mix(grass, asphalt, road);
+        col = mix(col, vec3(0.75, 0.6, 0.18), dash * road);
+        col = mix(col, vec3(0.7), edge * road);
+        col *= uSunColor * 1.2;
+        float far = smoothstep(500.0, 1500.0, length(vPos.xz - cameraPosition.xz));
+        gl_FragColor = vec4(mix(col, uSkyHorizon, far), 1.0);
+        #include <tonemapping_fragment>
+        #include <encodings_fragment>
+      }`,
+  });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  scene.add(ground);
+
   // --- lights for the realistic look
   const sun = new THREE.DirectionalLight(0xffffff, 2);
   const hemi = new THREE.HemisphereLight(0xffffff, 0x223344, 0.7);
   scene.add(sun, hemi);
 
   // --- wake: foam particles that stream back from the hull and spread
-  const WAKE_N = 4000;
+  const WAKE_N = 5000;
   const wPos = new Float32Array(WAKE_N * 3), wAlpha = new Float32Array(WAKE_N), wSize = new Float32Array(WAKE_N);
   const wVel = new Float32Array(WAKE_N), wAge = new Float32Array(WAKE_N).fill(99), wLife = new Float32Array(WAKE_N);
   const wakeGeo = new THREE.BufferGeometry();
@@ -391,32 +400,43 @@ const INFO = {
     wPos[i * 3] = x; wPos[i * 3 + 2] = z; wVel[i] = vx; wAge[i] = 0; wLife[i] = life; wSize[i] = size;
   }
 
+  // --- the shared paint atlas and its two looks
+  const tex = new THREE.TextureLoader().load(DATA.atlas);
+  tex.encoding = THREE.sRGBEncoding;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.magFilter = THREE.NearestFilter;
+  const MATS = {
+    mc: {
+      solid: new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, vertexColors: true }),
+      glass: new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, vertexColors: true }),
+    },
+    real: {
+      solid: new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, roughness: 0.38, metalness: 0.05 }),
+      glass: new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 0.04, metalness: 0.1 }),
+    },
+  };
+
   // --- the vehicle
-  const loader = new THREE.TextureLoader();
   let vehicle = null;
   function loadVehicle(id) {
-    const data = MODELS[id];
-    const tex = loader.load(data.texture);
-    tex.encoding = THREE.sRGBEncoding;
-    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    tex.magFilter = THREE.NearestFilter;
-    const mats = {
-      mc: {
-        solid: new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, vertexColors: true }),
-        glass: new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, vertexColors: true }),
-      },
-      real: {
-        solid: new THREE.MeshStandardMaterial({ map: tex, alphaTest: 0.5, roughness: 0.38, metalness: 0.05 }),
-        glass: new THREE.MeshStandardMaterial({ map: tex, transparent: true, depthWrite: false, roughness: 0.04, metalness: 0.1 }),
-      },
-    };
-    const built = buildBedrockModel(data.geo, mats.mc, { mcShade: true });
-    built.model.traverse(o => { if (o.isMesh) o.userData.glass = o.material === mats.mc.glass; });
+    const v = DATA.vehicles[id];
+    const built = buildBedrockModel(v.geo, MATS.mc, { mcShade: true });
+    built.model.traverse(o => { if (o.isMesh) o.userData.glass = o.material === MATS.mc.glass; });
     if (vehicle) scene.remove(vehicle.holder);
     const holder = new THREE.Group();
     holder.add(built.model);
     scene.add(holder);
-    vehicle = { id, holder, bones: built.bones, mats, prop: 0 };
+    const box = new THREE.Box3().setFromObject(built.model);
+    const center = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+    vehicle = { id, info: v.info, holder, bones: built.bones, acc: [], alt: 0, yaw: 0,
+                box, center, size, reach: Math.max(size.x, size.z, size.y) };
+    const mode = v.info.mode;
+    water.visible = mode === "water" || mode === "seaplane";
+    ground.visible = !water.visible;
+    groundMat.uniforms.uRoad.value = mode === "air" ? 90 : 40;
+    wAge.fill(99);
+    controls.minDistance = vehicle.reach * 0.5;
+    controls.maxDistance = vehicle.reach * 6 + 60;
     applyLook();
   }
 
@@ -427,7 +447,7 @@ const INFO = {
 
   function applyLook() {
     if (!vehicle) return;
-    const set = vehicle.mats[state.look];
+    const set = MATS[state.look];
     vehicle.holder.traverse(o => { if (o.isMesh) o.material = o.userData.glass ? set.glass : set.solid; });
     renderer.toneMappingExposure = state.look === "real" ? 0.95 : 0.9;
   }
@@ -444,7 +464,7 @@ const INFO = {
     sun.position.copy(U.uSunDir.value).multiplyScalar(200);
     sun.color.setHex(s.sunColor); sun.intensity = s.light;
     hemi.color.setHex(s.hemi[0]); hemi.groundColor.setHex(s.hemi[1]); hemi.intensity = s.hemi[2];
-    // reflections on the boat come from this sky
+    // reflections on the vehicle come from this sky
     const envScene = new THREE.Scene();
     envScene.add(new THREE.Mesh(sky.geometry, skyMat));
     if (envRT) envRT.dispose();
@@ -452,33 +472,40 @@ const INFO = {
     scene.environment = envRT.texture;
   }
 
+  // cameras are directions from the vehicle's centre, scaled to its size
   const CAMS = {
-    orbit: { eye: [70, 42, -62], at: [0, 7, 0] },
-    chase: { eye: [0, 34, 120], at: [0, 8, -10] },
-    side:  { eye: [105, 14, 0], at: [0, 7, 0] },
-    stern: { eye: [12, 17, 74], at: [0, 10, 24] },
+    orbit: [0.67, 0.42, -0.6, 1.9],
+    chase: [0, 0.38, 1, 2.3],
+    side: [1, 0.12, 0, 1.6],
   };
   let camTween = null;
-  // tall phone screens see less side to side, so pull the camera back
-  function framedEye(c) {
-    const at = new THREE.Vector3(...c.at), eye = new THREE.Vector3(...c.eye);
+  function camTarget(name) {
+    const v = vehicle, lift = v.holder.position.y;
+    if (name === "names" && v.info.egg_cam) {
+      const { eye, at } = v.info.egg_cam;
+      return { eye: new THREE.Vector3(eye[0], eye[1] + lift, eye[2]), at: new THREE.Vector3(at[0], at[1] + lift, at[2]) };
+    }
+    const [dx, dy, dz, k] = CAMS[name] || CAMS.orbit;
+    const at = v.center.clone(); at.y += lift;
+    const dir = new THREE.Vector3(dx, dy, dz).normalize();
+    // tall phone screens see less side to side, so pull the camera back
     const pull = camera.aspect < 1.1 ? Math.min(2.1, 1.2 / camera.aspect) : 1;
-    return eye.sub(at).multiplyScalar(pull).add(at);
+    return { eye: at.clone().addScaledVector(dir, (v.reach * k + 8) * pull), at };
   }
-  function moveCamera(name) {
-    const c = CAMS[name];
-    camTween = {
-      t: 0, fromEye: camera.position.clone(), fromAt: controls.target.clone(),
-      toEye: framedEye(c), toAt: new THREE.Vector3(...c.at),
-    };
+  function moveCamera(name, instant) {
+    const t = camTarget(name);
+    if (instant) { camera.position.copy(t.eye); controls.target.copy(t.at); camTween = null; return; }
+    camTween = { t: 0, fromEye: camera.position.clone(), fromAt: controls.target.clone(), toEye: t.eye, toAt: t.at };
   }
 
   function pressGroup(groupId, attr, value) {
     for (const b of $(groupId).querySelectorAll("button")) b.setAttribute("aria-pressed", String(b.dataset[attr] === value));
   }
+  let foundNames = false;
   $("cams").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
     state.cam = b.dataset.cam; pressGroup("cams", "cam", state.cam); moveCamera(state.cam);
+    foundNames = false;
   });
   $("looks").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
@@ -491,18 +518,22 @@ const INFO = {
   $("throttle").addEventListener("input", e => { state.throttle = e.target.value / 100; });
 
   // --- fleet list and spec card
-  const total = FLEET.reduce((n, g) => n + g.items.length, 0);
-  const ready = FLEET.flatMap(g => g.items).filter(i => i[2]).length;
-  $("count").textContent = `${ready} of ${total} ready`;
-  $("fleetToggle").textContent = `Fleet ${ready}/${total}`;
-  $("fleetList").innerHTML = FLEET.map(g => `
+  const rows = DATA.fleet.flatMap(g => g.items);
+  const ready = rows.filter(i => i.ready).length;
+  $("count").textContent = `${ready} of ${rows.length} ready`;
+  $("fleetToggle").textContent = `Fleet ${ready}/${rows.length}`;
+  $("fleetList").innerHTML = DATA.fleet.map(g => `
     <p class="group">${g.group}</p>
-    <ol>${g.items.map(([name, len, id]) => id
-      ? `<li><button class="row" data-id="${id}" aria-current="false"><span>${name}</span><span class="len">${len} blk</span><span class="pill ready">Ready</span></button></li>`
-      : `<li class="row"><span>${name}</span><span class="len">${len} blk</span><span class="pill">Planned</span></li>`
+    <ol>${g.items.map(i => i.ready
+      ? `<li><button class="row" data-id="${i.id}" aria-current="false"><span>${i.name}</span><span class="len">${i.length} blk</span><span class="pill ready">Ready</span></button></li>`
+      : `<li class="row"><span>${i.name}</span><span class="len">${i.length} blk</span><span class="pill">Planned</span></li>`
     ).join("")}</ol>`).join("");
   $("fleetList").addEventListener("click", e => {
-    const b = e.target.closest("button.row"); if (b) select(b.dataset.id);
+    const b = e.target.closest("button.row"); if (!b) return;
+    select(b.dataset.id);
+    if (matchMedia("(max-width: 900px)").matches) {
+      $("fleet").dataset.open = "false"; $("fleetToggle").setAttribute("aria-expanded", "false");
+    }
   });
   $("fleetToggle").addEventListener("click", () => {
     const open = $("fleet").dataset.open !== "true";
@@ -510,14 +541,38 @@ const INFO = {
     $("fleetToggle").setAttribute("aria-expanded", String(open));
   });
 
+  const MODE_WORD = { water: "water", land: "land", air: "air", seaplane: "water and air" };
   function select(id) {
-    const info = INFO[id];
+    const info = DATA.vehicles[id].info;
     $("name").textContent = info.name;
-    $("kind").textContent = info.kind;
-    $("specs").innerHTML = info.specs.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
-    $("hint").innerHTML = info.hint;
+    $("kind").textContent = `${info.kind} · ${MODE_WORD[info.mode]}`;
+    const specs = [...info.specs, ["Recipe", info.recipe_text]];
+    $("specs").innerHTML = specs.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+    $("hint").innerHTML = "LUNA and INDI are hidden on it. Tap <b>Names</b> to find them.";
     for (const b of document.querySelectorAll("button.row")) b.setAttribute("aria-current", String(b.dataset.id === id));
     loadVehicle(id);
+    state.cam = "orbit"; pressGroup("cams", "cam", "orbit");
+    moveCamera("orbit", true);
+    foundNames = false;
+  }
+
+  // --- the same animation rules as the add-on's .animation.json files
+  const AX = { x: 0, y: 1, z: 2 };
+  function animate(v, dt, speed, yawSpeed, rider) {
+    const rot = {};
+    const add = (bone, axis, val) => { (rot[bone] = rot[bone] || [0, 0, 0])[AX[axis]] += val; };
+    (v.info.anim || []).forEach((a, i) => {
+      if (a.type === "lift") add(a.bone, "x", -clamp((speed - (a.offset || 0)) * a.k, 0, a.max));
+      else if (a.type === "roll") {
+        v.acc[i] = (v.acc[i] || 0) + speed * dt * 360 / (2 * Math.PI * a.radius / 16);
+        add(a.bone, "x", v.acc[i]);
+      } else if (a.type === "spin") {
+        v.acc[i] = (v.acc[i] || 0) + dt * ((rider ? a.ridden || 0 : a.idle || 0) + speed * (a.per_speed || 0));
+        add(a.bone, a.axis, v.acc[i]);
+      } else if (a.type === "turn") add(a.bone, a.axis, clamp(yawSpeed * a.k, -a.max, a.max));
+      else if (a.type === "bob") add(a.bone, a.axis, a.amp * Math.sin(time * a.freq * 2 * Math.PI));
+    });
+    for (const [b, r] of Object.entries(rot)) if (v.bones[b]) setBoneRotation(v.bones[b], r);
   }
 
   // --- size and animate
@@ -531,41 +586,65 @@ const INFO = {
   addEventListener("resize", resize);
 
   const clock = new THREE.Clock();
-  let shownLuna = false;
   function frame() {
     const dt = Math.min(clock.getDelta(), 0.05);
     time += dt;
-    // throttle → metres per second, as the add-on's animation reads ground speed
-    const speed = state.throttle * 9;
-    travelled -= speed * 16 * dt;              // the boat heads to -z (16 px a block)
+    const v = vehicle, info = v.info, mode = info.mode;
+    // top speed in metres (blocks) per second, roughly what the add-on's speed gives
+    const top = mode === "air" ? (info.fly_speed || 0.12) * 80 : (info.speed || 0.3) * 30;
+    const rider = state.throttle > 0.02;
+    const speed = state.throttle * top;
+    travelled -= speed * 16 * dt;              // vehicles head to -z (16 px a block)
     U.uTime.value = time; U.uOff.value = travelled;
     $("speed").textContent = `${speed.toFixed(1)} m/s`;
 
-    if (vehicle) {
-      // sit on the swell: height at the middle, pitch bow-to-stern, roll side-to-side
-      const hMid = waveHeight(0, 0), hBow = waveHeight(0, -20), hStern = waveHeight(0, 20);
-      const hL = waveHeight(-9, 0), hR = waveHeight(9, 0);
-      vehicle.holder.position.y = hMid * 0.9;
-      vehicle.holder.rotation.set(Math.atan2(hBow - hStern, 40) * 0.8, 0, Math.atan2(hR - hL, 18) * 0.7, "ZYX");
-      // the same two animations as speedboat.animation.json
-      const lift = Math.min(Math.max(speed * 0.9, 0), 7);
-      setBoneRotation(vehicle.bones.root, [-lift, 0, 0]);
-      vehicle.prop += speed * 25 * 60 * dt;
-      if (vehicle.bones.prop) setBoneRotation(vehicle.bones.prop, [0, 0, vehicle.prop]);
-    }
+    // a gentle weave, so bikes lean and front wheels steer
+    const prevYaw = v.yaw;
+    v.yaw = Math.sin(time * 0.55) * 0.16 * state.throttle;
+    const yawSpeed = (v.yaw - prevYaw) / Math.max(dt, 1e-3) * 180 / Math.PI;
 
-    // wake: emit from the stern corners, the motor, and the bow shoulders
-    const rate = state.throttle;
-    if (rate > 0.02) {
-      const n = Math.ceil(rate * 4);
-      for (let k = 0; k < n; k++) {
-        const j = (Math.random() - 0.5);
-        emit(-9 + j * 2, 22 + Math.random() * 3, -6 - rate * 10, 2.6, 3 + rate * 3);
-        emit(9 + j * 2, 22 + Math.random() * 3, 6 + rate * 10, 2.6, 3 + rate * 3);
-        emit(j * 4, 30 + Math.random() * 3, j * 6, 1.6, 4 + rate * 4);
-        if (Math.random() < rate) {
-          emit(-8.5, -8 + j * 6, -10 - rate * 14, 1.8, 2.5);
-          emit(8.5, -8 + j * 6, 10 + rate * 14, 1.8, 2.5);
+    // altitude: aircraft climb with the throttle, the seaplane above half throttle
+    let altTarget = 0;
+    if (mode === "air") altTarget = rider ? 24 + state.throttle * 110 : 0;
+    if (mode === "seaplane") altTarget = state.throttle > 0.5 ? (state.throttle - 0.5) * 260 : 0;
+    v.alt += (altTarget - v.alt) * Math.min(1, dt * 0.8);
+    const prevY = v.holder.position.y;
+    const onWater = (mode === "water" || mode === "seaplane") && v.alt < 2;
+    let y = v.alt, pitch = 0, roll = 0;
+    if (onWater) {
+      // ride the swell: height at the middle, pitch end to end, roll side to side
+      const half = v.size.z / 2, beam = Math.max(v.size.x / 2, 4), cz = v.center.z;
+      const hBow = waveHeight(0, cz - half * 0.8), hStern = waveHeight(0, cz + half * 0.8);
+      const hL = waveHeight(-beam, cz), hR = waveHeight(beam, cz);
+      const damp = clamp(48 / v.size.z, 0.25, 1);
+      y += waveHeight(0, cz) * 0.9 * damp;
+      pitch = Math.atan2(hBow - hStern, half * 1.6) * 0.8;
+      roll = Math.atan2(hR - hL, beam * 2) * 0.7 * damp;
+    } else if (mode === "land") {
+      y += Math.sin(time * 37) * 0.06 * state.throttle;     // engine and road buzz
+    } else if (mode === "air" && v.alt > 1) {
+      y += Math.sin(time * 0.9) * 1.2;                      // floating on the air
+      roll = -v.yaw * 0.4;
+    }
+    v.holder.position.y = y;
+    v.holder.rotation.set(pitch, v.yaw, roll, "YXZ");
+    animate(v, dt, speed, yawSpeed, rider);
+    // keep the camera with an aircraft as it climbs
+    const dy = v.holder.position.y - prevY;
+    if (!camTween) { camera.position.y += dy; controls.target.y += dy; }
+
+    // wake from the stern corners, the stern, and the bow shoulders
+    if (onWater && state.throttle > 0.02) {
+      const r = state.throttle, b = v.box, hw = v.size.x * 0.45, stern = b.max.z, bow = b.min.z + v.size.z * 0.3;
+      const k = Math.max(1, v.size.x / 20);
+      for (let n = 0; n < Math.ceil(r * 4); n++) {
+        const j = Math.random() - 0.5;
+        emit(-hw + j * 2, stern - 2 + Math.random() * 3, -6 - r * 10, 2.6, (3 + r * 3) * k);
+        emit(hw + j * 2, stern - 2 + Math.random() * 3, 6 + r * 10, 2.6, (3 + r * 3) * k);
+        emit(j * hw, stern + 4 + Math.random() * 3, j * 6, 1.6, (4 + r * 4) * k);
+        if (Math.random() < r) {
+          emit(-hw * 0.9, bow + j * 6, -10 - r * 14, 1.8, 2.5 * k);
+          emit(hw * 0.9, bow + j * 6, 10 + r * 14, 1.8, 2.5 * k);
         }
       }
     }
@@ -575,8 +654,7 @@ const INFO = {
       wPos[i * 3] += wVel[i] * dt;
       wPos[i * 3 + 2] += speed * 16 * dt;
       wPos[i * 3 + 1] = WATER_Y + waveHeight(wPos[i * 3], wPos[i * 3 + 2]) + 0.25;
-      const t = wAge[i] / wLife[i];
-      wAlpha[i] = (1 - t) * 0.75;
+      wAlpha[i] = (1 - wAge[i] / wLife[i]) * 0.75;
       wSize[i] *= 1 + dt * 0.6;
     }
     wakeGeo.attributes.position.needsUpdate = true;
@@ -590,10 +668,10 @@ const INFO = {
       controls.target.lerpVectors(camTween.fromAt, camTween.toAt, e);
       if (camTween.t === 1) camTween = null;
     }
-    if (state.cam === "stern" && !camTween && !shownLuna) {
-      shownLuna = true;
-      const n = $("notice"); n.textContent = "Found them: Luna on the motor, Indi on the boat."; n.hidden = false;
-      setTimeout(() => { n.hidden = true; }, 3800);
+    if (state.cam === "names" && !camTween && !foundNames) {
+      foundNames = true;
+      const n = $("notice"); n.textContent = `Found them: ${info.eggs}.`; n.hidden = false;
+      clearTimeout(n._t); n._t = setTimeout(() => { n.hidden = true; }, 4200);
     }
     sky.position.copy(camera.position);
     controls.update();
@@ -602,9 +680,9 @@ const INFO = {
   }
 
   resize();
-  camera.position.copy(framedEye(CAMS.orbit));
   applySky();
-  select("speedboat");
+  const first = location.hash.slice(1);
+  select(DATA.vehicles[first] ? first : rows.find(i => i.ready).id);
   requestAnimationFrame(frame);
 })();
 </script>

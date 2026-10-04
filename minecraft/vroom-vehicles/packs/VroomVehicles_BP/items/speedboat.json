@@ -3,13 +3,23 @@
   "minecraft:item": {
     "description": {
       "identifier": "vroom:speedboat",
-      "menu_category": { "category": "items" }
+      "menu_category": {
+        "category": "items"
+      }
     },
     "components": {
-      "minecraft:icon": { "textures": { "default": "vroom_speedboat" } },
-      "minecraft:display_name": { "value": "Speedboat" },
+      "minecraft:icon": {
+        "textures": {
+          "default": "vroom_speedboat"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "Speedboat"
+      },
       "minecraft:max_stack_size": 1,
-      "minecraft:entity_placer": { "entity": "vroom:speedboat" }
+      "minecraft:entity_placer": {
+        "entity": "vroom:speedboat"
+      }
     }
   }
 }

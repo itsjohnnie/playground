@@ -2,6 +2,8 @@
   "resource_pack_name": "vroom",
   "texture_name": "atlas.items",
   "texture_data": {
-    "vroom_speedboat": { "textures": "textures/items/speedboat" }
+    "vroom_speedboat": {
+      "textures": "textures/items/speedboat"
+    }
   }
 }

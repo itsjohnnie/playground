@@ -3,8 +3,17 @@
   "render_controllers": {
     "controller.render.vroom.vehicle": {
       "geometry": "Geometry.default",
-      "materials": [{ "*": "Material.default" }, { "glass*": "Material.glass" }],
-      "textures": ["Texture.default"]
+      "materials": [
+        {
+          "*": "Material.default"
+        },
+        {
+          "glass*": "Material.glass"
+        }
+      ],
+      "textures": [
+        "Texture.default"
+      ]
     }
   }
 }

@@ -3,17 +3,37 @@
   "minecraft:client_entity": {
     "description": {
       "identifier": "vroom:speedboat",
-      "materials": { "default": "entity_alphatest", "glass": "entity_alphablend" },
-      "textures": { "default": "textures/entity/speedboat" },
-      "geometry": { "default": "geometry.vroom.speedboat" },
-      "scripts": {
-        "initialize": ["variable.prop = 0.0;"],
-        "pre_animation": ["variable.prop = variable.prop + query.ground_speed * 25.0;"],
-        "animate": ["drive"]
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
       },
-      "animations": { "drive": "animation.vroom.speedboat.drive" },
-      "render_controllers": ["controller.render.vroom.vehicle"],
-      "spawn_egg": { "base_color": "#F2F2EE", "overlay_color": "#24365E" }
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.speedboat"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#F2F2EE",
+        "overlay_color": "#24365E"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ],
+        "initialize": [
+          "v.a1 = 0;"
+        ],
+        "pre_animation": [
+          "v.a1 = v.a1 + q.delta_time * ((q.has_rider ? 0 : 0) + q.ground_speed * 1500);"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.speedboat.drive"
+      }
     }
   }
 }
