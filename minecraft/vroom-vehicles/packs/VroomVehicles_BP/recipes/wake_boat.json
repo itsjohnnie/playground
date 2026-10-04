@@ -1,0 +1,33 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shapeless": {
+    "description": {
+      "identifier": "vroom:wake_boat"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "unlock": [
+      {
+        "item": "minecraft:acacia_boat"
+      }
+    ],
+    "ingredients": [
+      {
+        "item": "minecraft:acacia_boat"
+      },
+      {
+        "item": "minecraft:iron_ingot"
+      },
+      {
+        "item": "minecraft:purple_dye"
+      },
+      {
+        "item": "minecraft:lead"
+      }
+    ],
+    "result": {
+      "item": "vroom:wake_boat"
+    }
+  }
+}

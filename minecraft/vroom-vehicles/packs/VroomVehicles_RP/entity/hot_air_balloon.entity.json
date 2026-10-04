@@ -1,0 +1,33 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:hot_air_balloon",
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.hot_air_balloon"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#E8483C",
+        "overlay_color": "#F6C431"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.hot_air_balloon.drive"
+      }
+    }
+  }
+}

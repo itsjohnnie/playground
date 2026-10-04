@@ -1,0 +1,41 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "vroom:go_kart"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "unlock": [
+      {
+        "item": "minecraft:redstone"
+      }
+    ],
+    "pattern": [
+      "R W",
+      "IMI",
+      "K K"
+    ],
+    "key": {
+      "R": {
+        "item": "minecraft:redstone"
+      },
+      "W": {
+        "item": "minecraft:red_wool"
+      },
+      "I": {
+        "item": "minecraft:iron_ingot"
+      },
+      "M": {
+        "item": "minecraft:minecart"
+      },
+      "K": {
+        "item": "minecraft:black_dye"
+      }
+    },
+    "result": {
+      "item": "vroom:go_kart"
+    }
+  }
+}

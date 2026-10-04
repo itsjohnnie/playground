@@ -1,0 +1,66 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.vroom.farm_tractor.drive": {
+      "loop": true,
+      "bones": {
+        "wheel_fl": {
+          "rotation": [
+            "v.a0",
+            0,
+            0
+          ]
+        },
+        "wheel_fr": {
+          "rotation": [
+            "v.a1",
+            0,
+            0
+          ]
+        },
+        "wheel_rl": {
+          "rotation": [
+            "v.a2",
+            0,
+            0
+          ]
+        },
+        "wheel_rr": {
+          "rotation": [
+            "v.a3",
+            0,
+            0
+          ]
+        },
+        "steer_fl": {
+          "rotation": [
+            0,
+            "math.clamp(q.yaw_speed * 0.25, -25, 25)",
+            0
+          ]
+        },
+        "steer_fr": {
+          "rotation": [
+            0,
+            "math.clamp(q.yaw_speed * 0.25, -25, 25)",
+            0
+          ]
+        },
+        "rotor": {
+          "rotation": [
+            "v.a6",
+            0,
+            0
+          ]
+        },
+        "body": {
+          "rotation": [
+            0,
+            0,
+            "math.clamp(q.yaw_speed * 0.03, -2, 2)"
+          ]
+        }
+      }
+    }
+  }
+}

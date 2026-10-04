@@ -1,0 +1,25 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "vroom:wake_boat",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "vroom_wake_boat"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "Wake Boat"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:entity_placer": {
+        "entity": "vroom:wake_boat"
+      }
+    }
+  }
+}

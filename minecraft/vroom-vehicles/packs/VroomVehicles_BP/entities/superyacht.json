@@ -1,0 +1,166 @@
+{
+  "format_version": "1.20.80",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "vroom:superyacht",
+      "is_spawnable": true,
+      "is_summonable": true,
+      "is_experimental": false
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [
+          "vroom_vehicle",
+          "water",
+          "inanimate"
+        ]
+      },
+      "minecraft:collision_box": {
+        "width": 2.5,
+        "height": 3.0
+      },
+      "minecraft:health": {
+        "value": 40,
+        "max": 40
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          {
+            "on_damage": {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "player"
+              }
+            },
+            "deals_damage": true
+          },
+          {
+            "cause": "all",
+            "deals_damage": false
+          }
+        ]
+      },
+      "minecraft:loot": {
+        "table": "loot_tables/entities/superyacht.json"
+      },
+      "minecraft:physics": {},
+      "minecraft:pushable": {
+        "is_pushable": true,
+        "is_pushable_by_piston": true
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      },
+      "minecraft:breathable": {
+        "breathes_air": true,
+        "breathes_water": true
+      },
+      "minecraft:fire_immune": {},
+      "minecraft:rideable": {
+        "seat_count": 8,
+        "controlling_seat": 0,
+        "family_types": [
+          "player"
+        ],
+        "interact_text": "action.interact.ride.boat",
+        "crouching_skip_interact": true,
+        "pull_in_entities": false,
+        "seats": [
+          {
+            "position": [
+              -0.375,
+              3.462,
+              2.062
+            ],
+            "min_rider_count": 0,
+            "max_rider_count": 8
+          },
+          {
+            "position": [
+              0.375,
+              3.462,
+              2.062
+            ],
+            "min_rider_count": 1,
+            "max_rider_count": 8
+          },
+          {
+            "position": [
+              0.5,
+              1.525,
+              -5.625
+            ],
+            "min_rider_count": 2,
+            "max_rider_count": 8
+          },
+          {
+            "position": [
+              -0.5,
+              1.525,
+              -5.625
+            ],
+            "min_rider_count": 3,
+            "max_rider_count": 8
+          },
+          {
+            "position": [
+              0.5,
+              2.55,
+              -4.344
+            ],
+            "min_rider_count": 4,
+            "max_rider_count": 8
+          },
+          {
+            "position": [
+              -0.5,
+              2.55,
+              -4.344
+            ],
+            "min_rider_count": 5,
+            "max_rider_count": 8
+          },
+          {
+            "position": [
+              0.438,
+              3.331,
+              -3.5
+            ],
+            "min_rider_count": 6,
+            "max_rider_count": 8
+          },
+          {
+            "position": [
+              -0.438,
+              3.331,
+              -3.5
+            ],
+            "min_rider_count": 7,
+            "max_rider_count": 8
+          }
+        ]
+      },
+      "minecraft:movement": {
+        "value": 0.24
+      },
+      "minecraft:movement.basic": {},
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:buoyant": {
+        "base_buoyancy": 1.0,
+        "apply_gravity": true,
+        "simulate_waves": true,
+        "big_wave_probability": 0.03,
+        "big_wave_speed": 10.0,
+        "liquid_blocks": [
+          "minecraft:water",
+          "minecraft:flowing_water"
+        ]
+      },
+      "minecraft:water_movement": {
+        "drag_factor": 0.3
+      },
+      "minecraft:input_ground_controlled": {}
+    }
+  }
+}

@@ -6,7 +6,7 @@ materials instead of flat colours: gloss gradients, teak planks, tufted
 leather, chrome reflections, tinted glass, tyre tread.
 
 All vehicles share one texture, the atlas: a grid of 64x64 material tiles,
-four across and as many rows as needed, drawn at 2x for detail. A vehicle
+sixteen across and as many rows as needed, drawn at 2x for detail. A vehicle
 can add its own paints with `paint()`, `material()` or `decal()` when its
 module is imported; UVs are worked out only when `geometry()` exports a
 model, once every material is known.
@@ -19,7 +19,7 @@ import random
 import struct
 import zlib
 
-COLS = 4
+COLS = 16
 SCALE = 2
 TILE = 64
 _rand = random.Random(7)
@@ -452,8 +452,12 @@ def cylinder(material, center, radius, length, axis="x", n=4, **kw):
     cx, cy, cz = center
     t = radius * math.tan(math.pi / (2 * n))
     out = []
+    base = length
     for k in range(n):
         a = 180 * k / n
+        # stagger the end faces a hair apart, so overlapping pieces never
+        # fight over the same plane (that flickers on wheel sidewalls)
+        length = base + 0.04 * k
         if axis == "x":
             b = box(material, cx - length / 2, cy - t, cz - radius, cx + length / 2, cy + t, cz + radius,
                     rotation=(a, 0, 0), pivot=center, **kw)

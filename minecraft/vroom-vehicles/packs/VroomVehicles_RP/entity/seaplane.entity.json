@@ -1,0 +1,39 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:seaplane",
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.seaplane"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#F4F4EF",
+        "overlay_color": "#2457A8"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ],
+        "initialize": [
+          "v.a0 = 0;"
+        ],
+        "pre_animation": [
+          "v.a0 = v.a0 + q.delta_time * ((q.has_rider ? 1800 : 0) + q.ground_speed * 0);"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.seaplane.drive"
+      }
+    }
+  }
+}

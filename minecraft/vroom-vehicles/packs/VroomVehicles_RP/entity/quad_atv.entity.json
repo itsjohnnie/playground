@@ -1,0 +1,45 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:quad_atv",
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.quad_atv"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#6BD43C",
+        "overlay_color": "#1C1D20"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ],
+        "initialize": [
+          "v.a3 = 0;",
+          "v.a4 = 0;",
+          "v.a5 = 0;",
+          "v.a6 = 0;"
+        ],
+        "pre_animation": [
+          "v.a3 = v.a3 + q.ground_speed * q.delta_time * 176.29;",
+          "v.a4 = v.a4 + q.ground_speed * q.delta_time * 176.29;",
+          "v.a5 = v.a5 + q.ground_speed * q.delta_time * 169.77;",
+          "v.a6 = v.a6 + q.ground_speed * q.delta_time * 169.77;"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.quad_atv.drive"
+      }
+    }
+  }
+}

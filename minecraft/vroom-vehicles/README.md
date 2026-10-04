@@ -1,21 +1,22 @@
 # Vroom! Vehicles
 
-A Minecraft **Bedrock** add-on for Looney & Indy. They play on Nintendo Switch.
-First up is a **speedboat**: a white runabout with a teak deck, cream leather
-seats, a wrap-around windshield and a big outboard motor whose propeller spins
-as you drive. The bow lifts when you speed up. The fleet below plans out all
-20 vehicles.
+A Minecraft **Bedrock** add-on for Looney & Indy, who play on Nintendo
+Switch: **20 realistic vehicles**, from a jet ski and a go-kart up to a
+14-block superyacht, a helicopter and a seaplane. Boats float, cars and
+bikes drive and climb blocks, aircraft fly where the pilot looks, the
+Cyber Plow clears the way and the tractor tills fields.
 
-**Easter eggs:** every vehicle hides the names **LUNA** and **INDI**
-somewhere. On the speedboat, LUNA is on the back of the motor and INDI is
-the boat's name on the transom.
+![The whole fleet](previews/fleet.png)
 
-![Speedboat preview](previews/speedboat-2.png)
+**Easter eggs:** every vehicle carries one name, **LUNA** or **INDI**,
+alternating down the fleet. Number plates, tail numbers, boat names, the
+balloon's envelope: each vehicle's `eggs` line says where.
 
-**Vroom Garage** (`garage/index.html`) is a live 3D previewer. It shows each
-finished vehicle on animated water with a sky, clouds and a wake. You can
-change the throttle, the camera, the time of day, and switch between a
-realistic look and the in-game look. Open it in any browser.
+**Vroom Garage** (`garage/index.html`) is a live 3D previewer: every vehicle
+on animated water, a road or a runway, with sky, clouds and a wake. Change
+the throttle (wheels roll, rotors spin, bikes lean, aircraft climb), the
+camera (Names jumps to the hidden name), the time of day, and switch
+between a realistic look and the in-game look.
 
 ## The Switch catch (and the way around it)
 
@@ -43,15 +44,15 @@ need them, and Realms work best without them.
    both packs.
 2. Create or edit a world → *Behavior Packs* → activate **Vroom! Vehicles**.
    The look-and-sound resource pack turns on with it.
-3. Get a speedboat:
-   - **Creative:** search the inventory for "Speedboat", or use its spawn egg.
-   - **Survival:** craft **Oak Boat + Iron Ingot + Redstone**.
-4. Place it next to the water and push it in, or place it on a block at the
-   shoreline. Tap or right-click it to hop in. It seats three: a driver, a
-   passenger and one on the back bench.
-5. **Steering:** move forward, and the boat goes where you look.
-   **Getting out:** sneak.
-   **Picking it up:** punch it a few times and it drops the Speedboat item.
+3. Get a vehicle:
+   - **Creative:** every vehicle is in the inventory (search its name), with
+     a spawn egg too.
+   - **Survival:** each has its own crafting recipe; the Garage shows it.
+4. Place it (boats at the water's edge) and tap or right-click it to get in.
+   The first rider drives; friends fill the other seats.
+5. **Steering:** move forward and it goes where you look. In aircraft, look
+   up to climb. **Getting out:** sneak.
+   **Picking it up:** punch it a few times and it drops its item.
 
 ## Make changes
 
@@ -104,8 +105,7 @@ Otherwise devices that already have the old version won't take the new one.
 
 ## The fleet: 20 vehicles
 
-Lengths are in blocks (one block is one metre). We build them roughly in this
-order. Each one teaches the add-on a new trick, and the next ones reuse it.
+All built. Lengths are in blocks (one block is one metre).
 
 | Class | Vehicle | Length | New trick |
 |---|---|---|---|

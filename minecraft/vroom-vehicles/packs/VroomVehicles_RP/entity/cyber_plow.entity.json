@@ -1,0 +1,45 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:cyber_plow",
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.cyber_plow"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#C9CED3",
+        "overlay_color": "#FFC21A"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ],
+        "initialize": [
+          "v.a3 = 0;",
+          "v.a4 = 0;",
+          "v.a5 = 0;",
+          "v.a6 = 0;"
+        ],
+        "pre_animation": [
+          "v.a3 = v.a3 + q.ground_speed * q.delta_time * 147.86;",
+          "v.a4 = v.a4 + q.ground_speed * q.delta_time * 147.86;",
+          "v.a5 = v.a5 + q.ground_speed * q.delta_time * 147.86;",
+          "v.a6 = v.a6 + q.ground_speed * q.delta_time * 147.86;"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.cyber_plow.drive"
+      }
+    }
+  }
+}

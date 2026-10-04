@@ -1,0 +1,25 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "vroom:monster_truck",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "vroom_monster_truck"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "Monster Truck"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:entity_placer": {
+        "entity": "vroom:monster_truck"
+      }
+    }
+  }
+}

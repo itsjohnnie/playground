@@ -1,0 +1,45 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:monster_truck",
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.monster_truck"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#6A2BD9",
+        "overlay_color": "#FFB21E"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ],
+        "initialize": [
+          "v.a4 = 0;",
+          "v.a5 = 0;",
+          "v.a6 = 0;",
+          "v.a7 = 0;"
+        ],
+        "pre_animation": [
+          "v.a4 = v.a4 + q.ground_speed * q.delta_time * 53.93;",
+          "v.a5 = v.a5 + q.ground_speed * q.delta_time * 53.93;",
+          "v.a6 = v.a6 + q.ground_speed * q.delta_time * 53.93;",
+          "v.a7 = v.a7 + q.ground_speed * q.delta_time * 53.93;"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.monster_truck.drive"
+      }
+    }
+  }
+}

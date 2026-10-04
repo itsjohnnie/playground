@@ -1,0 +1,25 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "vroom:offroad_4x4",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "vroom_offroad_4x4"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "Off-Roader"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:entity_placer": {
+        "entity": "vroom:offroad_4x4"
+      }
+    }
+  }
+}

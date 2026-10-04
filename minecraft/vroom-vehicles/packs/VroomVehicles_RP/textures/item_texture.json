@@ -4,6 +4,63 @@
   "texture_data": {
     "vroom_speedboat": {
       "textures": "textures/items/speedboat"
+    },
+    "vroom_jet_ski": {
+      "textures": "textures/items/jet_ski"
+    },
+    "vroom_center_console": {
+      "textures": "textures/items/center_console"
+    },
+    "vroom_offshore_racer": {
+      "textures": "textures/items/offshore_racer"
+    },
+    "vroom_wake_boat": {
+      "textures": "textures/items/wake_boat"
+    },
+    "vroom_pontoon": {
+      "textures": "textures/items/pontoon"
+    },
+    "vroom_power_catamaran": {
+      "textures": "textures/items/power_catamaran"
+    },
+    "vroom_superyacht": {
+      "textures": "textures/items/superyacht"
+    },
+    "vroom_go_kart": {
+      "textures": "textures/items/go_kart"
+    },
+    "vroom_quad_atv": {
+      "textures": "textures/items/quad_atv"
+    },
+    "vroom_dirt_bike": {
+      "textures": "textures/items/dirt_bike"
+    },
+    "vroom_sport_bike": {
+      "textures": "textures/items/sport_bike"
+    },
+    "vroom_supercar": {
+      "textures": "textures/items/supercar"
+    },
+    "vroom_offroad_4x4": {
+      "textures": "textures/items/offroad_4x4"
+    },
+    "vroom_farm_tractor": {
+      "textures": "textures/items/farm_tractor"
+    },
+    "vroom_cyber_plow": {
+      "textures": "textures/items/cyber_plow"
+    },
+    "vroom_monster_truck": {
+      "textures": "textures/items/monster_truck"
+    },
+    "vroom_hot_air_balloon": {
+      "textures": "textures/items/hot_air_balloon"
+    },
+    "vroom_helicopter": {
+      "textures": "textures/items/helicopter"
+    },
+    "vroom_seaplane": {
+      "textures": "textures/items/seaplane"
     }
   }
 }

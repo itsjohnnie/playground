@@ -1,0 +1,111 @@
+{
+  "format_version": "1.20.80",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "vroom:cyber_plow",
+      "is_spawnable": true,
+      "is_summonable": true,
+      "is_experimental": false
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [
+          "vroom_vehicle",
+          "land",
+          "inanimate"
+        ]
+      },
+      "minecraft:collision_box": {
+        "width": 2.5,
+        "height": 1.5
+      },
+      "minecraft:health": {
+        "value": 24,
+        "max": 24
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          {
+            "on_damage": {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "player"
+              }
+            },
+            "deals_damage": true
+          },
+          {
+            "cause": "all",
+            "deals_damage": false
+          }
+        ]
+      },
+      "minecraft:loot": {
+        "table": "loot_tables/entities/cyber_plow.json"
+      },
+      "minecraft:physics": {},
+      "minecraft:pushable": {
+        "is_pushable": true,
+        "is_pushable_by_piston": true
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      },
+      "minecraft:breathable": {
+        "breathes_air": true,
+        "breathes_water": true
+      },
+      "minecraft:fire_immune": {},
+      "minecraft:rideable": {
+        "seat_count": 3,
+        "controlling_seat": 0,
+        "family_types": [
+          "player"
+        ],
+        "interact_text": "action.interact.mount",
+        "crouching_skip_interact": true,
+        "pull_in_entities": false,
+        "seats": [
+          {
+            "position": [
+              -0.294,
+              0.319,
+              0.125
+            ],
+            "min_rider_count": 0,
+            "max_rider_count": 3
+          },
+          {
+            "position": [
+              0.294,
+              0.319,
+              0.125
+            ],
+            "min_rider_count": 1,
+            "max_rider_count": 3
+          },
+          {
+            "position": [
+              0.0,
+              0.325,
+              -0.35
+            ],
+            "min_rider_count": 2,
+            "max_rider_count": 3
+          }
+        ]
+      },
+      "minecraft:movement": {
+        "value": 0.26
+      },
+      "minecraft:movement.basic": {},
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:input_ground_controlled": {},
+      "minecraft:variable_max_auto_step": {
+        "base_value": 1.0625,
+        "jump_prevented_value": 1.0625
+      }
+    }
+  }
+}

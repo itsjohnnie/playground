@@ -1,0 +1,59 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.vroom.monster_truck.drive": {
+      "loop": true,
+      "bones": {
+        "body": {
+          "rotation": [
+            "0.8 * math.sin(q.life_time * 1.2 * 360)",
+            0,
+            "math.clamp(q.yaw_speed * 0.08, -6, 6)"
+          ]
+        },
+        "steer_fl": {
+          "rotation": [
+            0,
+            "math.clamp(q.yaw_speed * 0.25, -25, 25)",
+            0
+          ]
+        },
+        "steer_fr": {
+          "rotation": [
+            0,
+            "math.clamp(q.yaw_speed * 0.25, -25, 25)",
+            0
+          ]
+        },
+        "wheel_fl": {
+          "rotation": [
+            "v.a4",
+            0,
+            0
+          ]
+        },
+        "wheel_fr": {
+          "rotation": [
+            "v.a5",
+            0,
+            0
+          ]
+        },
+        "wheel_rl": {
+          "rotation": [
+            "v.a6",
+            0,
+            0
+          ]
+        },
+        "wheel_rr": {
+          "rotation": [
+            "v.a7",
+            0,
+            0
+          ]
+        }
+      }
+    }
+  }
+}

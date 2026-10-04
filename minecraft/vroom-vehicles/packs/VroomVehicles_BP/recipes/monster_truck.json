@@ -1,0 +1,35 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "vroom:monster_truck"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "unlock": [
+      {
+        "item": "minecraft:slime_block"
+      }
+    ],
+    "pattern": [
+      "S S",
+      "IRI",
+      "S S"
+    ],
+    "key": {
+      "S": {
+        "item": "minecraft:slime_block"
+      },
+      "I": {
+        "item": "minecraft:iron_block"
+      },
+      "R": {
+        "item": "minecraft:redstone_block"
+      }
+    },
+    "result": {
+      "item": "vroom:monster_truck"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:jet_ski",
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.jet_ski"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#8BE02C",
+        "overlay_color": "#1A1C20"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ],
+        "initialize": [
+          "v.a3 = 0;"
+        ],
+        "pre_animation": [
+          "v.a3 = v.a3 + q.delta_time * ((q.has_rider ? 360 : 90) + q.ground_speed * 2200);"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.jet_ski.drive"
+      }
+    }
+  }
+}

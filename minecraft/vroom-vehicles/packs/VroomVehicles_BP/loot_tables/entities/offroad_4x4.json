@@ -1,0 +1,14 @@
+{
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "vroom:offroad_4x4",
+          "weight": 1
+        }
+      ]
+    }
+  ]
+}

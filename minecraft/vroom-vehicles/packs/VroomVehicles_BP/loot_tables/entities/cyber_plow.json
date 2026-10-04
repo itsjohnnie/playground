@@ -1,0 +1,14 @@
+{
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "item",
+          "name": "vroom:cyber_plow",
+          "weight": 1
+        }
+      ]
+    }
+  ]
+}

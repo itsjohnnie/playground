@@ -1,0 +1,38 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "vroom:superyacht"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "unlock": [
+      {
+        "item": "minecraft:gold_block"
+      }
+    ],
+    "pattern": [
+      "GDG",
+      "QBQ",
+      "GDG"
+    ],
+    "key": {
+      "G": {
+        "item": "minecraft:gold_block"
+      },
+      "D": {
+        "item": "minecraft:diamond_block"
+      },
+      "Q": {
+        "item": "minecraft:quartz_block"
+      },
+      "B": {
+        "item": "minecraft:oak_boat"
+      }
+    },
+    "result": {
+      "item": "vroom:superyacht"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.vroom.hot_air_balloon.drive": {
+      "loop": true,
+      "bones": {
+        "flame": {
+          "rotation": [
+            "5 * math.sin(q.life_time * 3.3 * 360)",
+            "30 * math.sin(q.life_time * 2.3 * 360)",
+            "7 * math.sin(q.life_time * 4.1 * 360)"
+          ]
+        }
+      }
+    }
+  }
+}

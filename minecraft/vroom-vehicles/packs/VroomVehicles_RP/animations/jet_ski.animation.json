@@ -1,0 +1,31 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "animation.vroom.jet_ski.drive": {
+      "loop": true,
+      "bones": {
+        "root": {
+          "rotation": [
+            "-math.clamp((q.ground_speed - 0) * 1, 0, 6)",
+            0,
+            "math.clamp(q.yaw_speed * 0.08, -12, 12)"
+          ]
+        },
+        "bars": {
+          "rotation": [
+            0,
+            "math.clamp(q.yaw_speed * 0.15, -20, 20)",
+            0
+          ]
+        },
+        "impeller": {
+          "rotation": [
+            0,
+            0,
+            "v.a3"
+          ]
+        }
+      }
+    }
+  }
+}

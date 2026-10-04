@@ -1,0 +1,47 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:farm_tractor",
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.farm_tractor"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#2F8A2E",
+        "overlay_color": "#FFD21F"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ],
+        "initialize": [
+          "v.a0 = 0;",
+          "v.a1 = 0;",
+          "v.a2 = 0;",
+          "v.a3 = 0;",
+          "v.a6 = 0;"
+        ],
+        "pre_animation": [
+          "v.a0 = v.a0 + q.ground_speed * q.delta_time * 183.35;",
+          "v.a1 = v.a1 + q.ground_speed * q.delta_time * 183.35;",
+          "v.a2 = v.a2 + q.ground_speed * q.delta_time * 91.67;",
+          "v.a3 = v.a3 + q.ground_speed * q.delta_time * 91.67;",
+          "v.a6 = v.a6 + q.ground_speed * q.delta_time * 763.94;"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.farm_tractor.drive"
+      }
+    }
+  }
+}

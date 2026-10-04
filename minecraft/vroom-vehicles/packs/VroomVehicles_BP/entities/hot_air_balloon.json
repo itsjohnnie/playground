@@ -1,0 +1,186 @@
+{
+  "format_version": "1.20.80",
+  "minecraft:entity": {
+    "description": {
+      "identifier": "vroom:hot_air_balloon",
+      "is_spawnable": true,
+      "is_summonable": true,
+      "is_experimental": false
+    },
+    "components": {
+      "minecraft:type_family": {
+        "family": [
+          "vroom_vehicle",
+          "air",
+          "inanimate"
+        ]
+      },
+      "minecraft:collision_box": {
+        "width": 1.4,
+        "height": 1.0
+      },
+      "minecraft:health": {
+        "value": 10,
+        "max": 10
+      },
+      "minecraft:damage_sensor": {
+        "triggers": [
+          {
+            "on_damage": {
+              "filters": {
+                "test": "is_family",
+                "subject": "other",
+                "value": "player"
+              }
+            },
+            "deals_damage": true
+          },
+          {
+            "cause": "all",
+            "deals_damage": false
+          }
+        ]
+      },
+      "minecraft:loot": {
+        "table": "loot_tables/entities/hot_air_balloon.json"
+      },
+      "minecraft:physics": {},
+      "minecraft:pushable": {
+        "is_pushable": true,
+        "is_pushable_by_piston": true
+      },
+      "minecraft:knockback_resistance": {
+        "value": 1.0
+      },
+      "minecraft:breathable": {
+        "breathes_air": true,
+        "breathes_water": true
+      },
+      "minecraft:fire_immune": {},
+      "minecraft:rideable": {
+        "seat_count": 4,
+        "controlling_seat": 0,
+        "family_types": [
+          "player"
+        ],
+        "interact_text": "action.interact.mount",
+        "crouching_skip_interact": true,
+        "pull_in_entities": false,
+        "seats": [
+          {
+            "position": [
+              0.281,
+              0.019,
+              0.281
+            ],
+            "min_rider_count": 0,
+            "max_rider_count": 4
+          },
+          {
+            "position": [
+              -0.281,
+              0.019,
+              0.281
+            ],
+            "min_rider_count": 1,
+            "max_rider_count": 4
+          },
+          {
+            "position": [
+              0.281,
+              0.019,
+              -0.281
+            ],
+            "min_rider_count": 2,
+            "max_rider_count": 4
+          },
+          {
+            "position": [
+              -0.281,
+              0.019,
+              -0.281
+            ],
+            "min_rider_count": 3,
+            "max_rider_count": 4
+          }
+        ]
+      },
+      "minecraft:movement": {
+        "value": 0.04
+      },
+      "minecraft:movement.basic": {},
+      "minecraft:conditional_bandwidth_optimization": {},
+      "minecraft:environment_sensor": {
+        "triggers": [
+          {
+            "filters": {
+              "all_of": [
+                {
+                  "test": "rider_count",
+                  "subject": "self",
+                  "operator": ">",
+                  "value": 0
+                },
+                {
+                  "test": "has_component",
+                  "subject": "self",
+                  "value": "minecraft:input_air_controlled",
+                  "operator": "!="
+                }
+              ]
+            },
+            "event": "vroom:take_off"
+          },
+          {
+            "filters": {
+              "all_of": [
+                {
+                  "test": "rider_count",
+                  "subject": "self",
+                  "operator": "==",
+                  "value": 0
+                },
+                {
+                  "test": "has_component",
+                  "subject": "self",
+                  "value": "minecraft:input_air_controlled"
+                }
+              ]
+            },
+            "event": "vroom:land"
+          }
+        ]
+      }
+    },
+    "component_groups": {
+      "vroom:flying": {
+        "minecraft:physics": {
+          "has_gravity": false
+        },
+        "minecraft:input_air_controlled": {},
+        "minecraft:flying_speed": {
+          "value": 0.04
+        },
+        "minecraft:movement": {
+          "value": 0.04
+        }
+      }
+    },
+    "events": {
+      "vroom:take_off": {
+        "add": {
+          "component_groups": [
+            "vroom:flying"
+          ]
+        }
+      },
+      "vroom:land": {
+        "remove": {
+          "component_groups": [
+            "vroom:flying"
+          ]
+        }
+      }
+    }
+  }
+}

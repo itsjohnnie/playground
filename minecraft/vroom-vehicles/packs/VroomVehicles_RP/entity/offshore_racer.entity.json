@@ -1,0 +1,41 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:offshore_racer",
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.offshore_racer"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#FFD21F",
+        "overlay_color": "#14151A"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ],
+        "initialize": [
+          "v.a1 = 0;",
+          "v.a2 = 0;"
+        ],
+        "pre_animation": [
+          "v.a1 = v.a1 + q.delta_time * ((q.has_rider ? 0 : 0) + q.ground_speed * 1900);",
+          "v.a2 = v.a2 + q.delta_time * ((q.has_rider ? 0 : 0) + q.ground_speed * -1900);"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.offshore_racer.drive"
+      }
+    }
+  }
+}

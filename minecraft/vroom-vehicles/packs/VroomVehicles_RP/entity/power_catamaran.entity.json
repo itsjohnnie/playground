@@ -1,0 +1,41 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:power_catamaran",
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.power_catamaran"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#5A626C",
+        "overlay_color": "#F2F2EE"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ],
+        "initialize": [
+          "v.a1 = 0;",
+          "v.a2 = 0;"
+        ],
+        "pre_animation": [
+          "v.a1 = v.a1 + q.delta_time * ((q.has_rider ? 0 : 0) + q.ground_speed * 1500);",
+          "v.a2 = v.a2 + q.delta_time * ((q.has_rider ? 0 : 0) + q.ground_speed * 1500);"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.power_catamaran.drive"
+      }
+    }
+  }
+}

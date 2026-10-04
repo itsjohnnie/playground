@@ -1,0 +1,39 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:client_entity": {
+    "description": {
+      "identifier": "vroom:wake_boat",
+      "materials": {
+        "default": "entity_alphatest",
+        "glass": "entity_alphablend"
+      },
+      "textures": {
+        "default": "textures/entity/vroom_atlas"
+      },
+      "geometry": {
+        "default": "geometry.vroom.wake_boat"
+      },
+      "render_controllers": [
+        "controller.render.vroom.vehicle"
+      ],
+      "spawn_egg": {
+        "base_color": "#6B2FC0",
+        "overlay_color": "#F6F6F2"
+      },
+      "scripts": {
+        "animate": [
+          "drive"
+        ],
+        "initialize": [
+          "v.a1 = 0;"
+        ],
+        "pre_animation": [
+          "v.a1 = v.a1 + q.delta_time * ((q.has_rider ? 0 : 0) + q.ground_speed * 1400);"
+        ]
+      },
+      "animations": {
+        "drive": "animation.vroom.wake_boat.drive"
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "format_version": "1.21.40",
+  "minecraft:item": {
+    "description": {
+      "identifier": "vroom:sport_bike",
+      "menu_category": {
+        "category": "items"
+      }
+    },
+    "components": {
+      "minecraft:icon": {
+        "textures": {
+          "default": "vroom_sport_bike"
+        }
+      },
+      "minecraft:display_name": {
+        "value": "Sport Bike"
+      },
+      "minecraft:max_stack_size": 1,
+      "minecraft:entity_placer": {
+        "entity": "vroom:sport_bike"
+      }
+    }
+  }
+}

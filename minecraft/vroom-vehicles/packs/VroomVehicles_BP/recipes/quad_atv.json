@@ -1,0 +1,44 @@
+{
+  "format_version": "1.20.10",
+  "minecraft:recipe_shaped": {
+    "description": {
+      "identifier": "vroom:quad_atv"
+    },
+    "tags": [
+      "crafting_table"
+    ],
+    "unlock": [
+      {
+        "item": "minecraft:lime_dye"
+      }
+    ],
+    "pattern": [
+      "LSL",
+      "IRI",
+      "BMB"
+    ],
+    "key": {
+      "L": {
+        "item": "minecraft:lime_dye"
+      },
+      "S": {
+        "item": "minecraft:saddle"
+      },
+      "I": {
+        "item": "minecraft:iron_ingot"
+      },
+      "R": {
+        "item": "minecraft:redstone"
+      },
+      "B": {
+        "item": "minecraft:iron_bars"
+      },
+      "M": {
+        "item": "minecraft:minecart"
+      }
+    },
+    "result": {
+      "item": "vroom:quad_atv"
+    }
+  }
+}

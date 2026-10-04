@@ -251,7 +251,7 @@ const DATA = /*__DATA__*/;
     day: {
       top: 0x2f78d0, horizon: 0xbfdcf2, sun: [0.45, 0.62, -0.64], sunColor: 0xfff2d6,
       deep: 0x0b3d63, shallow: 0x1f7aa6, cloudLit: 0xffffff, cloudShade: 0xb7c6d6,
-      light: 2.4, hemi: [0xcfe6ff, 0x1d4566, 0.75],
+      light: 1.9, hemi: [0xcfe6ff, 0x1d4566, 0.6],
     },
     sunset: {
       top: 0x26386e, horizon: 0xf2a477, sun: [-0.62, 0.11, -0.78], sunColor: 0xffb26b,
@@ -548,7 +548,7 @@ const DATA = /*__DATA__*/;
     $("kind").textContent = `${info.kind} · ${MODE_WORD[info.mode]}`;
     const specs = [...info.specs, ["Recipe", info.recipe_text]];
     $("specs").innerHTML = specs.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
-    $("hint").innerHTML = "LUNA and INDI are hidden on it. Tap <b>Names</b> to find them.";
+    $("hint").innerHTML = "LUNA or INDI is hidden on it. Tap <b>Names</b> to find out which.";
     for (const b of document.querySelectorAll("button.row")) b.setAttribute("aria-current", String(b.dataset.id === id));
     loadVehicle(id);
     state.cam = "orbit"; pressGroup("cams", "cam", "orbit");
@@ -670,7 +670,7 @@ const DATA = /*__DATA__*/;
     }
     if (state.cam === "names" && !camTween && !foundNames) {
       foundNames = true;
-      const n = $("notice"); n.textContent = `Found them: ${info.eggs}.`; n.hidden = false;
+      const n = $("notice"); n.textContent = `Found it: ${info.eggs}.`; n.hidden = false;
       clearTimeout(n._t); n._t = setTimeout(() => { n.hidden = true; }, 4200);
     }
     sky.position.copy(camera.position);
