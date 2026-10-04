@@ -4,10 +4,10 @@
     "name": "Vroom! Vehicles (look & sound)",
     "description": "Models and paint jobs for Vroom! Vehicles",
     "uuid": "766a1000-56e4-4988-a99d-4727f7a22c3e",
-    "version": [1, 0, 0],
+    "version": [1, 1, 0],
     "min_engine_version": [1, 21, 0]
   },
   "modules": [
-    { "type": "resources", "uuid": "c06e1ef4-9f68-4902-8c2b-ccb031e30a75", "version": [1, 0, 0] }
+    { "type": "resources", "uuid": "c06e1ef4-9f68-4902-8c2b-ccb031e30a75", "version": [1, 1, 0] }
   ]
 }
