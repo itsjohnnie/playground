@@ -23,10 +23,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', 'assets', 'chars')
 
 BUILDS = {
-    'slim':    dict(sh=0.205, arm=0.05,  leg=0.07,  chest=0.175, waist=0.14,  hip=0.155, depth=0.125, belly=0,     scale=1,    head=0.31),
+    'slim':    dict(sh=0.195, arm=0.046, leg=0.065, chest=0.165, waist=0.13,  hip=0.15,  depth=0.12,  belly=0,     scale=1,    head=0.31),
     'average': dict(sh=0.22,  arm=0.056, leg=0.076, chest=0.19,  waist=0.158, hip=0.165, depth=0.135, belly=0.012, scale=1.02, head=0.31),
-    'muscle':  dict(sh=0.265, arm=0.07,  leg=0.086, chest=0.235, waist=0.165, hip=0.172, depth=0.155, belly=0,     scale=1.06, head=0.3),
-    'heavy':   dict(sh=0.24,  arm=0.064, leg=0.084, chest=0.215, waist=0.2,   hip=0.19,  depth=0.165, belly=0.045, scale=1.04, head=0.31),
+    'muscle':  dict(sh=0.3,   arm=0.088, leg=0.096, chest=0.27,  waist=0.175, hip=0.18,  depth=0.18,  belly=0,     scale=1.06, head=0.3),
+    'heavy':   dict(sh=0.25,  arm=0.07,  leg=0.09,  chest=0.235, waist=0.24,  hip=0.21,  depth=0.19,  belly=0.075, scale=1.04, head=0.31),
     'giant':   dict(sh=0.31,  arm=0.092, leg=0.105, chest=0.29,  waist=0.225, hip=0.215, depth=0.2,   belly=0.03,  scale=1.3,  head=0.29),
 }
 THIGH, SHIN, FOOT = 0.41, 0.4, 0.085
@@ -275,6 +275,12 @@ def sculpt_fn(h):
         if z < 0: Z -= 0.05 * gauss(y, 0.25, 0.35) * -z
         if y > 0: Y *= h['forehead']
         Y *= 1 - 0.05 * smooth(0.7, 1, y)
+        if y < 0: Y *= h.get('faceLen', 1)
+        dome = h.get('dome', 0)
+        if dome:
+            Y += dome * 0.4 * smooth(0.05, 1, y); X *= 1 + dome * 0.12 * smooth(0, 0.8, y); Z *= 1 + dome * 0.08 * smooth(0, 0.8, y)
+        jowl = h.get('jowl', 0)
+        if jowl and x != 0: X += math.copysign(1, x) * jowl * gauss(y, -0.55, 0.2) * smooth(-0.4, 0.3, z)
         return Vector((X, Y + h['H'] * 0.94, Z))
     return f
 
@@ -344,7 +350,7 @@ def head_landmarks(defn, R):
 
 
 def build_head(defn, b):
-    R = b['head']
+    R = b['head'] * defn['head'].get('size', 1)
     h = defn['head']
     skin = col(defn['skin'])
     f, at, eyes, eR, eg, mw, lip, sm, mc = head_landmarks(defn, R)

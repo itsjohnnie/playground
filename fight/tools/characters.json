@@ -8,33 +8,35 @@
   "build": "slim",
   "head": {
    "W": 0.9,
-   "H": 1.08,
+   "H": 1,
    "D": 0.98,
    "jaw": 0.86,
    "chin": 0.06,
    "chinLen": 0.04,
-   "cheek": 0.03,
+   "cheek": 0.05,
    "brow": 0.05,
    "socket": 0.07,
    "muzzle": 0.04,
    "forehead": 1.04,
    "nose": {
-    "len": 1,
+    "len": 1.1,
     "w": 1,
-    "tip": 1.05,
+    "tip": 1.15,
     "bridge": 1
    },
    "eye": {
-    "size": 1,
+    "size": 1.15,
     "gap": 1,
     "iris": "#4a3524"
    },
    "mouth": {
-    "w": 1,
+    "w": 0.95,
     "lip": 0.9,
     "smile": 0.25
    },
-   "ear": 1
+   "ear": 1,
+   "size": 1.05,
+   "faceLen": 0.95
   },
   "brows": {
    "color": "#2a1d16",
@@ -84,7 +86,11 @@
   "quips": [
    "Dario calls that hit \"a well-scoped intervention\"!",
    "He red-teamed that punch before throwing it!"
-  ]
+  ],
+  "height": 0.98,
+  "face": {
+   "lid": 0.12
+  }
  },
  {
   "id": "sam",
@@ -94,34 +100,36 @@
   "skin": "#f0cdb0",
   "build": "slim",
   "head": {
-   "W": 0.9,
-   "H": 1.06,
+   "W": 0.88,
+   "H": 1,
    "D": 0.96,
-   "jaw": 0.82,
-   "chin": 0.03,
-   "chinLen": 0.02,
+   "jaw": 0.72,
+   "chin": -0.02,
+   "chinLen": -0.04,
    "cheek": 0.02,
    "brow": 0.03,
    "socket": 0.05,
    "muzzle": 0.03,
    "forehead": 1.02,
    "nose": {
-    "len": 0.95,
-    "w": 0.95,
-    "tip": 1,
+    "len": 0.75,
+    "w": 0.85,
+    "tip": 0.85,
     "bridge": 0.9
    },
    "eye": {
-    "size": 1.45,
-    "gap": 1,
+    "size": 1.75,
+    "gap": 1.05,
     "iris": "#6a8aa0"
    },
    "mouth": {
-    "w": 0.85,
-    "lip": 0.85,
-    "smile": 0.1
+    "w": 0.7,
+    "lip": 0.75,
+    "smile": 0
    },
-   "ear": 1.05
+   "ear": 1.05,
+   "size": 0.98,
+   "faceLen": 0.82
   },
   "brows": {
    "color": "#4a3424",
@@ -167,7 +175,12 @@
   "quips": [
    "Sam says that hit felt like AGI internally!",
    "Sam is raising seven trillion in fist capital!"
-  ]
+  ],
+  "height": 0.93,
+  "face": {
+   "lid": -0.3,
+   "lower": -0.1
+  }
  },
  {
   "id": "satya",
@@ -177,34 +190,37 @@
   "skin": "#a87452",
   "build": "average",
   "head": {
-   "W": 0.9,
-   "H": 1.1,
+   "W": 0.92,
+   "H": 1.02,
    "D": 0.98,
-   "jaw": 0.8,
+   "jaw": 0.86,
    "chin": 0.05,
    "chinLen": 0.06,
-   "cheek": 0.04,
+   "cheek": 0.07,
    "brow": 0.04,
    "socket": 0.06,
    "muzzle": 0.04,
    "forehead": 1.06,
    "nose": {
-    "len": 1.1,
-    "w": 1.05,
-    "tip": 1.1,
+    "len": 1.2,
+    "w": 1.15,
+    "tip": 1.2,
     "bridge": 1.1
    },
    "eye": {
-    "size": 0.9,
+    "size": 0.85,
     "gap": 1,
     "iris": "#2a1a10"
    },
    "mouth": {
-    "w": 1,
+    "w": 1.15,
     "lip": 0.95,
-    "smile": 0.45
+    "smile": 0.95
    },
-   "ear": 1.1
+   "ear": 1.1,
+   "size": 1.02,
+   "dome": 0.35,
+   "faceLen": 1.05
   },
   "brows": {
    "color": "#2a2420",
@@ -255,7 +271,12 @@
   "quips": [
    "Satya just put that punch in the cloud!",
    "A Copilot for your face!"
-  ]
+  ],
+  "height": 1,
+  "face": {
+   "lid": 0.35,
+   "lower": 0.25
+  }
  },
  {
   "id": "rauch",
@@ -265,39 +286,41 @@
   "skin": "#e6bf9e",
   "build": "slim",
   "head": {
-   "W": 0.88,
-   "H": 1.1,
+   "W": 0.86,
+   "H": 1.12,
    "D": 0.98,
-   "jaw": 0.9,
+   "jaw": 0.95,
    "chin": 0.05,
    "chinLen": 0.05,
    "cheek": 0.04,
-   "brow": 0.06,
+   "brow": 0.1,
    "socket": 0.07,
    "muzzle": 0.03,
    "forehead": 1.03,
    "nose": {
-    "len": 1.3,
-    "w": 0.95,
-    "tip": 1.05,
-    "bridge": 1.2
+    "len": 1.6,
+    "w": 1,
+    "tip": 1,
+    "bridge": 1.5
    },
    "eye": {
-    "size": 0.95,
-    "gap": 1,
+    "size": 0.85,
+    "gap": 0.95,
     "iris": "#3a2a1a"
    },
    "mouth": {
-    "w": 1,
+    "w": 0.95,
     "lip": 0.85,
-    "smile": 0.2
+    "smile": 0.15
    },
-   "ear": 0.95
+   "ear": 0.95,
+   "size": 1,
+   "faceLen": 1.12
   },
   "brows": {
    "color": "#1e1814",
-   "thick": 1.15,
-   "arch": 0.1
+   "thick": 1.6,
+   "arch": 0.05
   },
   "hair": {
    "style": "swept",
@@ -339,7 +362,11 @@
   "quips": [
    "Rauch shipped that hit to the edge!",
    "Instant preview deployment of PAIN!"
-  ]
+  ],
+  "height": 1.02,
+  "face": {
+   "lid": 0.3
+  }
  },
  {
   "id": "theo",
@@ -349,7 +376,7 @@
   "skin": "#efc9aa",
   "build": "slim",
   "head": {
-   "W": 0.9,
+   "W": 0.88,
    "H": 1.08,
    "D": 0.96,
    "jaw": 0.84,
@@ -367,16 +394,18 @@
     "bridge": 1
    },
    "eye": {
-    "size": 1.1,
+    "size": 1.3,
     "gap": 1,
     "iris": "#5a7a4a"
    },
    "mouth": {
-    "w": 1.05,
+    "w": 1.2,
     "lip": 0.9,
-    "smile": 0.35
+    "smile": 0.7
    },
-   "ear": 1
+   "ear": 1,
+   "size": 1,
+   "faceLen": 1.05
   },
   "brows": {
    "color": "#6a4a2a",
@@ -423,7 +452,12 @@
   "quips": [
    "Theo is reacting to his own punch!",
    "That take was SCORCHING!"
-  ]
+  ],
+  "height": 1,
+  "face": {
+   "lid": -0.15,
+   "open": 0.25
+  }
  },
  {
   "id": "boris",
@@ -433,13 +467,13 @@
   "skin": "#ebc6a6",
   "build": "slim",
   "head": {
-   "W": 0.9,
-   "H": 1.08,
+   "W": 0.93,
+   "H": 1.02,
    "D": 0.98,
    "jaw": 0.88,
    "chin": 0.04,
    "chinLen": 0.03,
-   "cheek": 0.03,
+   "cheek": 0.06,
    "brow": 0.05,
    "socket": 0.06,
    "muzzle": 0.04,
@@ -451,16 +485,19 @@
     "bridge": 1
    },
    "eye": {
-    "size": 1,
+    "size": 1.05,
     "gap": 1,
     "iris": "#3a4a5a"
    },
    "mouth": {
-    "w": 1,
+    "w": 1.05,
     "lip": 0.85,
-    "smile": 0.3
+    "smile": 0.55
    },
-   "ear": 1
+   "ear": 1,
+   "size": 1,
+   "dome": 0.12,
+   "faceLen": 0.98
   },
   "brows": {
    "color": "#2a201a",
@@ -509,7 +546,11 @@
   "quips": [
    "Boris just /compact-ed his opponent!",
    "That hit was written entirely by an agent!"
-  ]
+  ],
+  "height": 1,
+  "face": {
+   "lid": 0.1
+  }
  },
  {
   "id": "gates",
@@ -519,34 +560,37 @@
   "skin": "#f0cbb0",
   "build": "average",
   "head": {
-   "W": 0.92,
-   "H": 1.04,
+   "W": 1,
+   "H": 1,
    "D": 0.98,
    "jaw": 0.86,
    "chin": 0.03,
    "chinLen": 0,
-   "cheek": 0.05,
+   "cheek": 0.08,
    "brow": 0.03,
    "socket": 0.05,
    "muzzle": 0.05,
    "forehead": 1,
    "nose": {
-    "len": 1,
-    "w": 1.1,
-    "tip": 1.35,
+    "len": 1.15,
+    "w": 1.25,
+    "tip": 1.45,
     "bridge": 0.95
    },
    "eye": {
-    "size": 0.95,
+    "size": 0.9,
     "gap": 1,
     "iris": "#5a7a9a"
    },
    "mouth": {
-    "w": 1.25,
+    "w": 1.45,
     "lip": 0.85,
-    "smile": 0.95
+    "smile": 1.15
    },
-   "ear": 1.1
+   "ear": 1.1,
+   "size": 1.06,
+   "faceLen": 1,
+   "jowl": 0.07
   },
   "brows": {
    "color": "#9a8070",
@@ -556,7 +600,8 @@
   "hair": {
    "style": "sidepart",
    "color": "#b09a84",
-   "color2": "#d0c0b0"
+   "color2": "#d0c0b0",
+   "fringe": 1
   },
   "facial": {},
   "glasses": {
@@ -596,7 +641,12 @@
   "quips": [
    "Gates just installed a critical update on that jaw!",
    "It is now safe to turn off his opponent!"
-  ]
+  ],
+  "height": 0.98,
+  "face": {
+   "lid": 0.05,
+   "open": 0.2
+  }
  },
  {
   "id": "zuck",
@@ -606,34 +656,36 @@
   "skin": "#f6dccb",
   "build": "muscle",
   "head": {
-   "W": 0.9,
-   "H": 1.04,
+   "W": 0.96,
+   "H": 0.94,
    "D": 0.96,
-   "jaw": 0.84,
+   "jaw": 0.82,
    "chin": 0.03,
    "chinLen": 0.02,
    "cheek": 0.02,
    "brow": 0.02,
    "socket": 0.05,
    "muzzle": 0.03,
-   "forehead": 1,
+   "forehead": 0.95,
    "nose": {
-    "len": 0.9,
-    "w": 0.95,
-    "tip": 0.95,
+    "len": 0.8,
+    "w": 0.9,
+    "tip": 0.85,
     "bridge": 0.9
    },
    "eye": {
-    "size": 1.42,
-    "gap": 1,
+    "size": 1.7,
+    "gap": 1.02,
     "iris": "#5a7aa0"
    },
    "mouth": {
-    "w": 0.95,
-    "lip": 0.85,
-    "smile": 0.4
+    "w": 0.85,
+    "lip": 0.75,
+    "smile": 0.1
    },
-   "ear": 1.3
+   "ear": 1.6,
+   "size": 0.9,
+   "faceLen": 0.88
   },
   "brows": {
    "color": "#6a4a30",
@@ -679,7 +731,12 @@
   "quips": [
    "Zuck is moving fast and breaking faces!",
    "That is a very human punch from Zuck!"
-  ]
+  ],
+  "height": 0.92,
+  "face": {
+   "lid": -0.32,
+   "lower": -0.12
+  }
  },
  {
   "id": "jensen",
@@ -689,34 +746,36 @@
   "skin": "#e6c4a0",
   "build": "average",
   "head": {
-   "W": 0.94,
-   "H": 1.02,
+   "W": 1.06,
+   "H": 0.96,
    "D": 0.96,
-   "jaw": 0.9,
+   "jaw": 0.95,
    "chin": 0.03,
    "chinLen": 0.02,
-   "cheek": 0.06,
+   "cheek": 0.14,
    "brow": 0.03,
    "socket": 0.05,
    "muzzle": 0.04,
    "forehead": 1,
    "nose": {
     "len": 0.9,
-    "w": 1.1,
-    "tip": 1.05,
+    "w": 1.25,
+    "tip": 1.15,
     "bridge": 0.85
    },
    "eye": {
-    "size": 0.78,
+    "size": 0.75,
     "gap": 1.05,
     "iris": "#2a1a10"
    },
    "mouth": {
-    "w": 1.3,
+    "w": 1.5,
     "lip": 0.9,
-    "smile": 1.05
+    "smile": 1.4
    },
-   "ear": 1
+   "ear": 1,
+   "size": 1.02,
+   "faceLen": 0.9
   },
   "brows": {
    "color": "#2a2622",
@@ -761,7 +820,13 @@
   "quips": [
    "Jensen is shipping punches by the rack!",
    "That leather jacket is not even creased!"
-  ]
+  ],
+  "height": 0.95,
+  "face": {
+   "lid": 0.3,
+   "lower": 0.3,
+   "open": 0.15
+  }
  },
  {
   "id": "elon",
@@ -772,33 +837,35 @@
   "build": "heavy",
   "head": {
    "W": 0.92,
-   "H": 1.17,
+   "H": 1.14,
    "D": 1,
-   "jaw": 1,
-   "chin": 0.13,
-   "chinLen": 0.12,
-   "cheek": 0.03,
+   "jaw": 1.08,
+   "chin": 0.2,
+   "chinLen": 0.18,
+   "cheek": 0.02,
    "brow": 0.05,
    "socket": 0.07,
    "muzzle": 0.04,
    "forehead": 1.03,
    "nose": {
-    "len": 1,
-    "w": 1.05,
+    "len": 1.1,
+    "w": 1,
     "tip": 1,
     "bridge": 1
    },
    "eye": {
-    "size": 0.9,
-    "gap": 1,
+    "size": 0.95,
+    "gap": 0.95,
     "iris": "#5a6a5a"
    },
    "mouth": {
-    "w": 1,
-    "lip": 0.8,
-    "smile": 0.2
+    "w": 0.95,
+    "lip": 0.7,
+    "smile": -0.1
    },
-   "ear": 1
+   "ear": 1,
+   "size": 1,
+   "faceLen": 1.22
   },
   "brows": {
    "color": "#3a2c22",
@@ -845,7 +912,11 @@
   "quips": [
    "Elon says that punch will be fully self-driving next quarter!",
    "Rapid unscheduled disassembly!"
-  ]
+  ],
+  "height": 1.12,
+  "face": {
+   "lid": 0.25
+  }
  },
  {
   "id": "bezos",
@@ -856,34 +927,38 @@
   "build": "muscle",
   "shiny": true,
   "head": {
-   "W": 0.98,
+   "W": 1,
    "H": 0.98,
    "D": 0.98,
    "jaw": 0.92,
    "chin": 0.03,
    "chinLen": 0.02,
-   "cheek": 0.05,
+   "cheek": 0.08,
    "brow": 0.05,
    "socket": 0.06,
    "muzzle": 0.05,
-   "forehead": 1.08,
+   "forehead": 1.1,
    "nose": {
-    "len": 0.95,
-    "w": 1.1,
-    "tip": 1.1,
+    "len": 1,
+    "w": 1.2,
+    "tip": 1.25,
     "bridge": 0.9
    },
    "eye": {
-    "size": 0.95,
-    "gap": 0.95,
+    "size": 0.9,
+    "gap": 0.92,
     "iris": "#4a5a6a"
    },
    "mouth": {
-    "w": 1.25,
-    "lip": 0.9,
-    "smile": 1.15
+    "w": 1.45,
+    "lip": 0.95,
+    "smile": 1.5
    },
-   "ear": 1.05
+   "ear": 1.05,
+   "size": 1.12,
+   "dome": 0.65,
+   "faceLen": 0.95,
+   "jowl": 0.04
   },
   "brows": {
    "color": "#4a3c34",
@@ -931,7 +1006,13 @@
   "quips": [
    "That hit came with free returns!",
    "Bezos just delivered that right to the face!"
-  ]
+  ],
+  "height": 1,
+  "face": {
+   "lid": 0.25,
+   "lower": 0.2,
+   "open": 0.55
+  }
  },
  {
   "id": "cook",
@@ -941,11 +1022,11 @@
   "skin": "#f0cdb4",
   "build": "slim",
   "head": {
-   "W": 0.83,
-   "H": 1.13,
+   "W": 0.8,
+   "H": 1.2,
    "D": 0.96,
-   "jaw": 0.84,
-   "chin": 0.05,
+   "jaw": 0.8,
+   "chin": 0.08,
    "chinLen": 0.05,
    "cheek": 0.02,
    "brow": 0.04,
@@ -953,22 +1034,24 @@
    "muzzle": 0.03,
    "forehead": 1.04,
    "nose": {
-    "len": 1.05,
-    "w": 0.95,
+    "len": 1.2,
+    "w": 0.9,
     "tip": 1,
     "bridge": 1.05
    },
    "eye": {
-    "size": 0.9,
+    "size": 0.85,
     "gap": 1,
     "iris": "#4a5a6a"
    },
    "mouth": {
-    "w": 0.95,
-    "lip": 0.8,
-    "smile": 0.45
+    "w": 0.85,
+    "lip": 0.7,
+    "smile": 0.5
    },
-   "ear": 1.05
+   "ear": 1.05,
+   "size": 0.95,
+   "faceLen": 1.2
   },
   "brows": {
    "color": "#8a8682",
@@ -1019,7 +1102,11 @@
   "quips": [
    "Cook just announced a thinner opponent!",
    "Courage!"
-  ]
+  ],
+  "height": 1.1,
+  "face": {
+   "lid": 0.2
+  }
  },
  {
   "id": "agi",

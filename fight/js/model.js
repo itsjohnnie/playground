@@ -11,10 +11,10 @@ import { JOINTS } from './poses.js';
 import { getCharacter } from './assets.js';
 
 const BUILDS = {
-  slim:    { sh: 0.205, arm: 0.05,  leg: 0.07,  chest: 0.175, waist: 0.14,  hip: 0.155, depth: 0.125, belly: 0,    scale: 1,    head: 0.31 },
+  slim:    { sh: 0.195, arm: 0.046, leg: 0.065, chest: 0.165, waist: 0.13,  hip: 0.15,  depth: 0.12,  belly: 0,    scale: 1,    head: 0.31 },
   average: { sh: 0.22,  arm: 0.056, leg: 0.076, chest: 0.19,  waist: 0.158, hip: 0.165, depth: 0.135, belly: 0.012, scale: 1.02, head: 0.31 },
-  muscle:  { sh: 0.265, arm: 0.07,  leg: 0.086, chest: 0.235, waist: 0.165, hip: 0.172, depth: 0.155, belly: 0,    scale: 1.06, head: 0.3 },
-  heavy:   { sh: 0.24,  arm: 0.064, leg: 0.084, chest: 0.215, waist: 0.2,   hip: 0.19,  depth: 0.165, belly: 0.045, scale: 1.04, head: 0.31 },
+  muscle:  { sh: 0.3,   arm: 0.088, leg: 0.096, chest: 0.27,  waist: 0.175, hip: 0.18,  depth: 0.18,  belly: 0,    scale: 1.06, head: 0.3 },
+  heavy:   { sh: 0.25,  arm: 0.07,  leg: 0.09,  chest: 0.235, waist: 0.24,  hip: 0.21,  depth: 0.19,  belly: 0.075, scale: 1.04, head: 0.31 },
   giant:   { sh: 0.31,  arm: 0.092, leg: 0.105, chest: 0.29,  waist: 0.225, hip: 0.215, depth: 0.2,   belly: 0.03, scale: 1.3,  head: 0.29 },
 };
 
@@ -48,6 +48,12 @@ function sculptFn(h) {
     if (z < 0) Z -= 0.05 * gauss(y, 0.25, 0.35) * -z;
     if (y > 0) Y *= h.forehead;
     Y *= 1 - 0.05 * smooth(0.7, 1, y);
+    // Caricature controls: a longer lower face, a domed skull, jowls.
+    if (y < 0) Y *= h.faceLen ?? 1;
+    const dome = h.dome ?? 0;
+    if (dome) { Y += dome * 0.4 * smooth(0.05, 1, y); X *= 1 + dome * 0.12 * smooth(0, 0.8, y); Z *= 1 + dome * 0.08 * smooth(0, 0.8, y); }
+    const jowl = h.jowl ?? 0;
+    if (jowl && x !== 0) X += Math.sign(x) * jowl * gauss(y, -0.55, 0.2) * smooth(-0.4, 0.3, z);
     return new THREE.Vector3(X, Y + h.H * 0.94, Z);
   };
 }
@@ -670,7 +676,8 @@ export function buildFighterModel(def) {
   // Neck column hidden inside the body's neck (the taffy finisher stretches it).
   J.neck.add(capsule(0.05 * (b.arm > 0.06 ? 1.25 : 1), 0.05, def.skin, { centered: true, pos: [0, 0.04, -0.006] }));
 
-  const face = buildHead(J.head, def, b.head, asset?.head);
+  const face = buildHead(J.head, def, b.head * (def.head.size ?? 1), asset?.head);
+  face.bias = def.face || {};
   for (const s of ['L', 'R']) setGrip(hands[s], 'fist');
 
   // Wardrobe details on the chest bone.
@@ -713,10 +720,11 @@ export function buildFighterModel(def) {
     for (let i = 0; i < 5; i++) C2.add(box(0.3, 0.008, 0.01, '#6a6e78', { pos: [0, -0.15 + i * 0.035 - (i > 2 ? 0.15 : 0), chestZ * 0.97] }));
   }
 
-  g.scale.setScalar(b.scale);
+  const build = { ...b, scale: b.scale * (def.height ?? 1) };
+  g.scale.setScalar(build.scale);
   prepareBoil(g);
   setExpression(face, 'grit');
-  return { group: g, joints: J, face, build: b, hipY, hands };
+  return { group: g, joints: J, face, build, hipY, hands };
 }
 
 // ------------------------------------------------------------------ posing
@@ -769,6 +777,11 @@ export function setExpression(face, expr) {
     case 'blink': lidU = 1.25; lidL = 0.5; break;
     default: break;
   }
+  // Each character's resting face: heavier lids, a wider grin, a dropped jaw.
+  const bias = face.bias || {};
+  lidU += bias.lid ?? 0;
+  lidL += bias.lower ?? 0;
+  open = Math.max(open, bias.open ?? 0);
   for (const e of face.eyes) {
     // Lid shells rotate down over the ball (x tilts toward +z).
     e.upper.rotation.x = -0.62 + lidU * 1.15;

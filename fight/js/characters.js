@@ -255,3 +255,34 @@ export const ANNOUNCERS = {
 export function charById(id) {
   return ROSTER.find((c) => c.id === id) || (id === BOSS.id ? BOSS : ROSTER[0]);
 }
+
+// Caricature pass: each person gets one or two exaggerated "hooks" (the
+// way a caricaturist draws) plus their own head size, height and resting
+// face. Merged over the base definitions above.
+//   head.size   skull scale      head.dome  tall domed crown
+//   head.faceLen lower-face length  head.jowl  fleshy jaw sides
+//   face.lid    resting lid droop (+ sleepy/smiling, − wide-eyed)
+//   face.open   resting jaw drop  height  whole-body scale
+const CARICATURE = {
+  dario: { height: 0.98, head: { size: 1.05, W: 0.9, H: 1.0, faceLen: 0.95, cheek: 0.05, eye: { size: 1.15 }, nose: { len: 1.1, tip: 1.15 }, mouth: { w: 0.95, smile: 0.25 } }, face: { lid: 0.12 }, hair: { style: 'curly' } },
+  sam: { height: 0.93, head: { size: 0.98, W: 0.88, H: 1.0, faceLen: 0.82, chin: -0.02, chinLen: -0.04, jaw: 0.72, eye: { size: 1.75, gap: 1.05 }, nose: { len: 0.75, w: 0.85, tip: 0.85 }, mouth: { w: 0.7, lip: 0.75, smile: 0.0 } }, face: { lid: -0.3, lower: -0.1 } },
+  satya: { height: 1.0, head: { size: 1.02, dome: 0.35, W: 0.92, H: 1.02, faceLen: 1.05, jaw: 0.86, cheek: 0.07, nose: { len: 1.2, w: 1.15, tip: 1.2 }, eye: { size: 0.85 }, mouth: { w: 1.15, smile: 0.95 } }, face: { lid: 0.35, lower: 0.25 } },
+  rauch: { height: 1.02, head: { size: 1.0, W: 0.86, H: 1.12, faceLen: 1.12, jaw: 0.95, brow: 0.1, nose: { len: 1.6, w: 1.0, tip: 1.0, bridge: 1.5 }, eye: { size: 0.85, gap: 0.95 }, mouth: { w: 0.95, smile: 0.15 } }, face: { lid: 0.3 }, brows: { thick: 1.6, arch: 0.05 } },
+  theo: { height: 1.0, head: { size: 1.0, W: 0.88, H: 1.08, faceLen: 1.05, eye: { size: 1.3 }, mouth: { w: 1.2, smile: 0.7 } }, face: { lid: -0.15, open: 0.25 } },
+  boris: { height: 1.0, head: { size: 1.0, dome: 0.12, W: 0.93, H: 1.02, faceLen: 0.98, cheek: 0.06, eye: { size: 1.05 }, mouth: { w: 1.05, smile: 0.55 } }, face: { lid: 0.1 } },
+  gates: { height: 0.98, head: { size: 1.06, W: 1.0, H: 1.0, faceLen: 1.0, jowl: 0.07, cheek: 0.08, nose: { len: 1.15, w: 1.25, tip: 1.45 }, eye: { size: 0.9 }, mouth: { w: 1.45, lip: 0.85, smile: 1.15 } }, face: { lid: 0.05, open: 0.2 }, hair: { fringe: 1 } },
+  zuck: { height: 0.92, head: { size: 0.9, W: 0.96, H: 0.94, faceLen: 0.88, forehead: 0.95, jaw: 0.82, eye: { size: 1.7, gap: 1.02 }, ear: 1.6, nose: { len: 0.8, w: 0.9, tip: 0.85 }, mouth: { w: 0.85, lip: 0.75, smile: 0.1 } }, face: { lid: -0.32, lower: -0.12 } },
+  jensen: { height: 0.95, head: { size: 1.02, W: 1.06, H: 0.96, faceLen: 0.9, cheek: 0.14, jaw: 0.95, eye: { size: 0.75 }, nose: { len: 0.9, w: 1.25, tip: 1.15 }, mouth: { w: 1.5, lip: 0.9, smile: 1.4 } }, face: { lid: 0.3, lower: 0.3, open: 0.15 } },
+  elon: { height: 1.12, head: { size: 1.0, W: 0.92, H: 1.14, faceLen: 1.22, jaw: 1.08, chin: 0.2, chinLen: 0.18, cheek: 0.02, nose: { len: 1.1, w: 1.0 }, eye: { size: 0.95, gap: 0.95 }, mouth: { w: 0.95, lip: 0.7, smile: -0.1 } }, face: { lid: 0.25 } },
+  bezos: { height: 1.0, head: { size: 1.12, dome: 0.65, W: 1.0, H: 0.98, faceLen: 0.95, jowl: 0.04, cheek: 0.08, forehead: 1.1, nose: { len: 1.0, w: 1.2, tip: 1.25 }, eye: { size: 0.9, gap: 0.92 }, mouth: { w: 1.45, lip: 0.95, smile: 1.5 } }, face: { lid: 0.25, lower: 0.2, open: 0.55 } },
+  cook: { height: 1.1, head: { size: 0.95, W: 0.8, H: 1.2, faceLen: 1.2, jaw: 0.8, chin: 0.08, nose: { len: 1.2, w: 0.9 }, eye: { size: 0.85 }, mouth: { w: 0.85, lip: 0.7, smile: 0.5 } }, face: { lid: 0.2 } },
+};
+
+function deepMerge(base, over) {
+  for (const [k, v] of Object.entries(over)) {
+    if (v && typeof v === 'object' && !Array.isArray(v) && base[k] && typeof base[k] === 'object') deepMerge(base[k], v);
+    else base[k] = v;
+  }
+  return base;
+}
+for (const c of ROSTER) if (CARICATURE[c.id]) deepMerge(c, CARICATURE[c.id]);
