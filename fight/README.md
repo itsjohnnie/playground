@@ -55,7 +55,7 @@ js/
   crew.js        referee AI (shadowing, counts, getting flattened) + commentators
   weapons.js     pick-up weapons and special-move projectiles
   particles.js   clay chunks, teeth, sweat, shockwaves, dizzy stars, confetti
-  finishers.js   eight scripted Clay Time finishers
+  finishers.js   nine scripted Clay Time finishers (incl. the Same-Day Delivery box)
   camera.js      isometric tracking camera, shake, cinematic shots
   ai.js          CPU state machine (Easy / Normal / Hard)
   input.js       keyboard + Gamepad API
