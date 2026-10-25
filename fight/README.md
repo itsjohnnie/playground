@@ -1,18 +1,22 @@
-# Celebrity Claymatch
+# Silicon Valley Claymatch
 
-A browser claymation celebrity wrestling brawler in the spirit of the 2003
-*Celebrity Deathmatch* game. It has an isometric broadcast camera, stop-motion
-clay puppets, eight original parody celebrities, a referee, two commentators,
-weapons, finishers and instant replays. Every model, texture and sound is
+A browser claymation wrestling brawler in the spirit of the 2003
+*Celebrity Deathmatch* game, starring clay caricatures of tech figures (for
+parody): Dario Amodei, Sam Altman, Satya Nadella, Guillermo Rauch, Theo Browne,
+Boris Cherny, Bill Gates, Mark Zuckerberg, Jensen Huang, Elon Musk, Jeff Bezos
+and Tim Cook, with "The AGI" as the tournament boss. It has an isometric
+broadcast camera, stop-motion skinned puppets, a referee, two commentators,
+weapons, pyro, finishers and instant replays. Every model, texture and sound is
 generated in code.
 
-**Run it:** serve the repo root with any static server and open `/deathmatch/`.
+**Run it:** serve the repo root with any static server and open `/fight/`.
 
 ```sh
-python3 -m http.server 8000   # then http://localhost:8000/deathmatch/
+python3 -m http.server 8000   # then http://localhost:8000/fight/
 ```
 
-There's no build step and no install. Three.js r185 is vendored in `lib/`.
+There's no build step and no install. Three.js r185 (plus its bloom
+post-processing and geometry utils) is vendored in `lib/`.
 
 ## Controls
 
@@ -43,7 +47,7 @@ In 1P mode the player can use either key set.
 ```
 js/
   clay.js        plasticine material, procedural normal map, lumpy geometry, boil jitter
-  model.js       puppet builder: joint hierarchy + caricature head, hair, faces
+  model.js       puppet builder: bone skeleton, skinned torso/limbs, sculpted heads, hair, hands
   characters.js  roster, boss, commentators
   poses.js       pose library and move timelines (degrees per joint)
   fighter.js     combat state machine, grapples, throws, specials, damage, replay snapshots
@@ -60,9 +64,34 @@ js/
   ui.js / game.js  screens, HUD, match flow, replays, tournament
 ```
 
+### The puppets
+
+Each fighter is a real skeleton of `THREE.Bone`s: pelvis, spine, chest, neck,
+head, collarbones, shoulders, elbows, wrists, hips, knees and ankles. The torso,
+both arms and both legs are each **one continuous `SkinnedMesh`**. They are
+lofted tubes with a superellipse cross-section that follows a per-build profile
+(hips, waist, chest, shoulders, biceps, forearms, calves). Vertices are weighted
+across neighbouring bones with a smoothstep around every joint, so waists,
+elbows and knees bend without seams. Clothing is painted into vertex colours:
+sleeves, V-necks, open jackets, belts and cuffs.
+
+Heads start as a dense sphere and are **sculpted** per character: skull
+proportions, jaw width, chin length and projection, cheekbones, brow ridge,
+eye sockets and muzzle. Eyeballs sit in the sockets with lids that open and
+close for expressions. Brows, lips and moustaches are tapered tubes of clay,
+and noses are a lathed bridge plus tip and nostrils. The mouth has a hinged jaw
+over curved rows of teeth: the show's gritted grimace. Hair, stubble and beards
+are shells grown off the skull surface that thin out and sink under the skin at
+their edges, so hairlines are smooth curves. Sculpted strands, curls or ridges
+are added on top. Hands have two-segment fingers and a thumb that pose into
+fists, open palms, points, horns and grips.
+
+Collarbones shrug automatically when an arm goes overhead, and spine and neck
+bends are spread over two bones each.
+
 ### The clay shader
 
-Every puppet part uses `MeshStandardMaterial` with three additions:
+Every clay part uses `MeshStandardMaterial` with three additions:
 
 1. **A procedural normal map.** It's built once on a canvas from a height field:
    layered value noise for soft lumps, rings of concentric ridges for fingerprints,
@@ -75,16 +104,19 @@ Every puppet part uses `MeshStandardMaterial` with three additions:
    that scatters through the edges of real plasticine.
 
 The lighting copies a miniature studio set: one warm key spotlight that casts
-soft shadows, a cool rim light from behind, a blue wash on the crowd, ACES tone
-mapping, a CSS vignette and animated film grain.
+shadows, cyan and magenta rim lights from behind, and a blue wash on the crowd.
+An HDR bloom pass picks up the LED ribbon boards, apron light strips, post
+lamps, pyro and glowing specials. A CSS vignette and animated film grain sit on
+top.
 
 ### The stop-motion system
 
 The game logic, camera and particles run at 60 fps. The **puppets only update at
 12 fps**. On each tick a fighter samples its pose timeline, applies it to the
-joints and snaps its visible position to the logic position, so it holds each pose
-like a hand-animated frame. Each tick also "boils" every clay part: a tiny random
-offset and a scale wobble from a stored base transform. That gives the
+bones and snaps its visible position to the logic position, so it holds each pose
+like a hand-animated frame. Each tick also "boils" the puppet: every joint gets
+a sub-degree random nudge, and every rigid clay part gets a tiny offset and
+scale wobble from its stored base transform. That gives the
 hand-touched shimmer of real stop-motion. Hits add squash-and-stretch, persistent
 dents and bruises (dark clay blobs pressed onto the head). Heavy hits can also
 knock a head clean off until the fighter gets up.

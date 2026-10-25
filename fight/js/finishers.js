@@ -1,7 +1,7 @@
 // Cinematic "Clay Time" finishers. Each one takes over both puppets with a
 // scripted timeline and a camera move, and leaves something silly behind.
 import * as THREE from 'three';
-import { sphere, clayMat, prepareBoil, boil } from './clay.js';
+import { sphere, box, clayMat, prepareBoil, boil } from './clay.js';
 import { POSES } from './poses.js';
 import { blend } from './fighter.js';
 import { RING_H } from './fighter.js';
@@ -61,7 +61,7 @@ export class FinisherRunner {
     this.props = [];
     this.done = false;
     this.events = new Set();
-    this.dur = { explode: 4.6, pancake: 4.2, pretzel: 4.6, headpop: 5.2, launch: 5.4, stretch: 4.6, ball: 5.2, melt: 5.0 }[this.type] || 4.5;
+    this.dur = { box: 5.2, explode: 4.6, pancake: 4.2, pretzel: 4.6, headpop: 5.2, launch: 5.4, stretch: 4.6, ball: 5.2, melt: 5.0 }[this.type] || 4.5;
     this.setup();
   }
 
@@ -278,20 +278,20 @@ export class FinisherRunner {
     }
     const start = this.startA || (this.startA = a.pos.clone());
     if (t < 0.5) a.scriptPose = 'reach';
-    let L = 0.09;
+    let L = 0.07;
     if (t >= 0.5 && t < 2.6) {
       const k = easeOut(clamp((t - 0.5) / 1.8, 0, 1));
       a.scriptPose = 'hold';
       const back = 2.6 * k;
       a.pos.set(start.x - Math.sin(a.yaw) * back, 0, start.z - Math.cos(a.yaw) * back);
-      L = 0.09 + 1.0 + back;
+      L = 0.07 + 1.0 + back;
       v.scriptPose = { ...POSES.dizzy1, neck: [-80, 0, 0], spine: [20, 0, 0] };
       if (Math.floor(t * 5) !== this.lastTick) { this.lastTick = Math.floor(t * 5); game.audio.play('squish', 0.4); }
     }
     if (this.once('snap', 2.6)) { game.audio.play('rope'); game.audio.play('pop'); game.cam.shake(0.7); a.scriptPose = 'fly'; this.snapT = 0; }
     if (t >= 2.6) {
       const k = clamp((t - 2.6) / 0.35, 0, 1);
-      L = 0.09 + (1.0 + 2.6) * (1 - k) + Math.sin(k * Math.PI * 3) * 0.1 * (1 - k);
+      L = 0.07 + (1.0 + 2.6) * (1 - k) + Math.sin(k * Math.PI * 3) * 0.1 * (1 - k);
       v.scriptPose = t < 3.1 ? { ...POSES.hit2, neck: [-60, 0, 0] } : 'down';
       a.scriptPose = t < 3.2 ? 'sit' : 'raise';
       if (t > 3.1 && !this.fell) { this.fell = true; game.audio.play('slam'); }
@@ -343,6 +343,82 @@ export class FinisherRunner {
     if (t > 2.4) a.scriptPose = Math.floor(t * 2.5) % 2 ? 'raise' : 'raise2';
   }
 
+  // A delivery box drops on them, taped shut, then kicked across the arena.
+  box(t) {
+    const { a, v, game } = this;
+    a.scriptPose = t < 0.9 ? 'point' : t < 2.0 ? 'flex2' : t < 2.6 ? (t < 2.3 ? 'kickChamber' : 'kick') : 'raise';
+    const S = 1.25 * v.scale, H = 1.9 * v.scale, card = '#c89a62', dark = '#a87a46';
+    if (this.once('make', 0.5)) {
+      const g = new THREE.Group();
+      const walls = [[0, H / 2, S / 2, 0], [0, H / 2, -S / 2, 0], [S / 2, H / 2, 0, Math.PI / 2], [-S / 2, H / 2, 0, Math.PI / 2]];
+      for (const [x, y, z, ry] of walls) g.add(box(S, H, 0.05, card, { pos: [x, y, z], rot: [0, ry, 0], round: 0.1, bumps: 0.8 }));
+      this.flaps = [];
+      for (let i = 0; i < 4; i++) {
+        const piv = new THREE.Group();
+        const ang = (i * Math.PI) / 2;
+        piv.position.set(Math.sin(ang) * S / 2, H, Math.cos(ang) * S / 2);
+        piv.rotation.y = ang;
+        const f = box(S, S / 2, 0.04, i % 2 ? card : dark, { pos: [0, S / 4, 0], round: 0.1 });
+        piv.add(f);
+        piv.rotation.x = 0;
+        g.add(piv);
+        this.flaps.push(piv);
+      }
+      // Shipping label.
+      const c = document.createElement('canvas'); c.width = 256; c.height = 160;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#f4f0e6'; ctx.fillRect(0, 0, 256, 160);
+      ctx.fillStyle = '#1a1a1a'; ctx.font = '900 40px "Arial Black", Impact, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('SAME-DAY', 128, 64); ctx.font = '700 22px sans-serif'; ctx.fillText('FRAGILE · CLAY', 128, 110);
+      for (let i = 0; i < 30; i++) ctx.fillRect(30 + i * 6.5, 126, i % 3 ? 2 : 4, 22);
+      const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+      const label = new THREE.Mesh(new THREE.PlaneGeometry(S * 0.6, S * 0.38), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.8 }));
+      label.position.set(0, H * 0.55, S / 2 + 0.03);
+      g.add(label);
+      g.position.copy(v.pos).setY(v.groundY + 9);
+      g.rotation.y = a.yaw + Math.PI;
+      g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      prepareBoil(g);
+      game.scene.add(g);
+      this.props.push(g);
+      this.crate = g;
+      game.audio.play('whoosh');
+    }
+    if (this.crate && t < 1.1) this.crate.position.y = v.groundY + Math.max(0, 9 * (1 - (t - 0.5) / 0.6));
+    if (this.once('land', 1.1)) {
+      this.crate.position.y = v.groundY;
+      this.hide(v);
+      game.audio.play('slam'); game.audio.play('clang', 0.4);
+      game.cam.shake(1);
+      game.particles.dust(v.pos.clone().setY(v.groundY + 0.05));
+    }
+    if (this.flaps && t > 1.2 && t < 1.8) {
+      const k = Math.min(1, (t - 1.2) / 0.5);
+      this.flaps.forEach((f, i) => { f.rotation.x = -Math.max(0, Math.min(k * 4 - i * 0.6, 1)) * (Math.PI / 2); });
+      if (Math.floor(t * 8) !== this.lastTick) { this.lastTick = Math.floor(t * 8); game.audio.play('block', 0.5); }
+    }
+    if (this.once('tape', 1.85)) {
+      this.crate.add(box(0.18, 0.02, S * 1.06, '#d8c08a', { pos: [0, H + 0.04, 0], roughness: 0.4 }));
+      game.audio.play('slap');
+    }
+    if (this.once('kick', 2.35)) {
+      game.audio.play('kick'); game.audio.play('heavy');
+      game.cam.shake(0.6);
+      this.crateVel = new THREE.Vector3(Math.sin(a.yaw) * 6.5, 0, Math.cos(a.yaw) * 6.5);
+    }
+    if (this.crateVel) {
+      const c = this.crate, dt = 1 / 60;
+      c.position.addScaledVector(this.crateVel, dt);
+      c.rotation.y += dt * 2.5;
+      const lim = 6.0;
+      if (Math.abs(c.position.x) > lim) { this.crateVel.x *= -0.4; c.position.x = Math.sign(c.position.x) * lim; game.audio.play('clang'); }
+      if (Math.abs(c.position.z) > lim) { this.crateVel.z *= -0.4; c.position.z = Math.sign(c.position.z) * lim; game.audio.play('clang'); }
+      const inRing = Math.abs(c.position.x) < 3.75 && Math.abs(c.position.z) < 3.75;
+      c.position.y += ((inRing ? RING_H : 0) - c.position.y) * 0.2;
+      this.crateVel.multiplyScalar(0.985);
+    }
+  }
+
   // Melts them into a puddle.
   melt(t) {
     const { a, v, game } = this;
@@ -372,12 +448,12 @@ export class FinisherRunner {
 
   cleanup() {
     for (const p of this.props) p.parent?.remove(p);
-    if (this.head) { this.v.J.neck.attach(this.head); this.head.position.set(0, 0.09, 0); this.head.rotation.set(0, 0, 0); }
+    if (this.head) { this.v.J.neck.attach(this.head); this.head.position.set(0, 0.07, 0); this.head.rotation.set(0, 0, 0); }
     if (this.neckMesh) {
-      this.v.J.head.position.y = 0.09;
+      this.v.J.head.position.y = 0.07;
       this.neckMesh.scale.y = 1;
-      this.neckMesh.position.y = 0.05;
-      if (this.neckMesh.userData.basePos) { this.neckMesh.userData.basePos.y = 0.05; this.neckMesh.userData.baseScale.y = 1; }
+      this.neckMesh.position.y = 0.04;
+      if (this.neckMesh.userData.basePos) { this.neckMesh.userData.basePos.y = 0.04; this.neckMesh.userData.baseScale.y = 1; }
     }
     this.v.flat = false;
     this.v.model.group.visible = true;

@@ -1,6 +1,6 @@
 // Ringside weapons you can pick up, swing and throw, plus special projectiles.
 import * as THREE from 'three';
-import { box, cyl, sphere, cone, torus, clayMat, prepareBoil, boil } from './clay.js';
+import { box, cyl, sphere, cone, torus, capsule, clayMat, prepareBoil, boil } from './clay.js';
 import { RING, RING_H, APRON, FLOOR } from './fighter.js';
 import { rand, pick, clamp } from './util.js';
 
@@ -84,6 +84,8 @@ class Weapon {
     if (this.type === 'bell') this.mesh.position.set(0, -0.05, 0.1);
     if (this.type === 'trash') { this.mesh.rotation.set(Math.PI, 0, 0); this.mesh.position.set(0, 0.5, 0); this.mesh.scale.setScalar(0.85); }
     if (this.type === 'mic') this.mesh.rotation.set(Math.PI, 0, 0);
+    // The hand bone is the wrist; the fist sits below it.
+    this.mesh.position.y -= 0.085;
     prepareBoil(this.mesh);
   }
   drop(f) {
@@ -187,16 +189,42 @@ export class Weapons {
   // Special-move projectiles: guitars, cue cards, a boomerang medallion.
   projectile(f, sp) {
     const fw = f.forward.clone();
+    const multi = ['cards', 'papers', 'floppy'].includes(sp.prop);
     const make = (yawOff, delay) => {
       const g = new THREE.Group();
-      if (sp.prop === 'guitar') {
+      if (sp.prop === 'papers') {
+        // A stapled safety report.
+        g.add(box(0.28, 0.36, 0.03, '#f4f0e6', { round: 0.2 }));
+        for (let i = 0; i < 4; i++) g.add(box(0.2, 0.012, 0.032, '#9a948a', { pos: [0, 0.1 - i * 0.05, 0.001], boil: 0.3 }));
+        g.add(box(0.12, 0.03, 0.033, '#d97757', { pos: [0, 0.15, 0.002] }));
+      } else if (sp.prop === 'floppy') {
+        g.add(box(0.3, 0.3, 0.03, '#2a4ac8', { round: 0.3 }));
+        g.add(box(0.16, 0.09, 0.032, '#c8ccd4', { pos: [0, 0.1, 0.001], metalness: 0.6 }));
+        g.add(box(0.2, 0.12, 0.032, '#f2f2f2', { pos: [0, -0.07, 0.001] }));
+      } else if (sp.prop === 'spark') {
+        // The orange spark, glowing.
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          g.add(capsule(0.045, 0.22, '#e8865e', { centered: true, pos: [Math.sin(a) * 0.13, Math.cos(a) * 0.13, 0], rot: [0, 0, -a], emissive: '#d97757', emissiveIntensity: 1.6 }));
+        }
+      } else if (sp.prop === 'rocket') {
+        const r = new THREE.Group();
+        r.rotation.x = Math.PI / 2;
+        r.add(cyl(0.09, 0.09, 0.55, '#e8e8ee', { metalness: 0.6, roughness: 0.3 }));
+        r.add(cone(0.09, 0.22, '#e8e8ee', { pos: [0, 0.38, 0], metalness: 0.6, roughness: 0.3 }));
+        for (let i = 0; i < 3; i++) r.add(box(0.02, 0.14, 0.12, '#2a2a30', { pos: [Math.sin(i * 2.1) * 0.09, -0.24, Math.cos(i * 2.1) * 0.09], rot: [0, i * 2.1, 0] }));
+        r.add(cone(0.08, 0.3, '#ffb03a', { pos: [0, -0.42, 0], rot: [Math.PI, 0, 0], emissive: '#ff7a1a', emissiveIntensity: 3, smooth: true }));
+        g.add(r);
+        g.userData.noSpin = true;
+      } else if (sp.prop === 'phone') {
+        g.add(box(0.17, 0.34, 0.025, '#1a1a1e', { round: 0.8, metalness: 0.5, roughness: 0.3 }));
+        g.add(box(0.15, 0.3, 0.004, '#4a7aff', { pos: [0, 0, 0.014], emissive: '#3a6aff', emissiveIntensity: 1.5, smooth: true, rim: 0 }));
+      } else if (sp.prop === 'guitar') {
         g.add(sphere(0.2, '#b02a2a', { scale: [1, 1.2, 0.4], pos: [0, -0.15, 0] }));
         g.add(sphere(0.16, '#b02a2a', { scale: [1, 1, 0.4], pos: [0, 0.12, 0] }));
         g.add(box(0.06, 0.6, 0.04, '#3a2414', { pos: [0, 0.5, 0] }));
-        g.add(box(0.1, 0.12, 0.04, '#1a1a1a', { pos: [0, 0.82, 0] }));
       } else if (sp.prop === 'cards') {
         g.add(box(0.36, 0.24, 0.015, '#f2f0e8', {}));
-        g.add(box(0.22, 0.03, 0.016, '#c23838', { pos: [0, 0.04, 0.001] }));
       } else {
         g.add(cyl(0.18, 0.18, 0.05, '#ffd24a', { rot: [Math.PI / 2, 0, 0], metalness: 0.7, roughness: 0.25 }));
         g.add(torus(0.2, 0.02, '#ffd24a', { metalness: 0.7, roughness: 0.25 }));
@@ -208,9 +236,10 @@ export class Weapons {
       g.position.copy(pos);
       g.visible = delay <= 0;
       this.scene.add(g);
-      this.projectiles.push({ mesh: g, owner: f, dir, speed: sp.prop === 'cards' ? 10 : 8.5, t: -delay, life: 1.6, boomerang: sp.prop === 'medallion', dmg: sp.prop === 'cards' ? 7 : 15, kd: sp.prop !== 'cards', inRing: f.inRing, y: pos.y });
+      if (g.userData.noSpin) g.lookAt(pos.clone().add(dir));
+      this.projectiles.push({ mesh: g, owner: f, dir, speed: multi ? 10 : sp.prop === 'rocket' ? 11 : 8.5, t: -delay, life: 1.6, boomerang: sp.prop === 'medallion' || sp.prop === 'spark', dmg: multi ? 7 : 15, kd: !multi, inRing: f.inRing, y: pos.y, noSpin: g.userData.noSpin, trail: sp.prop === 'rocket' || sp.prop === 'spark' ? sp.color : null });
     };
-    if (sp.prop === 'cards') { make(-0.18, 0); make(0, 0.08); make(0.18, 0.16); }
+    if (multi) { make(-0.18, 0); make(0, 0.08); make(0.18, 0.16); }
     else make(0, 0);
     this.game.audio.play('whoosh');
   }
@@ -268,8 +297,8 @@ export class Weapons {
         p.dir.copy(to.sub(p.mesh.position).setY(0).normalize());
       }
       p.mesh.position.addScaledVector(p.dir, p.speed * dt);
-      p.mesh.rotation.y += dt * 14;
-      p.mesh.rotation.z += dt * 6;
+      if (!p.noSpin) { p.mesh.rotation.y += dt * 14; p.mesh.rotation.z += dt * 6; }
+      if (p.trail && Math.random() < 0.6) g.particles.ember(p.mesh.position, p.trail);
       const o = p.owner.opp;
       const hitO = o && !p.done && Math.hypot(o.pos.x - p.mesh.position.x, o.pos.z - p.mesh.position.z) < 0.55 * o.scale && o.sameArea(p.owner) && !o.isDown && !['thrown', 'grabbed', 'climb'].includes(o.state);
       if (hitO) {

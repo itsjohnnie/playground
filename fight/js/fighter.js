@@ -1,7 +1,7 @@
 // A fighter: clay puppet + combat state machine. Logic runs every frame;
 // the puppet only updates on 12fps "stop-motion" ticks.
 import * as THREE from 'three';
-import { buildFighterModel, setExpression, addBruise } from './model.js';
+import { buildFighterModel, setExpression, addBruise, applyRigPose, SNAP_BONES, setGrip } from './model.js';
 import { boil } from './clay.js';
 import { POSES, MOVES, JOINTS, tauntMove, loopKeys } from './poses.js';
 import { clamp, lerp, rand, chance, DEG, approachAngle, wrapAngle, easeInOut } from './util.js';
@@ -34,6 +34,7 @@ function blend(a, b, k) {
   const o = { rootY: lerp(a.rootY, b.rootY, k), rootFwd: lerp(a.rootFwd, b.rootFwd, k), rootSide: lerp(a.rootSide, b.rootSide, k) };
   o.root = [0, 1, 2].map((i) => lerp(a.root[i], b.root[i], k));
   for (const j of JOINTS) o[j] = [0, 1, 2].map((i) => lerp(a[j][i], b[j][i], k));
+  o.grip = k < 0.5 ? a.grip : b.grip;
   return o;
 }
 
@@ -70,7 +71,7 @@ export class Fighter {
     if (this.headOff) {
       const head = this.headOff.mesh;
       this.J.neck.attach(head);
-      head.position.set(0, 0.09, 0);
+      head.position.set(0, 0.07, 0);
       head.rotation.set(0, 0, 0);
       this.headOff = null;
     }
@@ -929,11 +930,11 @@ export class Fighter {
     if (h.returning) {
       h.rt += dt * 2.2;
       const target = new THREE.Vector3();
-      this.J.neck.localToWorld(target.set(0, 0.09, 0));
+      this.J.neck.localToWorld(target.set(0, 0.07, 0));
       m.position.lerp(target, clamp(h.rt, 0, 1));
       if (h.rt >= 1) {
         this.J.neck.attach(m);
-        m.position.set(0, 0.09, 0);
+        m.position.set(0, 0.07, 0);
         m.rotation.set(0, 0, 0);
         this.headOff = null;
         this.game.audio.play('squish');
@@ -1093,12 +1094,9 @@ export class Fighter {
 
   applyPose(p) {
     const J = this.J;
-    for (const j of JOINTS) {
-      const r = p[j];
-      J[j].rotation.set(r[0] * DEG, r[1] * DEG, r[2] * DEG);
-    }
-    J.root.rotation.set(p.root[0] * DEG, p.root[1] * DEG, p.root[2] * DEG);
-    J.root.position.set(p.rootSide, this.model.hipY + p.rootY, p.rootFwd);
+    // Weapons need a closed grip whatever the pose says.
+    if (this.weapon && p.grip?.[1] !== 'grip') p = { ...p, grip: [p.grip?.[0] || 'fist', 'grip'] };
+    applyRigPose(this.model, p, this.state === 'ko' ? 0.004 : 0.014);
     // Squash & stretch.
     const s = this.squish;
     if (s > 0) {
@@ -1131,12 +1129,12 @@ export class Fighter {
   // Replay snapshots: everything the puppet shows on a frame.
   snapshot() {
     const J = this.J;
-    const rots = JOINTS.map((j) => [J[j].rotation.x, J[j].rotation.y, J[j].rotation.z]);
+    const rots = SNAP_BONES.map((j) => [J[j].rotation.x, J[j].rotation.y, J[j].rotation.z]);
     return {
       gp: this.group.position.toArray(), gr: this.group.rotation.y,
       mg: [this.model.group.rotation.x, this.model.group.position.y, this.model.group.scale.x, this.model.group.scale.y, this.model.group.scale.z],
       root: [J.root.position.toArray(), J.root.rotation.x, J.root.rotation.y, J.root.rotation.z],
-      rots, head: J.head.scale.toArray(), expr: this.lastExpr,
+      rots, head: J.head.scale.toArray(), expr: this.lastExpr, grips: [this.model.hands.L.grip, this.model.hands.R.grip],
     };
   }
   applySnapshot(s) {
@@ -1147,7 +1145,9 @@ export class Fighter {
     mg.rotation.x = s.mg[0]; mg.position.y = s.mg[1]; mg.scale.set(s.mg[2], s.mg[3], s.mg[4]);
     J.root.position.fromArray(s.root[0]);
     J.root.rotation.set(s.root[1], s.root[2], s.root[3]);
-    JOINTS.forEach((j, i) => J[j].rotation.set(...s.rots[i]));
+    SNAP_BONES.forEach((j, i) => J[j].rotation.set(...s.rots[i]));
+    setGrip(this.model.hands.L, s.grips[0]);
+    setGrip(this.model.hands.R, s.grips[1]);
     J.head.scale.fromArray(s.head);
     if (s.expr && s.expr !== this.lastExpr) { setExpression(this.face, s.expr); this.lastExpr = s.expr; }
     boil(this.model.group, 1);

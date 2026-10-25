@@ -132,7 +132,7 @@ export class UI {
       const s = document.createElement('div');
       s.className = 'slot';
       s.dataset.idx = i;
-      s.innerHTML = `<img alt="${c.name}" src="${portraits[c.id]}"><span class="tagp t1">P1</span><span class="tagp t2">P2</span><span class="sname">${c.name}</span>`;
+      s.innerHTML = `<img alt="${c.name}" src="${portraits[c.id]}"><span class="tagp t1">P1</span><span class="tagp t2">P2</span><span class="sname">${c.short || c.name}</span>`;
       s.addEventListener('mouseenter', () => this.handlers.hoverSlot?.(i));
       s.addEventListener('click', () => this.handlers.clickSlot?.(i));
       r.appendChild(s);

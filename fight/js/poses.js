@@ -110,6 +110,20 @@ export const POSES = {
   refPoint: P({ neck: [-6, 0, 0], shR: [-96, 0, -2], elR: [0, 0, 0], shL: [8, 0, 38], elL: [0, 0, -108] }),
 };
 
+// Hand shapes per pose: [left, right]. Anything unlisted makes fists.
+const O = ['open', 'open'], RX = ['relax', 'relax'];
+const GRIPS = {
+  rest: RX, stand: RX, reach: O, hold: O, held: O, lift: O, slam: O, carried: O, down: O, down2: O, sit: O, fly: O,
+  dizzy1: RX, dizzy2: RX, hips1: RX, hips2: ['relax', 'open'], hair: ['relax', 'open'], bow: RX, cheer: O, refWave: O, refWave2: O,
+  tpose: O, pickup: ['relax', 'open'], pin: O, count1: ['relax', 'open'], count2: ['relax', 'open'], clothes: ['fist', 'open'], dive: O,
+  spin: O, scream: O, screamWind: RX, slapR: ['fist', 'open'], slapL: ['open', 'fist'], whip: ['relax', 'open'], crouch: RX, duck: RX,
+  perch: O, perch2: O, talk1: ['relax', 'grip'], talk2: ['open', 'grip'], sitChair: RX, pretzel: O, raise2: O, headbuttWind: O, headbutt: O,
+  throwRel: ['relax', 'open'], throwWind: ['relax', 'grip'], kickChamber: RX, kick: RX, hit1: O, hit2: O, gut: RX, point: ['relax', 'point'],
+  horns: ['fist', 'horns'], horns2: ['fist', 'horns'], refPoint: ['relax', 'point'], phone: ['grip', 'grip'], holdWeapon: ['fist', 'grip'],
+  swingUp: ['grip', 'grip'], swingDown: ['grip', 'grip'], run1: RX, run2: RX, run3: RX, run4: RX, flex: ['fist', 'fist'],
+};
+for (const [k, v] of Object.entries(POSES)) v.grip = GRIPS[k] || ['fist', 'fist'];
+
 // Timelines: keys = [time, pose]. Hits: window [t0, t1] where contact counts.
 // combo: punch pressed during window chains into `next`.
 export const MOVES = {

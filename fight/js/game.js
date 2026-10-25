@@ -14,7 +14,7 @@ import { AIController } from './ai.js';
 import { makeControllers, menuInput, endFrame } from './input.js';
 import { ROSTER, BOSS, charById } from './characters.js';
 import { FinisherRunner } from './finishers.js';
-import { buildFighterModel } from './model.js';
+import { buildFighterModel, applyRigPose } from './model.js';
 import { POSES, JOINTS } from './poses.js';
 import { rand, pick, chance, DEG, clamp } from './util.js';
 import { clayMat } from './clay.js';
@@ -77,7 +77,9 @@ export class Game {
   bindOptions() {
     const s = this.settings;
     const vol = document.getElementById('opt-vol'), mus = document.getElementById('opt-music');
-    const shake = document.getElementById('opt-shake'), voice = document.getElementById('opt-voice'), grain = document.getElementById('opt-grain');
+    const shake = document.getElementById('opt-shake'), voice = document.getElementById('opt-voice'), grain = document.getElementById('opt-grain'), bloom = document.getElementById('opt-bloom');
+    bloom.checked = s.bloom !== false;
+    bloom.onchange = () => { s.bloom = bloom.checked; this.applySettings(); };
     vol.value = s.vol; mus.value = s.music; shake.checked = s.shake; voice.checked = s.voice; grain.checked = s.grain;
     vol.oninput = () => { s.vol = +vol.value; this.applySettings(); };
     mus.oninput = () => { s.music = +mus.value; this.applySettings(); };
@@ -103,9 +105,7 @@ export class Game {
     for (const def of [...ROSTER, BOSS]) {
       const m = buildFighterModel(def);
       const J = m.joints;
-      const p = POSES.guard;
-      for (const j of JOINTS) J[j].rotation.set(p[j][0] * DEG, p[j][1] * DEG, p[j][2] * DEG);
-      J.root.position.y = m.hipY + p.rootY;
+      applyRigPose(m, POSES.guard);
       m.group.rotation.y = -0.35;
       sc.add(m.group);
       m.group.updateMatrixWorld(true);
@@ -220,9 +220,9 @@ export class Game {
     const s = this.sel;
     if (s.ready[p]) return;
     let i = s.cursor[p];
-    const cols = 4;
+    const cols = 6, rows = Math.ceil(ROSTER.length / cols);
     const r = Math.floor(i / cols), c = i % cols;
-    const nc = (c + dx + cols) % cols, nr = (r + dy + 2) % 2;
+    const nc = (c + dx + cols) % cols, nr = (r + dy + rows) % rows;
     s.cursor[p] = nr * cols + nc;
     this.audio.play('ui');
     this.paintSelect();
@@ -344,7 +344,7 @@ export class Game {
     m.script = [
       [0.0, () => { shotOn(a); this.ui.versus(0, a.def, 'IN THIS CORNER'); a.startMove('taunt', tauntMoveFor(a)); this.audio.play('special'); }],
       [2.5, () => { shotOn(b); this.ui.versus(1, b.def, 'AND HIS OPPONENT'.replace('HIS ', '')); b.startMove('taunt', tauntMoveFor(b)); this.audio.play('special'); }],
-      [5.0, () => { this.cam.clearShot(); this.ui.versusMid(true); this.audio.play('slam'); this.cam.shake(0.6); this.arena.excite(1); this.audio.cheer(1); }],
+      [5.0, () => { this.cam.clearShot(); this.ui.versusMid(true); this.audio.play('slam'); this.cam.shake(0.6); this.arena.excite(1); this.audio.cheer(1); this.pyro(true); }],
       [6.3, () => { this.ui.clearVersus(); this.arena.setIntro(false); this.beginRound(); }],
     ];
   }
@@ -380,7 +380,7 @@ export class Game {
     this.crew.refPos.set(-1.0, 0, -1.0);
     m.script = [
       [0.2, () => { this.ui.banner(m.round === 3 ? 'FINAL ROUND' : `ROUND ${m.round}`, '', 1.1); this.commentary.say('round', { n: m.round }, { force: true }); }],
-      [1.5, () => { this.ui.banner("LET'S GET IT ON!", '', 0.9); this.audio.play('bell'); this.audio.cheer(0.8); this.arena.excite(0.6); }],
+      [1.5, () => { this.ui.banner("LET'S GET IT ON!", '', 0.9); this.audio.play('bell'); this.audio.cheer(0.8); this.arena.excite(0.6); this.pyro(false); }],
       [2.3, () => { m.phase = 'fight'; this.crew.refState = 'idle'; this.bindInputs(); }],
     ];
   }
@@ -419,6 +419,7 @@ export class Game {
     this.arena.excite(1);
     this.crew.cheer();
     if (m.kind !== 'attract') {
+      if (deciding) this.pyro(true);
       this.ui.banner('K.O.!', '', 1.8);
       this.commentary.say('ko', { a: attacker.def.name, d: victim.def.name }, { force: true });
     }
@@ -581,8 +582,22 @@ export class Game {
     this.audio.cheer(1);
     this.arena.excite(1);
     this.confetti();
+    this.pyro(true);
     this.cam.shot(w.pos.clone().setY(w.groundY + 1.2).add(new THREE.Vector3(3.2, 0.8, 3.2)), w.pos.clone().setY(w.groundY + 1.2), 99, { fov: 30, orbit: 0.15, cut: false });
 
+  }
+
+  // Spark fountains on all four posts plus flame bursts on the apron.
+  pyro(big = true) {
+    if (this.match?.kind === 'attract' && this.mode !== 'title' && !big) return;
+    for (const sx of [1, -1]) for (const sz of [1, -1]) {
+      const p = new THREE.Vector3(sx * 3.55, RING_H + 1.75, sz * 3.55);
+      this.particles.fountain(p, sx * sz > 0 ? '#ffd27a' : '#9ae8ff', big ? 34 : 18);
+      // Flames on the far corners only, so they never blind the camera.
+      if (big && !(sx > 0 && sz > 0)) this.particles.flame(new THREE.Vector3(sx * 4.6, 0.1, sz * 4.6), 10);
+    }
+    this.audio.play('slam', 0.4);
+    this.audio.play('whoosh', 0.8);
   }
 
   confetti() {
@@ -627,6 +642,7 @@ export class Game {
         if (this.rec.length) this.rec[this.rec.length - 1].hits.push({ p: def.headWorld().toArray(), c: def.def.skin });
         if (att.combo >= 4) say('combo', { n: att.combo, a: att.def.name });
         else if (att.hp < att.maxHp * 0.3 && att.combo >= 3) say('comeback', { a: att.def.name });
+        else if (h.big && att.def.quips && chance(0.45) && this.match?.kind !== 'attract') this.commentary.sayText(pick(att.def.quips), Math.random() < 0.5 ? 0 : 1);
         else if (h.big || chance(0.25)) say('hit', { a: att.def.name, d: def.def.name });
         const m = this.match;
         const di = this.fighters.indexOf(def);

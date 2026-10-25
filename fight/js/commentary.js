@@ -5,7 +5,7 @@ import { pick, chance } from './util.js';
 
 const LINES = {
   intro: [
-    [0, "Good evening and welcome to Celebrity Claymatch! I'm {A}."],
+    [0, "Good evening and welcome to Silicon Valley Claymatch! I'm {A}."],
     [1, "And I'm {B}. Tonight: {p1} versus {p2}!"],
   ],
   round: [[0, 'Round {n}! Here we go!'], [1, 'Round {n}, and the referee wants a clean fight. He will not get one.']],
@@ -100,6 +100,14 @@ export class Commentary {
       u.volume = 0.9;
       speechSynthesis.speak(u);
     }
+  }
+
+  // A one-off line, e.g. a character's catchphrase.
+  sayText(text, who = 0) {
+    if (this.cool > 0) return;
+    this.queue.push({ who, text });
+    this.cool = 2.6;
+    if (!this.current) this.next();
   }
 
   clear() {

@@ -5,7 +5,7 @@ import { clayMat, clayNormalMap, box, cyl, sphere, mesh } from './clay.js';
 import { RING, RING_H, POST, FLOOR } from './fighter.js';
 import { rand, pick, mulberry32 } from './util.js';
 
-export const LOGO_TOP = 'CELEBRITY';
+export const LOGO_TOP = 'SILICON VALLEY';
 export const LOGO_BOTTOM = 'CLAYMATCH';
 
 // The badge logo drawn on a canvas, used on the mat, screen and apron.
@@ -66,7 +66,7 @@ function matTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 1024;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#e7e4de';
+  ctx.fillStyle = '#d9d5ce';
   ctx.fillRect(0, 0, 1024, 1024);
   // Scuffs and stains: a mat that has seen some fights.
   const rnd = mulberry32(42);
@@ -162,16 +162,17 @@ export class Arena {
     this.buildCrowd();
     this.buildRig();
     this.buildScreen();
+    this.buildLEDs();
   }
 
   buildLights() {
     const s = this.scene;
     s.background = new THREE.Color('#060918');
     s.fog = new THREE.Fog('#060918', 26, 62);
-    this.hemi = new THREE.HemisphereLight('#7f95ff', '#1a1630', 0.9);
+    this.hemi = new THREE.HemisphereLight('#6f85ff', '#1a1630', 0.5);
     s.add(this.hemi);
     // Warm key over the ring: the miniature-studio light that casts shadows.
-    const key = new THREE.SpotLight('#ffe6c8', 900, 0, 0.52, 0.65, 2);
+    const key = new THREE.SpotLight('#ffe6c8', 760, 0, 0.5, 0.7, 2);
     key.position.set(4, 16, 6);
     key.target.position.set(0, RING_H, 0);
     key.castShadow = true;
@@ -184,9 +185,13 @@ export class Arena {
     s.add(key, key.target);
     this.key = key;
     // Cool rim from behind for separation, soft fill from camera side.
-    const rim = new THREE.DirectionalLight('#9fc0ff', 1.3);
+    // Two coloured rims from behind, broadcast-style.
+    const rim = new THREE.DirectionalLight('#7ab8ff', 1.6);
     rim.position.set(-8, 10, -9);
     s.add(rim);
+    const rim2 = new THREE.DirectionalLight('#ff6ad8', 1.1);
+    rim2.position.set(9, 7, -7);
+    s.add(rim2);
     const fill = new THREE.DirectionalLight('#ffd8c0', 0.45);
     fill.position.set(9, 6, 9);
     s.add(fill);
@@ -393,7 +398,7 @@ export class Arena {
     this.seats = seats;
     this.updateCrowd(0);
     // Signs held by fans.
-    const texts = [['CLAY\nTIME!', '#ffd94a', '#1a1a1a'], ['SQUISH\nEM!', '#ffffff', '#c82a2a'], ['I ♥\nCLAY', '#e8e8f0', '#2050d0'], ['ROXY 4\nEVER', '#ff8ad0', '#1a1a1a'], ['FLATTEN\nHIM!', '#5af0a0', '#1a1a1a'], ['MOM\nHI!', '#ffffff', '#1a1a1a']];
+    const texts = [['AGI\nWHEN?', '#ffd94a', '#1a1a1a'], ['SHIP\nIT!', '#ffffff', '#c82a2a'], ['LGTM', '#e8e8f0', '#2050d0'], ['TEAM\nDARIO', '#d97757', '#1a1a1a'], ['RATIO', '#5af0a0', '#1a1a1a'], ['404\nMERCY', '#ffffff', '#1a1a1a'], ['GPU\nPLZ', '#76b900', '#0a0a0a'], ['HIRE\nME!', '#ff8ad0', '#1a1a1a']];
     this.signs = [];
     for (let k = 0; k < 14; k++) {
       const s = seats[Math.floor(rnd() * seats.length)];
@@ -454,7 +459,7 @@ export class Arena {
       else beam.position.set(0, y, sd.sign * S);
       g.add(beam);
     }
-    const coneMat = new THREE.MeshBasicMaterial({ color: '#fff2d8', transparent: true, opacity: 0.014, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const coneMat = new THREE.MeshBasicMaterial({ color: '#fff2d8', transparent: true, opacity: 0.01, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
       const x = Math.cos(a) * S * 1.05, z = Math.sin(a) * S * 1.05;
@@ -499,6 +504,57 @@ export class Arena {
     this.root.add(banner2);
   }
 
+  // Scrolling LED ribbon boards along the stands, glowing strips on the
+  // apron, and lamps on the posts: emissive, so the bloom pass catches them.
+  buildLEDs() {
+    const c = document.createElement('canvas');
+    c.width = 2048; c.height = 64;
+    const ctx = c.getContext('2d');
+    const draw = () => {
+      ctx.fillStyle = '#04060f'; ctx.fillRect(0, 0, 2048, 64);
+      const items = ['SILICON VALLEY CLAYMATCH', 'AGI WHEN?', 'SHIP IT', 'LIVE ON CCM', 'MOVE FAST, BREAK FACES', 'TOKENS PER SECOND: ∞', 'NO REFUNDS', 'SCALING LAWS STILL HOLDING'];
+      const cols = ['#3af0ff', '#ff4ad0', '#ffd94a', '#ffffff', '#ff8a3a', '#7aff6a', '#ff4a4a', '#9a8aff'];
+      ctx.font = '900 40px "Arial Black", Impact, sans-serif';
+      ctx.textBaseline = 'middle';
+      let x = 20;
+      items.forEach((t, i) => { ctx.fillStyle = cols[i % cols.length]; ctx.fillText(t, x, 34); x += ctx.measureText(t).width + 40; ctx.fillStyle = '#ffffff'; ctx.fillText('★', x - 30, 34); });
+    };
+    draw();
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.repeat.set(2, 1);
+    this.ledTex = tex;
+    const mat = new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, color: new THREE.Color(1.6, 1.6, 1.6) });
+    for (const sd of SIDES) {
+      if (sd.sign > 0) continue;
+      const D = 9.0, L = 20;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(L, 0.5), mat);
+      if (sd.axis === 'x') { m.position.set(sd.sign * D, 0.45, 0); m.rotation.y = Math.PI / 2; }
+      else m.position.set(0, 0.45, sd.sign * D);
+      this.root.add(m);
+    }
+    // Apron light strips, cyan and magenta.
+    const R = 3.75;
+    this.strips = [];
+    SIDES.forEach((sd, i) => {
+      const col = new THREE.Color(i % 2 ? '#ff3ad0' : '#3ae0ff').multiplyScalar(2.2);
+      const sm = new THREE.MeshBasicMaterial({ color: col, toneMapped: false });
+      const m = new THREE.Mesh(new THREE.BoxGeometry(R * 2 + 0.02, 0.035, 0.02), sm);
+      if (sd.axis === 'x') { m.position.set(sd.sign * (R + 0.012), RING_H - 0.03, 0); m.rotation.y = Math.PI / 2; }
+      else m.position.set(0, RING_H - 0.03, sd.sign * (R + 0.012));
+      this.root.add(m);
+      const m2 = m.clone(); m2.position.y = 0.04; this.root.add(m2);
+      this.strips.push(sm);
+    });
+    // Post-top lamps.
+    for (const p of this.posts) {
+      const l = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color('#ffffff').multiplyScalar(2.5), toneMapped: false }));
+      l.position.copy(p.position).add(new THREE.Vector3(0, 0.9, 0));
+      this.root.add(l);
+    }
+  }
+
   renderTV(renderer, scene, focus) {
     const cam = this.tvCam;
     const t = this.time * 0.15;
@@ -517,7 +573,7 @@ export class Arena {
 
   setIntro(on) {
     this.introOn = on;
-    for (const s of this.sweep) s.intensity = on ? 1200 : 0;
+    for (const s of this.sweep) s.intensity = on ? 420 : 0;
   }
 
   update(dt) {
@@ -536,6 +592,8 @@ export class Arena {
         s.target.position.set(Math.sin(a) * 4, RING_H, Math.cos(a * 0.8) * 4);
       });
     }
+    if (this.ledTex) this.ledTex.offset.x = (this.ledTex.offset.x + dt * 0.04) % 1;
+    if (this.strips) this.strips.forEach((m, i) => { const k = 1.6 + Math.sin(this.time * 3 + i) * 0.4 + this.excitement * 1.5; m.color.set(i % 2 ? '#ff3ad0' : '#3ae0ff').multiplyScalar(k); });
     // Flashbulbs pop with the excitement.
     const c = this.flashes.geometry.attributes.color;
     for (let i = 0; i < c.count; i++) {

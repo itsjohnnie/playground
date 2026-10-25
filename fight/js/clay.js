@@ -108,6 +108,8 @@ export function clayMat(color, opts = {}) {
     normalScale: new THREE.Vector2(opts.bumps ?? 0.45, opts.bumps ?? 0.45),
     emissive: opts.emissive ? new THREE.Color(opts.emissive) : new THREE.Color(0),
     emissiveIntensity: opts.emissiveIntensity ?? 1,
+    vertexColors: !!opts.vertexColors,
+    side: opts.side ?? THREE.FrontSide,
     transparent: !!opts.transparent,
     opacity: opts.opacity ?? 1,
   });

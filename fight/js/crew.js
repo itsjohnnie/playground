@@ -1,40 +1,38 @@
 // The referee and the two commentators: clay puppets that aren't fighters.
 import * as THREE from 'three';
-import { buildFighterModel, setExpression } from './model.js';
+import { buildFighterModel, setExpression, applyRigPose, SNAP_BONES } from './model.js';
 import { boil } from './clay.js';
 import { POSES, JOINTS } from './poses.js';
 import { blend } from './fighter.js';
 import { RING, RING_H } from './fighter.js';
 import { clamp, DEG, approachAngle, rand } from './util.js';
 
+const HEAD = (o = {}) => ({ W: 0.9, H: 1.06, D: 0.97, jaw: 0.88, chin: 0.04, chinLen: 0.03, cheek: 0.03, brow: 0.05, socket: 0.06, muzzle: 0.04, forehead: 1.02,
+  nose: { len: 1.0, w: 1.0, tip: 1.0, bridge: 1.0 }, eye: { size: 1.0, gap: 1.0, iris: '#4a3a2a' }, mouth: { w: 1.0, lip: 0.85, smile: 0.2 }, ear: 1.0, ...o });
+
 const REF_DEF = {
-  id: 'ref', name: 'Referee', skin: '#f2cdb4', lips: '#c08070', iris: '#4a4a52', brows: '#d8d8dc',
-  hair: { style: 'balding', color: '#d8d8dc' },
-  top: { style: 'suit', color: '#f6f6f2', trim: '#f6f6f2' },
-  bottom: { style: 'pants', color: '#16161a' }, shoes: '#0e0e10',
-  acc: ['bowtie'], build: 'slim', stats: { power: 1, speed: 3, tough: 1 },
+  id: 'ref', name: 'Referee', skin: '#f2cdb4', build: 'slim',
+  head: HEAD({ jaw: 0.94, chin: 0.06, brow: 0.08, nose: { len: 1.15, w: 1.1, tip: 1.2, bridge: 1.1 }, mouth: { w: 0.9, lip: 0.7, smile: -0.4 }, ear: 1.2, eye: { size: 0.9, iris: '#4a4a52' } }),
+  brows: { color: '#e0e0e4', thick: 1.4, arch: 0.0 },
+  hair: { style: 'balding', color: '#d8d8dc' }, facial: {},
+  top: { type: 'shirt', color: '#f6f6f2' }, bottom: { color: '#16161a' }, shoes: { color: '#0e0e10', sole: '#1a1a1a' },
+  acc: ['bowtie'], stats: { power: 1, speed: 3, tough: 1 },
 };
 export const ANNOUNCER_DEFS = [
   {
-    id: 'vinnie', skin: '#f0c8a6', lips: '#c07868', iris: '#4a3a2a', brows: '#1a1410',
-    hair: { style: 'slick', color: '#1c1612' },
-    top: { style: 'suit', color: '#2a2c36', trim: '#c23838' },
-    bottom: { style: 'pants', color: '#2a2c36' }, shoes: '#111', acc: ['tie'], build: 'slim', stats: { power: 1, speed: 1, tough: 1 },
+    id: 'vinnie', skin: '#f0c8a6', build: 'slim', head: HEAD({ chin: 0.08, chinLen: 0.06, mouth: { w: 1.1, lip: 0.85, smile: 0.6 } }),
+    brows: { color: '#1a1410', thick: 1.1, arch: 0.3 }, hair: { style: 'swept', color: '#1c1612', color2: '#2a2018' }, facial: {},
+    top: { type: 'blazer', color: '#2a2c36', inner: '#f0f0f0' }, bottom: { color: '#2a2c36' }, shoes: { color: '#111', sole: '#111' }, acc: ['tie'], tie: '#c23838', stats: { power: 1, speed: 1, tough: 1 },
   },
   {
-    id: 'marty', skin: '#e8b898', lips: '#b07060', iris: '#3a2a1a', brows: '#3a2a20',
-    hair: { style: 'balding', color: '#3a2a20' },
-    top: { style: 'suit', color: '#4a3a2e', trim: '#d8b040' },
-    bottom: { style: 'pants', color: '#4a3a2e' }, shoes: '#111', acc: ['tie', 'mustache', 'glasses'], build: 'heavy', stats: { power: 1, speed: 1, tough: 1 },
+    id: 'marty', skin: '#e8b898', build: 'heavy', head: HEAD({ W: 0.95, cheek: 0.07, mouth: { w: 1.0, lip: 0.9, smile: 0.3 } }),
+    brows: { color: '#3a2a20', thick: 1.2, arch: 0.2 }, hair: { style: 'balding', color: '#3a2a20' }, facial: { mustache: '#3a2a20' },
+    glasses: { type: 'rect', color: '#2a2622' },
+    top: { type: 'blazer', color: '#4a3a2e', inner: '#f0ece4' }, bottom: { color: '#4a3a2e' }, shoes: { color: '#111', sole: '#111' }, acc: ['tie'], tie: '#d8b040', stats: { power: 1, speed: 1, tough: 1 },
   },
 ];
 
-function applyPose(m, p) {
-  const J = m.joints;
-  for (const j of JOINTS) { const r = p[j]; J[j].rotation.set(r[0] * DEG, r[1] * DEG, r[2] * DEG); }
-  J.root.rotation.set(p.root[0] * DEG, p.root[1] * DEG, p.root[2] * DEG);
-  J.root.position.set(p.rootSide, m.hipY + p.rootY, p.rootFwd);
-}
+function applyPose(m, p) { applyRigPose(m, p, 0.012); }
 
 function micMesh() {
   const g = new THREE.Group();
@@ -72,7 +70,7 @@ export class Crew {
       g.rotation.y = 0.15 * (i ? -1 : 1);
       game.scene.add(g);
       const mic = micMesh();
-      mic.position.set(0, -0.05, 0.05);
+      mic.position.set(0, -0.13, 0.03);
       mic.rotation.x = -0.4;
       m.joints.handR.add(mic);
       return { m, g, talking: 0, cheer: 0 };
@@ -222,20 +220,20 @@ export class Crew {
       else if (a.talking > 0) pp = (this.clock + i * 0.3) % 0.5 < 0.25 ? POSES.talk1 : POSES.talk2;
       else pp = POSES.talk1;
       applyPose(a.m, pp);
-      a.m.joints.shR.rotation.set(-1.4, 0, -0.3);
-      a.m.joints.elR.rotation.set(-1.6, 0, 0);
+      a.m.joints.shR.rotation.set(-1.0, 0, -0.25);
+      a.m.joints.elR.rotation.set(-1.9, 0, 0.2);
       setExpression(a.m.face, a.cheer > 0 ? 'shock' : a.talking > 0 ? (Math.random() < 0.5 ? 'open' : 'smile') : 'smile');
       boil(a.m.group, 1);
     });
   }
 
   snapshot() {
-    return { p: this.refGroup.position.toArray(), y: this.refGroup.rotation.y, rots: JOINTS.map((j) => this.ref.joints[j].rotation.toArray().slice(0, 3)), root: [this.ref.joints.root.position.toArray(), this.ref.joints.root.rotation.toArray().slice(0, 3)] };
+    return { p: this.refGroup.position.toArray(), y: this.refGroup.rotation.y, rots: SNAP_BONES.map((j) => this.ref.joints[j].rotation.toArray().slice(0, 3)), root: [this.ref.joints.root.position.toArray(), this.ref.joints.root.rotation.toArray().slice(0, 3)] };
   }
   applySnapshot(s) {
     this.refGroup.position.fromArray(s.p);
     this.refGroup.rotation.y = s.y;
-    JOINTS.forEach((j, i) => this.ref.joints[j].rotation.set(...s.rots[i]));
+    SNAP_BONES.forEach((j, i) => this.ref.joints[j].rotation.set(...s.rots[i]));
     this.ref.joints.root.position.fromArray(s.root[0]);
     this.ref.joints.root.rotation.set(...s.root[1]);
   }

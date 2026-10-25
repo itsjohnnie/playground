@@ -116,7 +116,7 @@ button { font: inherit; color: inherit; }
 .screen-title { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 14px; font-size: clamp(20px, 3vw, 34px); text-shadow: 0 3px 0 #0a1a44; }
 #select { background: radial-gradient(ellipse at center, rgba(20, 40, 120, 0.55), rgba(4, 6, 20, 0.92)); }
 .select-wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 18px; align-items: center; width: min(1200px, 100%); }
-.roster { display: grid; grid-template-columns: repeat(4, clamp(64px, 9vw, 120px)); gap: 10px; }
+.roster { display: grid; grid-template-columns: repeat(6, clamp(52px, 6.6vw, 100px)); gap: 8px; }
 .slot { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: linear-gradient(#24357a, #0f1844); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.12); cursor: pointer; }
 .slot img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .slot .tagp { position: absolute; top: 4px; font-family: var(--display); font-size: 11px; padding: 2px 6px; border-radius: 6px; display: none; }
@@ -125,7 +125,7 @@ button { font: inherit; color: inherit; }
 .slot.c1.c2 { box-shadow: inset 0 0 0 4px var(--p1), inset 0 0 0 8px var(--p2); }
 .slot.c1 .t1 { display: block; left: 4px; background: var(--p1); }
 .slot.c2 .t2 { display: block; right: 4px; background: var(--p2); }
-.slot .sname { position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: center; padding: 3px 2px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.8)); }
+.slot .sname { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; font-weight: 800; text-transform: uppercase; text-align: center; padding: 3px 2px; background: linear-gradient(transparent, rgba(0, 0, 0, 0.8)); }
 .pick-card { min-height: 360px; border-radius: 16px; padding: 14px; background: linear-gradient(rgba(20, 30, 80, 0.85), rgba(8, 12, 36, 0.9)); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; gap: 6px; }
 .pick-card.p1 { box-shadow: inset 0 0 0 3px var(--p1); }
 .pick-card.p2 { box-shadow: inset 0 0 0 3px var(--p2); }
@@ -246,7 +246,7 @@ button { font: inherit; color: inherit; }
   .pick-card { min-height: 0; flex-direction: row; flex-wrap: wrap; align-items: center; }
   .pick-card img { width: 72px; }
   .pick-card .moves, .pick-card .stat { display: none; }
-  .roster { grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+  .roster { grid-template-columns: repeat(6, minmax(0, 1fr)); width: 100%; }
   .controls-grid { grid-template-columns: 1fr; }
   .res-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .combo { top: 110px; }
