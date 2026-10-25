@@ -89,9 +89,12 @@ export class Game {
   }
 
   // ------------------------------------------------------------- portraits
-  renderPortraits() {
+  // Portraits are rendered a few at a time after the title is up, so boot
+  // doesn't wait on sculpting the whole roster.
+  renderPortraits(defs = [...ROSTER, BOSS]) {
     const size = 256;
-    const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+    // One small offscreen renderer, kept until the whole roster is done.
+    const r = this.portraitRenderer || (this.portraitRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }));
     r.setSize(size, size);
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.ACESFilmicToneMapping;
@@ -102,7 +105,8 @@ export class Game {
     const cam = new THREE.PerspectiveCamera(26, 1, 0.1, 50);
     const out = document.createElement('canvas'); out.width = out.height = size;
     const ctx = out.getContext('2d');
-    for (const def of [...ROSTER, BOSS]) {
+    for (const def of defs) {
+      if (this.portraits[def.id]) continue;
       const m = buildFighterModel(def);
       const J = m.joints;
       applyRigPose(m, POSES.guard);
@@ -123,15 +127,30 @@ export class Game {
       this.portraits[def.id] = out.toDataURL('image/png');
       sc.remove(m.group);
     }
-    r.dispose();
-    r.forceContextLoss?.();
+    if (Object.keys(this.portraits).length >= ROSTER.length + 1) {
+      r.dispose();
+      r.forceContextLoss?.();
+      this.portraitRenderer = null;
+    }
   }
 
   // ------------------------------------------------------------- flow
   boot() {
-    this.renderPortraits();
-    this.ui.buildRoster(ROSTER, this.portraits);
     this.toTitle();
+    const queue = [...ROSTER, BOSS];
+    const next = () => {
+      if (!queue.length) { this.portraitsReady = true; this.ui.buildRoster(ROSTER, this.portraits); return; }
+      this.renderPortraits([queue.shift()]);
+      setTimeout(next, 40);
+    };
+    setTimeout(next, 400);
+  }
+
+  ensurePortraits() {
+    if (this.portraitsReady) return;
+    this.renderPortraits();
+    this.portraitsReady = true;
+    this.ui.buildRoster(ROSTER, this.portraits);
   }
 
   toTitle() {
@@ -196,6 +215,7 @@ export class Game {
   // ------------------------------------------------------------- select
   openSelect(kind) {
     this.selKind = kind;
+    this.ensurePortraits();
     if (kind === 'cvc') {
       const a = pick(ROSTER), b = pick(ROSTER.filter((c) => c !== a));
       this.startMatch([a, b], 'cvc');

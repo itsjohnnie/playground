@@ -47,7 +47,8 @@ In 1P mode the player can use either key set.
 ```
 js/
   clay.js        plasticine material, procedural normal map, lumpy geometry, boil jitter
-  model.js       puppet builder: bone skeleton, skinned torso/limbs, sculpted heads, hair, hands
+  sdf.js         SDF sculpting: smooth unions, coarse-to-fine sampling, surface nets, paint + skin weights
+  model.js       puppet builder: skeleton, sculpted skinned body and hands, sculpted heads, posing, faces
   characters.js  roster, boss, commentators
   poses.js       pose library and move timelines (degrees per joint)
   fighter.js     combat state machine, grapples, throws, specials, damage, replay snapshots
@@ -66,28 +67,30 @@ js/
 
 ### The puppets
 
-Each fighter is a real skeleton of `THREE.Bone`s: pelvis, spine, chest, neck,
-head, collarbones, shoulders, elbows, wrists, hips, knees and ankles. The torso,
-both arms and both legs are each **one continuous `SkinnedMesh`**. They are
-lofted tubes with a superellipse cross-section that follows a per-build profile
-(hips, waist, chest, shoulders, biceps, forearms, calves). Vertices are weighted
-across neighbouring bones with a smoothstep around every joint, so waists,
-elbows and knees bend without seams. Clothing is painted into vertex colours:
-sleeves, V-necks, open jackets, belts and cuffs.
+Characters aren't assembled from primitives. Each one is **sculpted as a
+signed distance field**: ellipsoids, tapered capsules, tori and rolls of clay
+blended with smooth unions (`smin`) so they melt into each other, plus smooth
+subtractions for eye sockets, nostrils, ears and an open grimace (`js/sdf.js`).
+The field is sampled on a grid, coarse-to-fine so only blocks near the
+surface are evaluated exactly, and meshed with naive surface nets. Each
+vertex is then painted (skin, sleeves, V-necks, belts, shoes, hair, lips) and
+weighted to bones by whichever parts it belongs to.
 
-Heads start as a dense sphere and are **sculpted** per character: skull
-proportions, jaw width, chin length and projection, cheekbones, brow ridge,
-eye sockets and muzzle. Eyeballs sit in the sockets with lids that open and
-close for expressions. Brows, lips and moustaches are tapered tubes of clay,
-and noses are a lathed bridge plus tip and nostrils. The mouth has a hinged jaw
-over curved rows of teeth: the show's gritted grimace. Hair, stubble and beards
-are shells grown off the skull surface that thin out and sink under the skin at
-their edges, so hairlines are smooth curves. Sculpted strands, curls or ridges
-are added on top. Hands have two-segment fingers and a thumb that pose into
-fists, open palms, points, horns and grips.
+- **Body:** one continuous skinned mesh covering torso, neck, arms, legs and
+  shoes. It is sculpted and bound in an A-pose so arms and legs never fuse to
+  the torso, with bones for the pelvis, spine, chest, neck, collarbones,
+  shoulders, elbows, wrists, hips, knees and ankles.
+- **Hands:** one skinned clay mitt each, with two-joint finger bones and a
+  thumb that pose into fists, open palms, points, horns and grips.
+- **Head:** one mesh. The skull is a star-shaped field tabulated from a
+  per-character sculpt (jaw width, chin, cheekbones, brow ridge, eye sockets).
+  Nose, ears, lips, hair, curls, strands, beards and moustaches are blended
+  into it, and hair and beards are shells that thin to nothing at the
+  hairline. Eyeballs, lids, brows and teeth stay separate pieces, as on a real
+  stop-motion puppet, so expressions can move them.
 
-Collarbones shrug automatically when an arm goes overhead, and spine and neck
-bends are spread over two bones each.
+Sculpted geometry is cached per character. Select-screen portraits are built
+in the background after the title screen appears.
 
 ### The clay shader
 
