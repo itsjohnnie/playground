@@ -221,6 +221,32 @@ export const BOSS = {
   quips: ['The AGI has achieved punch-superiority!'],
 };
 
+// Referee and commentators share the puppet builder.
+const HEAD = (o = {}) => ({ W: 0.9, H: 1.06, D: 0.97, jaw: 0.88, chin: 0.04, chinLen: 0.03, cheek: 0.03, brow: 0.05, socket: 0.06, muzzle: 0.04, forehead: 1.02,
+  nose: { len: 1.0, w: 1.0, tip: 1.0, bridge: 1.0 }, eye: { size: 1.0, gap: 1.0, iris: '#4a3a2a' }, mouth: { w: 1.0, lip: 0.85, smile: 0.2 }, ear: 1.0, ...o });
+
+export const REF_DEF = {
+  id: 'ref', name: 'Referee', skin: '#f2cdb4', build: 'slim',
+  head: HEAD({ jaw: 0.94, chin: 0.06, brow: 0.08, nose: { len: 1.15, w: 1.1, tip: 1.2, bridge: 1.1 }, mouth: { w: 0.9, lip: 0.7, smile: -0.4 }, ear: 1.2, eye: { size: 0.9, iris: '#4a4a52' } }),
+  brows: { color: '#e0e0e4', thick: 1.4, arch: 0.0 },
+  hair: { style: 'balding', color: '#d8d8dc' }, facial: {},
+  top: { type: 'shirt', color: '#f6f6f2' }, bottom: { color: '#16161a' }, shoes: { color: '#0e0e10', sole: '#1a1a1a' },
+  acc: ['bowtie'], stats: { power: 1, speed: 3, tough: 1 },
+};
+export const ANNOUNCER_DEFS = [
+  {
+    id: 'vinnie', skin: '#f0c8a6', build: 'slim', head: HEAD({ chin: 0.08, chinLen: 0.06, mouth: { w: 1.1, lip: 0.85, smile: 0.6 } }),
+    brows: { color: '#1a1410', thick: 1.1, arch: 0.3 }, hair: { style: 'swept', color: '#1c1612', color2: '#2a2018' }, facial: {},
+    top: { type: 'blazer', color: '#2a2c36', inner: '#f0f0f0' }, bottom: { color: '#2a2c36' }, shoes: { color: '#111', sole: '#111' }, acc: ['tie'], tie: '#c23838', stats: { power: 1, speed: 1, tough: 1 },
+  },
+  {
+    id: 'marty', skin: '#e8b898', build: 'heavy', head: HEAD({ W: 0.95, cheek: 0.07, mouth: { w: 1.0, lip: 0.9, smile: 0.3 } }),
+    brows: { color: '#3a2a20', thick: 1.2, arch: 0.2 }, hair: { style: 'balding', color: '#3a2a20' }, facial: { mustache: '#3a2a20' },
+    glasses: { type: 'rect', color: '#2a2622' },
+    top: { type: 'blazer', color: '#4a3a2e', inner: '#f0ece4' }, bottom: { color: '#4a3a2e' }, shoes: { color: '#111', sole: '#111' }, acc: ['tie'], tie: '#d8b040', stats: { power: 1, speed: 1, tough: 1 },
+  },
+];
+
 export const ANNOUNCERS = {
   a: { name: 'Vinnie Valdez', short: 'VINNIE' },
   b: { name: 'Marty Bronze', short: 'MARTY' },

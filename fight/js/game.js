@@ -39,8 +39,8 @@ export class Game {
     this.weapons = new Weapons(this);
     this.audio = new Audio();
     this.ui = new UI();
-    this.crew = new Crew(this);
-    this.commentary = new Commentary(this.ui, this.crew);
+    this.crew = null; // built in init(), once the character assets are loaded
+    this.commentary = new Commentary(this.ui, null);
     this.fighters = [];
     this.controllers = [null, null];
     this.timeScale = 1;
@@ -61,6 +61,11 @@ export class Game {
     const unlock = () => { this.audio.init(); this.audio.setVolume(this.settings.vol); this.audio.setMusicVolume(this.settings.music); if (this.mode !== 'fight') this.audio.startMusic(); };
     addEventListener('pointerdown', unlock, { once: true });
     addEventListener('keydown', unlock, { once: true });
+  }
+
+  init() {
+    this.crew = new Crew(this);
+    this.commentary.crew = this.crew;
   }
 
   // ------------------------------------------------------------- settings

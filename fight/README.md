@@ -47,7 +47,8 @@ In 1P mode the player can use either key set.
 ```
 js/
   clay.js        plasticine material, procedural normal map, lumpy geometry, boil jitter
-  sdf.js         SDF sculpting: smooth unions, coarse-to-fine sampling, surface nets, paint + skin weights
+  assets.js      loads the Blender-built character GLBs and remaps their skins onto the rig
+  sdf.js         fallback SDF sculptor: smooth unions, coarse-to-fine sampling, surface nets
   model.js       puppet builder: skeleton, sculpted skinned body and hands, sculpted heads, posing, faces
   characters.js  roster, boss, commentators
   poses.js       pose library and move timelines (degrees per joint)
@@ -65,32 +66,36 @@ js/
   ui.js / game.js  screens, HUD, match flow, replays, tournament
 ```
 
-### The puppets
+### The puppets (built in Blender)
 
-Characters aren't assembled from primitives. Each one is **sculpted as a
-signed distance field**: ellipsoids, tapered capsules, tori and rolls of clay
-blended with smooth unions (`smin`) so they melt into each other, plus smooth
-subtractions for eye sockets, nostrils, ears and an open grimace (`js/sdf.js`).
-The field is sampled on a grid, coarse-to-fine so only blocks near the
-surface are evaluated exactly, and meshed with naive surface nets. Each
-vertex is then painted (skin, sleeves, V-necks, belts, shoes, hair, lips) and
-weighted to bones by whichever parts it belongs to.
+Characters are modelled offline in Blender by `tools/build_characters.py` and
+shipped as `assets/chars/<id>.glb`. Rebuild them after editing
+`js/characters.js`:
 
-- **Body:** one continuous skinned mesh covering torso, neck, arms, legs and
-  shoes. It is sculpted and bound in an A-pose so arms and legs never fuse to
-  the torso, with bones for the pelvis, spine, chest, neck, collarbones,
-  shoulders, elbows, wrists, hips, knees and ankles.
-- **Hands:** one skinned clay mitt each, with two-joint finger bones and a
-  thumb that pose into fists, open palms, points, horns and grips.
-- **Head:** one mesh. The skull is a star-shaped field tabulated from a
-  per-character sculpt (jaw width, chin, cheekbones, brow ridge, eye sockets).
-  Nose, ears, lips, hair, curls, strands, beards and moustaches are blended
-  into it, and hair and beards are shells that thin to nothing at the
-  hairline. Eyeballs, lids, brows and teeth stay separate pieces, as on a real
-  stop-motion puppet, so expressions can move them.
+```sh
+pip install bpy                     # Blender as a Python module
+node --input-type=module -e "import * as m from './js/characters.js'; import {writeFileSync} from 'fs'; writeFileSync('tools/characters.json', JSON.stringify([...m.ROSTER, m.BOSS, m.REF_DEF, ...m.ANNOUNCER_DEFS]))"
+python3 tools/build_characters.py   # or: build_characters.py sam dario
+```
 
-Sculpted geometry is cached per character. Select-screen portraits are built
-in the background after the title screen appears.
+- **Head:** a dense quad sphere shaped by the per-character skull sculpt
+  (jaw, chin, cheekbones, brow, sockets). The face is sculpted as smooth
+  displacement, so it blends like real clay: nose bridge, bulb and nostril
+  wings, cheekbones, smile cheeks and creases, lips with a cupid's bow and
+  philtrum, chin and cleft, under-eye bags. Hair caps, curls, strands, beards,
+  moustaches and ears are separate masses voxel-remeshed onto the skull, then
+  smoothed. Eye sockets, the open grimace, nostrils and ear canals are carved
+  with booleans, and clothing and lip colours are baked into vertex colours.
+- **Body:** a Skin-modifier armature graph (torso, neck, arms, palms with
+  jointed fingers, legs, shoes) with subdivision, remeshed and smoothed into
+  one surface. It's built in an A-pose and weighted with Blender's bone-heat
+  automatic weights onto bones named like the game's rig.
+- **In the game,** `js/assets.js` loads the GLB, remaps joints by name onto
+  the runtime skeleton, binds in the same A-pose, and puts the head on the
+  head bone. Eyes, lids, brows, teeth and glasses stay live (`js/model.js`),
+  placed by the same landmark maths as the Blender script, so expressions
+  still work. If an asset is missing, the game falls back to its built-in SDF
+  sculptor (`js/sdf.js`).
 
 ### The clay shader
 

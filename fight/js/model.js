@@ -8,6 +8,7 @@ import { Sculpt, smax as smaxS, sphere as sphereS, ellipsoid as ellipsoidS, cone
 import { sphere, capsule, box, cone, cyl, torus, mesh, clayMat, prepareBoil } from './clay.js';
 import { noise3, mulberry32, DEG, clamp, lerp } from './util.js';
 import { JOINTS } from './poses.js';
+import { getCharacter } from './assets.js';
 
 const BUILDS = {
   slim:    { sh: 0.205, arm: 0.05,  leg: 0.07,  chest: 0.175, waist: 0.14,  hip: 0.155, depth: 0.125, belly: 0,    scale: 1,    head: 0.31 },
@@ -172,7 +173,7 @@ function sculptHead(def, R, at, geo) {
   return S.build(box.map((v, i) => v + (i < 3 ? -0.02 : 0.02)), R * 0.029);
 }
 
-function buildHead(headBone, def, R) {
+function buildHead(headBone, def, R, headGeo) {
   const h = def.head;
   const skin = def.skin;
   const face = { R };
@@ -190,7 +191,7 @@ function buildHead(headBone, def, R) {
   const curveLip = (y, up, k) => [-1, -0.5, 0, 0.5, 1].map((u) => [mc.x + u * mw * k, mc.y + y + (Math.abs(u) ** 2) * up, mc.z - (Math.abs(u) ** 2) * mw * 0.55]);
 
   const key = def.id + ':' + R;
-  let geo = headCache.get(key);
+  let geo = headGeo || headCache.get(key);
   if (!geo) {
     geo = sculptHead(def, R, at, {
       eyes: eyeCenters.map((c) => ({ c: c.toArray(), r: eR })),
@@ -628,27 +629,48 @@ export function buildFighterModel(def) {
     sm.bind(new THREE.Skeleton(boneNames.map((n) => J[n])));
     return sm;
   };
-  let parts = bodyCache.get(def.id) || {};
-  // Hands are sculpted and bound with the arms hanging straight down...
-  g.updateMatrixWorld(true);
-  if (!parts.hands) parts.hands = ['L', 'R'].map((s) => sculptHand(def, b, W, s, hk, boneIndex));
-  for (const h of parts.hands) skin(h, skinMat);
-  // ...the body in an A-pose, so arms and legs don't fuse to the torso.
-  for (const s of ['L', 'R']) {
-    const sx = s === 'L' ? 1 : -1;
-    J['sh' + s].rotation.z = sx * 0.75;
-    J['hip' + s].rotation.z = sx * 0.12;
+  const aPose = (on) => {
+    for (const s of ['L', 'R']) {
+      const sx = s === 'L' ? 1 : -1;
+      J['sh' + s].rotation.z = on ? sx * 0.75 : 0;
+      J['hip' + s].rotation.z = on ? sx * 0.12 : 0;
+    }
+    g.updateMatrixWorld(true);
+  };
+  const asset = getCharacter(def.id);
+  if (asset?.body) {
+    // Modelled in Blender in the same A-pose, weighted to the same bone names.
+    let geo = bodyCache.get('blend:' + def.id);
+    if (!geo) {
+      geo = asset.body.geometry.clone();
+      const si = geo.attributes.skinIndex;
+      const remap = asset.body.bones.map((n) => boneIndex[n] ?? boneIndex.root);
+      const out = new Uint16Array(si.count * 4);
+      for (let i = 0; i < si.count; i++) for (let k = 0; k < 4; k++) out[i * 4 + k] = remap[si.getComponent(i, k)];
+      geo.setAttribute('skinIndex', new THREE.BufferAttribute(out, 4));
+      bodyCache.set('blend:' + def.id, geo);
+    }
+    aPose(true);
+    J.torsoMesh = skin(geo, mat);
+    aPose(false);
+  } else {
+    let parts = bodyCache.get(def.id) || {};
+    // Hands are sculpted and bound with the arms hanging straight down...
+    g.updateMatrixWorld(true);
+    if (!parts.hands) parts.hands = ['L', 'R'].map((s) => sculptHand(def, b, W, s, hk, boneIndex));
+    for (const h of parts.hands) skin(h, skinMat);
+    // ...the body in an A-pose, so arms and legs don't fuse to the torso.
+    aPose(true);
+    if (!parts.body) parts.body = sculptBody(def, b, W, hipY, boneIndex);
+    bodyCache.set(def.id, parts);
+    J.torsoMesh = skin(parts.body, mat);
+    aPose(false);
   }
-  g.updateMatrixWorld(true);
-  if (!parts.body) parts.body = sculptBody(def, b, W, hipY, boneIndex);
-  bodyCache.set(def.id, parts);
-  J.torsoMesh = skin(parts.body, mat);
-  for (const s of ['L', 'R']) { J['sh' + s].rotation.z = 0; J['hip' + s].rotation.z = 0; }
 
   // Neck column hidden inside the body's neck (the taffy finisher stretches it).
   J.neck.add(capsule(0.05 * (b.arm > 0.06 ? 1.25 : 1), 0.05, def.skin, { centered: true, pos: [0, 0.04, -0.006] }));
 
-  const face = buildHead(J.head, def, b.head);
+  const face = buildHead(J.head, def, b.head, asset?.head);
   for (const s of ['L', 'R']) setGrip(hands[s], 'fist');
 
   // Wardrobe details on the chest bone.

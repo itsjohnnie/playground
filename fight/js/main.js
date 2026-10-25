@@ -1,6 +1,8 @@
 // Boot: renderer, resize, main loop.
 import * as THREE from 'three';
 import { Game } from './game.js';
+import { loadAll } from './assets.js';
+import { ROSTER, BOSS, REF_DEF, ANNOUNCER_DEFS } from './characters.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -36,8 +38,10 @@ function resize() {
 addEventListener('resize', resize);
 resize();
 
-// Let the loading screen paint before the heavy portrait pass.
-requestAnimationFrame(() => setTimeout(() => {
+// Load the Blender-built characters, then boot.
+const ids = [...ROSTER, BOSS, REF_DEF, ...ANNOUNCER_DEFS].map((c) => c.id);
+loadAll(ids).then(() => requestAnimationFrame(() => setTimeout(() => {
+  game.init();
   game.boot();
   let last = performance.now();
   const loop = (now) => {
@@ -49,4 +53,4 @@ requestAnimationFrame(() => setTimeout(() => {
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
-}, 30));
+}, 30)));
