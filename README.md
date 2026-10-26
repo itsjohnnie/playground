@@ -23,6 +23,7 @@ A collection of experimental web projects, prototypes, and interactive demos.
 | **piggies** | The three little piggies as a scroll-along ASCII storybook | [View](https://itsjohnnie.github.io/playground/piggies/) |
 | **toaster** | Toast notification demos | [View](https://itsjohnnie.github.io/playground/toaster/) |
 | **tyme** | Six SVG watch faces (Omega, Tissot PRX, Timex, Bell & Ross, Braun, Citizen Tsuyosa) with live hands and accurate shadows | [View](https://itsjohnnie.github.io/playground/tyme/) |
+| **walker** | Procedural human rig and endless isometric walk: foot-locked IK, biomechanical gait, character creator | [View](https://itsjohnnie.github.io/playground/walker/) |
 | **waves** | Full-screen banded gradient waves with a fresh harmonious palette each load | [View](https://itsjohnnie.github.io/playground/waves/) |
 
 ## Client Sites

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Walker</title>
+  <meta name="description" content="A procedural human rig and walk cycle: foot-locked IK, biomechanical timing, isometric view, character creator.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+  </script>
+</head>
+<body>
+  <canvas id="view" aria-label="An isometric view of a person walking"></canvas>
+
+  <header class="brand">
+    <a class="back" href="../" aria-label="Back to playground">←</a>
+    <div>
+      <h1>Walker</h1>
+      <p id="readout">—</p>
+    </div>
+  </header>
+
+  <div class="transport" role="toolbar" aria-label="Playback">
+    <button id="play" title="Pause (space)" aria-label="Pause">❚❚</button>
+    <button id="step" title="Step one frame (.)" aria-label="Step one frame">▸|</button>
+    <div class="seg" role="radiogroup" aria-label="Playback speed">
+      <button data-rate="0.1">0.1×</button>
+      <button data-rate="0.25">¼×</button>
+      <button data-rate="1" class="on">1×</button>
+    </div>
+    <div class="seg" aria-label="Rotate camera">
+      <button id="rotL" title="Rotate view (Q)" aria-label="Rotate view left">⟲</button>
+      <button id="rotR" title="Rotate view (E)" aria-label="Rotate view right">⟳</button>
+    </div>
+  </div>
+
+  <figure id="graph" class="graph" hidden>
+    <canvas width="560" height="300"></canvas>
+    <figcaption>Right leg, one gait cycle · <span class="k">—</span> this walker · <span class="r">▒</span> reference adult gait</figcaption>
+  </figure>
+
+  <aside class="panel" id="panel">
+    <button class="grip" id="grip" aria-label="Toggle controls" aria-expanded="true"><span></span></button>
+    <div class="scroll">
+      <section>
+        <h2>Character</h2>
+        <div class="rows" id="character"></div>
+        <div class="swatches" id="colors"></div>
+        <div class="actions">
+          <button id="random">Randomise</button>
+          <button id="copy">Copy preset</button>
+          <button id="paste">Paste</button>
+        </div>
+      </section>
+      <section>
+        <h2>Walk</h2>
+        <div class="rows" id="gait"></div>
+      </section>
+      <section>
+        <h2>View</h2>
+        <div class="toggles" id="toggles"></div>
+      </section>
+      <p class="hint">Space pause · . step · Q/E rotate · scroll to zoom</p>
+    </div>
+  </aside>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
