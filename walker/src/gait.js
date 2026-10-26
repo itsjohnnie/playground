@@ -86,7 +86,7 @@ export function gaitTiming(spec, g) {
   const v = Math.max(0.05, g.speed);
   // walk ratio (step length / cadence in steps·min⁻¹) is close to constant
   // across speeds for a given person, ≈ 0.0066 m·min for average legs
-  const W = 0.0066 * (spec.legLen / 0.8597);
+  const W = 0.0066 * (spec.legLen / 0.8597) * (1 - 0.04 * (spec.c.sex ?? 0)); // women: slightly higher cadence
   const step = Math.sqrt(v * 60 * W);
   const cadence = (v * 60) / step; // steps per minute
   const T = 120 / cadence; // one cycle = two steps
@@ -226,7 +226,7 @@ export class Walker {
     const n = this.g.variation;
     const strideJit = 1 + 0.012 * n * hash(cycle * 2 + (f.sign > 0 ? 1 : 0), 1);
     const z = this.dist + k.v * dt + k.reach * k.stride * strideJit + s.heelZ;
-    const w = (0.085 * s.u * this.g.stepWidth + 0.01 * n * hash(cycle, f.sign + 3)) * 0.5;
+    const w = (0.085 * s.u * this.g.stepWidth * (1 - 0.18 * (s.c.sex ?? 0)) + 0.01 * n * hash(cycle, f.sign + 3)) * 0.5;
     return new THREE.Vector3(f.sign * w, 0, z);
   }
 
@@ -267,8 +267,10 @@ export class Walker {
     const spd = clamp(k.v / 1.3, 0.3, 1.8);
 
     // ── pelvis orientation ──────────────────────────────────────────────
-    const yawA = 4.5 * g.sway * Math.sqrt(spd);
-    const rollA = 3.2 * g.sway * spd;
+    // women show more pelvic rotation and drop for the same speed
+    const fem = s.c.sex ?? 0;
+    const yawA = 4.5 * g.sway * Math.sqrt(spd) * (1 + 0.3 * fem);
+    const rollA = 3.2 * g.sway * spd * (1 + 0.35 * fem);
     const pelvisYaw = yawA * Math.cos(TAU * φ) * D;             // right hip forward at right HS
     const pelvisRoll = -rollA * Math.cos(TAU * (φ - 0.17)) * D;  // swing side drops
     const pelvisTilt = (1.2 * Math.cos(2 * TAU * (φ - 0.45)) * spd + 2 + 2 * (spd - 1)) * D;
@@ -403,7 +405,7 @@ export class Walker {
       const ampJ = 1 + 0.08 * n * hash(step, sg + 7);
       const swingA = 15 * g.armSwing * spd * ampJ;
       const flex = -4 + swingA * Math.cos(TAU * (armPhase - 0.03)) + 1.8 * Math.cos(2 * TAU * (armPhase - 0.1));
-      const elbow = 17 + 10 * spd * g.armSwing * (0.5 + 0.5 * Math.cos(TAU * (armPhase - 0.09))) - 4 * g.posture;
+      const elbow = 17 + 5 * fem + 10 * spd * g.armSwing * (0.5 + 0.5 * Math.cos(TAU * (armPhase - 0.09))) - 4 * g.posture;
       const abd = 4 + 1.5 * Math.cos(TAU * (armPhase - 0.5));
       // clavicle: tiny protraction as the arm comes forward
       _q.setFromAxisAngle(Y, sg * 0.025 * flex * D);

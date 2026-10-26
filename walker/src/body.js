@@ -139,6 +139,7 @@ export function buildBody(spec, rig) {
   col.belt = col.pants.clone().multiplyScalar(0.6);
   const g = c.build;           // girth
   const m = c.muscle;          // 0 … 1
+  const f = c.sex ?? 0;        // 0 male … 1 female
   const SEG = 28;
 
   // ── torso ─────────────────────────────────────────────────────────────
@@ -157,7 +158,13 @@ export function buildBody(spec, rig) {
     [spec.shoulderY + 0.006 * u, 0.162 * c.shoulders * lerp(1, g, 0.5), 0.078 * g,       -0.016, 2.6],
     [spec.shoulderY + 0.024 * u, 0.098 * lerp(1, g, 0.5),    0.068 * g,       -0.018, 2.3], // trapezius
     [spec.neckY + 0.012 * u,     0.068 * lerp(1, g, 0.5),    0.062 * lerp(1, g, 0.5), -0.018, 2.0],
-  ].map(([y, w, d, z, e]) => [y, w * u, d * u, z * u, e]);
+  ].map(([y, w, d, z, e], i) => {
+    // female: narrower waist and upper torso, fuller hips and glutes
+    const wf = [1, 1.02, 1.03, 1, 0.87, 0.94, 0.95, 0.95, 0.96, 0.97, 0.97, 0.9][i] ?? 1;
+    const df = [1, 1.07, 1.08, 1.03, 0.97, 1, 1, 1, 1, 1, 1, 0.9][i] ?? 1;
+    const zf = [0, -0.006, -0.010, -0.004, 0, 0, 0, 0, 0, 0, 0, 0][i] ?? 0;
+    return [y, w * u * lerp(1, wf, f), d * u * lerp(1, df, f), (z + zf * f) * u, e];
+  });
   const torsoP = profile(torsoKeys);
   const torsoW = (x, y) => torsoWeights(spec, x, y);
   const y0 = torsoKeys[0][0], y1 = torsoKeys[torsoKeys.length - 1][0];
@@ -182,7 +189,14 @@ export function buildBody(spec, rig) {
       const blade = Math.exp(-Math.pow((y - (spec.shoulderY - 0.1 * u)) / (0.07 * u), 2));
       pz -= back * blade * 0.012 * u * Math.pow(Math.abs(Math.sin(a)), 0.5);
       const pec = Math.exp(-Math.pow((y - (spec.shoulderY - 0.11 * u)) / (0.05 * u), 2)) * (0.002 + 0.005 * m);
-      pz += front * pec * Math.pow(Math.abs(Math.sin(a * 1)), 0.6) * u;
+      pz += front * pec * Math.pow(Math.abs(Math.sin(a * 1)), 0.6) * u * (1 - f);
+      // bust: two soft volumes with a gentle cleavage, falling off faster above
+      if (f > 0) {
+        const by = y - (spec.shoulderY - 0.16 * u);
+        const vy = Math.exp(-Math.pow(by / ((by > 0 ? 0.065 : 0.04) * u), 2));
+        const lobe = Math.exp(-Math.pow((Math.abs(px) - 0.06 * u) / (0.05 * u), 2));
+        pz += f * 0.034 * u * vy * lobe * Math.pow(front, 1.3) * lerp(1, g, 0.5);
+      }
       // spine groove
       pz += back * Math.exp(-Math.pow(Math.sin(a) / 0.12, 2)) * 0.006 * u * (y > spec.hipsY ? 1 : 0);
       pts.push([px, y, pz + zc]);
@@ -206,7 +220,7 @@ export function buildBody(spec, rig) {
     const n0 = spec.neckY - 0.02 * u, n1 = spec.headY + 0.035 * u;
     for (let j = 0; j <= 6; j++) {
       const t = j / 6, y = lerp(n0, n1, t);
-      const rx = (0.057 - 0.007 * t) * u * lerp(1, g, 0.5), rz = (0.059 - 0.004 * t) * u * lerp(1, g, 0.5);
+      const rx = (0.057 - 0.007 * t) * u * lerp(1, g, 0.5) * (1 - 0.14 * f), rz = (0.059 - 0.004 * t) * u * lerp(1, g, 0.5) * (1 - 0.1 * f);
       const pts = [];
       for (let i = 0; i < SEG; i++) {
         const [px, pz] = se((i / SEG) * TAU, rx, rz, 2);
@@ -219,6 +233,7 @@ export function buildBody(spec, rig) {
 
   // ── head ──────────────────────────────────────────────────────────────
   buildHead(B, spec, col);
+  if (c.hairLength > 0.02) buildHairFall(B, spec, c.hairLength);
 
   // ── arms ──────────────────────────────────────────────────────────────
   for (const [side, k] of [['left', 1], ['right', -1]]) {
@@ -254,7 +269,7 @@ export function buildBody(spec, rig) {
       const pts = [];
       for (let i = 0; i < SEG; i++) {
         const a = (i / SEG) * TAU;
-        const [px, pz] = se(a, rx * u + puff, rz * u + puff, 2.1);
+        const [px, pz] = se(a, rx * u * (1 - 0.12 * f) + puff, rz * u * (1 - 0.1 * f) + puff, 2.1);
         pts.push([x0 + px, y, z0 + pz + zc * u]);
       }
       const w = armWeights(side, t, elbowT);
@@ -272,8 +287,8 @@ export function buildBody(spec, rig) {
     // trousers: anatomy underneath, cloth on top (never tighter than a
     // straight-leg cut below the knee)
     const keys = [
-      [-0.12, 0.074, 0.088, -0.016],
-      [-0.04, 0.090, 0.098, -0.010],
+      [-0.07, 0.066, 0.076, -0.010],
+      [-0.04, 0.080, 0.088, -0.008],
       [0.06, 0.088, 0.090, 0.004],
       [0.20, 0.078, 0.080, 0.010],
       [0.36, 0.066, 0.068, 0.010],
@@ -287,9 +302,9 @@ export function buildBody(spec, rig) {
     const P = profile(keys);
     const r = [];
     for (let j = 0; j <= 34; j++) {
-      const t = lerp(-0.12, 1.0, j / 34);
+      const t = lerp(-0.07, 1.0, j / 34); // starts below the shirt hem
       const [rx, rz, zc] = P(t);
-      const gg = t < kneeT + 0.1 ? g : lerp(g, 1, 0.4);
+      const gg = (t < kneeT + 0.1 ? g : lerp(g, 1, 0.4)) * (1 + f * (t < 0.3 ? 0.05 * (1 - t / 0.3) : t > kneeT + 0.05 ? -0.08 : 0));
       const y = spec.hipJointY - t * L;
       const pts = [];
       for (let i = 0; i < SEG; i++) {
@@ -392,8 +407,8 @@ function legWeights(side, t, kneeT) {
   const w = {};
   const ul = `${side}UpLeg`, l = `${side}Leg`, f = `${side}Foot`;
   if (t < 0.04) {
-    const a = smooth((t + 0.12) / 0.16);
-    w.hips = (1 - a) * 0.6; w[ul] = 1 - w.hips;
+    const a = smooth((t + 0.07) / 0.11);
+    w.hips = (1 - a) * 0.85; w[ul] = 1 - w.hips;
   } else if (t < kneeT - 0.05) w[ul] = 1;
   else if (t < kneeT + 0.05) {
     const a = smooth((t - (kneeT - 0.05)) / 0.1);
@@ -420,7 +435,7 @@ function buildHead(B, s, col) {
       let x = Math.sin(a) * rr, z = Math.cos(a) * rr, y = yl;
       // cranium wider at the back-top; face narrower toward the jaw
       const jaw = smooth((-y - 0.05) / 0.9);
-      x *= 1 - 0.20 * jaw;
+      x *= 1 - (0.20 + 0.08 * s.c.sex) * jaw;
       z *= 1 - 0.04 * jaw;
       // profile: forehead slopes back a little, chin comes forward, so the
       // face plane is upright rather than tipped toward the floor
@@ -438,10 +453,10 @@ function buildHead(B, s, col) {
       Z += Math.max(0, Math.cos(a)) * nose * 0.020 * u * hs;
       // brow ridge
       const brow = Math.exp(-Math.pow((Y - 0.030 * u * hs) / (0.012 * u), 2)) * Math.pow(Math.max(0, Math.cos(a)), 3);
-      Z += brow * 0.006 * u;
+      Z += brow * 0.006 * u * (1 - 0.7 * s.c.sex);
       // ears
       const ear = Math.exp(-Math.pow(Z / (0.016 * u), 2) - Math.pow((Y - 0.0 * u) / (0.026 * u), 2));
-      X += Math.sign(x) * ear * 0.014 * u * Math.pow(Math.abs(Math.sin(a)), 4);
+      X += Math.sign(x) * ear * 0.014 * u * Math.pow(Math.abs(Math.sin(a)), 4) * (1 - 0.8 * smooth(s.c.hairLength * 4)); // tucked under long hair
       // hair: a cap with a hairline at the brow and down to the nape
       const fn = z / (rr || 1); // −1 back … 1 front
       const hairline = lerp(-0.42, 0.40, smooth((fn + 1) / 2)) - 0.14 * Math.pow(Math.abs(Math.sin(a)), 3) * smooth(fn + 0.2);
@@ -469,6 +484,36 @@ function buildHead(B, s, col) {
   }
   // close top and bottom with the loft caps
   B.loft(rings, { capStart: true, capEnd: true });
+}
+
+// Hair that falls below the skull: a thin shell, open at the face, hanging
+// from the crown to the shoulders. Drawn as hair by the same shader flag.
+function buildHairFall(B, s, len) {
+  const u = s.u, hs = s.c.head;
+  const cy = s.headY + 0.094 * u * hs, cz = 0.026 * u;
+  const rx = 0.080 * u * hs, rz = 0.101 * u * hs;
+  const y0 = cy + 0.02 * u, y1 = cy - (0.07 + 0.2 * len) * u;
+  const A0 = (78 * Math.PI) / 180; // where the fall parts around the face
+  const M = 20, rings = [];
+  const ones = new Array(M * 2).fill(1);
+  for (let j = 0; j <= 12; j++) {
+    const t = j / 12, y = lerp(y0, y1, t);
+    // follows the skull at the top, then hangs straight and flares a little
+    const sk = Math.sqrt(Math.max(0, 1 - Math.pow((y - cy) / (0.12 * u * hs), 2)));
+    const wide = lerp(1.07, 1.0, smooth(t * 3)) * Math.max(sk, 0.92) + 0.10 * t * t;
+    const pts = [];
+    for (const k of [0, 1]) {
+      for (let i = 0; i < M; i++) {
+        const q = k === 0 ? i / (M - 1) : 1 - i / (M - 1);
+        const a = lerp(A0, TAU - A0, q);
+        const rr = k ? wide - 0.11 : wide; // ~9 mm thick
+        pts.push([Math.sin(a) * rx * rr * 1.04, y, cz + Math.cos(a) * rz * rr - 0.004 * u * t]);
+      }
+    }
+    const wh = 1 - 0.55 * smooth(t);
+    rings.push({ pts, hair: ones, color: new THREE.Color(1, 1, 1), weights: () => ({ head: wh, neck: 1 - wh }) });
+  }
+  B.loft(rings);
 }
 
 function buildHand(B, s, col, side, k, x0, wristY, z0) {

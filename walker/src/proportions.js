@@ -12,6 +12,8 @@ export const DEFAULT_CHARACTER = {
   build: 1.0,       // girth: 0.8 slender … 1.3 heavy
   muscle: 0.5,      // 0 soft … 1 athletic: shapes calves, deltoids, chest
   head: 1.0,        // head size
+  sex: 0,           // 0 male … 1 female: frame, fat distribution, face, gait
+  hairLength: 0,    // 0 short … 1 past the shoulders
   skin: '#c99678',
   hair: '#2a1d16',
   shirt: '#3d5a73',
@@ -42,8 +44,11 @@ export function makeSpec(c = DEFAULT_CHARACTER) {
   const spine2Y = hipsY + torso * 0.70;
 
   // ── breadths ──────────────────────────────────────────────────────────
-  const shoulderW = 0.232 * H * c.shoulders; // outer, bideltoid-ish
-  const hipW = 0.191 * H * c.hips;
+  // sexual dimorphism: relative to stature, women average ~9% narrower
+  // shoulders and ~7% broader hips
+  const f = c.sex ?? 0;
+  const shoulderW = 0.232 * H * c.shoulders * (1 - 0.09 * f); // outer, bideltoid-ish
+  const hipW = 0.191 * H * c.hips * (1 + 0.07 * f);
   const hipSep = hipW * 0.50; // femoral head centres
   const armX = shoulderW * 0.5 - 0.05 * u * c.build;
 

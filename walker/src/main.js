@@ -370,6 +370,8 @@ const CHAR_SLIDERS = [
   ['build', 'Build', 0.8, 1.35, 0.01, pct],
   ['muscle', 'Muscle', 0, 1, 0.01, pct],
   ['head', 'Head', 0.88, 1.12, 0.01, pct],
+  ['sex', 'Sex', 0, 1, 0.01, (v) => (v < 0.15 ? 'male' : v > 0.85 ? 'female' : `${Math.round(v * 100)}`)],
+  ['hairLength', 'Hair', 0, 1, 0.01, (v) => (v < 0.05 ? 'short' : pct(v))],
 ];
 const GAIT_SLIDERS = [
   ['speed', 'Speed', 0.5, 2.0, 0.01, (v) => `${v.toFixed(2)}`],
@@ -444,11 +446,27 @@ const OUTFITS = [
 ];
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
+// starting points, not stereotypes: every value stays on its slider
+const PRESETS = {
+  man: { height: 1.78, legs: 1.0, shoulders: 1.04, hips: 0.97, build: 1.04, muscle: 0.6, head: 1.0, sex: 0, hairLength: 0,
+    skin: '#c99678', hair: '#2a1d16', shirt: '#3d5a73', pants: '#2b2b30', shoes: '#e8e4dc' },
+  woman: { height: 1.65, legs: 1.02, shoulders: 1.0, hips: 1.0, build: 0.96, muscle: 0.35, head: 1.0, sex: 1, hairLength: 0.75,
+    skin: '#e2b593', hair: '#5a3620', shirt: '#b5462f', pants: '#2d3a55', shoes: '#efefea' },
+};
+function applyPreset(name) {
+  Object.assign(character, PRESETS[name]);
+  for (const k in inputs) inputs[k]();
+  queueRebuild(); persist();
+}
+document.getElementById('man').onclick = () => applyPreset('man');
+document.getElementById('woman').onclick = () => applyPreset('woman');
 document.getElementById('random').onclick = () => {
   const [shirt, pants, shoes] = pick(OUTFITS);
   const broad = Math.random();
+  const fem = Math.random() < 0.5 ? 1 : 0;
   Object.assign(character, {
-    height: +rnd(1.56, 1.96).toFixed(2), legs: +rnd(0.94, 1.06).toFixed(2),
+    sex: fem, hairLength: +(fem ? rnd(0.3, 1) : rnd(0, 0.25)).toFixed(2),
+    height: +(fem ? rnd(1.54, 1.78) : rnd(1.64, 1.96)).toFixed(2), legs: +rnd(0.94, 1.06).toFixed(2),
     shoulders: +(0.9 + broad * 0.22).toFixed(2), hips: +(1.12 - broad * 0.2 + rnd(-0.05, 0.05)).toFixed(2),
     build: +rnd(0.86, 1.22).toFixed(2), muscle: +rnd(0.1, 0.9).toFixed(2), head: +rnd(0.95, 1.05).toFixed(2),
     skin: pick(SKINS), hair: pick(HAIRS), shirt, pants, shoes,
@@ -542,4 +560,4 @@ applyView();
 requestAnimationFrame(frame);
 
 // console handle for poking at the rig: walkerApp.walker.pose, .character …
-window.walkerApp = { walker, character, gait, view, camState, setPaused, get body() { return body; }, get spec() { return spec; } };
+window.walkerApp = { applyPreset, walker, character, gait, view, camState, setPaused, get body() { return body; }, get spec() { return spec; } };

@@ -23,6 +23,15 @@ The joint angles are checked against reference adult gait curves (Winter 1991,
 Perry 1992): over a cycle the RMS error is about 4–6° at hip, knee and ankle.
 Turn on **Gait graph** to see the comparison live.
 
+## Man, woman, and everything between
+
+`sex` is a continuous blend, not a switch. Toward 1 it narrows the shoulders
+(~9% of stature), broadens the hips (~7%), slims the waist, arms, neck and
+calves, adds a bust and softens the jaw and brow. It also changes the walk the
+way measured gait does: more pelvic rotation and drop, a narrower base and a
+slightly higher cadence. `hairLength` adds a hair fall that frames the face.
+**Man** and **Woman** are starting presets; every value stays on its slider.
+
 ## Files
 
 - `src/proportions.js`: creator sliders → a spec of lengths (anthropometric
