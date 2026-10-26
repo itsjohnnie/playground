@@ -47,7 +47,7 @@ In 1P mode the player can use either key set.
 ```
 js/
   clay.js        plasticine material, procedural normal map, lumpy geometry, boil jitter
-  assets.js      loads the Blender-built character GLBs and remaps their skins onto the rig
+  assets.js      loads the MakeHuman-built characters (.mhc) and their expression morphs
   sdf.js         fallback SDF sculptor: smooth unions, coarse-to-fine sampling, surface nets
   model.js       puppet builder: skeleton, sculpted skinned body and hands, sculpted heads, posing, faces
   characters.js  roster, boss, commentators
@@ -66,36 +66,42 @@ js/
   ui.js / game.js  screens, HUD, match flow, replays, tournament
 ```
 
-### The puppets (built in Blender)
+### The puppets (built on MakeHuman)
 
-Characters are modelled offline in Blender by `tools/build_characters.py` and
-shipped as `assets/chars/<id>.glb`. Rebuild them after editing
-`js/characters.js`:
+Characters start from the [MakeHuman](http://www.makehumancommunity.org)
+base mesh, whose mesh, morph targets, skeleton and weights are released as
+CC0. `tools/build_mh.py` (Python + numpy, about a second per character)
+turns it into a clay caricature and writes `assets/chars/<id>.mhc`:
 
 ```sh
-pip install bpy                     # Blender as a Python module
+tools/fetch_makehuman.sh            # one-off: sparse clone into tools/.mh
 node --input-type=module -e "import * as m from './js/characters.js'; import {writeFileSync} from 'fs'; writeFileSync('tools/characters.json', JSON.stringify([...m.ROSTER, m.BOSS, m.REF_DEF, ...m.ANNOUNCER_DEFS]))"
-python3 tools/build_characters.py   # or: build_characters.py sam dario
+python3 -I tools/build_mh.py        # or: build_mh.py sam dario
 ```
 
-- **Head:** a dense quad sphere shaped by the per-character skull sculpt
-  (jaw, chin, cheekbones, brow, sockets). The face is sculpted as smooth
-  displacement, so it blends like real clay: nose bridge, bulb and nostril
-  wings, cheekbones, smile cheeks and creases, lips with a cupid's bow and
-  philtrum, chin and cleft, under-eye bags. Hair caps, curls, strands, beards,
-  moustaches and ears are separate masses voxel-remeshed onto the skull, then
-  smoothed. Eye sockets, the open grimace, nostrils and ear canals are carved
-  with booleans, and clothing and lip colours are baked into vertex colours.
-- **Body:** a Skin-modifier armature graph (torso, neck, arms, palms with
-  jointed fingers, legs, shoes) with subdivision, remeshed and smoothed into
-  one surface. It's built in an A-pose and weighted with Blender's bone-heat
-  automatic weights onto bones named like the game's rig.
-- **In the game,** `js/assets.js` loads the GLB, remaps joints by name onto
-  the runtime skeleton, binds in the same A-pose, and puts the head on the
-  head bone. Eyes, lids, brows, teeth and glasses stay live (`js/model.js`),
-  placed by the same landmark maths as the Blender script, so expressions
-  still work. If an asset is missing, the game falls back to its built-in SDF
-  sculptor (`js/sdf.js`).
+- **Likeness:** MakeHuman's age, muscle, weight, height and ethnicity macros,
+  plus face and body targets per character (`LOOKS` in the builder: head
+  shape, nose, eyes, mouth, chin, ears, neck). `CARICATURE` scales how hard
+  each look is pushed. On top of that come puppet proportions: a much bigger
+  head, chunkier hands and feet, and bigger eyes.
+- **Clothes, hair, brows and beards** are shells grown off the skin. Each
+  garment is clipped from the body along a smooth field (sleeve length,
+  neckline, belt, trouser hem), so its edges come out clean. It's draped so it
+  hangs straight from the chest, hips and shoulders instead of hugging every
+  muscle, smoothed, and finished with rolled tube hems. Hair is a scalp shell
+  with sculpted locks or curls laid along a flow direction. Skin hidden under
+  clothes is cut away.
+- **Rig:** MakeHuman's 163 bones fold into the game's 41 bones, and their skin
+  weights fold with them. The bind pose is solved so the game's rest pose
+  (arms hanging, palms in, fingers curling toward the palm) holds.
+- **Faces:** ten facial expression units (blink, wide, squint, brows up, sad
+  and down, jaw, smile, frown, teeth) ship as morph targets. Every shell
+  inherits them, so beards drop with the jaw and brows ride the forehead.
+  `setExpression` in `js/model.js` blends them per expression.
+- **File format:** a gzipped `MHC2` blob with a JSON header, 16-bit positions,
+  8-bit skin weights and sparse 16-bit morph deltas, about 0.5 MB per
+  character. The browser inflates it with `DecompressionStream`. If a file is
+  missing, the game falls back to its built-in SDF sculptor (`js/sdf.js`).
 
 ### The clay shader
 

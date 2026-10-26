@@ -428,14 +428,14 @@ function hairParts(S, def, R, sk, at) {
   if (fh.mustache) for (const sx of [1, -1]) roll([at(0, -0.33, 1, 0.03), at(sx * 0.18, -0.36, 0.98, 0.03), at(sx * 0.3, -0.46, 0.93, 0.02)], 0.04, 0.025, fh.mustache, 0.02);
 }
 
-function buildGlasses(headBone, def, R, at, eg, eR) {
+function buildGlasses(headBone, def, R, at, eg, eR, eyeCenters) {
   const gl = def.glasses;
   if (!gl) return;
   const col = gl.color;
   const g = new THREE.Group();
   headBone.add(g);
   const lensMat = new THREE.MeshStandardMaterial({ color: gl.type === 'aviator' ? '#4a3a1a' : '#cfe4ff', transparent: true, opacity: gl.type === 'aviator' ? 0.75 : 0.18, roughness: 0.05, metalness: 0.3 });
-  const centers = [1, -1].map((sx) => at(sx * eg, 0.1, 0.94, 0.11));
+  const centers = eyeCenters || [1, -1].map((sx) => at(sx * eg, 0.1, 0.94, 0.11));
   const w = eR * (gl.type === 'rect' ? 1.55 : gl.type === 'aviator' ? 1.5 : 1.35), hh = eR * (gl.type === 'rect' ? 1.15 : gl.type === 'aviator' ? 1.35 : 1.3);
   centers.forEach((c, i) => {
     const sx = i ? -1 : 1;
@@ -455,7 +455,8 @@ function buildGlasses(headBone, def, R, at, eg, eR) {
     const ear = at(sx, 0.05, -0.05, 0.04);
     g.add(curveTube([c.clone().add(new THREE.Vector3(sx * w, hh * 0.5, -0.01)), ear.clone().add(new THREE.Vector3(0, 0.0, 0.02))], R * 0.012, col, { taper: false, seg: 4, radial: 5, metalness: 0.3 }));
   });
-  g.add(curveTube([centers[0].clone().add(new THREE.Vector3(-w * 0.95, hh * 0.3, 0)), at(0, 0.18, 1, 0.13), centers[1].clone().add(new THREE.Vector3(w * 0.95, hh * 0.3, 0))], R * 0.014, col, { taper: false, seg: 8, radial: 5, metalness: 0.3 }));
+  const bridge = eyeCenters ? centers[0].clone().add(centers[1]).multiplyScalar(0.5).add(new THREE.Vector3(0, hh * 0.3, w * 0.25)) : at(0, 0.18, 1, 0.13);
+  g.add(curveTube([centers[0].clone().add(new THREE.Vector3(-w * 0.95, hh * 0.3, 0)), bridge, centers[1].clone().add(new THREE.Vector3(w * 0.95, hh * 0.3, 0))], R * 0.014, col, { taper: false, seg: 8, radial: 5, metalness: 0.3 }));
 }
 
 // ------------------------------------------------------------------ hands
@@ -472,12 +473,16 @@ export function setGrip(hand, grip) {
   if (!hand || hand.grip === grip) return;
   const g = GRIPS[grip] || GRIPS.fist;
   hand.grip = grip;
-  hand.fingers.forEach(([a, b], i) => {
+  hand.fingers.forEach(([a, b, c], i) => {
     a.rotation.set(0, 0, -hand.sx * g.f[i][0]);
     b.rotation.set(0, 0, -hand.sx * g.f[i][1]);
+    c.rotation.set(0, 0, -hand.sx * g.f[i][1] * 0.75);
   });
-  hand.thumb[0].rotation.set(-0.5 - g.t[0] * 0.3, 0, -hand.sx * g.t[0]);
+  // MakeHuman thumbs rest along the index finger; fold them over the palm.
+  if (hand.mh) hand.thumb[0].rotation.set(g.t[0] * 0.95, 0, -hand.sx * g.t[0] * 0.25);
+  else hand.thumb[0].rotation.set(-0.5 - g.t[0] * 0.3, 0, -hand.sx * g.t[0]);
   hand.thumb[1].rotation.set(0, 0, -hand.sx * g.t[1]);
+  hand.thumb[2].rotation.set(0, 0, -hand.sx * g.t[1] * 0.6);
 }
 
 // ------------------------------------------------------------------ body
@@ -620,7 +625,7 @@ export function buildFighterModel(def) {
   const g = new THREE.Group();
   const J = {};
   const bone = (name, parent, x, y, z) => { const o = new THREE.Bone(); o.name = name; o.position.set(x, y, z); (parent || g).add(o); J[name] = o; return o; };
-  const hipY = THIGH + SHIN + FOOT;
+  let hipY = THIGH + SHIN + FOOT;
   bone('root', null, 0, hipY, 0);
   bone('spine', J.root, 0, SPINE_Y, 0);
   bone('chest', J.spine, 0, CHEST_Y, 0);
@@ -644,14 +649,22 @@ export function buildFighterModel(def) {
     for (let i = 0; i < 4; i++) {
       const a = bone(`f${side}${i}a`, J['hand' + side], 0, -0.072 * hk, (0.026 - i * 0.017) * hk);
       const c = bone(`f${side}${i}b`, a, 0, -(FL[i][0] + 0.004) * hk, 0);
-      bone(`f${side}${i}c`, c, 0, -FL[i][1] * hk, 0);
-      fingers.push([a, c]);
+      const tip = bone(`f${side}${i}c`, c, 0, -FL[i][1] * hk, 0);
+      fingers.push([a, c, tip]);
     }
     const t1 = bone(`t${side}a`, J['hand' + side], -sx * 0.012 * hk, -0.02 * hk, 0.035 * hk);
     t1.rotation.set(-0.5, 0, 0);
     const t2 = bone(`t${side}b`, t1, 0, -0.032 * hk, 0);
-    bone(`t${side}c`, t2, 0, -0.024 * hk, 0);
-    hands[side] = { sx, fingers, thumb: [t1, t2], grip: null };
+    const t3 = bone(`t${side}c`, t2, 0, -0.024 * hk, 0);
+    hands[side] = { sx, fingers, thumb: [t1, t2, t3], grip: null };
+  }
+  // MakeHuman characters bring their own proportions.
+  const asset = getCharacter(def.id);
+  const rig = asset?.mh?.rig;
+  if (rig) {
+    for (const n of rig.bones) J[n].position.fromArray(rig.local[n]);
+    hipY = rig.hipY;
+    hands.L.mh = hands.R.mh = true;
   }
   const W = (n) => { const v = new THREE.Vector3(); J[n].getWorldPosition(v); return v; };
   const boneNames = Object.keys(J).filter((k) => J[k].isBone);
@@ -676,22 +689,21 @@ export function buildFighterModel(def) {
     }
     g.updateMatrixWorld(true);
   };
-  const asset = getCharacter(def.id);
-  if (asset?.body) {
-    // Modelled in Blender in the same A-pose, weighted to the same bone names.
-    let geo = bodyCache.get('blend:' + def.id);
+  if (rig) {
+    let geo = bodyCache.get('mh:' + def.id);
     if (!geo) {
-      geo = asset.body.geometry.clone();
-      const si = geo.attributes.skinIndex;
-      const remap = asset.body.bones.map((n) => boneIndex[n] ?? boneIndex.root);
-      const out = new Uint16Array(si.count * 4);
-      for (let i = 0; i < si.count; i++) for (let k = 0; k < 4; k++) out[i * 4 + k] = remap[si.getComponent(i, k)];
-      geo.setAttribute('skinIndex', new THREE.BufferAttribute(out, 4));
-      bodyCache.set('blend:' + def.id, geo);
+      geo = asset.mh.geometry.clone();
+      const si = geo.attributes.skinIndex, remap = rig.bones.map((n) => boneIndex[n]);
+      for (let i = 0; i < si.array.length; i++) si.array[i] = remap[si.array[i]];
+      bodyCache.set('mh:' + def.id, geo);
     }
-    aPose(true);
-    J.torsoMesh = skin(geo, mat);
-    aPose(false);
+    // Bind in the pose it was modelled in, then rest with limbs hanging.
+    for (const n of rig.bones) J[n].quaternion.fromArray(rig.bind[n]);
+    g.updateMatrixWorld(true);
+    const m = clayMat('#ffffff', { vertexColors: true, physical: true, roughness: def.top.type === 'leather' ? 0.42 : 0.6, smooth: true, rim: 0.2 });
+    J.torsoMesh = skin(geo, m);
+    for (const n of rig.bones) J[n].quaternion.identity();
+    g.updateMatrixWorld(true);
   } else {
     let parts = bodyCache.get(def.id) || {};
     // Hands are sculpted and bound with the arms hanging straight down...
@@ -707,23 +719,24 @@ export function buildFighterModel(def) {
   }
 
   // Neck column hidden inside the body's neck (the taffy finisher stretches it).
-  J.neck.add(capsule(0.05 * (b.arm > 0.06 ? 1.25 : 1), 0.05, def.skin, { centered: true, pos: [0, 0.04, -0.006] }));
+  J.neck.add(capsule((rig ? 0.045 : 0.05) * (b.arm > 0.06 ? 1.25 : 1), 0.05, def.skin, { centered: true, pos: [0, 0.04, -0.006] }));
 
-  const face = buildHead(J.head, def, b.head * (def.head.size ?? 1), asset?.head);
+  const face = rig ? mhFace(J.head, def, rig, J.torsoMesh) : buildHead(J.head, def, b.head * (def.head.size ?? 1), asset?.head);
   face.bias = def.face || {};
   for (const s of ['L', 'R']) setGrip(hands[s], 'fist');
 
   // Wardrobe details on the chest bone.
   const top = def.top;
-  const chestZ = b.depth * 1.02;
+  const chestZ = rig ? rig.chest.front : b.depth * 1.02;
+  const nY = rig ? rig.chest.neck : NECK_Y;
   const C2 = J.chest;
   if (top.type === 'hoodie') {
-    for (const sx of [1, -1]) C2.add(capsule(0.006, 0.12, '#f2f2f2', { pos: [sx * 0.035, NECK_Y - 0.04, chestZ * 0.9], rot: [0.1, 0, 0] }));
+    for (const sx of [1, -1]) C2.add(capsule(0.006, 0.12, '#f2f2f2', { pos: [sx * 0.035, nY - 0.04, chestZ * 0.9], rot: [0.1, 0, 0] }));
     C2.add(box(0.2, 0.09, 0.03, darken(top.color, 0.85), { pos: [0, -0.12, chestZ * 0.92] }));
   }
-  if (top.type === 'quarterzip') C2.add(box(0.02, 0.035, 0.012, '#c8c8d0', { pos: [0, NECK_Y - 0.06, chestZ * 0.95], metalness: 0.7, roughness: 0.3 }));
-  if (top.type === 'sweater') {
-    for (const sx of [1, -1]) C2.add(cone(0.035, 0.08, top.inner, { pos: [sx * 0.045, NECK_Y - 0.03, chestZ * 0.6], rot: [-0.6, 0, sx * 2.4], scale: [1, 1, 0.35] }));
+  if (top.type === 'quarterzip') C2.add(box(0.02, 0.035, 0.012, '#c8c8d0', { pos: [0, nY - 0.06, chestZ * 0.95], metalness: 0.7, roughness: 0.3 }));
+  if (top.type === 'sweater' && !rig) {
+    for (const sx of [1, -1]) C2.add(cone(0.035, 0.08, top.inner, { pos: [sx * 0.045, nY - 0.03, chestZ * 0.6], rot: [-0.6, 0, sx * 2.4], scale: [1, 1, 0.35] }));
   }
   if (top.type === 'leather') C2.add(box(0.012, 0.3, 0.01, '#c8c8d0', { pos: [0.05, -0.04, chestZ * 0.98], metalness: 0.8, roughness: 0.3 }));
   if (top.type === 'vest') for (let i = 0; i < 3; i++) J.spine.add(sphere(0.008, '#2a2a2a', { pos: [0.03, 0.06 + i * 0.07, b.depth * 0.95] }));
@@ -739,21 +752,21 @@ export function buildFighterModel(def) {
       C2.add(capsule(0.008, 0.035, '#f4ede4', { centered: true, pos: [Math.sin(a) * 0.022, Math.cos(a) * 0.022, chestZ * 1.03], rot: [0, 0, -a], boil: 0.3 }));
     }
   }
-  if (def.acc.includes('chain')) C2.add(torus(0.1, 0.012, '#e8b830', { pos: [0, NECK_Y - 0.06, 0.05], rot: [1.15, 0, 0], scale: [1.1, 1.5, 1], metalness: 0.85, roughness: 0.25 }));
+  if (def.acc.includes('chain')) C2.add(torus(0.1, 0.012, '#e8b830', { pos: [0, nY - 0.06, 0.05], rot: [1.15, 0, 0], scale: [1.1, 1.5, 1], metalness: 0.85, roughness: 0.25 }));
   if (def.acc.includes('tie')) {
     C2.add(box(0.045, 0.22, 0.015, def.tie || '#c23838', { pos: [0, 0.02, chestZ * 1.0], round: 0.5 }));
-    C2.add(box(0.05, 0.035, 0.02, def.tie || '#c23838', { pos: [0, NECK_Y - 0.075, chestZ * 0.9] }));
+    C2.add(box(0.05, 0.035, 0.02, def.tie || '#c23838', { pos: [0, nY - 0.075, chestZ * 0.9] }));
   }
   if (def.acc.includes('bowtie')) {
-    for (const sx of [1, -1]) C2.add(cone(0.035, 0.07, '#111114', { pos: [sx * 0.032, NECK_Y - 0.06, chestZ * 0.88], rot: [0, 0, sx * Math.PI / 2] }));
-    C2.add(sphere(0.018, '#111114', { pos: [0, NECK_Y - 0.06, chestZ * 0.92] }));
+    for (const sx of [1, -1]) C2.add(cone(0.035, 0.07, '#111114', { pos: [sx * 0.032, nY - 0.06, chestZ * 0.88], rot: [0, 0, sx * Math.PI / 2] }));
+    C2.add(sphere(0.018, '#111114', { pos: [0, nY - 0.06, chestZ * 0.92] }));
   }
   if (def.acc.includes('core')) {
     C2.add(sphere(0.07, '#3af0ff', { pos: [0, 0.05, chestZ * 0.98], scale: [1, 1, 0.4], emissive: '#3af0ff', emissiveIntensity: 3 }));
     for (let i = 0; i < 5; i++) C2.add(box(0.3, 0.008, 0.01, '#6a6e78', { pos: [0, -0.15 + i * 0.035 - (i > 2 ? 0.15 : 0), chestZ * 0.97] }));
   }
 
-  const build = { ...b, scale: b.scale * (def.height ?? 1) };
+  const build = { ...b, scale: b.scale * (rig ? 1 : def.height ?? 1) };
   g.scale.setScalar(build.scale);
   prepareBoil(g);
   setExpression(face, 'idle');
@@ -796,7 +809,57 @@ export function applyRigPose(m, p, jitter = 0) {
 export const SNAP_BONES = ['spine', 'chest', 'neck', 'head', 'clavL', 'clavR', 'shL', 'elL', 'handL', 'shR', 'elR', 'handR', 'hipL', 'knL', 'ftL', 'hipR', 'knR', 'ftR'];
 
 // ------------------------------------------------------------------ face
+// MakeHuman faces: expressions are blends of facial morph targets.
+const MH_EXPR = {
+  idle:  { smile: 0.2 },
+  grit:  { browDown: 0.7, teeth: 0.9, jaw: 0.12, squint: 0.35 },
+  angry: { browDown: 1, teeth: 1, jaw: 0.3, squint: 0.5, frown: 0.3 },
+  open:  { browUp: 0.7, jaw: 0.75, wide: 0.3 },
+  hurt:  { blink: 0.85, browSad: 1, jaw: 0.45, frown: 0.7, teeth: 0.5 },
+  smile: { smile: 1.1, squint: 0.35, jaw: 0.12, browUp: 0.2 },
+  ko:    { blink: 1, browSad: 0.6, jaw: 0.6 },
+  shock: { wide: 1, browUp: 1, jaw: 1 },
+  blink: { blink: 1 },
+};
+
+function mhFace(headBone, def, rig, mesh) {
+  // The head bone sits where the spine chain ends; head-local = rest - that.
+  const hw = ['root', 'spine', 'chest', 'neck', 'head'].reduce((v, n) => v.add(new THREE.Vector3().fromArray(rig.local[n])), new THREE.Vector3());
+  const c = new THREE.Vector3().fromArray(rig.head.c).sub(hw), r = rig.head.r;
+  const at = (x, y, z, out = 0) => { const n = new THREE.Vector3(x, y, z).normalize(); return new THREE.Vector3(c.x + n.x * r[0] * (1 + out), c.y + n.y * r[1] * (1 + out), c.z + n.z * r[2] * (1 + out)); };
+  headBone.userData.r = r[0];
+  headBone.userData.at = at;
+  const eR = rig.head.eyeR;
+  const eyes = ['L', 'R'].map((s) => new THREE.Vector3().fromArray(rig.head.eyes[s]).sub(hw));
+  // Catchlights: what makes clay eyes look alive.
+  const glints = new THREE.Group();
+  headBone.add(glints);
+  for (const e of eyes) {
+    glints.add(sphere(eR * 0.2, '#ffffff', { pos: [e.x + eR * 0.3, e.y + eR * 0.32, e.z + eR * 0.9], lump: 0, roughness: 0.05, boil: 0, rim: 0, smooth: true, emissive: '#ffffff', emissiveIntensity: 1.3 }));
+    glints.add(sphere(eR * 0.09, '#ffffff', { pos: [e.x - eR * 0.25, e.y - eR * 0.2, e.z + eR * 0.95], lump: 0, roughness: 0.05, boil: 0, rim: 0, smooth: true, emissive: '#ffffff', emissiveIntensity: 1 }));
+  }
+  if (def.glasses) buildGlasses(headBone, def, r[0], at, 0, eR, eyes.map((e) => e.clone().add(new THREE.Vector3(0, 0, eR * 1.5))));
+  if (def.hair?.style === 'antenna') {
+    const p = at(0, 1, 0, 0);
+    headBone.add(cyl(r[0] * 0.03, r[0] * 0.03, r[0] * 0.5, '#6a6e78', { pos: [p.x, p.y + r[0] * 0.25, p.z] }));
+    headBone.add(sphere(r[0] * 0.08, '#3af0ff', { pos: [p.x, p.y + r[0] * 0.55, p.z], emissive: '#3af0ff', emissiveIntensity: 3 }));
+  }
+  return { R: r[0], mh: true, mesh, idx: Object.fromEntries(rig.morphs.map((m, i) => [m, i])), eyes: [], glints };
+}
+
+function setMHExpression(face, expr) {
+  const w = { ...(MH_EXPR[expr] || MH_EXPR.idle) };
+  const bias = face.bias || {};
+  if (bias.lid > 0) w.blink = Math.min(1, (w.blink || 0) + bias.lid * 0.6);
+  if (bias.lid < 0) w.wide = Math.min(1, (w.wide || 0) - bias.lid);
+  if (bias.open) w.jaw = Math.max(w.jaw || 0, bias.open);
+  const inf = face.mesh.morphTargetInfluences;
+  for (const k in face.idx) inf[face.idx[k]] = w[k] || 0;
+  face.glints.visible = (w.blink || 0) < 0.6;
+}
+
 export function setExpression(face, expr) {
+  if (face.mh) return setMHExpression(face, expr);
   const m = face.mouth;
   let lidU = 0.35, lidL = 0.15, brow = 0.0, browY = 0, open = 0, look = 0, squint = 0;
   let teeth = false;
