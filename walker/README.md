@@ -36,6 +36,18 @@ way measured gait does: more pelvic rotation and drop, a narrower base and a
 slightly higher cadence. `hairLength` adds a hair fall that frames the face.
 **Man** and **Woman** are starting presets; every value stays on its slider.
 
+## Faces
+
+The head is built at standard adult proportions (eyes at mid-head, ~63 mm
+apart; nose, lips and chin at their usual heights), with its vertices
+concentrated on the face. Relief adds orbits, brow ridge, a nose with bridge,
+tip and alae, philtrum, two lips, chin, cheekbones and soft folds. The eyes are
+real glossy eyeballs (iris, pupil, limbal ring) in an almond opening; lids wrap
+them, and a blink morph closes them every few seconds. Eyebrows and the
+hairline are drawn per pixel from distance fields, so they stay crisp. **Face**
+walks smoothly through variations (nose, eyes, lips, cheekbones, chin), and
+`sex` shifts the same features the way they differ on average.
+
 ## Files
 
 - `src/proportions.js`: creator sliders → a spec of lengths (anthropometric

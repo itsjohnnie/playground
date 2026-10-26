@@ -319,6 +319,15 @@ export class Walker {
     const k = this.timing();
     this.time += dt;
     this.dt = dt;
+    // blinking: every 2–6 s, now and then a double blink; ~170 ms each
+    if (this.nextBlink === undefined) { this.nextBlink = 1.5; this.blinkAge = 9; }
+    this.nextBlink -= dt; this.blinkAge += dt;
+    if (this.nextBlink <= 0) {
+      this.blinkAge = 0;
+      this.nextBlink = Math.random() < 0.15 ? 0.32 : 2 + Math.random() * 4;
+    }
+    const ba = this.blinkAge;
+    this.pose.blink = ba < 0.06 ? smooth(ba / 0.06) : ba < 0.17 ? 1 - smooth((ba - 0.06) / 0.11) : 0;
     this.dist += k.v * dt;
     const prev = this.phase;
     this.phase = wrap01(this.phase + dt / k.T);

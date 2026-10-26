@@ -390,6 +390,7 @@ const CHAR_SLIDERS = [
   ['head', 'Head', 0.88, 1.12, 0.01, pct],
   ['sex', 'Sex', 0, 1, 0.01, (v) => (v < 0.15 ? 'male' : v > 0.85 ? 'female' : `${Math.round(v * 100)}`)],
   ['hairLength', 'Hair', 0, 1, 0.01, (v) => (v < 0.05 ? 'short' : pct(v))],
+  ['face', 'Face', 0, 1, 0.005, (v) => `${Math.round(v * 100)}`],
 ];
 const GAIT_SLIDERS = [
   ['speed', 'Speed', 0.5, 2.0, 0.01, (v) => `${v.toFixed(2)}`],
@@ -425,7 +426,7 @@ CHAR_SLIDERS.forEach((d) => slider(charHost, character, d, queueRebuild));
 const gaitHost = document.getElementById('gait');
 GAIT_SLIDERS.forEach((d) => slider(gaitHost, gait, d, () => walker.setGait(gait)));
 
-const COLORS = [['skin', 'Skin'], ['hair', 'Hair'], ['shirt', 'Top'], ['pants', 'Pants'], ['shoes', 'Shoes']];
+const COLORS = [['skin', 'Skin'], ['hair', 'Hair'], ['eyes', 'Eyes'], ['shirt', 'Top'], ['pants', 'Pants'], ['shoes', 'Shoes']];
 const colorHost = document.getElementById('colors');
 for (const [key, label] of COLORS) {
   const el = document.createElement('label');
@@ -455,6 +456,7 @@ for (const [key, label] of TOGGLES) {
   toggleHost.append(b);
 }
 
+const EYES = ['#3b2a1e', '#5b4030', '#6b5a3a', '#4f6a52', '#4a6a8a', '#7a8a9a'];
 const SKINS = ['#f1d3bd', '#e5b896', '#c99678', '#a8714f', '#7d4f35', '#5a3825'];
 const HAIRS = ['#1d1612', '#3a2618', '#6b4426', '#a8763f', '#d9c08a', '#8c8a86'];
 const OUTFITS = [
@@ -466,9 +468,9 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
 // starting points, not stereotypes: every value stays on its slider
 const PRESETS = {
-  man: { height: 1.78, legs: 1.0, shoulders: 1.04, hips: 0.97, build: 1.04, muscle: 0.6, head: 1.0, sex: 0, hairLength: 0,
+  man: { face: 0.5, eyes: '#4a3424', height: 1.78, legs: 1.0, shoulders: 1.04, hips: 0.97, build: 1.04, muscle: 0.6, head: 1.0, sex: 0, hairLength: 0,
     skin: '#c99678', hair: '#2a1d16', shirt: '#3d5a73', pants: '#2b2b30', shoes: '#e8e4dc' },
-  woman: { height: 1.65, legs: 1.02, shoulders: 1.0, hips: 1.0, build: 0.96, muscle: 0.35, head: 1.0, sex: 1, hairLength: 0.75,
+  woman: { face: 0.27, eyes: '#4f6a52', height: 1.65, legs: 1.02, shoulders: 1.0, hips: 1.0, build: 0.96, muscle: 0.35, head: 1.0, sex: 1, hairLength: 0.75,
     skin: '#e2b593', hair: '#5a3620', shirt: '#b5462f', pants: '#2d3a55', shoes: '#efefea' },
 };
 function applyPreset(name) {
@@ -483,6 +485,7 @@ document.getElementById('random').onclick = () => {
   const broad = Math.random();
   const fem = Math.random() < 0.5 ? 1 : 0;
   Object.assign(character, {
+    face: +Math.random().toFixed(3), eyes: pick(EYES),
     sex: fem, hairLength: +(fem ? rnd(0.3, 1) : rnd(0, 0.25)).toFixed(2),
     height: +(fem ? rnd(1.54, 1.78) : rnd(1.64, 1.96)).toFixed(2), legs: +rnd(0.94, 1.06).toFixed(2),
     shoulders: +(0.9 + broad * 0.22).toFixed(2), hips: +(1.12 - broad * 0.2 + rnd(-0.05, 0.05)).toFixed(2),
@@ -560,6 +563,7 @@ function frame(now) {
       arcs.shift(REBASE);
     }
     applyPose(walker.pose, rig.bones);
+    if (body.morphTargetInfluences) body.morphTargetInfluences[0] = walker.pose.blink || 0;
     prints.update(dt);
     graph.record(walker.pose.phase, walker.pose.diag.right);
   }
