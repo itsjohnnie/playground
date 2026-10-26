@@ -26,6 +26,8 @@
 // unless a name says otherwise.
 
 import * as THREE from 'three';
+import { boneLayout } from './proportions.js';
+import { bodyShape } from './body.js';
 
 export const DEFAULT_GAIT = {
   speed: 1.3,        // m/s; 1.3 is an ordinary adult pace
@@ -40,6 +42,7 @@ export const DEFAULT_GAIT = {
 
 const D = THREE.MathUtils.DEG2RAD;
 const clamp = THREE.MathUtils.clamp;
+const lerp = THREE.MathUtils.lerp;
 const smooth = (t) => t * t * (3 - 2 * t);
 const fract = (x) => x - Math.floor(x);
 const wrap01 = (x) => fract(x);
@@ -174,12 +177,89 @@ export class Walker {
       justPlanted: false,
     }));
     this.pose = makePose();
+    this.clear = { left: 0, right: 0 }; // extra shoulder abduction that keeps the arm off the body
+    this.dt = 1 / 60;
+    this.initBody();
     this.reset();
   }
 
   setSpec(spec) {
     this.spec = spec;
+    this.initBody();
     this.reset(true);
+  }
+
+  // rest positions and body cross-sections for collision clearance
+  initBody() {
+    this.rest = {};
+    this.parent = {};
+    for (const b of boneLayout(this.spec)) {
+      this.rest[b.name] = new THREE.Vector3(...b.pos);
+      this.parent[b.name] = b.parent;
+    }
+    this.shape = bodyShape(this.spec);
+  }
+
+  // world position of a bone from the pose's world rotations
+  fk(P, name, cache) {
+    if (cache[name]) return cache[name];
+    const par = this.parent[name];
+    if (!par) return (cache[name] = P.pos.hips.clone());
+    const pp = this.fk(P, par, cache).clone();
+    const off = new THREE.Vector3().subVectors(this.rest[name], this.rest[par]).applyQuaternion(P.q[par]);
+    return (cache[name] = pp.add(off));
+  }
+
+  // how far a sphere (centre p, radius r) sinks into the torso or a thigh;
+  // positive = penetrating. Points are taken into each bone's rest frame and
+  // compared with the same cross-sections the mesh is lofted from.
+  penetration(P, cache, p, r) {
+    const s = this.spec, sh = this.shape;
+    let worst = -Infinity;
+    const toRest = (bone) => {
+      const q = _q2.copy(P.q[bone]).invert();
+      return new THREE.Vector3().subVectors(p, this.fk(P, bone, cache)).applyQuaternion(q).add(this.rest[bone]);
+    };
+    const outside = (x, z, hw, hd, e) => {
+      const rho = Math.pow(Math.pow(Math.abs(x / hw), e) + Math.pow(Math.abs(z / hd), e), 1 / e);
+      return Math.hypot(x, z) * (1 - 1 / Math.max(rho, 1e-6)); // signed: + outside
+    };
+    // torso: pick the spine segment whose rest span holds the point
+    const keys = sh.torsoKeys, yLo = keys[0][0], yHi = keys[keys.length - 1][0];
+    for (const [bone, lo, hi] of [['hips', -1, s.spineY], ['spine', s.spineY, s.spine1Y], ['spine1', s.spine1Y, 9]]) {
+      const pr = toRest(bone);
+      if (pr.y < lo - 0.03 || pr.y > hi + 0.03 || pr.y < yLo || pr.y > yHi) continue;
+      const [hw, hd, zc, e] = sh.torso(pr.y);
+      worst = Math.max(worst, r - outside(pr.x, pr.z - zc, hw, hd, e));
+    }
+    // thighs
+    for (const side of ['left', 'right']) {
+      const bone = `${side}UpLeg`;
+      const pr = toRest(bone);
+      const t = (s.hipJointY - pr.y) / s.legLen;
+      if (t < -0.07 || t > sh.kneeT + 0.06) continue;
+      const [rx, rz, zc] = sh.leg(t);
+      worst = Math.max(worst, r - outside(pr.x - this.rest[bone].x, pr.z - zc, rx, rz, 2.1));
+    }
+    return worst;
+  }
+
+  // sphere vs one leg (thigh and shank), same convention as penetration()
+  legPenetration(P, cache, p, r, side) {
+    const s = this.spec, sh = this.shape;
+    let worst = -Infinity;
+    for (const bone of [`${side}UpLeg`, `${side}Leg`]) {
+      const q = _q2.copy(P.q[bone]).invert();
+      const pr = new THREE.Vector3().subVectors(p, this.fk(P, bone, cache)).applyQuaternion(q).add(this.rest[bone]);
+      const t = (s.hipJointY - pr.y) / s.legLen;
+      const upper = bone.endsWith('UpLeg');
+      if (upper ? t < 0 || t > sh.kneeT + 0.03 : t < sh.kneeT - 0.03 || t > 1) continue;
+      const [rx, rz, zc] = sh.leg(t);
+      const x = pr.x - this.rest[bone].x, z = pr.z - zc;
+      const rho = Math.hypot(x / rx, z / rz);
+      worst = Math.max(worst, r - Math.hypot(x, z) * (1 - 1 / Math.max(rho, 1e-6)));
+    }
+    return worst;
   }
 
   setGait(g) { Object.assign(this.target, g); }
@@ -238,6 +318,7 @@ export class Walker {
     }
     const k = this.timing();
     this.time += dt;
+    this.dt = dt;
     this.dist += k.v * dt;
     const prev = this.phase;
     this.phase = wrap01(this.phase + dt / k.T);
@@ -361,7 +442,9 @@ export class Walker {
     P.pos.hips.set(base.x, pelvisY, base.z);
 
     // ── legs ────────────────────────────────────────────────────────────
-    for (const f of this.feet) {
+    // stance legs first; the swing leg then makes room around the stance leg
+    const order = [...this.feet].sort((a, b) => (P.feet[a.name].p >= k.duty) - (P.feet[b.name].p >= k.duty));
+    for (const f of order) {
       const fo = P.feet[f.name];
       const L = P.legs[f.name];
       hipOff.set(f.sign * s.hipSep * 0.5, s.hipJointY - s.hipsY, 0).applyQuaternion(P.q.hips);
@@ -371,12 +454,47 @@ export class Walker {
       const pelFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(P.q.hips);
       const pole = footFwd.add(pelFwd).normalize();
       pole.x += f.sign * 0.06;
-      L.reach = solveTwoBone(L.hip, fo.ankle, s.thigh, s.shin, pole, L.knee, L.n);
-      // if the target was out of reach the ankle ends short; recompute it
-      const shinDir = _v.copy(fo.ankle).sub(L.knee).normalize();
-      L.ankle.copy(L.knee).addScaledVector(shinDir, s.shin);
-      qFromDownFront(new THREE.Vector3().subVectors(L.knee, L.hip), L.n, P.q[`${f.name}UpLeg`]);
-      qFromDownFront(new THREE.Vector3().subVectors(L.ankle, L.knee), L.n, P.q[`${f.name}Leg`]);
+      const target = new THREE.Vector3();
+      const solveLeg = (dx) => {
+        target.copy(fo.ankle); target.x += f.sign * dx;
+        L.reach = solveTwoBone(L.hip, target, s.thigh, s.shin, pole, L.knee, L.n);
+        // if the target was out of reach the ankle ends short; recompute it
+        const shinDir = _v.copy(target).sub(L.knee).normalize();
+        L.ankle.copy(L.knee).addScaledVector(shinDir, s.shin);
+        qFromDownFront(new THREE.Vector3().subVectors(L.knee, L.hip), L.n, P.q[`${f.name}UpLeg`]);
+        qFromDownFront(new THREE.Vector3().subVectors(L.ankle, L.knee), L.n, P.q[`${f.name}Leg`]);
+      };
+      solveLeg(0);
+      if (fo.p >= k.duty) {
+        // the passing leg swings just wide enough to clear the standing one
+        const other = f.name === 'left' ? 'right' : 'left';
+        const cache = {};
+        const sh = this.shape, kt = sh.kneeT;
+        const probes = [kt, kt + (1 - kt) * 0.3, kt + (1 - kt) * 0.6, 0.97].map((t) => {
+          const [rx, rz] = sh.leg(t);
+          return [t, (rx + rz) / 2 + 0.01 * s.u]; // trousers brush, never pass through
+        });
+        const pen = (dx) => {
+          solveLeg(dx);
+          let worst = -Infinity;
+          for (const [t, r] of probes) {
+            const p = t <= kt + 1e-6 ? L.knee.clone()
+              : L.knee.clone().lerp(L.ankle, (t - kt) / (1 - kt));
+            worst = Math.max(worst, this.legPenetration(P, cache, p, r, other));
+          }
+          return worst;
+        };
+        let need = 0;
+        if (pen(0) > 0) {
+          let lo = 0, hi = 0.09 * s.u;
+          for (let it = 0; it < 9; it++) { const mid = (lo + hi) / 2; if (pen(mid) > 0) lo = mid; else hi = mid; }
+          need = hi;
+        }
+        const u = (fo.p - k.duty) / (1 - k.duty);
+        const win = smooth(clamp(u / 0.12, 0, 1)) * smooth(clamp((1 - u) / 0.12, 0, 1));
+        solveLeg(need * win);
+        P.diag[f.name].legClear = need * win;
+      } else P.diag[f.name].legClear = 0;
       qFromEuler(fo.yaw, 0, -fo.pitch * D, P.q[`${f.name}Foot`]);
       _q.setFromAxisAngle(X, -fo.toe * D);
       P.q[`${f.name}ToeBase`].copy(P.q[`${f.name}Foot`]).multiply(_q);
@@ -410,15 +528,51 @@ export class Walker {
       // clavicle: tiny protraction as the arm comes forward
       _q.setFromAxisAngle(Y, sg * 0.025 * flex * D);
       P.q[`${side}Shoulder`].copy(P.q.spine2).multiply(_q);
-      const ua = P.q[`${side}Arm`].copy(P.q.spine2);
-      _q.setFromAxisAngle(Z, sg * abd * D); ua.multiply(_q);
-      _q.setFromAxisAngle(X, -flex * D); ua.multiply(_q);
-      _q.setFromAxisAngle(Y, -sg * 8 * D); ua.multiply(_q); // slight internal rotation
-      const fa = P.q[`${side}ForeArm`].copy(ua);
-      _q.setFromAxisAngle(X, -elbow * D); fa.multiply(_q);
-      const hd = P.q[`${side}Hand`].copy(fa);
-      _q.setFromAxisAngle(X, (6 + 4 * Math.cos(TAU * (armPhase - 0.2))) * D); hd.multiply(_q);
-      _q.setFromAxisAngle(Z, -sg * 6 * D); hd.multiply(_q);
+      // the forearm angles away from the body at the elbow (carrying angle)
+      const carry = 11 + 4 * fem;
+      const pose = (extra) => {
+        const ua = P.q[`${side}Arm`].copy(P.q.spine2);
+        _q.setFromAxisAngle(Z, sg * (abd + extra) * D); ua.multiply(_q);
+        _q.setFromAxisAngle(X, -flex * D); ua.multiply(_q);
+        _q.setFromAxisAngle(Y, -sg * 8 * D); ua.multiply(_q); // slight internal rotation
+        const fa = P.q[`${side}ForeArm`].copy(ua);
+        _q.setFromAxisAngle(Z, sg * carry * D * (1 - elbow / 140)); fa.multiply(_q);
+        _q.setFromAxisAngle(X, -elbow * D); fa.multiply(_q);
+        const hd = P.q[`${side}Hand`].copy(fa);
+        _q.setFromAxisAngle(X, (6 + 4 * Math.cos(TAU * (armPhase - 0.2))) * D); hd.multiply(_q);
+      };
+      // keep elbow, forearm and hand off the torso and thighs: find the least
+      // extra abduction that clears, the way a real arm swings around the hip
+      const cache = {};
+      for (const b of ['hips', 'spine', 'spine1', 'spine2', `${side}Shoulder`, 'leftUpLeg', 'rightUpLeg']) this.fk(P, b, cache);
+      const S = cache[`${side}Arm`] || this.fk(P, `${side}Arm`, cache);
+      const gu = s.u * s.c.build * (1 - 0.1 * fem); // same girth scaling as the arm mesh
+      // [t along segment, 0 elbow · 1 forearm · 2 hand, radius at 1.75 m]: incl. the forearm's widest point
+      const pts = [[0, 0, 0.039], [0.2, 1, 0.042], [0.5, 1, 0.036], [1, 1, 0.028], [0.45, 2, 0.021], [0.9, 2, 0.017]];
+      const margin = 0.006 * s.u;
+      const pen = (extra) => {
+        pose(extra);
+        const qa = P.q[`${side}Arm`], qf = P.q[`${side}ForeArm`], qh = P.q[`${side}Hand`];
+        const E = _v.set(0, -s.upperArm, 0).applyQuaternion(qa).add(S).clone();
+        const W = new THREE.Vector3(0, -s.foreArm, 0).applyQuaternion(qf).add(E);
+        let worst = -Infinity;
+        for (const [t, seg, r] of pts) {
+          const p = seg === 0 ? E : seg === 1 ? new THREE.Vector3(0, -s.foreArm * t, 0).applyQuaternion(qf).add(E)
+            : new THREE.Vector3(0, -s.hand * t, 0).applyQuaternion(qh).add(W);
+          worst = Math.max(worst, this.penetration(P, cache, p, r * gu + margin));
+        }
+        return worst;
+      };
+      let need = 0;
+      if (pen(0) > 0) {
+        let lo = 0, hi = 35;
+        for (let it = 0; it < 9; it++) { const mid = (lo + hi) / 2; if (pen(mid) > 0) lo = mid; else hi = mid; }
+        need = hi;
+      }
+      // rise at once, relax gently: clearance never pops
+      this.clear[side] = Math.max(need, this.clear[side] * Math.exp(-this.dt / 0.15));
+      pose(this.clear[side]);
+      P.diag[side].clear = this.clear[side];
       P.diag[side].elbow = elbow;
       P.diag[side].shoulder = flex;
     }

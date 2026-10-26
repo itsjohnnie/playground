@@ -8,6 +8,8 @@ import * as THREE from 'three';
 import { boneLayout } from './proportions.js';
 
 const TAU = Math.PI * 2;
+// surface kinds: each gets its own roughness, sheen and micro-detail in the shader
+const MAT = { skin: 0, cloth: 1, hair: 2, shoe: 3, sole: 4 };
 const smooth = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -42,12 +44,13 @@ function se(a, rx, rz, e) {
 
 class Builder {
   constructor(boneIndex) {
-    this.pos = []; this.col = []; this.si = []; this.sw = []; this.idx = []; this.hair = [];
+    this.pos = []; this.col = []; this.si = []; this.sw = []; this.idx = []; this.hair = []; this.mat = [];
     this.bi = boneIndex;
   }
-  vert(x, y, z, color, weights, hair = -1) {
+  vert(x, y, z, color, weights, hair = -1, mat = MAT.cloth) {
     this.pos.push(x, y, z);
     this.hair.push(hair);
+    this.mat.push(mat);
     this.col.push(color.r, color.g, color.b);
     // keep the 4 strongest influences, normalised
     const w = Object.entries(weights).filter(([, v]) => v > 1e-4).sort((a, b) => b[1] - a[1]).slice(0, 4);
@@ -66,7 +69,8 @@ class Builder {
       const start = this.pos.length / 3;
       r.pts.forEach((p, i) => {
         const c = typeof r.color === 'function' ? r.color(i, p) : r.color;
-        this.vert(p[0], p[1], p[2], c, r.weights(p[0], p[1], p[2]), r.hair ? r.hair[i] : -1);
+        const mt = r.mat === undefined ? MAT.cloth : typeof r.mat === 'function' ? r.mat(i, p) : r.mat;
+        this.vert(p[0], p[1], p[2], c, r.weights(p[0], p[1], p[2]), r.hair ? r.hair[i] : -1, mt);
       });
       base.push(start);
     }
@@ -82,7 +86,8 @@ class Builder {
       const cy = ring.pts.reduce((s, p) => s + p[1], 0) / N;
       const cz = ring.pts.reduce((s, p) => s + p[2], 0) / N;
       const c = typeof ring.color === 'function' ? ring.color(0, [cx, cy, cz]) : ring.color;
-      const ci = this.vert(cx, cy, cz, c, ring.weights(cx, cy, cz), ring.hair ? ring.hair.reduce((a, b) => a + b, 0) / N : -1);
+      const cm = ring.mat === undefined ? MAT.cloth : typeof ring.mat === 'function' ? ring.mat(0, [cx, cy, cz]) : ring.mat;
+      const ci = this.vert(cx, cy, cz, c, ring.weights(cx, cy, cz), ring.hair ? ring.hair.reduce((a, b) => a + b, 0) / N : -1, cm);
       for (let i = 0; i < N; i++) {
         const a = start + i, b = start + ((i + 1) % N);
         if (end !== flip) this.idx.push(a, ci, b); else this.idx.push(a, b, ci);
@@ -98,6 +103,7 @@ class Builder {
     g.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(this.si, 4));
     g.setAttribute('skinWeight', new THREE.Float32BufferAttribute(this.sw, 4));
     g.setAttribute('hairD', new THREE.Float32BufferAttribute(this.hair, 1));
+    g.setAttribute('matId', new THREE.Float32BufferAttribute(this.mat, 1));
     g.setIndex(this.idx);
     g.computeVertexNormals();
     return g;
@@ -122,6 +128,60 @@ export function buildRig(spec) {
   return { bones, list, index: Object.fromEntries(list.map((b, i) => [b.name, i])) };
 }
 
+// The body's cross-sections, shared by the mesh and by the gait solver's
+// collision checks, so clearance is measured against the real surface.
+//   torso(y)     → [halfWidth, halfDepth, zCentre, exponent] at rest height y
+//   leg(t)       → [rx, rz, zc] in metres, t = 0 hip joint … 1 ankle
+export function bodyShape(spec) {
+  const c = spec.c, u = spec.u;
+  const g = c.build, m = c.muscle, f = c.sex ?? 0;
+  const kneeT = spec.thigh / spec.legLen;
+  const torsoKeys = [
+    // y,                         halfW,                      halfD,           zc,      exp
+    [spec.hipJointY - 0.075 * u, 0.085 * g,                  0.075 * g,       -0.012, 2.2],
+    [spec.hipJointY - 0.035 * u, 0.150 * g * c.hips,         0.104 * g,       -0.016, 2.5],
+    [spec.hipJointY + 0.005 * u, 0.172 * g * c.hips,         0.118 * g,       -0.020, 2.6],
+    [spec.hipsY + 0.040 * u,     0.160 * g * c.hips,         0.106 * g,       -0.006, 2.6],
+    [spec.spineY + 0.050 * u,    0.142 * g * lerp(c.hips, c.shoulders, 0.4), 0.100 * g, 0.004, 2.4],
+    [spec.spine1Y + 0.010 * u,   0.150 * g * lerp(1, c.shoulders, 0.6), 0.108 * g, 0.004, 2.3],
+    [spec.spine2Y - 0.010 * u,   0.165 * c.shoulders * lerp(1, g, 0.7), (0.116 + 0.008 * m) * g, 0.014, 2.3],
+    [spec.shoulderY - 0.085 * u, 0.186 * c.shoulders * lerp(1, g, 0.6), (0.114 + 0.006 * m) * g, 0.008, 2.4],
+    [spec.shoulderY - 0.030 * u, 0.206 * c.shoulders * lerp(1, g, 0.5), 0.098 * g,       -0.004, 2.6],
+    [spec.shoulderY + 0.006 * u, 0.180 * c.shoulders * lerp(1, g, 0.5), 0.078 * g,       -0.016, 2.6],
+    [spec.shoulderY + 0.024 * u, 0.098 * lerp(1, g, 0.5),    0.068 * g,       -0.018, 2.3], // trapezius
+    [spec.neckY + 0.012 * u,     0.068 * lerp(1, g, 0.5),    0.062 * lerp(1, g, 0.5), -0.018, 2.0],
+  ].map(([y, w, d, z, e], i) => {
+    // female: narrower waist and upper torso, fuller hips and glutes
+    const wf = [1, 1.02, 1.03, 1, 0.87, 0.94, 0.95, 0.95, 0.96, 0.97, 0.97, 0.9][i] ?? 1;
+    const df = [1, 1.07, 1.08, 1.03, 0.97, 1, 1, 1, 1, 1, 1, 0.9][i] ?? 1;
+    const zf = [0, -0.006, -0.010, -0.004, 0, 0, 0, 0, 0, 0, 0, 0][i] ?? 0;
+    return [y, w * u * lerp(1, wf, f), d * u * lerp(1, df, f), (z + zf * f) * u, e];
+  });
+  const legKeys = [
+    [-0.07, 0.066, 0.076, -0.010],
+    [-0.04, 0.080, 0.088, -0.008],
+    [0.06, 0.088, 0.090, 0.004],
+    [0.20, 0.078, 0.080, 0.010],
+    [0.36, 0.066, 0.068, 0.010],
+    [kneeT - 0.02, 0.056, 0.058, 0.010],
+    [kneeT + 0.06, 0.053, 0.057, 0.000],
+    [kneeT + 0.16, 0.055 + 0.006 * m, 0.060 + 0.004 * m, -0.010],
+    [0.80, 0.050, 0.052, -0.004],
+    [0.97, 0.050, 0.053, 0.000],
+    [1.0, 0.051, 0.054, 0.000],
+  ];
+  const legRaw = profile(legKeys);
+  const legGirth = (t) => (t < kneeT + 0.1 ? g : lerp(g, 1, 0.4)) * (1 + f * (t < 0.3 ? 0.05 * (1 - t / 0.3) : t > kneeT + 0.05 ? -0.08 : 0));
+  return {
+    torsoKeys,
+    torso: profile(torsoKeys),
+    legRaw,
+    legGirth,
+    leg: (t) => { const [rx, rz, zc] = legRaw(t); const gg = legGirth(t); return [rx * u * gg, rz * u * gg, zc * u]; },
+    kneeT,
+  };
+}
+
 export function buildBody(spec, rig) {
   const c = spec.c, u = spec.u;
   const B = new Builder(rig.index);
@@ -140,36 +200,17 @@ export function buildBody(spec, rig) {
   const g = c.build;           // girth
   const m = c.muscle;          // 0 … 1
   const f = c.sex ?? 0;        // 0 male … 1 female
-  const SEG = 28;
+  const SEG = 56;
 
   // ── torso ─────────────────────────────────────────────────────────────
   const shirtEnd = spec.hipsY + 0.035 * u;
-  const torsoKeys = [
-    // y,                         halfW,                      halfD,           zc,      exp
-    [spec.hipJointY - 0.075 * u, 0.085 * g,                  0.075 * g,       -0.012, 2.2],
-    [spec.hipJointY - 0.035 * u, 0.150 * g * c.hips,         0.104 * g,       -0.016, 2.5],
-    [spec.hipJointY + 0.005 * u, 0.172 * g * c.hips,         0.118 * g,       -0.020, 2.6],
-    [spec.hipsY + 0.040 * u,     0.160 * g * c.hips,         0.106 * g,       -0.006, 2.6],
-    [spec.spineY + 0.050 * u,    0.142 * g * lerp(c.hips, c.shoulders, 0.4), 0.100 * g, 0.004, 2.4],
-    [spec.spine1Y + 0.010 * u,   0.150 * g * lerp(1, c.shoulders, 0.6), 0.108 * g, 0.004, 2.3],
-    [spec.spine2Y - 0.010 * u,   0.165 * c.shoulders * lerp(1, g, 0.7), (0.116 + 0.008 * m) * g, 0.014, 2.3],
-    [spec.shoulderY - 0.085 * u, 0.178 * c.shoulders * lerp(1, g, 0.6), (0.114 + 0.006 * m) * g, 0.008, 2.4],
-    [spec.shoulderY - 0.030 * u, 0.190 * c.shoulders * lerp(1, g, 0.5), 0.098 * g,       -0.004, 2.6],
-    [spec.shoulderY + 0.006 * u, 0.162 * c.shoulders * lerp(1, g, 0.5), 0.078 * g,       -0.016, 2.6],
-    [spec.shoulderY + 0.024 * u, 0.098 * lerp(1, g, 0.5),    0.068 * g,       -0.018, 2.3], // trapezius
-    [spec.neckY + 0.012 * u,     0.068 * lerp(1, g, 0.5),    0.062 * lerp(1, g, 0.5), -0.018, 2.0],
-  ].map(([y, w, d, z, e], i) => {
-    // female: narrower waist and upper torso, fuller hips and glutes
-    const wf = [1, 1.02, 1.03, 1, 0.87, 0.94, 0.95, 0.95, 0.96, 0.97, 0.97, 0.9][i] ?? 1;
-    const df = [1, 1.07, 1.08, 1.03, 0.97, 1, 1, 1, 1, 1, 1, 0.9][i] ?? 1;
-    const zf = [0, -0.006, -0.010, -0.004, 0, 0, 0, 0, 0, 0, 0, 0][i] ?? 0;
-    return [y, w * u * lerp(1, wf, f), d * u * lerp(1, df, f), (z + zf * f) * u, e];
-  });
-  const torsoP = profile(torsoKeys);
+  const shape = bodyShape(spec);
+  const torsoKeys = shape.torsoKeys;
+  const torsoP = shape.torso;
   const torsoW = (x, y) => torsoWeights(spec, x, y);
   const y0 = torsoKeys[0][0], y1 = torsoKeys[torsoKeys.length - 1][0];
   const rings = [];
-  const NR = 34;
+  const NR = 84;
   const collarY = spec.neckY - 0.004 * u;
   // colour edges get a doubled ring so hems are crisp, not smeared
   const edges = [shirtEnd - 0.022 * u, shirtEnd, collarY, collarY + 0.012 * u];
@@ -194,7 +235,7 @@ export function buildBody(spec, rig) {
       if (f > 0) {
         const by = y - (spec.shoulderY - 0.16 * u);
         const vy = Math.exp(-Math.pow(by / ((by > 0 ? 0.065 : 0.04) * u), 2));
-        const lobe = Math.exp(-Math.pow((Math.abs(px) - 0.06 * u) / (0.05 * u), 2));
+        const lobe = Math.exp(-Math.pow((Math.abs(px) - 0.055 * u) / (0.068 * u), 2)); // soft, not a deep crease
         pz += f * 0.034 * u * vy * lobe * Math.pow(front, 1.3) * lerp(1, g, 0.5);
       }
       // spine groove
@@ -204,6 +245,7 @@ export function buildBody(spec, rig) {
     const isShirt = y > shirtEnd;
     rings.push({
       pts,
+      mat: (i, p) => (p[1] > collarY + 0.012 * u ? MAT.skin : MAT.cloth),
       color: (i, p) => {
         if (p[1] > collarY) return p[1] > collarY + 0.012 * u ? col.skin : col.collar;
         if (!isShirt) return p[1] > shirtEnd - 0.022 * u ? col.belt : col.pants;
@@ -218,15 +260,15 @@ export function buildBody(spec, rig) {
   {
     const r = [];
     const n0 = spec.neckY - 0.02 * u, n1 = spec.headY + 0.035 * u;
-    for (let j = 0; j <= 6; j++) {
-      const t = j / 6, y = lerp(n0, n1, t);
+    for (let j = 0; j <= 14; j++) {
+      const t = j / 14, y = lerp(n0, n1, t);
       const rx = (0.057 - 0.007 * t) * u * lerp(1, g, 0.5) * (1 - 0.14 * f), rz = (0.059 - 0.004 * t) * u * lerp(1, g, 0.5) * (1 - 0.1 * f);
       const pts = [];
       for (let i = 0; i < SEG; i++) {
         const [px, pz] = se((i / SEG) * TAU, rx, rz, 2);
         pts.push([px, y, pz - 0.022 * u + 0.018 * u * t]); // neck leans forward
       }
-      r.push({ pts, color: col.skin, weights: () => ({ neck: 1 - smooth(t * 1.2 - 0.2), head: smooth(t * 1.2 - 0.2) }) });
+      r.push({ pts, mat: MAT.skin, color: col.skin, weights: () => ({ neck: 1 - smooth(t * 1.2 - 0.2), head: smooth(t * 1.2 - 0.2) }) });
     }
     B.loft(r, { flip: true });
   }
@@ -244,8 +286,8 @@ export function buildBody(spec, rig) {
     const sleeveT = 0.36;
     const keys = [
       // t (0 shoulder → 1 wrist), rx, rz, zc
-      [-0.045, 0.022, 0.026, 0.000],
-      [-0.025, 0.040, 0.046, 0.000],
+      [-0.025, 0.026, 0.030, 0.000], // the arm's top sits inside the shoulder
+      [-0.008, 0.042, 0.047, 0.000],
       [0.02, (0.055 + 0.006 * m) * g, (0.056 + 0.004 * m) * g, 0.002],
       [0.17, (0.048 + 0.006 * m) * g, (0.052 + 0.003 * m) * g, 0.004],
       [0.33, (0.042 + 0.003 * m) * g, (0.046 + 0.004 * m) * g, 0.006],
@@ -258,7 +300,7 @@ export function buildBody(spec, rig) {
     const P = profile(keys);
     const r = [];
     const ts = [];
-    for (let j = 0; j <= 30; j++) ts.push(lerp(-0.045, 1.0, j / 30));
+    for (let j = 0; j <= 72; j++) ts.push(lerp(-0.025, 1.0, j / 72));
     ts.push(sleeveT - 0.0001, sleeveT + 0.0001);
     ts.sort((a, b) => a - b);
     for (const t of ts) {
@@ -273,7 +315,7 @@ export function buildBody(spec, rig) {
         pts.push([x0 + px, y, z0 + pz + zc * u]);
       }
       const w = armWeights(side, t, elbowT);
-      r.push({ pts, color: sleeve ? (t > sleeveT - 0.03 ? col.collar : col.shirt) : col.skin, weights: () => w });
+      r.push({ pts, mat: sleeve ? MAT.cloth : MAT.skin, color: sleeve ? (t > sleeveT - 0.03 ? col.collar : col.shirt) : col.skin, weights: () => w });
     }
     B.loft(r, { capStart: true });
     buildHand(B, spec, col, side, k, x0, top - total, z0);
@@ -286,25 +328,12 @@ export function buildBody(spec, rig) {
     const kneeT = spec.thigh / L;
     // trousers: anatomy underneath, cloth on top (never tighter than a
     // straight-leg cut below the knee)
-    const keys = [
-      [-0.07, 0.066, 0.076, -0.010],
-      [-0.04, 0.080, 0.088, -0.008],
-      [0.06, 0.088, 0.090, 0.004],
-      [0.20, 0.078, 0.080, 0.010],
-      [0.36, 0.066, 0.068, 0.010],
-      [kneeT - 0.02, 0.056, 0.058, 0.010],
-      [kneeT + 0.06, 0.053, 0.057, 0.000],
-      [kneeT + 0.16, 0.055 + 0.006 * m, 0.060 + 0.004 * m, -0.010],
-      [0.80, 0.050, 0.052, -0.004],
-      [0.97, 0.050, 0.053, 0.000],
-      [1.0, 0.051, 0.054, 0.000],
-    ];
-    const P = profile(keys);
+    const P = shape.legRaw;
     const r = [];
-    for (let j = 0; j <= 34; j++) {
-      const t = lerp(-0.07, 1.0, j / 34); // starts below the shirt hem
+    for (let j = 0; j <= 84; j++) {
+      const t = lerp(-0.07, 1.0, j / 84); // starts below the shirt hem
       const [rx, rz, zc] = P(t);
-      const gg = (t < kneeT + 0.1 ? g : lerp(g, 1, 0.4)) * (1 + f * (t < 0.3 ? 0.05 * (1 - t / 0.3) : t > kneeT + 0.05 ? -0.08 : 0));
+      const gg = shape.legGirth(t);
       const y = spec.hipJointY - t * L;
       const pts = [];
       for (let i = 0; i < SEG; i++) {
@@ -323,22 +352,61 @@ export function buildBody(spec, rig) {
   }
 
   const geo = B.geometry();
-  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0 });
-  // hair: crisp, anti-aliased hairline from an interpolated distance field
+  // One physical material; each surface kind (skin, cloth, hair, shoe, sole)
+  // gets its own roughness, sheen and micro-detail in the shader, driven by
+  // a per-vertex tag and the rest-pose position (so detail sticks to the body).
+  const mat = new THREE.MeshPhysicalMaterial({
+    vertexColors: true, roughness: 0.8, metalness: 0,
+    sheen: 1, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.16, 0.16, 0.16),
+  });
   const hairColor = { value: col.hair.clone() };
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.hairColor = hairColor;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float hairD;\nvarying float vHairD;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHairD = hairD;');
+      .replace('#include <common>', '#include <common>\nattribute float hairD;\nattribute float matId;\nvarying float vHairD;\nvarying float vMat;\nvarying vec3 vRest;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHairD = hairD;\nvMat = matId;\nvRest = position;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 hairColor;\nvarying float vHairD;')
+      .replace('#include <common>', `#include <common>
+        uniform vec3 hairColor;
+        varying float vHairD;
+        varying float vMat;
+        varying vec3 vRest;
+        float wHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+        float wNoise(vec3 x) {
+          vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(mix(wHash(i), wHash(i + vec3(1,0,0)), f.x), mix(wHash(i + vec3(0,1,0)), wHash(i + vec3(1,1,0)), f.x), f.y),
+                     mix(mix(wHash(i + vec3(0,0,1)), wHash(i + vec3(1,0,1)), f.x), mix(wHash(i + vec3(0,1,1)), wHash(i + vec3(1,1,1)), f.x), f.y), f.z);
+        }
+        // fade a pattern of the given frequency out before it can alias
+        float wDetail(float freq) { return clamp(1.5 - length(fwidth(vRest)) * freq * 1.2, 0.0, 1.0); }
+        float wMask(float id) { return clamp(1.0 - abs(vMat - id), 0.0, 1.0); }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         float hw = max(fwidth(vHairD), 1e-4) * 0.8;
-        float hm = smoothstep(-hw, hw, vHairD);
-        diffuseColor.rgb = mix(diffuseColor.rgb, hairColor, hm);`);
+        float hairM = max(smoothstep(-hw, hw, vHairD), wMask(2.0));
+        float skinM = wMask(0.0) * (1.0 - hairM), clothM = wMask(1.0), shoeM = wMask(3.0), soleM = wMask(4.0);
+        diffuseColor.rgb = mix(diffuseColor.rgb, hairColor, hairM);
+        // cloth: soft tonal drift plus a fine knit
+        float knit = wNoise(vRest * vec3(900.0, 1300.0, 900.0));
+        float drift = wNoise(vRest * 18.0);
+        diffuseColor.rgb *= 1.0 + clothM * ((drift - 0.5) * 0.08 + (knit - 0.5) * 0.10 * wDetail(900.0));
+        // hair: strands running down the head
+        float strand = wNoise(vec3(vRest.x * 520.0, vRest.y * 26.0, vRest.z * 520.0));
+        float clump = wNoise(vec3(vRest.x * 90.0, vRest.y * 8.0, vRest.z * 90.0));
+        diffuseColor.rgb *= 1.0 + hairM * ((strand - 0.5) * 0.6 * wDetail(520.0) + (clump - 0.5) * 0.25);
+        // skin: barely-there tone variation, warmer where blood is close
+        diffuseColor.rgb *= 1.0 + skinM * (wNoise(vRest * 70.0) - 0.5) * 0.05;
+        // shoes: a faint mesh texture on the upper
+        diffuseColor.rgb *= 1.0 + shoeM * (wNoise(vRest * 1400.0) - 0.5) * 0.08 * wDetail(1400.0);`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        roughnessFactor = skinM * 0.5 + clothM * 0.92 + hairM * 0.62 + shoeM * 0.58 + soleM * 0.78;
+        roughnessFactor += hairM * (strand - 0.5) * 0.3 * wDetail(520.0);`)
+      .replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
+        #ifdef USE_SHEEN
+          material.sheenColor *= clothM; // only fabric has that velvety rim
+        #endif
+        material.specularColor *= 1.0 - 0.75 * clothM;`);
   };
-  mat.customProgramCacheKey = () => 'walker-body';
+  mat.customProgramCacheKey = () => 'walker-body-v2';
   const mesh = new THREE.SkinnedMesh(geo, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -414,7 +482,7 @@ function legWeights(side, t, kneeT) {
     const a = smooth((t - (kneeT - 0.05)) / 0.1);
     w[ul] = 1 - a; w[l] = a;
   } else if (t < 0.93) w[l] = 1;
-  else { const a = smooth((t - 0.93) / 0.07); w[l] = 1 - a * 0.65; w[f] = a * 0.65; }
+  else { const a = smooth((t - 0.93) / 0.07); w[l] = 1 - a * 0.2; w[f] = a * 0.2; } // the hem hangs from the shin, not the foot
   return w;
 }
 
@@ -422,7 +490,7 @@ function buildHead(B, s, col) {
   const u = s.u, hs = s.c.head;
   const cy = s.headY + 0.094 * u * hs, cz = 0.026 * u; // skull sits forward of the neck
   const rx = 0.080 * u * hs, ry = 0.116 * u * hs, rz = 0.101 * u * hs;
-  const R = 34, SEGH = 44;
+  const R = 60, SEGH = 76;
   const rings = [];
   for (let j = 1; j < R; j++) {
     const v = j / R; // 0 top → 1 bottom
@@ -480,7 +548,7 @@ function buildHead(B, s, col) {
       }
       colors.push(c);
     }
-    rings.push({ pts, hair, color: (i) => colors[i], weights: () => ({ head: 1 }) });
+    rings.push({ pts, hair, mat: MAT.skin, color: (i) => colors[i], weights: () => ({ head: 1 }) });
   }
   // close top and bottom with the loft caps
   B.loft(rings, { capStart: true, capEnd: true });
@@ -494,10 +562,10 @@ function buildHairFall(B, s, len) {
   const rx = 0.080 * u * hs, rz = 0.101 * u * hs;
   const y0 = cy + 0.02 * u, y1 = cy - (0.07 + 0.2 * len) * u;
   const A0 = (78 * Math.PI) / 180; // where the fall parts around the face
-  const M = 20, rings = [];
+  const M = 36, rings = [];
   const ones = new Array(M * 2).fill(1);
-  for (let j = 0; j <= 12; j++) {
-    const t = j / 12, y = lerp(y0, y1, t);
+  for (let j = 0; j <= 24; j++) {
+    const t = j / 24, y = lerp(y0, y1, t);
     // follows the skull at the top, then hangs straight and flares a little
     const sk = Math.sqrt(Math.max(0, 1 - Math.pow((y - cy) / (0.12 * u * hs), 2)));
     const wide = lerp(1.07, 1.0, smooth(t * 3)) * Math.max(sk, 0.92) + 0.10 * t * t;
@@ -511,93 +579,196 @@ function buildHairFall(B, s, len) {
       }
     }
     const wh = 1 - 0.55 * smooth(t);
-    rings.push({ pts, hair: ones, color: new THREE.Color(1, 1, 1), weights: () => ({ head: wh, neck: 1 - wh }) });
+    rings.push({ pts, hair: ones, mat: MAT.hair, color: new THREE.Color(1, 1, 1), weights: () => ({ head: wh, neck: 1 - wh }) });
   }
   B.loft(rings);
 }
 
+// A tube along a polyline: rings carried by parallel-transported frames, so a
+// finger curls smoothly through its knuckles. `path` is [[x,y,z,r], ...];
+// the far end closes in a rounded tip.
+function tubeAlong(B, path, N, ring) {
+  const P = path.map((q) => new THREE.Vector3(q[0], q[1], q[2]));
+  const tan = P.map((_, i) => new THREE.Vector3().subVectors(P[Math.min(i + 1, P.length - 1)], P[Math.max(i - 1, 0)]).normalize());
+  // start frame: any normal perpendicular to the first tangent, then transport
+  let n = new THREE.Vector3(0, 0, 1);
+  if (Math.abs(n.dot(tan[0])) > 0.9) n.set(1, 0, 0);
+  n.addScaledVector(tan[0], -n.dot(tan[0])).normalize();
+  const rings = [];
+  const push = (c, t, nn, r) => {
+    const x = new THREE.Vector3().crossVectors(nn, t); // x × n = t keeps the loft's outward winding
+    const pts = [];
+    for (let i = 0; i < N; i++) {
+      const a = (i / N) * TAU;
+      pts.push([c.x + r * (Math.sin(a) * x.x + Math.cos(a) * nn.x), c.y + r * (Math.sin(a) * x.y + Math.cos(a) * nn.y), c.z + r * (Math.sin(a) * x.z + Math.cos(a) * nn.z)]);
+    }
+    rings.push({ pts, ...ring });
+  };
+  for (let i = 0; i < P.length; i++) {
+    if (i > 0) { // transport the normal along the bend
+      const q = new THREE.Quaternion().setFromUnitVectors(tan[i - 1], tan[i]);
+      n.applyQuaternion(q).addScaledVector(tan[i], -n.dot(tan[i])).normalize();
+    }
+    push(P[i], tan[i], n, path[i][3]);
+  }
+  // rounded tip
+  const end = P[P.length - 1], t = tan[tan.length - 1], r = path[path.length - 1][3];
+  for (const a of [0.35, 0.65, 0.88]) push(end.clone().addScaledVector(t, r * Math.sin(a * Math.PI / 2) * 0.9), t, n, r * Math.cos(a * Math.PI / 2));
+  B.loft(rings, { capEnd: true });
+}
+
+// A relaxed hand hanging at the side: palm toward the thigh (−k·X), thumb
+// forward (+Z), the fingers in the gentle cascade of a resting hand, the
+// little finger the most curled.
 function buildHand(B, s, col, side, k, x0, wristY, z0) {
-  const u = s.u, L = s.hand;
+  const u = s.u, L = s.hand, hsc = L / 0.189;
+  const f = s.c.sex ?? 0, gw = lerp(1, s.c.build, 0.4) * (1 - 0.08 * f);
   const hand = `${side}Hand`;
-  // palm faces the thigh: thin in X, wide in Z; fingers curl toward the palm
+  const ring = { color: col.skin, mat: MAT.skin, weights: () => ({ [hand]: 1 }) };
+  const palmLen = 0.46 * L;
+  // palm: thin across X, wide along Z, slightly cupped toward the palm
   const keys = [
-    // t (0 wrist → 1 fingertips), halfThick(X), halfWidth(Z), curl(X toward palm), zc
-    [0.00, 0.018, 0.026, 0.000, 0.000],
-    [0.15, 0.017, 0.036, 0.000, 0.002],
-    [0.45, 0.015, 0.041, 0.002, 0.000],
-    [0.60, 0.013, 0.039, 0.006, -0.002],
-    [0.80, 0.011, 0.034, 0.016, -0.004],
-    [1.00, 0.008, 0.026, 0.030, -0.006],
+    // t (wrist → knuckles), halfThick, halfWidth, cup (toward palm), zc
+    [0.00, 0.0175, 0.027, 0.000, 0.000],
+    [0.25, 0.0170, 0.036, 0.001, 0.002],
+    [0.60, 0.0160, 0.041, 0.003, 0.001],
+    [0.92, 0.0145, 0.043, 0.006, 0.000],
+    [1.00, 0.0130, 0.042, 0.007, 0.000],
   ];
   const P = profile(keys);
   const r = [];
-  for (let j = 0; j <= 10; j++) {
-    const t = j / 10;
-    const [hx, hz, curl, zc] = P(t);
-    const y = wristY - t * L * 0.92 + Math.pow(t, 2) * 0.01 * u;
+  for (let j = 0; j <= 16; j++) {
+    const t = j / 16;
+    const [hx, hz, cup, zc] = P(t);
+    const y = wristY + 0.014 * u - t * (palmLen + 0.014 * u); // starts inside the forearm: no crack at the wrist
     const pts = [];
-    for (let i = 0; i < 18; i++) {
-      const [px, pz] = se((i / 18) * TAU, hx * u, hz * u, 2.4);
-      pts.push([x0 + px - k * curl * u, y, z0 + pz + zc * u]);
+    for (let i = 0; i < 40; i++) {
+      const a = (i / 40) * TAU;
+      let [px, pz] = se(a, hx * u * gw, hz * u * gw, 2.6);
+      // palm side a little hollow in the middle, thenar pad near the thumb
+      if (px * k < 0) px *= 1 - 0.18 * Math.exp(-Math.pow(pz / (0.02 * u), 2)) * smooth((t - 0.2) / 0.4);
+      pts.push([x0 + px - k * cup * u, y, z0 + pz + zc * u]);
     }
-    r.push({ pts, color: col.skin, weights: () => ({ [hand]: 1 }) });
+    r.push({ pts, ...ring });
   }
   B.loft(r, { capEnd: true });
-  // thumb: from the palm's front edge, down and toward the palm
-  const tr = [];
-  for (let j = 0; j <= 5; j++) {
-    const t = j / 5;
-    const y = wristY - (0.18 + 0.38 * t) * L;
-    const zz = z0 + (0.034 - 0.006 * t) * u;
-    const xx = x0 - k * (0.004 + 0.012 * t) * u;
-    const rad = (0.011 - 0.003 * t) * u;
-    const pts = [];
-    for (let i = 0; i < 12; i++) {
-      const [px, pz] = se((i / 12) * TAU, rad, rad * 1.1, 2);
-      pts.push([xx + px, y, zz + pz]);
+
+  // fingers: [z across the palm, knuckle height offset, length scale, radius, extra curl, splay]
+  const fingers = [
+    [0.027, 0.000, 0.96, 0.0094, 0, 4],
+    [0.009, -0.004, 1.0, 0.0098, 5, 1],
+    [-0.009, -0.001, 0.94, 0.0092, 10, -2],
+    [-0.026, 0.008, 0.77, 0.0082, 16, -6],
+  ];
+  const seg = [0.047, 0.029, 0.021];
+  const curl = [16, 30, 16];
+  for (const [fz, dy, ls, rad, extra, splay] of fingers) {
+    const path = [];
+    let p = new THREE.Vector3(x0 - k * 0.004 * u, wristY - palmLen * 0.9 + dy * u, z0 + fz * u * gw);
+    let d = new THREE.Vector3(0, -1, 0).applyAxisAngle(new THREE.Vector3(k, 0, 0), splay * Math.PI / 180 * k);
+    const palmward = new THREE.Vector3(-k, 0, 0);
+    for (let sgi = 0; sgi < 3; sgi++) {
+      // bend at the joint toward the palm
+      const ang = ((curl[sgi] + extra * (sgi === 0 ? 0.5 : 1)) * Math.PI) / 180;
+      const bperp = palmward.clone().addScaledVector(d, -palmward.dot(d)).normalize();
+      d = d.clone().multiplyScalar(Math.cos(ang)).addScaledVector(bperp, Math.sin(ang)).normalize();
+      const len = seg[sgi] * ls * hsc;
+      const r0 = rad * u * gw * (1 - 0.1 * sgi), r1 = rad * u * gw * (1 - 0.1 * (sgi + 1));
+      for (let j = 0; j < 5; j++) {
+        const t = j / 5;
+        const knuckle = 1 + 0.07 * Math.exp(-Math.pow(t / 0.18, 2)); // joints a touch fuller
+        path.push([p.x + d.x * len * t, p.y + d.y * len * t, p.z + d.z * len * t, lerp(r0, r1, t) * knuckle]);
+      }
+      p = p.clone().addScaledVector(d, len);
     }
-    tr.push({ pts, color: col.skin, weights: () => ({ [hand]: 1 }) });
+    path.push([p.x, p.y, p.z, rad * u * gw * 0.68]);
+    tubeAlong(B, path, 16, ring);
   }
-  B.loft(tr, { capEnd: true });
+
+  // thumb: from the heel of the palm, forward and down, curling toward the index
+  {
+    const path = [];
+    let p = new THREE.Vector3(x0 - k * 0.006 * u, wristY - 0.10 * L, z0 + 0.024 * u * gw);
+    let d = new THREE.Vector3(-k * 0.28, -0.72, 0.62).normalize();
+    const toward = new THREE.Vector3(-k * 0.6, -0.2, -0.75).normalize();
+    const segT = [0.040, 0.032, 0.026], ang = [10, 20, 18];
+    for (let sgi = 0; sgi < 3; sgi++) {
+      const a = (ang[sgi] * Math.PI) / 180;
+      const bperp = toward.clone().addScaledVector(d, -toward.dot(d)).normalize();
+      d = d.clone().multiplyScalar(Math.cos(a)).addScaledVector(bperp, Math.sin(a)).normalize();
+      const len = segT[sgi] * hsc;
+      const r0 = (0.0135 - 0.0013 * sgi) * u * gw, r1 = (0.0135 - 0.0013 * (sgi + 1)) * u * gw;
+      for (let j = 0; j < 5; j++) {
+        const t = j / 5;
+        path.push([p.x + d.x * len * t, p.y + d.y * len * t, p.z + d.z * len * t, lerp(r0, r1, t) * (sgi === 0 ? 1 + 0.25 * Math.sin(Math.PI * t) : 1)]);
+      }
+      p = p.clone().addScaledVector(d, len);
+    }
+    path.push([p.x, p.y, p.z, 0.0085 * u * gw]);
+    tubeAlong(B, path, 16, ring);
+  }
 }
 
+// Sneaker: a midsole slab with an outsole stripe, toe spring and a bevelled
+// heel; a rounded upper with a toe box, a padded collar dipping under the
+// ankle bones, and a lace panel.
 function buildShoe(B, s, col, side, k, x0) {
   const u = s.u;
   const foot = `${side}Foot`, toe = `${side}ToeBase`;
-  const z0 = s.heelZ - 0.016 * u, z1 = s.toeZ + 0.014 * u;
-  const keys = [
-    // z,           halfW,  height, (toe-out of the sole outline handled by bones)
-    [z0, 0.026, 0.060],
-    [z0 + 0.012 * u, 0.036, 0.085],
-    [s.heelZ + 0.02 * u, 0.040, 0.098],
-    [0.0, 0.041, 0.106],
-    [s.ballZ * 0.45, 0.044, 0.088],
-    [s.ballZ, 0.050, 0.064],
-    [s.ballZ + (s.toeZ - s.ballZ) * 0.55, 0.046, 0.050],
-    [z1 - 0.012 * u, 0.034, 0.040],
-    [z1, 0.016, 0.028],
-  ];
-  const P = profile(keys);
-  const r = [];
-  const NZ = 22, NA = 22;
-  for (let j = 0; j <= NZ; j++) {
-    const z = lerp(z0, z1, j / NZ);
-    const [hw, hh] = P(z);
-    const pts = [], colors = [];
-    for (let i = 0; i < NA; i++) {
-      // ring in the XY plane; start at the top, go around
-      const a = (i / NA) * TAU;
-      const [px, py] = se(a, hw * u, hh * u * 0.5, 3.2);
-      const y = Math.max(0, hh * u * 0.5 + py);
-      // medial side straighter, lateral side rounder
-      const x = x0 + px * (px * k < 0 ? 0.92 : 1.05) + k * 0.004 * u;
-      pts.push([x, y, z]);
-      const sole = y < 0.016 * u;
-      const lace = !sole && py > hh * u * 0.42 && z > 0.01 * u && z < s.ballZ * 0.9 && Math.abs(px) < hw * u * 0.35;
-      colors.push(sole ? col.sole : lace ? col.lace : col.shoes);
+  const z0 = s.heelZ - 0.018 * u, z1 = s.toeZ + 0.016 * u;
+  const L = z1 - z0;
+  const wt = (z) => smooth((z - (s.ballZ - 0.02 * u)) / (0.04 * u));
+  const weights = (z) => ({ [foot]: 1 - wt(z), [toe]: wt(z) });
+  // outline half-width along the foot (fraction of length → m at 1.75 m)
+  const outline = profile([[0, 0.022], [0.06, 0.034], [0.2, 0.039], [0.42, 0.040], [0.66, 0.050], [0.82, 0.047], [0.94, 0.036], [1, 0.012]]);
+  const spring = (z) => 0.013 * u * Math.pow(smooth((z - s.ballZ) / (z1 - s.ballZ)), 1.6) + 0.006 * u * Math.pow(smooth((z0 + 0.03 * u - z) / (0.03 * u)), 1.5);
+  const midsole = col.shoes.clone().lerp(new THREE.Color('#f4f1ea'), 0.65);
+  // ── sole ──
+  {
+    const r = [], NZ = 56, NA = 40, SH = 0.026 * u;
+    for (let j = 0; j <= NZ; j++) {
+      const z = lerp(z0, z1, j / NZ);
+      const hw = (outline([(z - z0) / L])[0] + 0.004) * u;
+      const yb = spring(z);
+      const pts = [], colors = [];
+      for (let i = 0; i < NA; i++) {
+        const a = (i / NA) * TAU;
+        const [px, py] = se(a, hw, SH / 2, 6);
+        const y = yb + SH / 2 + py;
+        pts.push([x0 + px * (px * k < 0 ? 0.93 : 1.04), y, z]);
+        colors.push(y - yb < SH * 0.32 ? col.sole : midsole);
+      }
+      r.push({ pts, mat: MAT.sole, color: (i) => colors[i], weights: () => weights(z) });
     }
-    const wt = smooth((z - (s.ballZ - 0.02 * u)) / (0.04 * u));
-    r.push({ pts, color: (i) => colors[i], weights: () => ({ [foot]: 1 - wt, [toe]: wt }) });
+    B.loft(r, { capStart: true, capEnd: true });
   }
-  B.loft(r, { capStart: true, capEnd: true });
+  // ── upper ──
+  {
+    const height = profile([[0, 0.060], [0.05, 0.088], [0.16, 0.102], [0.3, 0.108], [0.45, 0.092], [0.62, 0.070], [0.78, 0.056], [0.92, 0.046], [1, 0.030]]);
+    const r = [], NZ = 60, NA = 44;
+    for (let j = 0; j <= NZ; j++) {
+      const z = lerp(z0 + 0.004 * u, z1 - 0.005 * u, j / NZ);
+      const f = (z - z0) / L;
+      const hw = outline([f])[0] * u * 0.97;
+      const top = height([f])[0] * u;
+      const yb = spring(z) + 0.018 * u;
+      const hh = top - yb + spring(z) * 0.6;
+      const pts = [], colors = [];
+      for (let i = 0; i < NA; i++) {
+        const a = (i / NA) * TAU; // 0 = top, around through the lateral side
+        let [px, py] = se(a, hw, hh / 2, 2.7);
+        let y = yb + hh / 2 + py;
+        y = Math.max(y, yb);
+        // collar dips under the ankle bones at the sides
+        const side = Math.abs(Math.sin(a));
+        if (py > 0) y -= 0.016 * u * Math.pow(side, 2) * Math.exp(-Math.pow((z - 0.005 * u) / (0.035 * u), 2));
+        pts.push([x0 + px * (px * k < 0 ? 0.93 : 1.04), y, z]);
+        const lace = py > hh * 0.36 && z > 0.012 * u && z < s.ballZ * 0.95 && Math.abs(px) < hw * 0.32;
+        const laceRow = lace && Math.sin((z / (0.012 * u)) * Math.PI) > 0.2;
+        colors.push(laceRow ? col.lace.clone().multiplyScalar(0.9) : lace ? col.lace : col.shoes);
+      }
+      r.push({ pts, mat: MAT.shoe, color: (i) => colors[i], weights: () => weights(z) });
+    }
+    B.loft(r, { capStart: true, capEnd: true });
+  }
 }

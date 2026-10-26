@@ -18,10 +18,14 @@ The usual tells of a hand-made walk, and what this does about each:
 | Bob depth guessed | The bob depth comes from the geometry of the coming landing, so the knee is nearly straight at heel strike for any leg length. |
 | Upper body locked to the hips | Thorax counter-rotates against the pelvis; arms swing opposite the legs with the elbow lagging the shoulder; head stays level. |
 | Wrong rhythm | Step length follows the human walk ratio (∝ √speed); stance shortens as speed rises; small per-step variation. |
+| Limbs pass through the body | Arms carry the anatomical elbow angle and open just enough at the shoulder to clear the torso and thighs; the passing leg steps wide enough to clear the standing one. Clearance is solved each frame against the same cross-sections the mesh is built from. |
+| Low-poly, plastic look | ~43k-vertex skinned body with jointed fingers and a built-up sneaker; per-surface shading (skin, knit cloth with sheen, stranded hair, shoe, sole) and ambient occlusion. |
 
 The joint angles are checked against reference adult gait curves (Winter 1991,
 Perry 1992): over a cycle the RMS error is about 4–6° at hip, knee and ankle.
-Turn on **Gait graph** to see the comparison live.
+Turn on **Gait graph** to see the comparison live. A mesh-level check over a
+full cycle finds no arm or leg passing through the body, across slender to
+heavy builds.
 
 ## Man, woman, and everything between
 

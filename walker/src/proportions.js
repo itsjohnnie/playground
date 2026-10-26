@@ -50,7 +50,7 @@ export function makeSpec(c = DEFAULT_CHARACTER) {
   const shoulderW = 0.232 * H * c.shoulders * (1 - 0.09 * f); // outer, bideltoid-ish
   const hipW = 0.191 * H * c.hips * (1 + 0.07 * f);
   const hipSep = hipW * 0.50; // femoral head centres
-  const armX = shoulderW * 0.5 - 0.05 * u * c.build;
+  const armX = shoulderW * 0.5 - 0.026 * u + 0.035 * u * (c.build - 1); // glenohumeral centre; bigger frames carry the arms wider
 
   // ── arm lengths ───────────────────────────────────────────────────────
   const upperArm = 0.186 * H;

@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { DEFAULT_CHARACTER, makeSpec } from './proportions.js';
 import { buildRig, buildBody } from './body.js';
 import { Walker, DEFAULT_GAIT, applyPose } from './gait.js';
@@ -9,7 +13,7 @@ const STORE = 'walker:v1';
 const saved = (() => { try { return JSON.parse(localStorage.getItem(STORE)) || {}; } catch { return {}; } })();
 const character = { ...DEFAULT_CHARACTER, ...(saved.character || {}) };
 const gait = { ...DEFAULT_GAIT, ...(saved.gait || {}) };
-const view = { skeleton: false, footprints: true, arcs: false, graph: false, ...(saved.view || {}) };
+const view = { skeleton: false, footprints: true, arcs: false, graph: false, ao: innerWidth > 720, ...(saved.view || {}) };
 const persist = () => { try { localStorage.setItem(STORE, JSON.stringify({ character, gait, view })); } catch {} };
 
 // ── renderer, scene ──────────────────────────────────────────────────────
@@ -24,7 +28,9 @@ renderer.toneMappingExposure = 1.05;
 const GROUND = new THREE.Color('#e7e2d8');
 const scene = new THREE.Scene();
 scene.background = GROUND;
-scene.fog = new THREE.Fog(GROUND, 28, 40);
+// fog only fades the far floor when zoomed out; it starts well behind the
+// character (camera sits 30 m away) so it never greys the body
+scene.fog = new THREE.Fog(GROUND, 37, 52);
 
 // true isometric: 45° around, arctan(1/√2) ≈ 35.26° down
 const ELEV = Math.atan(1 / Math.SQRT2);
@@ -39,6 +45,16 @@ Object.assign(sun.shadow.camera, { left: -2.6, right: 2.6, top: 2.6, bottom: -2.
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.025;
 scene.add(sun, sun.target);
+// ambient occlusion: contact darkening in the armpits, collar, between the
+// legs and under the feet, which is most of what makes a body sit in a scene
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 }));
+composer.addPass(new RenderPass(scene, cam));
+const gtao = new GTAOPass(scene, cam, 1, 1);
+gtao.blendIntensity = 0.9;
+gtao.updateGtaoMaterial({ radius: 0.16, distanceExponent: 1.6, thickness: 0.6, scale: 1.0, samples: 16, distanceFallOff: 1.0 });
+gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
+composer.addPass(gtao);
+composer.addPass(new OutputPass());
 const rim = new THREE.DirectionalLight('#dfe8ff', 0.55);
 scene.add(rim, rim.target);
 
@@ -272,6 +288,8 @@ const graph = (() => {
 function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false);
+  composer.setPixelRatio(renderer.getPixelRatio());
+  composer.setSize(w, h);
   const a = w / h;
   // on narrow screens, keep the character above the bottom sheet
   const s = camState.size * (a < 0.8 ? 1.4 : 1);
@@ -420,7 +438,7 @@ for (const [key, label] of COLORS) {
   colorHost.append(el);
 }
 
-const TOGGLES = [['footprints', 'Footprints'], ['arcs', 'Motion arcs'], ['skeleton', 'Skeleton'], ['graph', 'Gait graph']];
+const TOGGLES = [['footprints', 'Footprints'], ['arcs', 'Motion arcs'], ['skeleton', 'Skeleton'], ['graph', 'Gait graph'], ['ao', 'Occlusion']];
 const toggleHost = document.getElementById('toggles');
 function applyView() {
   setSkeleton(view.skeleton);
@@ -549,7 +567,7 @@ function frame(now) {
   readoutT -= real;
   if (readoutT <= 0) { updateReadout(); readoutT = 0.25; }
   graph.draw(walker.pose.phase);
-  renderer.render(scene, cam);
+  if (view.ao) composer.render(); else renderer.render(scene, cam);
   requestAnimationFrame(frame);
 }
 
@@ -560,4 +578,4 @@ applyView();
 requestAnimationFrame(frame);
 
 // console handle for poking at the rig: walkerApp.walker.pose, .character …
-window.walkerApp = { applyPreset, walker, character, gait, view, camState, setPaused, get body() { return body; }, get spec() { return spec; } };
+window.walkerApp = { scene, gtao, composer, applyPreset, walker, character, gait, view, camState, setPaused, get body() { return body; }, get spec() { return spec; } };
