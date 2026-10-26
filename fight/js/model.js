@@ -33,7 +33,7 @@ function sculptFn(h) {
     let X = x * h.W, Y = y * h.H, Z = z * h.D;
     const front = Math.max(0, z);
     const low = smooth(0.08, -0.9, y);
-    X *= lerp(1, h.jaw, low);
+    X *= lerp(1, lerp(h.jaw, 1, 0.35), low);
     Z *= lerp(1, 0.94, low);
     Z += h.chin * gauss(y, -0.72, 0.22) * front * front * 1.6;
     Y -= h.chinLen * gauss(y, -0.82, 0.25) * front;
@@ -49,7 +49,7 @@ function sculptFn(h) {
     if (y > 0) Y *= h.forehead;
     Y *= 1 - 0.05 * smooth(0.7, 1, y);
     // Caricature controls: a longer lower face, a domed skull, jowls.
-    if (y < 0) Y *= h.faceLen ?? 1;
+    if (y < 0) Y *= (h.faceLen ?? 1) * 0.86;
     const dome = h.dome ?? 0;
     if (dome) { Y += dome * 0.4 * smooth(0.05, 1, y); X *= 1 + dome * 0.12 * smooth(0, 0.8, y); Z *= 1 + dome * 0.08 * smooth(0, 0.8, y); }
     const jowl = h.jowl ?? 0;
@@ -187,9 +187,10 @@ function buildHead(headBone, def, R, headGeo) {
   const at = (x, y, z, out = 0) => { const n = new THREE.Vector3(x, y, z).normalize(); const v = f(n.x, n.y, n.z).multiplyScalar(R); return v.addScaledVector(n, out * R); };
   face.at = at;
   const ey = h.eye || {};
-  const eR = R * 0.15 * (ey.size ?? 1);
+  const eR = R * 0.135 * (ey.size ?? 1);
   const eg = 0.34 * (ey.gap ?? 1);
-  const eyeCenters = [1, -1].map((sx) => at(sx * eg, 0.1, 0.94).add(new THREE.Vector3(0, 0, -eR * 0.42)));
+  const blender = !!headGeo;
+  const eyeCenters = [1, -1].map((sx) => at(sx * eg, 0.1, 0.94).add(new THREE.Vector3(0, 0, -eR * 0.6)));
   const mo = h.mouth || {};
   const mw = R * 0.33 * (mo.w ?? 1), lip = R * 0.05 * (mo.lip ?? 1), smile = mo.smile ?? 0.3;
   const mc = at(0, -0.45, 1, 0.045);
@@ -205,7 +206,7 @@ function buildHead(headBone, def, R, headGeo) {
     });
     headCache.set(key, geo);
   }
-  const head = new THREE.Mesh(geo, clayMat('#ffffff', { vertexColors: true, roughness: def.shiny ? 0.45 : 0.72, bumps: 0.4 }));
+  const head = new THREE.Mesh(geo, clayMat('#ffffff', { vertexColors: true, physical: true, roughness: def.shiny ? 0.4 : 0.55, bumps: 0.05, rim: 0.28 }));
   head.castShadow = true;
   head.userData.boil = 0.4;
   headBone.add(head);
@@ -223,19 +224,25 @@ function buildHead(headBone, def, R, headGeo) {
     const iris = new THREE.Group();
     iris.position.z = eR * 0.84;
     ball.add(iris);
-    iris.add(sphere(eR * 0.52, ey.iris || '#4a3524', { scale: [1, 1, 0.42], lump: 0.001, roughness: 0.25, boil: 0.2, emissive: ey.glow ? ey.iris : undefined, emissiveIntensity: ey.glow ? 2.5 : 1 }));
-    iris.add(sphere(eR * 0.26, '#080606', { scale: [1, 1, 0.4], pos: [0, 0, eR * 0.1], lump: 0.001, roughness: 0.15, boil: 0.2 }));
-    iris.add(sphere(eR * 0.1, '#ffffff', { pos: [eR * 0.15, eR * 0.18, eR * 0.2], lump: 0, roughness: 0.1, boil: 0, rim: 0, emissive: '#ffffff', emissiveIntensity: 0.6 }));
+    const irisCol = new THREE.Color(ey.iris || '#4a3524');
+    iris.add(sphere(eR * 0.62, '#' + irisCol.clone().multiplyScalar(0.55).getHexString(), { scale: [1, 1, 0.38], lump: 0.0008, roughness: 0.2, boil: 0.2, smooth: true }));
+    iris.add(sphere(eR * 0.52, ey.iris || '#4a3524', { scale: [1, 1, 0.4], pos: [0, 0, eR * 0.02], lump: 0.0008, roughness: 0.2, boil: 0.2, smooth: true, emissive: ey.glow ? ey.iris : undefined, emissiveIntensity: ey.glow ? 2.5 : 1 }));
+    iris.add(sphere(eR * 0.28, '#050404', { scale: [1, 1, 0.4], pos: [0, 0, eR * 0.1], lump: 0.0008, roughness: 0.1, boil: 0.2, smooth: true }));
+    // Two glints: they make clay eyes feel alive.
+    iris.add(sphere(eR * 0.13, '#ffffff', { pos: [eR * 0.18, eR * 0.2, eR * 0.2], lump: 0, roughness: 0.05, boil: 0, rim: 0, smooth: true, emissive: '#ffffff', emissiveIntensity: 1.2 }));
+    iris.add(sphere(eR * 0.06, '#ffffff', { pos: [-eR * 0.14, -eR * 0.16, eR * 0.2], lump: 0, roughness: 0.05, boil: 0, rim: 0, smooth: true, emissive: '#ffffff', emissiveIntensity: 1.0 }));
     // Lids: shells of skin that close over the eyeball.
     const lidGeo = new THREE.SphereGeometry(eR * 1.12, 22, 12, 0, Math.PI * 2, 0, Math.PI * 0.5);
     const upper = new THREE.Group();
-    upper.add(mesh(lidGeo, skin, { bumps: 0.3 }));
+    upper.add(mesh(lidGeo, skin, { bumps: 0.04, physical: true, roughness: 0.58 }));
     eye.add(upper);
     const lowerGeo = new THREE.SphereGeometry(eR * 1.1, 22, 12, 0, Math.PI * 2, Math.PI * 0.5, Math.PI * 0.5);
     const lower = new THREE.Group();
-    lower.add(mesh(lowerGeo, skin, { bumps: 0.3 }));
+    lower.add(mesh(lowerGeo, skin, { bumps: 0.04, physical: true, roughness: 0.58 }));
     eye.add(lower);
-    upper.add(torus(eR * 1.1, eR * 0.06, darken(skin, 0.78), { arc: Math.PI, rot: [Math.PI / 2 + 0.05, 0, 0], boil: 0.3 }));
+    // Lash line along the lid edge, with a flick at the outer corner.
+    upper.add(torus(eR * 1.12, eR * 0.085, '#1c1412', { arc: Math.PI, rot: [Math.PI / 2 + 0.05, 0, 0], boil: 0.3, roughness: 0.4, smooth: true }));
+    upper.add(curveTube([new THREE.Vector3(sx * eR * 1.05, 0, eR * 0.25), new THREE.Vector3(sx * eR * 1.32, eR * 0.12, eR * 0.12), new THREE.Vector3(sx * eR * 1.45, eR * 0.3, 0)], eR * 0.06, '#1c1412', { seg: 6, smooth: true }));
     // Brows: a tapered roll of clay following the brow ridge.
     const bw = R * 0.25, bt = R * 0.05 * (def.brows?.thick ?? 1), arch = def.brows?.arch ?? 0.2;
     const brow = new THREE.Group();
@@ -246,30 +253,56 @@ function buildHead(headBone, def, R, headGeo) {
       new THREE.Vector3(-sx * bw * 0.1, bt * (0.4 + arch), 0.006),
       new THREE.Vector3(sx * bw * 0.35, bt * (0.3 + arch * 1.2), 0),
       new THREE.Vector3(sx * bw * 0.6, -bt * 0.6, -0.025),
-    ], bt, def.brows?.color || '#2a2018', { seg: 16, bumps: 1 }));
+    ], bt * 0.85, def.brows?.color || '#2a2018', { seg: 16, bumps: 0.6 }));
     headBone.add(brow);
     face.eyes.push({ eye, ball, iris, upper, lower, brow, sx, browY: bp.y });
   });
 
-  // Teeth inside the carved mouth; the lower row rides the jaw.
+  // Mouth. Blender heads get a cartoon mouth sitting on the face: a closed
+  // smirk line at rest, and an open shape (teeth, tongue, lip rim) that
+  // stretches for yells, hits and laughs. SDF heads keep their carved one.
   const mouth = new THREE.Group();
-  mouth.position.copy(mc);
   headBone.add(mouth);
-  mouth.add(mesh(new THREE.SphereGeometry(mw * 0.92, 20, 12), '#3a1216', { scale: [1, 0.55, 0.45], pos: [0, -lip * 0.3, -mw * 0.55], boil: 0.3 }));
-  const tW = mw * 1.6, tH = lip * 1.8;
-  const toothCol = def.allClay ? '#9aa0aa' : '#f8f5ec';
-  const curve = (row, w) => { const pp = row.geometry.attributes.position; for (let i = 0; i < pp.count; i++) { const x = pp.getX(i); pp.setZ(i, pp.getZ(i) - (x / (w / 2)) ** 2 * mw * 0.45); } row.geometry.computeVertexNormals(); };
-  const topRow = box(tW, tH, lip * 1.1, toothCol, { pos: [0, tH * 0.48, lip * 0.05], round: 0.6, roughness: 0.3, rim: 0.05, boil: 0.3 });
-  curve(topRow, tW);
-  for (let i = -3; i <= 3; i++) if (i) topRow.add(box(0.0025, tH * 0.9, lip * 1.12, '#d6cfbf', { pos: [i * tW / 7, 0, 0.0005 - (i / 3.5) ** 2 * mw * 0.45], boil: 0 }));
-  mouth.add(topRow);
-  const jaw = new THREE.Group();
-  mouth.add(jaw);
-  const botRow = box(tW * 0.94, tH * 0.9, lip * 1.1, toothCol, { pos: [0, -tH * 0.42, 0], round: 0.6, roughness: 0.3, rim: 0.05, boil: 0.3 });
-  curve(botRow, tW * 0.94);
-  for (let i = -3; i <= 3; i++) if (i) botRow.add(box(0.0025, tH * 0.8, lip * 1.12, '#d6cfbf', { pos: [i * tW / 8, 0, 0.0005 - (i / 4) ** 2 * mw * 0.4], boil: 0 }));
-  jaw.add(botRow);
-  face.mouth = { group: mouth, jaw, lip, mw };
+  const toothCol = def.allClay ? '#9aa0aa' : '#fbf8f0';
+  if (blender) {
+    mouth.position.copy(at(0, -0.47, 1, 0.03));
+    mouth.lookAt(mouth.position.clone().add(new THREE.Vector3(0, -0.15, 1)));
+    const mwc = mw * 0.72, mh = mw * 0.62;
+    const wrap = (u) => -(u * u) * mwc * 0.16;
+    const line = curveTube([-1, -0.5, 0, 0.5, 1].map((u) => new THREE.Vector3(u * mwc, smile * Math.abs(u) ** 1.6 * mh * 0.35 - (1 - Math.abs(u)) * mh * 0.03, wrap(u))), R * 0.026, '#3a1418', { seg: 16, smooth: true, roughness: 0.5 });
+    // Corner dimples sell the smirk.
+    for (const sx of [1, -1]) line.add(sphere(R * 0.024, '#3a1418', { pos: [sx * mwc * 1.02, smile * mh * 0.36, wrap(1)], smooth: true }));
+    mouth.add(line);
+    const open = new THREE.Group();
+    open.position.z = R * 0.03;
+    mouth.add(open);
+    const ring = (k, z) => Array.from({ length: 20 }, (_, i) => { const a = (i / 20) * Math.PI * 2; const u = Math.cos(a); return new THREE.Vector3(u * mwc * k, Math.sin(a) * mh * 0.5 * k + smile * u * u * mh * 0.12, wrap(u) + z); });
+    const cav = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(ring(1, 0).map((p) => new THREE.Vector2(p.x, p.y)))), clayMat('#3a0a10', { smooth: true, roughness: 0.8, side: THREE.DoubleSide }));
+    { const pp = cav.geometry.attributes.position; for (let i = 0; i < pp.count; i++) pp.setZ(i, wrap(pp.getX(i) / mwc) - 0.002); }
+    open.add(cav);
+    open.add(curveTube(ring(1.02, 0.002), R * 0.017, lipColor, { closed: true, seg: 40, radial: 8, taper: false, smooth: true, physical: true, roughness: 0.5 }));
+    const teethTop = box(mwc * 1.5, mh * 0.2, R * 0.03, toothCol, { pos: [0, mh * 0.34, -R * 0.005], round: 0.8, smooth: true, roughness: 0.25, rim: 0.05 });
+    const teethBot = box(mwc * 1.3, mh * 0.16, R * 0.03, toothCol, { pos: [0, -mh * 0.33, -R * 0.008], round: 0.8, smooth: true, roughness: 0.25, rim: 0.05 });
+    for (const t of [teethTop, teethBot]) { const pp = t.geometry.attributes.position; for (let i = 0; i < pp.count; i++) pp.setZ(i, pp.getZ(i) + wrap(clamp(pp.getX(i) / mwc, -1, 1))); t.geometry.computeVertexNormals(); }
+    open.add(teethTop, teethBot);
+    const tongue = sphere(mwc * 0.42, '#c8545e', { scale: [1, 0.4, 0.4], pos: [0, -mh * 0.16, -R * 0.02], smooth: true, roughness: 0.4 });
+    open.add(tongue);
+    face.mouth = { group: mouth, line, open, teethTop, teethBot, tongue, mh, cartoon: true, lip, mw };
+  } else {
+    mouth.position.copy(mc);
+    mouth.add(mesh(new THREE.SphereGeometry(mw * 0.92, 20, 12), '#3a1216', { scale: [1, 0.55, 0.45], pos: [0, -lip * 0.3, -mw * 0.55], boil: 0.3 }));
+    const tW = mw * 1.6, tH = lip * 1.8;
+    const curve = (row, w) => { const pp = row.geometry.attributes.position; for (let i = 0; i < pp.count; i++) { const x = pp.getX(i); pp.setZ(i, pp.getZ(i) - (x / (w / 2)) ** 2 * mw * 0.45); } row.geometry.computeVertexNormals(); };
+    const topRow = box(tW, tH, lip * 1.1, toothCol, { pos: [0, tH * 0.48, lip * 0.05], round: 0.6, roughness: 0.3, rim: 0.05, boil: 0.3 });
+    curve(topRow, tW);
+    mouth.add(topRow);
+    const jaw = new THREE.Group();
+    mouth.add(jaw);
+    const botRow = box(tW * 0.94, tH * 0.9, lip * 1.1, toothCol, { pos: [0, -tH * 0.42, 0], round: 0.6, roughness: 0.3, rim: 0.05, boil: 0.3 });
+    curve(botRow, tW * 0.94);
+    jaw.add(botRow);
+    face.mouth = { group: mouth, jaw, lip, mw };
+  }
 
   buildGlasses(headBone, def, R, at, eg, eR);
   if (def.hair?.style === 'antenna') {
@@ -623,8 +656,8 @@ export function buildFighterModel(def) {
   const W = (n) => { const v = new THREE.Vector3(); J[n].getWorldPosition(v); return v; };
   const boneNames = Object.keys(J).filter((k) => J[k].isBone);
   const boneIndex = Object.fromEntries(boneNames.map((n, i) => [n, i]));
-  const mat = clayMat('#ffffff', { vertexColors: true, roughness: def.top.type === 'leather' ? 0.4 : 0.72, bumps: 0.45 });
-  const skinMat = clayMat('#ffffff', { vertexColors: true, roughness: 0.7, bumps: 0.35 });
+  const mat = clayMat('#ffffff', { vertexColors: true, roughness: def.top.type === 'leather' ? 0.4 : 0.72, bumps: 0.25 });
+  const skinMat = clayMat('#ffffff', { vertexColors: true, roughness: 0.6, bumps: 0.12 });
   const skin = (geo, m) => {
     const sm = new THREE.SkinnedMesh(geo, m);
     sm.castShadow = true;
@@ -723,7 +756,7 @@ export function buildFighterModel(def) {
   const build = { ...b, scale: b.scale * (def.height ?? 1) };
   g.scale.setScalar(build.scale);
   prepareBoil(g);
-  setExpression(face, 'grit');
+  setExpression(face, 'idle');
   return { group: g, joints: J, face, build, hipY, hands };
 }
 
@@ -766,9 +799,11 @@ export const SNAP_BONES = ['spine', 'chest', 'neck', 'head', 'clavL', 'clavR', '
 export function setExpression(face, expr) {
   const m = face.mouth;
   let lidU = 0.35, lidL = 0.15, brow = 0.0, browY = 0, open = 0, look = 0, squint = 0;
+  let teeth = false;
   switch (expr) {
-    case 'grit': lidU = 0.3; brow = 0.3; open = 0.1; break;
-    case 'angry': lidU = 0.62; lidL = 0.3; brow = 0.5; open = 0.3; break;
+    case 'idle': lidU = 0.1; brow = 0.12; open = 0; break;
+    case 'grit': lidU = 0.25; brow = 0.35; open = 0.3; teeth = true; break;
+    case 'angry': lidU = 0.4; lidL = 0.25; brow = 0.55; open = 0.35; teeth = true; break;
     case 'open': lidU = 0.15; brow = -0.15; browY = 0.04; open = 1; break;
     case 'hurt': lidU = 1.0; lidL = 0.5; brow = -0.4; browY = 0.02; open = 0.7; squint = 1; break;
     case 'smile': lidU = 0.45; lidL = 0.35; brow = -0.1; open = 0.25; break;
@@ -791,8 +826,19 @@ export function setExpression(face, expr) {
     e.brow.position.y = e.browY + browY * face.R * 1.2 - Math.max(0, brow) * face.R * 0.04;
     e.ball.rotation.set(look ? -0.6 : 0, look ? e.sx * 0.5 : 0, 0);
   }
-  m.jaw.rotation.x = open * 0.42;
-  m.jaw.position.y = -open * m.lip * 1.2;
+  if (m.cartoon) {
+    // Closed smirk line, or an open mouth stretched by how open it is.
+    const o = teeth ? Math.max(open, 0.32) : open;
+    const show = o > 0.12;
+    m.line.visible = !show;
+    m.open.visible = show;
+    m.open.scale.set(1 - o * 0.1, Math.min(1.3, 0.5 + o * 1.1), 1);
+    m.teethBot.position.y = -m.mh * (teeth ? 0.2 : 0.33);
+    m.tongue.visible = !teeth;
+  } else {
+    m.jaw.rotation.x = open * 0.42;
+    m.jaw.position.y = -open * m.lip * 1.2;
+  }
 }
 
 export function lookAt(face, x, y) {

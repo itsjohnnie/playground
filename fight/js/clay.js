@@ -100,7 +100,8 @@ function addRim(mat, rimStrength) {
 export function clayMat(color, opts = {}) {
   const key = color + JSON.stringify(opts);
   if (matCache.has(key)) return matCache.get(key);
-  const mat = new THREE.MeshStandardMaterial({
+  const Mat = opts.physical ? THREE.MeshPhysicalMaterial : THREE.MeshStandardMaterial;
+  const mat = new Mat({
     color: new THREE.Color(color),
     roughness: opts.roughness ?? 0.74,
     metalness: opts.metalness ?? 0,
@@ -113,6 +114,14 @@ export function clayMat(color, opts = {}) {
     transparent: !!opts.transparent,
     opacity: opts.opacity ?? 1,
   });
+  if (opts.physical) {
+    // Satin clay: a soft velvety sheen and a whisper of clearcoat.
+    mat.sheen = opts.sheen ?? 0.6;
+    mat.sheenRoughness = 0.55;
+    mat.sheenColor = new THREE.Color('#ffd9c4');
+    mat.clearcoat = opts.clearcoat ?? 0.08;
+    mat.clearcoatRoughness = 0.45;
+  }
   if (!opts.noRim) addRim(mat, opts.rim ?? 0.35);
   matCache.set(key, mat);
   return mat;

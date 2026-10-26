@@ -262,7 +262,7 @@ def sculpt_fn(h):
         X, Y, Z = x * h['W'], y * h['H'], z * h['D']
         front = max(0, z)
         low = smooth(0.08, -0.9, y)
-        X *= lerp(1, h['jaw'], low)
+        X *= lerp(1, lerp(h['jaw'], 1, 0.35), low)
         Z *= lerp(1, 0.94, low)
         Z += h['chin'] * gauss(y, -0.72, 0.22) * front * front * 1.6
         Y -= h['chinLen'] * gauss(y, -0.82, 0.25) * front
@@ -275,7 +275,7 @@ def sculpt_fn(h):
         if z < 0: Z -= 0.05 * gauss(y, 0.25, 0.35) * -z
         if y > 0: Y *= h['forehead']
         Y *= 1 - 0.05 * smooth(0.7, 1, y)
-        if y < 0: Y *= h.get('faceLen', 1)
+        if y < 0: Y *= h.get('faceLen', 1) * 0.86
         dome = h.get('dome', 0)
         if dome:
             Y += dome * 0.4 * smooth(0.05, 1, y); X *= 1 + dome * 0.12 * smooth(0, 0.8, y); Z *= 1 + dome * 0.08 * smooth(0, 0.8, y)
@@ -298,38 +298,32 @@ def face_fn(defn):
         u = clamp(x / (mw * k), -1, 1)
         return -0.45 + y0 + u * u * up
     def f(x, y, z):
-        if z <= 0.05: return 0.0, 0.0
+        if z <= 0.05: return 0.0, 0.0, 0.0
         fr = smooth(0.05, 0.5, z)
-        d = 0.0
+        d = 0.0; blush = 0.0
         # Nose: a bridge that thickens down to a bulb, with nostril wings.
         tny = -0.18
         along = smooth(0.12, tny, y)  # 0 at the root, 1 at the tip
         if -0.32 < y < 0.16:
             wid = (0.055 + 0.05 * along) * nw
-            d += (0.06 * nb + (0.2 * nl) * along ** 1.4) * math.exp(-(x * x) / (2 * wid * wid)) * smooth(0.18, 0.08, y) * smooth(-0.32, -0.2, y)
-        d += 0.16 * nt * math.exp(-((x * x) / (2 * (0.085 * nt) ** 2) + ((y - tny) ** 2) / (2 * (0.07 * nt) ** 2)))
+            d += 0.7 * (0.05 * nb + (0.2 * nl) * along ** 1.4) * math.exp(-(x * x) / (2 * wid * wid)) * smooth(0.18, 0.08, y) * smooth(-0.32, -0.2, y)
+        d += 0.11 * nt * math.exp(-((x * x) / (2 * (0.085 * nt) ** 2) + ((y - tny) ** 2) / (2 * (0.07 * nt) ** 2)))
         for sx in (1, -1):
-            d += 0.09 * nw * math.exp(-(((x - sx * 0.11 * nw) ** 2) / (2 * 0.045 ** 2) + ((y - (tny - 0.045)) ** 2) / (2 * 0.045 ** 2)))
+            d += 0.05 * nw * math.exp(-(((x - sx * 0.11 * nw) ** 2) / (2 * 0.045 ** 2) + ((y - (tny - 0.045)) ** 2) / (2 * 0.045 ** 2)))
             # Cheekbones, smile cheeks, under-eye bags, jaw angles.
-            d += 0.05 * math.exp(-(((x - sx * 0.47) ** 2) + (y + 0.02) ** 2 * 1.4) / (2 * 0.1 ** 2))
-            d += (0.05 + 0.05 * max(0, sm)) * math.exp(-(((x - sx * 0.36) ** 2) + (y + 0.28) ** 2) / (2 * 0.085 ** 2))
-            d += 0.014 * math.exp(-(((x - sx * eg) ** 2) / (2 * 0.07 ** 2) + ((y + 0.03) ** 2) / (2 * 0.025 ** 2)))
-            # Smile lines: a crease from the nostril to the mouth corner.
-            t = clamp((y + 0.2) / -0.32, 0, 1)
-            cx = sx * lerp(0.17, 0.33 + 0.1 * mw, t)
-            d -= 0.035 * math.exp(-((x - cx) ** 2) / (2 * 0.02 ** 2)) * smooth(-0.15, -0.22, y) * smooth(-0.56, -0.48, y)
+            d += 0.03 * math.exp(-(((x - sx * 0.47) ** 2) + (y + 0.02) ** 2 * 1.4) / (2 * 0.12 ** 2))
+            d += (0.02 + 0.02 * max(0, sm)) * math.exp(-(((x - sx * 0.4) ** 2) + (y + 0.22) ** 2) / (2 * 0.12 ** 2))
+            blush = max(blush, math.exp(-(((x - sx * 0.4) ** 2) + (y + 0.2) ** 2) / (2 * 0.1 ** 2)))
         # Lips: two rolls following the mouth curve, a cupid's bow and a philtrum.
         win = smooth(mw * 1.08, mw * 0.85, abs(x))
         yu = lipline(x, lip * 1.55, sm * lip * 1.8, 1) + 0.25 * lip * math.exp(-((abs(x) - 0.06) ** 2) / 0.0012)
         yl = lipline(x, -lip * 1.65, sm * lip * 1.4, 0.92)
         lu = math.exp(-((y - yu) ** 2) / (2 * (lip * 0.95) ** 2)) * win
         ll = math.exp(-((y - yl) ** 2) / (2 * (lip * 1.15) ** 2)) * win
-        d += 0.12 * lu + 0.13 * ll
-        d -= 0.012 * math.exp(-(x * x) / (2 * 0.018 ** 2)) * smooth(-0.26, -0.3, y) * smooth(-0.4, -0.36, y)
+        d += 0.02 * lu + 0.025 * ll
         # Chin: a rounded ball with a soft cleft under the lower lip.
         d += (0.08 + chin * 0.6) * math.exp(-((x * x) / (2 * 0.13 ** 2) + ((y + 0.8) ** 2) / (2 * 0.09 ** 2)))
-        d -= 0.018 * math.exp(-((x * x) / (2 * 0.1 ** 2) + ((y + 0.64) ** 2) / (2 * 0.03 ** 2)))
-        return d * fr, max(lu, ll) * fr
+        return d * fr, max(lu, ll) * fr, blush * fr
     return f
 
 
@@ -340,9 +334,9 @@ def head_landmarks(defn, R):
         n = Vector((x, y, z)).normalized()
         return f(n.x, n.y, n.z) * R + n * (out * R)
     ey = h.get('eye', {})
-    eR = R * 0.15 * ey.get('size', 1)
+    eR = R * 0.135 * ey.get('size', 1)
     eg = 0.34 * ey.get('gap', 1)
-    eyes = [at(sx * eg, 0.1, 0.94) + Vector((0, 0, -eR * 0.42)) for sx in (1, -1)]
+    eyes = [at(sx * eg, 0.1, 0.94) + Vector((0, 0, -eR * 0.6)) for sx in (1, -1)]
     mo = h.get('mouth', {})
     mw = R * 0.33 * mo.get('w', 1); lip = R * 0.05 * mo.get('lip', 1); sm = mo.get('smile', 0.3)
     mc = at(0, -0.45, 1, 0.045)
@@ -365,22 +359,26 @@ def build_head(defn, b):
     bm = bmesh.new()
     bmesh.ops.create_cube(bm, size=2)
     bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=70, use_grid_fill=True)
-    units, lipm = [], []
+    units, lipm, blm = [], [], []
     ff = face_fn(defn)
     lip_c = col(defn['lips']) if defn.get('lips') else (skin[0] * 0.86, skin[1] * 0.6, skin[2] * 0.6)
     for v in bm.verts:
         n = v.co.normalized()
         units.append(n.copy())
-        d, lm = ff(n.x, n.y, n.z)
-        lipm.append(lm)
+        d, lm, bl = ff(n.x, n.y, n.z)
+        lipm.append(lm); blm.append(bl)
         v.co = B(f(n.x, n.y, n.z) * R + n * (d * R))
     bm.to_mesh(me); bm.free()
     skull = new_obj('skull', me)
-    set_colors(me, lambda i, c: tuple(lerp(skin[k], lip_c[k], smooth(0.35, 0.6, lipm[i])) for k in range(3)))
+    rosy = (min(1, skin[0] * 1.05 + 0.04), skin[1] * 0.72, skin[2] * 0.72)
+    def skin_col(i, c):
+        s0 = tuple(lerp(skin[k], rosy[k], 0.45 * blm[i]) for k in range(3))
+        return tuple(lerp(s0[k], lip_c[k], 0.35 * smooth(0.45, 0.7, lipm[i])) for k in range(3))
+    set_colors(me, skin_col)
     parts.append(skull)
     unit = {i: units[i] for i in range(len(units))}
 
-    def shell(mask, thick, color, lump=0.012):
+    def shell(mask, thick, color, lump=0.005):
         """Hair/beard: the skull region where mask > 0, raised by thick*R."""
         m2 = skull.data.copy()
         o = new_obj('shell', m2)
@@ -428,6 +426,7 @@ def build_head(defn, b):
             parts.append(uv_sphere(B(at(u.x, u.y, u.z, out + rnd.random() * 0.03)), (r, r, r), color, 12, 8))
 
     def strands(count, mask, out_fn, flow, length, rad, colors):
+        return  # smooth sculpted shells and rolls read better than spaghetti
         for i in range(count):
             u = rand_dir(mask, 0.1)
             if not u: break
@@ -451,8 +450,13 @@ def build_head(defn, b):
         strands(70, line(0.5, -0.35), lambda x, y, z: th(x, y, z) + 0.004, back, 0.55, 0.05, [hc, hc2, mul(hc, 0.8)])
         strands(int(8 + fr * 14), lambda x, y, z: line(0.5, -0.35)(x, y, z) - 0.05 if z > 0.55 else -1, lambda x, y, z: th(x, y, z) - 0.01,
                 lambda v: Vector((v.x * 0.4, -0.7, 0.8)), 0.18 + fr * 0.15, 0.055, [hc, hc2])
+        # A few fat, soft locks for the fringe, swept to one side.
+        for i in range(-2, 3):
+            xx = i * 0.17
+            roll([at(xx * 0.8, 0.95, 0.15, th(0, 0.9, 0.2) * 0.8), at(xx + 0.05, 0.75, 0.62, th(0, 0.7, 0.6) * 0.9),
+                  at(xx * 1.1 - 0.12 * fr, 0.55 - 0.08 * fr, 0.82, th(0, 0.5, 0.8) * 0.7)], 0.085 + 0.02 * fr, 0.055, hc2 if i % 2 else hc)
     elif style == 'receding':
-        shell(line(0.6, -0.35), 0.035, hc, 0.006)
+        shell(line(0.6, -0.35), 0.05, hc, 0.003)
         strands(40, line(0.6, -0.35), lambda x, y, z: 0.035, back, 0.35, 0.03, [hc, hc2])
     elif style == 'curly':
         shell(line(0.42, -0.4), 0.06, hc)
@@ -466,9 +470,9 @@ def build_head(defn, b):
         sw = lambda x, y, z: 0.05 + 0.09 * smooth(0.3, 0.95, y) * smooth(-0.2, 0.7, z)
         shell(line(0.5, -0.35), sw, hc)
         strands(60, line(0.5, -0.35), lambda x, y, z: sw(x, y, z) + 0.004, back, 0.7, 0.05, [hc, hc2])
-        for i in range(-3, 4):
-            xx = i * 0.12
-            roll([at(xx, 0.62, 0.75, 0.12), at(xx * 1.05, 0.92, 0.25, 0.13), at(xx * 1.1, 0.75, -0.55, 0.07)], 0.06, 0.04, hc2 if i % 2 else hc)
+        for i in range(-2, 3):
+            xx = i * 0.17
+            roll([at(xx, 0.6, 0.76, 0.1), at(xx * 1.05, 0.92, 0.25, 0.12), at(xx * 1.1, 0.75, -0.55, 0.06)], 0.1, 0.06, hc2 if i % 2 else hc)
     elif style == 'sidepart':
         spT = lambda x, y, z: 0.05 + 0.05 * smooth(0.3, 0.9, y)
         shell(line(0.5, -0.35), spT, hc)
@@ -497,7 +501,7 @@ def build_head(defn, b):
             return min(lim - 0.18 * (1 - abs(x)) - y, -hole)
         return m
     if fh.get('stubble'): shell(jawline(-0.36), 0.012, col(fh['stubble']), 0.003)
-    if fh.get('beardShort'): shell(jawline(-0.34), 0.03, col(fh['beardShort']), 0.01)
+    if fh.get('beardShort'): shell(jawline(-0.34), 0.045, col(fh['beardShort']), 0.004)
     if fh.get('beard'): shell(jawline(-0.3), lambda x, y, z: 0.035 + 0.05 * smooth(-0.4, -0.95, y), col(fh['beard']), 0.018)
     if fh.get('mustache'):
         for sx in (1, -1):
@@ -505,7 +509,7 @@ def build_head(defn, b):
 
     # Neck stub so the head melts into the body's neck.
     nk = 1.25 if defn['build'] in ('muscle', 'giant') else 1
-    parts.append(tube([B((0, -0.1, -0.015)), B((0, R * 0.25, -0.02)), B((0, R * 0.55, -0.03))], 0.068 * nk, 0.064 * nk, skin, segs=4, sides=16))
+    parts.append(tube([B((0, -0.1, -0.015)), B((0, R * 0.25, -0.02)), B((0, R * 0.55, -0.03))], 0.1 * nk, 0.098 * nk, skin, segs=4, sides=16))
 
     n = h.get('nose', {})
     nW, nT = R * 0.12 * n.get('w', 1), R * 0.13 * n.get('tip', 1)
@@ -525,7 +529,7 @@ def build_head(defn, b):
 
     # Melt everything into one surface, then smooth like thumbs on clay.
     modifier(head, 'REMESH', mode='VOXEL', voxel_size=R * 0.0085, adaptivity=0)
-    modifier(head, 'LAPLACIANSMOOTH', iterations=3, lambda_factor=0.5, use_volume_preserve=True)
+    modifier(head, 'LAPLACIANSMOOTH', iterations=6, lambda_factor=0.6, use_volume_preserve=True)
     apply_all(head)
     transfer_colors(head, src, src_cols)
     bpy.data.meshes.remove(src)
@@ -533,7 +537,6 @@ def build_head(defn, b):
     # Carve: eye sockets, mouth, nostrils, ear canals.
     cutters = []
     for e in eyes: cutters.append(uv_sphere(B(e), (eR * 1.06,) * 3, skin, 20, 14))
-    cutters.append(uv_sphere(B(mc), (mw * 0.95, lip * 1.25, mw * 0.6), (0.02, 0.003, 0.004), 24, 16))
     for sx in (1, -1):
         nb_ = at(sx * 0.07 * n.get('w', 1), -0.255, 1, 0.07 + 0.06 * n.get('len', 1))
         cutters.append(uv_sphere(B(nb_), (nT * 0.22, nT * 0.17, nT * 0.3), (0.04, 0.01, 0.01), 12, 8))
@@ -573,8 +576,8 @@ def build_body(defn, b, P, J, hk, hipY):
     wai = V(Vector((0, hipY + 0.15, b['belly'] * 0.5)), (b['waist'], b['depth'] * 0.86 + b['belly']), 'torso')
     che = V(Vector((0, hipY + 0.33, 0.006)), (b['chest'], b['depth']), 'torso')
     shl = V(Vector((0, yChest + 0.13, -0.006)), (b['sh'] * 0.62, b['depth'] * 0.72), 'torso')
-    nb = V(Vector((0, yNeck - 0.01, -0.004)), (0.072 * nk, 0.07 * nk), 'neck')
-    nt = V(Vector((0, P['head'].y + 0.05, -0.012)), (0.062 * nk, 0.062 * nk), 'neck')
+    nb = V(Vector((0, yNeck - 0.01, -0.004)), (0.105 * nk, 0.1 * nk), 'neck')
+    nt = V(Vector((0, P['head'].y + 0.05, -0.012)), (0.098 * nk, 0.098 * nk), 'neck')
     chain([pel, wai, che, shl, nb, nt])
     limb = {}
     for s, sx in (('L', 1), ('R', -1)):
@@ -661,7 +664,7 @@ def build_body(defn, b, P, J, hk, hipY):
     def ring(y, R0, r, color, dz=0.0, tilt=0.0):
         pts = [Vector((math.sin(a) * R0, y + math.cos(a) * tilt, dz + math.cos(a) * R0)) for a in [i / 12 * math.tau for i in range(13)]]
         extra.append(tube([B(p) for p in pts], r, r, color, segs=4, sides=10))
-    if t in ('tee', 'vneck'): ring(yNeck - 0.012, 0.072 * nk, 0.014, col(top['color']), 0, 0.01)
+    if t in ('tee', 'vneck'): ring(yNeck - 0.012, 0.105 * nk, 0.014, col(top['color']), 0, 0.01)
     if t == 'hoodie': ring(yNeck - 0.035, 0.11, 0.045, col(top.get('inner', top['color'])), -0.03, 0.03)
     if t == 'quarterzip': ring(yNeck + 0.005, 0.08 * nk, 0.026, col(top['color']), 0, 0.0)
     if t in ('blazer', 'leather'): ring(yNeck - 0.015, 0.088 * nk, 0.024, col('#0a0a0c') if t == 'leather' else mul(col(top['color']), 0.7), -0.012, 0.02)

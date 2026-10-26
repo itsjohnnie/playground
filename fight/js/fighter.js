@@ -105,7 +105,7 @@ export class Fighter {
     this.damageSinceBruise = 0;
     this.stats = { hits: 0, maxCombo: 0, weaponHits: 0, dmg: 0 };
     this.combo = 0; this.comboT = 0;
-    this.expr = 'grit';
+    this.expr = 'idle';
     this.exprT = 0;
     this.pose = POSES.guard;
     this.y = 0; this.vy = 0; this.vel.set(0, 0, 0);
@@ -115,7 +115,7 @@ export class Fighter {
     this.model.group.rotation.set(0, 0, 0);
     this.model.group.position.set(0, 0, 0);
     this.model.group.visible = true;
-    setExpression(this.face, 'grit');
+    setExpression(this.face, 'idle');
   }
 
   get groundY() { return this.inRing ? RING_H : 0; }
@@ -168,7 +168,7 @@ export class Fighter {
     if (this.hitstop > 0) { this.hitstop -= dt; return; }
     this.st += dt;
     if (this.invuln > 0) this.invuln -= dt;
-    if (this.exprT > 0) { this.exprT -= dt; if (this.exprT <= 0) this.expr = this.hp < this.maxHp * 0.3 ? 'angry' : 'grit'; }
+    if (this.exprT > 0) { this.exprT -= dt; if (this.exprT <= 0) this.expr = this.hp < this.maxHp * 0.3 ? 'angry' : 'idle'; }
     if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) this.combo = 0; }
     if (this.squish > 0) this.squish = Math.max(0, this.squish - dt * 2.4);
     const inp = this.input?.frame || EMPTY;
