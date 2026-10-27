@@ -111,7 +111,15 @@ export class Crew {
       const stillDown = c.kind === 'pin' ? f.state === 'pinned' : (f.state === 'down' && f.inRing);
       if (!stillDown) { this.count = null; return; }
       // Get beside the downed fighter first.
-      const target = new THREE.Vector3(f.pos.x + 0.9, 0, f.pos.z + 0.5);
+      // Beyond their head (out of the pin's way) for a pin; beside them otherwise.
+      const ax = new THREE.Vector3(-Math.sin(f.yaw), 0, -Math.cos(f.yaw));
+      let target = new THREE.Vector3(f.pos.x + 0.9, 0, f.pos.z + 0.5);
+      if (c.kind === 'pin') {
+        const side = new THREE.Vector3(ax.z, 0, -ax.x);
+        const pinner = f.opp?.pos;
+        if (pinner && side.x * (pinner.x - f.pos.x) + side.z * (pinner.z - f.pos.z) > 0) side.negate();
+        target = f.pos.clone().addScaledVector(ax, 1.25 * f.scale).addScaledVector(side, 0.55);
+      }
       target.x = clamp(target.x, -RING, RING); target.z = clamp(target.z, -RING, RING);
       const d = target.distanceTo(this.refPos);
       if (!c.arrived) {

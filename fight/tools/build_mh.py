@@ -435,7 +435,7 @@ def roll(S, P_top, N, out, idx, radius, color, sides=8, smooth_it=6, step=0.008)
     return Surf(np.concatenate(verts), np.array(F), S.cols)
 
 
-def shell(S, thick, color, base=0.002, rim=True, smooth_it=2, hem=0.0):
+def shell(S, thick, color, base=0.002, rim=True, smooth_it=2, hem=0.0, tension=0, tension_mask=None):
     """Clay layer over the surface S: offset outward by thick (per vertex)
     plus base, with a wall down to the skin along every open edge."""
     S = S.copy()
@@ -454,6 +454,20 @@ def shell(S, thick, color, base=0.002, rim=True, smooth_it=2, hem=0.0):
     O = S.copy()
     P = S.P + N * (base + t)[:, None]
     if smooth_it: P = relax(P, S.F, smooth_it, 0.5, pin=bnd)
+    if tension:
+        # Cloth under tension: smooth freely, but never sink below the offset,
+        # so it bridges hollows (between pecs, down the sternum) and rests on
+        # the high points instead of shrink-wrapping every muscle.
+        E, deg = neighbours(S.F, len(P))
+        floor_ = base + t
+        sel = np.ones(len(P), bool) if tension_mask is None else np.asarray(tension_mask, bool)
+        sel &= ~bnd
+        for _ in range(tension):
+            avg = np.zeros_like(P); np.add.at(avg, E[:, 0], P[E[:, 1]]); avg /= deg[:, None]
+            P[sel] += (avg[sel] - P[sel]) * 0.6
+            d = ((P - S.P) * N).sum(1)
+            push = np.maximum(0, floor_ - d)
+            P += N * push[:, None]
     O.A[:, 0:3] = P
     O.A[:, 6:9] = color if np.ndim(color) == 2 else np.asarray(color)[None]
     if not rim or not len(bedges): return O
@@ -814,7 +828,7 @@ def drape(P, sel, origin, axis, top=None, nb=40, band=0.02, keep=0.97, cap=0.07)
     return out
 
 
-def sneaker(base, side, upper, sole, accent=None, boot=False):
+def sneaker(base, side, upper, sole, accent=None, boot=False, ankle_y=None):
     """A sculpted shoe around one foot: flat sole, rounded toe box, a heel
     counter that rises to the ankle, and a tongue. Bound to the foot bone."""
     sx = 1 if side == 'L' else -1
@@ -824,6 +838,7 @@ def sneaker(base, side, upper, sole, accent=None, boot=False):
     L = toe - heel
     cx = float(np.median(p[:, 0])); W = (np.percentile(p[:, 0], 98) - np.percentile(p[:, 0], 2)) / 2 + 0.032
     top = float(np.percentile(p[:, 1], 90))
+    if ankle_y is not None: top = max(top, ankle_y + 0.02)   # the collar reaches the ankle, under the trouser hem
     segs, rings = 40, 32
     verts, F = [], []
     for i in range(rings + 1):
@@ -990,7 +1005,7 @@ def dress(base, ctx):
             arm = (S['arm'] > 0.5) & (S['x0'] * sx > 0)
             ax = P['sh' + s_] - P['hand' + s_]
             t = t + 0.6 * drape(S.P, arm, P['hand' + s_], ax, keep=0.975, nb=24, band=0.015, cap=0.012)
-        return shell(S, t, color, base=base_off, smooth_it=14, hem=0.004 * cuff / 0.6)
+        return shell(S, t, color, base=base_off, smooth_it=6, hem=0.004 * cuff / 0.6, tension=140, tension_mask=S['arm'] < 0.5)
 
     top = d['top']; tt = top['type']
     shirt = srgb(top['color']); inner = srgb(top.get('inner', top['color']))
@@ -1016,7 +1031,7 @@ def dress(base, ctx):
 
     # Shoes: chunky, flat-soled.
     for s_ in 'LR':
-        parts.append(sneaker(base, s_, shoes['color'], shoes['sole'], shoes.get('accent'), boot=shoes.get('boot', False)))
+        parts.append(sneaker(base, s_, shoes['color'], shoes['sole'], shoes.get('accent'), boot=shoes.get('boot', False), ankle_y=float(P['ft' + s_][1])))
     covered.append(F_shoe)
 
     hem = rootY + 0.01
@@ -1051,8 +1066,8 @@ def dress(base, ctx):
             z = (np.abs(T1['x0']) < 0.007) & (T1['z0'] > neckZ) & (T1['y0'] > chestY - 0.1)
             T1.A[z, 6:9] = np.array([0.62, 0.62, 0.66])
         if tt in ('henley', 'buttonup'):
-            pl = (np.abs(T1['x0']) < (0.011 if tt == 'henley' else 0.007)) & (T1['z0'] > neckZ) & (T1['y0'] > (neckY - 0.13 if tt == 'henley' else hem))
-            T1.A[pl, 6:9] = shirt * 0.82
+            pl = (np.abs(T1['x0']) < (0.011 if tt == 'henley' else 0.004)) & (T1['z0'] > neckZ) & (T1['y0'] > (neckY - 0.13 if tt == 'henley' else hem))
+            T1.A[pl, 6:9] = shirt * 0.94
         if tt == 'buttonup':
             # Collar: two folded wings lying around the neck, meeting in points
             # over the collarbone, open at the throat.
@@ -1083,11 +1098,17 @@ def dress(base, ctx):
             parts.append(J2)
             ctx['clothT'] = 0.045
         if tt == 'vest':
-            f2 = lambda S: F_top(S, -1, hem - 0.03, high=0.04, open_=lambda y: np.full_like(y, 0.004))
+            # Puffer vest: closed front with a zipper line, quilted bands, rolled edges.
+            f2 = lambda S: F_top(S, -1, hem - 0.03, high=0.04)
             V2 = clip(base, f2(base))
             V2 = subdivide(V2)
-            puff = 0.03 * (0.75 + 0.25 * np.cos(V2['y0'] * 2 * np.pi / 0.075))
-            V2 = shell(V2, puff, shirt, base=0.03, smooth_it=1)
+            V2.A[:, 3:6] = norm(V2.A[:, 3:6])
+            # Hang like the shirt underneath (same drape), plus the quilting.
+            hangV = drape(V2.P, V2['arm'] < 0.5, np.array([0, 0, P['chest'][2]]), np.array([0, 1.0, 0]), top=chestY + 0.06, keep=0.997, nb=56, band=0.015)
+            puff = 0.026 + 0.008 * np.cos(V2['y0'] * 2 * np.pi / 0.075) + hangV
+            V2 = shell(V2, puff, shirt, base=0.03, smooth_it=3, hem=0.006, tension=25)
+            zip_ = (np.abs(V2['x0']) < 0.005) & (V2['z0'] > neckZ)
+            V2.A[zip_, 6:9] = shirt * 0.55
             parts.append(V2)
             ctx['clothT'] = 0.06
         if tt == 'hoodie':

@@ -864,8 +864,15 @@ export class Fighter {
     this.setState('pin');
     o.setState('pinned');
     o.mash = 0;
-    this.pos.set(o.pos.x + 0.1, 0, o.pos.z + 0.1);
-    this.yaw = o.yaw + Math.PI / 2;
+    // Kneel beside their chest, on the side we came from, and lie across it.
+    // Lying on their back, their torso runs straight back from the hips.
+    const ax = new THREE.Vector3(-Math.sin(o.yaw), 0, -Math.cos(o.yaw));
+    const chest = o.pos.clone().addScaledVector(ax, 0.3 * o.scale);
+    const side = new THREE.Vector3(ax.z, 0, -ax.x);
+    if (side.x * (this.pos.x - chest.x) + side.z * (this.pos.z - chest.z) < 0) side.negate();
+    const c = chest.clone().addScaledVector(ax, -0.08);
+    this.pos.set(c.x + side.x * 0.5 * this.scale, 0, c.z + side.z * 0.5 * this.scale);
+    this.yaw = Math.atan2(-side.x, -side.z);
     this.game.crew.startCount(o, 'pin');
     this.game.events.onPin?.(this, o);
   }

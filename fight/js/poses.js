@@ -83,7 +83,8 @@ export const POSES = {
   perch: P({ rootY: -0.02, spine: [-8, 0, 0], neck: [-20, 0, 0], shL: [-160, 0, 34], elL: [-20, 0, 0], shR: [-160, 0, -34], elR: [-20, 0, 0], hipL: [-20, 0, 18], knL: [30, 0, 0], hipR: [-20, 0, -18], knR: [30, 0, 0] }),
   perch2: P({ rootY: -0.06, spine: [-14, 0, 0], neck: [-30, 0, 0], shL: [-140, 0, 50], elL: [-60, 0, 0], shR: [-140, 0, -50], elR: [-60, 0, 0], hipL: [-26, 0, 18], knL: [40, 0, 0], hipR: [-26, 0, -18], knR: [40, 0, 0] }),
   dive: P({ root: [76, 0, 0], spine: [-20, 0, 0], neck: [-40, 0, 0], shL: [-178, 0, 18], elL: [-6, 0, 0], shR: [-178, 0, -18], elR: [-6, 0, 0], hipL: [10, 0, 8], knL: [20, 0, 0], hipR: [10, 0, -8], knR: [20, 0, 0] }),
-  pin: P({ root: [86, 0, 0], rootY: -0.62, spine: [10, 0, 0], neck: [-30, 0, 0], shL: [-60, 0, 40], elL: [-30, 0, 0], shR: [-60, 0, -40], elR: [-30, 0, 0], hipL: [-20, 0, 20], knL: [40, 0, 0], hipR: [-20, 0, -20], knR: [40, 0, 0] }),
+  // Kneeling cover: knees down beside their chest, leaning across it, head up for the count.
+  pin: P({ root: [62, 0, 0], rootY: -0.5, spine: [20, 0, 0], neck: [-45, 0, 0], shL: [-75, 0, 25], elL: [-35, 0, 0], shR: [-75, 0, -25], elR: [-35, 0, 0], hipL: [-68, 0, 12], knL: [102, 0, 0], ftL: [30, 0, 0], hipR: [-68, 0, -12], knR: [102, 0, 0], ftR: [30, 0, 0] }),
 
   scream: P({ rootY: -0.1, spine: [-14, 0, 0], neck: [-26, 0, 0], shL: [30, 0, 60], elL: [-20, 0, 0], shR: [30, 0, -60], elR: [-20, 0, 0], hipL: [-30, 0, 16], knL: [40, 0, 0], hipR: [10, 0, -16], knR: [30, 0, 0] }),
   screamWind: P({ rootY: -0.1, spine: [30, 0, 0], neck: [20, 0, 0], shL: [-40, 0, 10], elL: [-120, 0, 0], shR: [-40, 0, -10], elR: [-120, 0, 0], hipL: [-30, 0, 16], knL: [40, 0, 0], hipR: [10, 0, -16], knR: [30, 0, 0] }),
