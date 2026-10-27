@@ -829,63 +829,124 @@ def drape(P, sel, origin, axis, top=None, nb=40, band=0.02, keep=0.97, cap=0.07)
 
 
 def sneaker(base, side, upper, sole, accent=None, boot=False, ankle_y=None):
-    """A sculpted shoe around one foot: flat sole, rounded toe box, a heel
-    counter that rises to the ankle, and a tongue. Bound to the foot bone."""
+    """A sculpted shoe around one foot, in three clay pieces: a rubber sole
+    slab with a rounded edge, a padded upper that rises to the ankle collar,
+    and laces with a tongue over the instep. Bound to the foot bone."""
     sx = 1 if side == 'L' else -1
     sel = (base['foot'] > 0.5) & (base['x0'] * sx > 0)
     p = base.P[sel]
-    heel, toe = p[:, 2].min() - 0.025, p[:, 2].max() + 0.05
+    heel, toe = p[:, 2].min() - 0.022, p[:, 2].max() + 0.045
     L = toe - heel
-    cx = float(np.median(p[:, 0])); W = (np.percentile(p[:, 0], 98) - np.percentile(p[:, 0], 2)) / 2 + 0.032
+    cx = float(np.median(p[:, 0])); W = (np.percentile(p[:, 0], 98) - np.percentile(p[:, 0], 2)) / 2 + 0.026
     top = float(np.percentile(p[:, 1], 90))
     if ankle_y is not None: top = max(top, ankle_y + 0.02)   # the collar reaches the ankle, under the trouser hem
+    soleH = 0.034 if boot else 0.026
+    up_c, so_c = srgb(upper), srgb(sole)
+    lumf = lambda c: float(c @ np.array([0.3, 0.59, 0.11]))
+    if abs(lumf(so_c) - lumf(up_c)) < 0.12:     # keep the sole readable against the upper
+        so_c = so_c * 0.72 if lumf(up_c) > 0.5 else np.minimum(1, so_c + 0.35)
+    ncol = base.A.shape[1]
+    parts = []
+
+    def width(u):
+        # Narrow heel, wide ball of the foot, rounded toe.
+        return W * (0.78 + 0.3 * math.sin(math.pi * min(1.0, u * 1.2)) ** 0.8)
+
+    def outline(n, grow=0.0):
+        pts = []
+        for k in range(n):
+            th = 2 * math.pi * k / n
+            u = (1 - math.cos(th)) / 2
+            r = abs(math.sin(th)) ** 0.5
+            pts.append((cx + sx * (width(u) + grow) * r * math.copysign(1, math.sin(th)), heel + L * u - grow * math.cos(th) * 0.6))
+        return pts
+
+    def surf(verts, F, color):
+        A = np.zeros((len(verts), ncol))
+        v = np.asarray(verts, float)
+        A[:, 0:3] = v
+        A[:, 6:9] = color if np.ndim(color) == 2 else np.asarray(color)[None]
+        a0, _ = base.cols['w']; A[:, a0 + GI['ft' + side]] = 1
+        for k_, i_ in (('x0', 0), ('y0', 1), ('z0', 2)): A[:, base.cols[k_][0]] = v[:, i_]
+        A[:, base.cols['foot'][0]] = 1
+        S = Surf(A, np.asarray(F), base.cols)
+        S.A[:, 3:6] = vertex_normals(S.P, S.F)
+        return S
+
+    # Sole: an extruded footprint with rounded top and bottom edges, a touch
+    # wider than the upper, toe springing up a little.
+    n = 64
+    levels = [(0.0, -0.004), (0.004, 0.0), (soleH - 0.006, 0.0), (soleH, -0.005)]
+    verts, F = [], []
+    for y_, g_ in levels:
+        for (x_, z_) in outline(n, 0.008 + g_):
+            u = (z_ - heel) / L
+            verts.append((x_, y_ + 0.018 * float(smooth(0.82, 1.0, u)), z_))
+    for li in range(len(levels) - 1):
+        for k in range(n):
+            a, b = li * n + k, li * n + (k + 1) % n
+            c, d = a + n, b + n
+            F += [[a, b, d], [a, d, c]] if sx < 0 else [[a, d, b], [a, c, d]]
+    cb = len(verts); verts.append((cx, 0.0, heel + L / 2))
+    ct = len(verts); verts.append((cx, soleH, heel + L / 2))
+    for k in range(n):
+        a, b = k, (k + 1) % n
+        F.append([cb, b, a] if sx < 0 else [cb, a, b])
+        a, b = (len(levels) - 1) * n + k, (len(levels) - 1) * n + (k + 1) % n
+        F.append([ct, a, b] if sx < 0 else [ct, b, a])
+    parts.append(surf(verts, F, so_c))
+
+    # Upper: a padded dome from the sole up to the collar at the ankle,
+    # lower and rounder over the toes.
     segs, rings = 40, 32
     verts, F = [], []
+    collar = top + (0.07 if boot else 0.008)
+    toeH = 0.078 if boot else 0.072
     for i in range(rings + 1):
-        th = math.pi * i / rings              # 0 at the heel, pi at the toe
-        u = (1 - math.cos(th)) / 2           # 0..1 heel -> toe
-        r = math.sin(th) ** 0.55             # rounder ends than an ellipsoid
-        w = W * (0.82 + 0.25 * math.sin(math.pi * min(1, u * 1.25)) ** 0.8) * r
-        heelH = top + (0.075 if boot else 0.01)
-        h = heelH + (0.068 - heelH) * float(smooth(0.3, 0.88, u))
+        th = math.pi * i / rings
+        u = (1 - math.cos(th)) / 2
+        r = max(0.04, math.sin(th) ** 0.5)
+        w = width(u) * r
+        h = collar + (toeH - collar) * float(smooth(0.28, 0.85, u))
         for j in range(segs):
-            ph = 2 * math.pi * j / segs
-            cy, cz = math.cos(ph), math.sin(ph)  # cy: across, cz: up
-            y = max(0.0, h * (0.5 + 0.5 * cz) * (r ** 0.3 if cz > 0 else 1))
-            if cz < -0.2: y = min(y, 0.0)                       # flat sole
-            x = cx + sx * w * cy * (1 + 0.07 * (y < 0.03))     # the sole sticks out a little
-            z = heel + L * u
-            verts.append((x, y, z, cz, cy, u))
+            ph = math.pi * j / (segs - 1)               # 0..pi: across the top
+            cy, cz = math.cos(ph), math.sin(ph)
+            y = soleH - 0.004 + (h - soleH) * cz ** 0.6 * (r ** 0.35)
+            verts.append((cx + sx * w * cy, y, heel + L * u))
     for i in range(rings):
-        for j in range(segs):
-            a = i * segs + j; b = i * segs + (j + 1) % segs
-            c = a + segs; d = b + segs
-            F += [[a, b, d], [a, d, c]] if sx > 0 else [[a, d, b], [a, c, d]]
-    A = np.zeros((len(verts), base.A.shape[1]))
-    v = np.array(verts)
-    A[:, 0:3] = v[:, :3]
-    A[:, 3:6] = norm(v[:, :3] - np.array([cx, 0.03, heel + L / 2]))
-    up_c, so_c = srgb(upper), srgb(sole)
-    col = np.tile(up_c, (len(v), 1))
-    col[v[:, 1] < 0.03] = so_c                                   # sole
-    laces = (v[:, 3] > 0.7) & (np.abs(v[:, 4]) < 0.42) & (v[:, 5] > 0.3) & (v[:, 5] < 0.72)
-    col[laces] = up_c * 0.55
-    stripes = laces & (np.sin(v[:, 5] * 70) > 0.55)
-    col[stripes] = np.array([0.85, 0.75, 0.6])
+        for j in range(segs - 1):
+            a = i * segs + j; b = a + 1; c = a + segs; d = c + 1
+            F += [[a, d, b], [a, c, d]] if sx < 0 else [[a, b, d], [a, d, c]]
+    U = surf(verts, F, up_c)
+    v = np.asarray(verts)
     if accent is not None:
-        toe_cap = (v[:, 5] > 0.82) & (v[:, 1] < 0.05)
-        col[toe_cap] = so_c
-        stripe = (np.abs(v[:, 4]) > 0.75) & (v[:, 1] > 0.03) & (v[:, 1] < 0.055) & (v[:, 5] > 0.3) & (v[:, 5] < 0.7)
-        col[stripe] = srgb(accent)
-    A[:, 6:9] = col
-    a0, _ = base.cols['w']; A[:, a0 + GI['ft' + side]] = 1
-    for k_, i_ in (('x0', 0), ('y0', 1), ('z0', 2)): A[:, base.cols[k_][0]] = v[:, i_]
-    A[:, base.cols['foot'][0]] = 1
-    S = Surf(A, np.array(F), base.cols)
-    S.A[:, 0:3] = relax(S.P, S.F, 3, 0.4)
-    S.A[:, 1] = np.maximum(S.A[:, 1], 0)
-    # Tongue and laces: a raised strip over the instep.
-    return S
+        uu = (v[:, 2] - heel) / L
+        stripe = (np.abs(v[:, 0] - cx) > W * 0.6) & (v[:, 1] > soleH + 0.006) & (v[:, 1] < soleH + 0.022) & (uu > 0.3) & (uu < 0.7)
+        U.A[stripe, 6:9] = srgb(accent)
+    U.A[:, 0:3] = relax(U.P, U.F, 2, 0.4)
+    parts.append(U)
+
+    # Tongue and laces across the instep.
+    lum = float(up_c @ np.array([0.3, 0.59, 0.11]))
+    lace_c = up_c * 0.7 if lum > 0.5 else np.array([0.88, 0.87, 0.84])
+    def top_at(u):
+        h = collar + (toeH - collar) * float(smooth(0.28, 0.85, u))
+        return soleH - 0.004 + (h - soleH) * max(0.04, math.sin(math.pi * u) ** 0.5) ** 0.35
+    tz = heel + L * 0.3
+    T = uv_sphere(np.array([cx, top_at(0.3) + 0.006, tz]), 1.0, base.cols, ncol, lambda th: up_c * 0.92, 'ft' + side, segs=14, rings=10)
+    T.A[:, 0:3] = np.array([cx, top_at(0.3) + 0.006, tz]) + (T.P - np.array([cx, top_at(0.3) + 0.006, tz])) * np.array([W * 0.45, 0.012, 0.03])
+    parts.append(T)
+    nl = 5 if boot else 4
+    for k in range(nl):
+        u = 0.36 + k * (0.24 / (nl - 1))
+        c = np.array([cx, top_at(u) + 0.003, heel + L * u])
+        B = uv_sphere(c, 1.0, base.cols, ncol, lambda th: lace_c, 'ft' + side, segs=12, rings=8)
+        B.A[:, 0:3] = c + (B.P - c) * np.array([width(u) * 0.42, 0.006, 0.007])
+        parts.append(B)
+    for S_ in parts:
+        S_.A[:, 3:6] = vertex_normals(S_.P, S_.F)
+        S_.A[:, 1] = np.maximum(S_.A[:, 1], 0)
+    return merge(parts)
 
 
 def ringlets(H, n_outer, mask_u, U_of, R, colors, seed, size, density=1.0, layers=2):
@@ -1236,11 +1297,15 @@ def dress(base, ctx):
     mu = (lipc - hc) / hr; mu /= np.linalg.norm(mu)
     ey = (eu['L'][1] + eu['R'][1]) / 2 / np.linalg.norm(eu['L'])
     def jaw_mask(frac, stache=False):
-        # Beard line: under the lower lip at the chin, rising to `frac` of
-        # the way from mouth to eyes along the cheeks.
+        # Beard line: under the lower lip at the chin, sloping up the cheek
+        # to `frac` of the way from mouth to eyes, then rising at the ear to
+        # meet the sideburn.
         side = mu[1] + frac * (ey - mu[1])
+        burn = ey - 0.02
         def m(x, y, z):
-            lim = mix(mu[1] - 0.075, side, smooth(0.12, 0.55, np.abs(x)))
+            ax = np.abs(x)
+            lim = mix(mu[1] - 0.075, side, smooth(0.1, 0.62, ax))
+            lim = mix(lim, burn, smooth(0.72, 0.9, ax) * smooth(0.3, -0.1, z))
             f = lim - y
             if stache: f = np.maximum(f, np.minimum(mu[1] + 0.11 - y, 0.3 - np.abs(x)))
             mouth = np.minimum(0.2 - np.abs(x - mu[0]), 0.042 - np.abs(y - mu[1] + 0.005))
@@ -1250,10 +1315,17 @@ def dress(base, ctx):
     if fh.get('stubble'):
         st = smooth(0.0, 0.08, jaw_mask(0.45)(*Ub.T)) * (body['head'] > 0.5)
         body.A[:, 6:9] = mix(body.A[:, 6:9], srgb(fh['stubble'])[None], st[:, None] * 0.55)
-    for key, frac, t in (('beardShort', 0.38, 0.014), ('beard', 0.5, 0.026)):
+    # Beards: a short trimmed layer that thins out toward its edge, over
+    # skin that darkens just past the line, so the edge fades in.
+    for key, frac, t in (('beardShort', 0.12, 0.006), ('beard', 0.22, 0.013)):
         if fh.get(key):
             mk = jaw_mask(frac, stache=key == 'beard')
-            parts.append(head_layer(mk, lambda u, m, t=t: R * (t * edge(m) + 0.006 * np.sin(u[:, 0] * 40) * smooth(0, 0.05, m)), srgb(fh[key]), sub=1))
+            bc_ = srgb(fh[key])
+            fade = smooth(-0.09, 0.02, mk(*Ub.T)) * (body['head'] > 0.5)
+            body.A[:, 6:9] = mix(body.A[:, 6:9], (bc_ * 0.9)[None], fade[:, None] * 0.5)
+            tex = lambda u, m, t=t: R * (t * smooth(0.0, 0.12, m) + t * 0.6 * bumps(u, 90, 0.05, 0.09, 0.5, mk, seed + 7) * smooth(0.02, 0.1, m))
+            colf = lambda u, bc_=bc_: mix((bc_ * 1.1)[None], (bc_ * 0.85)[None], np.clip(bumps(u, 120, 0.02, 0.04, 1.0, mk, seed + 3), 0, 1)[:, None])
+            parts.append(head_layer(mk, tex, colf, sub=2, smooth_it=2))
     if fh.get('mustache'):
         def must(x, y, z):
             return np.minimum(np.minimum(0.34 - np.abs(x - mu[0]) - (y - mu[1]) * 0.8, mu[1] + 0.13 - y), y - (mu[1] + 0.035)) * (z > 0.3) - (z <= 0.3)
