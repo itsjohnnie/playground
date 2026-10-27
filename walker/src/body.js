@@ -221,13 +221,13 @@ export function buildBody(spec, rig, { draft = false } = {}) {
   col.brow = col.hair.clone().lerp(col.skin, 0.35);
   col.eye = new THREE.Color('#2a211c');
   col.flush = col.skin.clone().lerp(new THREE.Color('#c0544a'), 0.22);
-  col.nostril = col.skin.clone().multiplyScalar(0.35);
+  col.nostril = col.skin.clone().multiplyScalar(0.62);
   col.lash = col.hair.clone().lerp(new THREE.Color('#120d0a'), 0.6);
   col.iris = new THREE.Color(c.eyes || '#5b4030');
   col.irisInner = col.iris.clone().lerp(new THREE.Color('#c79a4a'), 0.35);
   col.pupil = new THREE.Color('#070606');
-  col.sclera = new THREE.Color('#ece6dc');
-  col.scleraEdge = new THREE.Color('#d9c2b4');
+  col.sclera = new THREE.Color('#ddd4c6'); // never pure white: eyes are wet, warm and shadowed by the lids
+  col.scleraEdge = new THREE.Color('#c9ab9c');
   col.collar = col.shirt.clone().multiplyScalar(0.8);
   col.belt = col.pants.clone().multiplyScalar(0.6);
   const g = c.build;           // girth
@@ -432,7 +432,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
         float bw = max(fwidth(vBrowD), 1e-5) * 1.2;
         float browM = smoothstep(-bw, bw, vBrowD) * (1.0 - hairM);
         float bhair = wNoise(vec3(vRest.x * 2600.0, vRest.y * 900.0, vRest.z * 2600.0));
-        diffuseColor.rgb = mix(diffuseColor.rgb, browColor * (0.8 + 0.4 * bhair), browM * (0.75 + 0.25 * wDetail(2600.0)));
+        diffuseColor.rgb = mix(diffuseColor.rgb, browColor * (0.92 + 0.16 * bhair * wDetail(2600.0)), browM * 0.85);
         float eyeM = wMask(5.0);
         // cloth: soft tonal drift plus a fine knit
         float knit = wNoise(vRest * vec3(900.0, 1300.0, 900.0));
@@ -447,13 +447,16 @@ export function buildBody(spec, rig, { draft = false } = {}) {
         // shoes: a faint mesh texture on the upper
         diffuseColor.rgb *= 1.0 + shoeM * (wNoise(vRest * 1400.0) - 0.5) * 0.08 * wDetail(1400.0);`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        roughnessFactor = skinM * 0.5 + clothM * 0.92 + hairM * 0.62 + shoeM * 0.58 + soleM * 0.78 + eyeM * 0.06;
+        roughnessFactor = skinM * 0.58 + clothM * 0.92 + hairM * 0.62 + shoeM * 0.58 + soleM * 0.78 + eyeM * 0.06;
         roughnessFactor += hairM * (strand - 0.5) * 0.3 * wDetail(520.0);`)
       .replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
         #ifdef USE_SHEEN
-          material.sheenColor *= clothM; // only fabric has that velvety rim
+          // fabric's velvety rim; on skin a warm one, the cheap cousin of
+          // subsurface scattering that keeps faces from reading as masks
+          material.sheenColor = material.sheenColor * clothM + vec3(0.30, 0.09, 0.06) * skinM;
+          material.sheenRoughness = mix(material.sheenRoughness, 0.35, skinM);
         #endif
-        material.specularColor *= 1.0 - 0.75 * clothM;`);
+        material.specularColor *= 1.0 - 0.75 * clothM - 0.35 * skinM;`);
   };
   mat.customProgramCacheKey = () => 'walker-body-v4';
   const mesh = new THREE.SkinnedMesh(geo, mat);
@@ -546,21 +549,22 @@ export function faceParams(c) {
   return {
     eyeX: 0.0315 * (1 + 0.04 * r(1)),
     eyeY: 0.004,
-    eyeW: 0.0148 * (1 + 0.06 * f + 0.05 * r(2)),
-    eyeH: 0.0058 * (1 + 0.12 * f + 0.08 * r(3)),
+    eyeW: 0.0154 * (1 + 0.05 * f + 0.04 * r(2)),
+    eyeH: 0.0055 * (1 + 0.08 * f + 0.05 * r(3)), // a relaxed eye: lids overlap the iris
+    lidDrop: 0.0011,
     eyeTilt: 0.10 + 0.08 * r(4) + 0.05 * f,
-    browY: 0.0235 + 0.003 * f,
-    browArch: 0.0055 + 0.003 * f + 0.0015 * r(5),
-    browThick: 0.0085 * (1 - 0.35 * f) * (1 + 0.15 * r(6)),
-    ridge: 0.0045 * (1 - 0.75 * f) * (1 + 0.3 * r(7)),
-    noseLen: 0.050 * (1 - 0.08 * f) * (1 + 0.10 * r(8)),
-    noseProj: 0.021 * (1 - 0.12 * f) * (1 + 0.14 * r(9)),
+    browY: 0.0195 + 0.003 * f,
+    browArch: 0.0035 + 0.0025 * f + 0.001 * r(5),
+    browThick: 0.0098 * (1 - 0.3 * f) * (1 + 0.12 * r(6)),
+    ridge: 0.0022 * (1 - 0.7 * f) * (1 + 0.3 * r(7)),
+    noseLen: 0.045 * (1 - 0.08 * f) * (1 + 0.08 * r(8)),
+    noseProj: 0.0175 * (1 - 0.12 * f) * (1 + 0.12 * r(9)),
     noseW: 0.0170 * (1 - 0.10 * f) * (1 + 0.12 * r(10)),
     mouthY: -0.066,
     mouthW: 0.0245 * (1 + 0.07 * r(11)),
-    lips: (1 + 0.35 * f) * (1 + 0.22 * r(12)),
+    lips: (1.0 + 0.4 * f) * (1 + 0.15 * r(12)),
     chin: 0.0055 * (1 - 0.3 * f) * (1 + 0.4 * r(13)),
-    cheek: 0.004 * (1 + 0.4 * r(14)) * (1 + 0.2 * f),
+    cheek: 0.003 * (1 + 0.3 * r(14)) * (1 + 0.2 * f),
   };
 }
 
@@ -634,9 +638,8 @@ function buildHead(B, s, col) {
     const exo = ax - F.eyeX, eyo = Y - F.eyeY;
     d -= 0.0054 * G2(exo, eyo, 0.018, 0.0125);                 // orbits
     d += F.ridge * G2(0, Y - F.browY + 0.002, 1, 0.0075) * smooth((0.06 - ax) / 0.02); // brow ridge
-    d += 0.0025 * G2(X, Y - F.browY + 0.004, 0.012, 0.010);    // glabella
-    d -= 0.0020 * G2(X, Y - F.eyeY - 0.006, 0.010, 0.006);     // nasion
-    d -= 0.0030 * G2(ax - 0.066, Y - 0.022, 0.012, 0.018);     // temples
+    d -= 0.0010 * G2(X, Y - F.eyeY - 0.006, 0.012, 0.007);     // nasion
+    d -= 0.0015 * G2(ax - 0.066, Y - 0.022, 0.014, 0.02);      // temples
     d += F.cheek * G2(ax - 0.046, Y + 0.010, 0.017, 0.013);    // cheekbones
     d += (0.0026 + 0.0014 * fem) * G2(ax - 0.034, Y + 0.034, 0.02, 0.018); // soft malar pads under them
     d -= 0.0022 * (1 - 0.6 * fem) * lerp(1.1, 0.4, smooth((s.c.build - 0.8) / 0.5)) * G2(ax - 0.044, Y + 0.050, 0.016, 0.018); // cheek hollows
@@ -646,7 +649,7 @@ function buildHead(B, s, col) {
       const tt = clamp01((yN - Y) / (yN - yT));
       let proj = F.noseProj * (0.12 + 0.88 * Math.pow(tt, 1.25));
       if (Y < yT) proj *= smooth((Y - yS) / (yT - yS)) * 0.85 + 0.15 * smooth((Y - yS + 0.004) / 0.004);
-      const w = lerp(0.0065, F.noseW * 0.42, Math.pow(tt, 1.4));
+      const w = lerp(0.0095, F.noseW * 0.45, Math.pow(tt, 1.2)); // a soft bridge, not a blade
       const q = Math.max(0, 1 - Math.pow(ax / w, 2));
       d += proj * Math.pow(q, 1.2) * smooth((Y - yS + 0.004) / 0.004);
     }
@@ -661,7 +664,7 @@ function buildHead(B, s, col) {
     const lw = (yy, w) => Math.max(0, 1 - Math.pow(ax / w, 2.2)) * G2(0, yy, 1, 1);
     d += 0.0040 * F.lips * lw((Y - F.mouthY - 0.0045) / 0.0048, F.mouthW);
     d += 0.0046 * F.lips * lw((Y - F.mouthY + 0.0055) / 0.0055, F.mouthW * 0.88);
-    d -= 0.0020 * G2(0, Y - F.mouthY, 1, 0.0011) * smooth((F.mouthW * 1.05 - ax) / 0.004);  // mouth line
+    d -= 0.0014 * G2(0, Y - F.mouthY - 0.0022 * Math.pow(ax / F.mouthW, 2), 1, 0.0011) * smooth((F.mouthW * 1.05 - ax) / 0.004);  // mouth line, corners up a touch
     d -= 0.0026 * G2(X, Y - F.mouthY + 0.017, 0.018, 0.005);  // mentolabial sulcus
     d += F.chin * G2(X, Y + 0.098, 0.022, 0.013);             // chin
     return d;
@@ -683,7 +686,8 @@ function buildHead(B, s, col) {
   const eyeAt = (X) => eyes[X > 0 ? 0 : 1];
 
   // sampling: dense across the face, sparse over the back of the skull
-  const vs = warp(qn(112, 40), (v) => 1 + 2.2 * Math.exp(-Math.pow((v - 0.56) / 0.17, 2)));
+  // extra rows through the brow/eye band so thin brows never alias into dashes
+  const vs = warp(qn(124, 40), (v) => 1 + 2.2 * Math.exp(-Math.pow((v - 0.56) / 0.17, 2)) + 1.6 * Math.exp(-Math.pow((v - 0.45) / 0.05, 2)));
   const as = warp(qn(152, 48), (t) => { const dd = Math.min(t, 1 - t); return 1 + 3.2 * Math.exp(-Math.pow(dd / 0.13, 2)); });
   const rings = [];
   for (let j = 1; j < vs.length; j++) {
@@ -699,18 +703,18 @@ function buildHead(B, s, col) {
       Z += relief(Xs, Ys) * sc * front;
       // eyes: an almond opening where the skin sits behind the eyeball, lids
       // wrapping its curve; the blink morph closes the lids over it
-      let Zc = Z, lash = 0, lid = 0;
+      let Zc = Z, lash = 0, lid = 0, crease = 0;
       if (front > 0.5) {
         const e = eyeAt(X);
         const dx = (X - e.x) / sc, dy = (Y - e.y) / sc;
         const ldx = dx * e.k; // + toward the outer corner
-        const dyT = dy - F.eyeTilt * ldx; // outer corner a little higher
-        const hh = F.eyeH * (dyT > 0 ? 1 : 0.8) * (1 - 0.25 * ldx / F.eyeW);
+        const dyT = dy + F.lidDrop - F.eyeTilt * ldx; // outer corner a little higher; opening sits low on the ball
+        const hh = F.eyeH * (dyT > 0 ? 1 : 0.8); // symmetric: the iris sits centred in the opening
         const q = Math.pow(dx / F.eyeW, 2) + Math.pow(dyT / hh, 2);
         const ballZ = e.z + Math.sqrt(Math.max(0, re * re - Math.pow(X - e.x, 2) - Math.pow(Y - e.y, 2)));
-        if (q < 2.0) {
+        if (q < 2.9) {
           // lids: skin that follows the ball's curve, a touch proud of it
-          const rim = 1 - smooth((q - 1) / 1.0);
+          const rim = 1 - smooth(Math.min(1, (q - 1) / 1.0));
           const lidZ = ballZ + (dyT > 0 ? 0.0016 : 0.0009) * sc;
           const face = Z + (Math.max(Z, lidZ) - Z) * rim;
           // inside the opening the skin slips behind the ball; blended over a
@@ -718,7 +722,9 @@ function buildHead(B, s, col) {
           const open = 1 - smooth((q - 0.78) / 0.44);
           Z = face + (Math.min(face, ballZ - 0.0028 * sc) - face) * open;
           Zc = Math.max(face, ballZ + 0.0011 * sc * (0.5 + 0.5 * open));
-          if (q < 1.4) { lash = dyT > 0 ? 1 - smooth((q - 0.95) / 0.4) : 0.35 * (1 - smooth((q - 0.95) / 0.4)); lid = 1; }
+          if (q < 1.6) { lash = dyT > 0 ? 1 - smooth((q - 0.95) / 0.6) : 0.3 * (1 - smooth((q - 0.95) / 0.3)); lid = 1; }
+          // upper lid crease: a soft fold a few mm above the lash line
+          if (dyT > 0) { crease = Math.exp(-Math.pow((q - 2.3) / 0.45, 2)); Z -= 0.0007 * sc * crease; Zc -= 0.0007 * sc * crease; }
         }
         if (q < 1) lid = 1;
       }
@@ -735,8 +741,8 @@ function buildHead(B, s, col) {
       hair.push(y - hairline);
       // eyebrows as a distance field: thick at the head, tapering and arching
       const bt = (Math.abs(Xs) - 0.011) / 0.047;
-      const by = F.browY + F.browArch * Math.sin(Math.PI * clamp01(bt) * 0.85) - 0.004 * bt * bt;
-      const bth = F.browThick * (1 - 0.55 * clamp01(bt)) * 0.5;
+      const by = F.browY + 0.0012 * (1 - clamp01(bt)) + F.browArch * Math.sin(Math.PI * clamp01(bt) * 0.8) - 0.0035 * bt * bt; // relaxed: inner heads never dip
+      const bth = Math.max(0.0024 * sc / sc, F.browThick * (1 - 0.45 * clamp01(bt)) * 0.5);
       // continuous everywhere (a jump would smear brow colour down the face)
       brow.push(bth - Math.abs(Ys - by) - 0.05 * (Math.max(0, -bt) + Math.max(0, bt - 1)) - 0.05 * (1 - front));
       // colour: lips, a little warmth on nose and cheeks, lash lines, nostrils
@@ -750,7 +756,8 @@ function buildHead(B, s, col) {
         c.lerp(col.flush, 0.5 * G2(ax - 0.045, Ys + 0.03, 0.02, 0.018) + 0.35 * G2(Xs, Ys - yT, 0.01, 0.01));
         const nostril = G2(ax - F.noseW * 0.24, Ys - yT + 0.0105, 0.0032, 0.0022);
         c.lerp(col.nostril, Math.min(1, nostril * 1.3));
-        if (lash > 0) c.lerp(col.lash, lash * 0.85);
+        if (lash > 0) c.lerp(col.lash, Math.min(1, lash * 0.95));
+        if (crease > 0) c.lerp(col.flush.clone().multiplyScalar(0.78), crease * 0.35);
         else if (lid) c.multiplyScalar(0.92);
       }
       colors.push(c);
@@ -761,7 +768,7 @@ function buildHead(B, s, col) {
 
   // eyeballs: sclera, iris, pupil; glossy so they catch the light
   for (const e of eyes) {
-    const look = new THREE.Vector3(-e.k * 0.02, -0.09, 1).normalize(); // gaze a little down, slightly converged
+    const look = new THREE.Vector3(0, -0.04, 1).normalize(); // straight ahead, a hair down // gaze a little down, slightly converged
     const qL = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), look);
     const R = qn(22, 10), S = qn(32, 12), er = [];
     for (let j = 1; j < R; j++) {
@@ -776,9 +783,9 @@ function buildHead(B, s, col) {
         v.multiplyScalar(re * cornea).applyQuaternion(qL);
         pts.push([e.x + v.x, cy + e.y + v.y, cz + e.z + v.z]);
         let cc;
-        if (ang < 0.19) cc = col.pupil;
-        else if (ang < 0.5) cc = col.iris.clone().lerp(col.irisInner, smooth((0.42 - ang) / 0.2) * 0.6);
-        else if (ang < 0.56) cc = col.iris.clone().multiplyScalar(0.45); // limbal ring
+        if (ang < 0.16) cc = col.pupil;
+        else if (ang < 0.55) cc = col.iris.clone().lerp(col.irisInner, smooth((0.42 - ang) / 0.2) * 0.6);
+        else if (ang < 0.60) cc = col.iris.clone().multiplyScalar(0.55).lerp(col.sclera, smooth((ang - 0.55) / 0.05) * 0.4); // soft limbal ring
         else cc = col.sclera.clone().lerp(col.scleraEdge, smooth((ang - 1.2) / 0.8));
         cols.push(cc);
       }
