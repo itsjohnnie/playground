@@ -8,6 +8,9 @@ import * as THREE from 'three';
 import { boneLayout } from './proportions.js';
 
 const TAU = Math.PI * 2;
+// build quality: 1 = full; a draft (~0.45) rebuilds fast enough to follow a slider drag
+let Q = 1;
+const qn = (n, min = 6) => Math.max(min, Math.round(n * Q));
 // surface kinds: each gets its own roughness, sheen and micro-detail in the shader
 const MAT = { skin: 0, cloth: 1, hair: 2, shoe: 3, sole: 4, eye: 5 };
 const smooth = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
@@ -44,22 +47,34 @@ function se(a, rx, rz, e) {
 
 class Builder {
   constructor(boneIndex) {
-    this.pos = []; this.col = []; this.si = []; this.sw = []; this.idx = []; this.hair = []; this.mat = []; this.brow = []; this.blink = [];
+    this.pos = []; this.col = []; this.si = []; this.sw = []; this.idx = []; this.hair = []; this.mat = []; this.brow = []; this.blink = []; this.sway = [];
     this.bi = boneIndex;
   }
-  vert(x, y, z, color, weights, hair = -1, mat = MAT.cloth, brow = -1, blink = 0) {
+  vert(x, y, z, color, weights, hair = -1, mat = MAT.cloth, brow = -1, blink = 0, sway = 0) {
     this.pos.push(x, y, z);
+    this.sway.push(sway);
     this.hair.push(hair);
     this.brow.push(brow);
     this.blink.push(blink);
     this.mat.push(mat);
     this.col.push(color.r, color.g, color.b);
-    // keep the 4 strongest influences, normalised
-    const w = Object.entries(weights).filter(([, v]) => v > 1e-4).sort((a, b) => b[1] - a[1]).slice(0, 4);
-    const sum = w.reduce((a, [, v]) => a + v, 0) || 1;
+    // keep the 4 strongest influences, normalised (allocation-free top-4)
+    const ib = this._ib || (this._ib = new Int32Array(4)), wb = this._wb || (this._wb = new Float64Array(4));
+    let n = 0;
+    for (const key in weights) {
+      const v = weights[key];
+      if (!(v > 1e-4)) continue;
+      let j = n < 4 ? n++ : 4;
+      if (j === 4) { if (v <= wb[3]) continue; j = 3; }
+      while (j > 0 && wb[j - 1] < v) { wb[j] = wb[j - 1]; ib[j] = ib[j - 1]; j--; }
+      wb[j] = v; ib[j] = this.bi[key];
+    }
+    let sum = 0;
+    for (let i = 0; i < n; i++) sum += wb[i];
+    sum = sum || 1;
     for (let i = 0; i < 4; i++) {
-      this.si.push(w[i] ? this.bi[w[i][0]] : 0);
-      this.sw.push(w[i] ? w[i][1] / sum : 0);
+      this.si.push(i < n ? ib[i] : 0);
+      this.sw.push(i < n ? wb[i] / sum : 0);
     }
     return this.pos.length / 3 - 1;
   }
@@ -72,7 +87,7 @@ class Builder {
       r.pts.forEach((p, i) => {
         const c = typeof r.color === 'function' ? r.color(i, p) : r.color;
         const mt = r.mat === undefined ? MAT.cloth : typeof r.mat === 'function' ? r.mat(i, p) : r.mat;
-        this.vert(p[0], p[1], p[2], c, r.weights(p[0], p[1], p[2]), r.hair ? r.hair[i] : -1, mt, r.brow ? r.brow[i] : -1, r.blink ? r.blink[i] : 0);
+        this.vert(p[0], p[1], p[2], c, r.weights(p[0], p[1], p[2]), r.hair ? r.hair[i] : -1, mt, r.brow ? r.brow[i] : -1, r.blink ? r.blink[i] : 0, r.sway ? r.sway[i] : 0);
       });
       base.push(start);
     }
@@ -107,6 +122,7 @@ class Builder {
     g.setAttribute('hairD', new THREE.Float32BufferAttribute(this.hair, 1));
     g.setAttribute('matId', new THREE.Float32BufferAttribute(this.mat, 1));
     g.setAttribute('browD', new THREE.Float32BufferAttribute(this.brow, 1));
+    g.setAttribute('sway', new THREE.Float32BufferAttribute(this.sway, 1));
     // blink: lids close by moving skin forward over the eyeballs (a relative morph)
     const blink = new Float32Array(this.pos.length);
     for (let i = 0; i < this.blink.length; i++) blink[i * 3 + 2] = this.blink[i];
@@ -190,7 +206,8 @@ export function bodyShape(spec) {
   };
 }
 
-export function buildBody(spec, rig) {
+export function buildBody(spec, rig, { draft = false } = {}) {
+  Q = draft ? 0.45 : 1;
   const c = spec.c, u = spec.u;
   const B = new Builder(rig.index);
   const col = {
@@ -216,7 +233,7 @@ export function buildBody(spec, rig) {
   const g = c.build;           // girth
   const m = c.muscle;          // 0 … 1
   const f = c.sex ?? 0;        // 0 male … 1 female
-  const SEG = 56;
+  const SEG = qn(56, 16);
 
   // ── torso ─────────────────────────────────────────────────────────────
   const shirtEnd = spec.hipsY + 0.035 * u;
@@ -226,7 +243,7 @@ export function buildBody(spec, rig) {
   const torsoW = (x, y) => torsoWeights(spec, x, y);
   const y0 = torsoKeys[0][0], y1 = torsoKeys[torsoKeys.length - 1][0];
   const rings = [];
-  const NR = 84;
+  const NR = qn(84, 24);
   const collarY = spec.neckY - 0.004 * u;
   // colour edges get a doubled ring so hems are crisp, not smeared
   const edges = [shirtEnd - 0.022 * u, shirtEnd, collarY, collarY + 0.012 * u];
@@ -276,8 +293,9 @@ export function buildBody(spec, rig) {
   {
     const r = [];
     const n0 = spec.neckY - 0.02 * u, n1 = spec.headY + 0.035 * u;
-    for (let j = 0; j <= 14; j++) {
-      const t = j / 14, y = lerp(n0, n1, t);
+    const NN = qn(14, 5);
+    for (let j = 0; j <= NN; j++) {
+      const t = j / NN, y = lerp(n0, n1, t);
       const base = 1 + 0.22 * Math.pow(1 - t, 3); // flares into the shoulders
       const rx = (0.056 - 0.006 * t) * base * u * lerp(1, g, 0.5) * (1 - 0.14 * f), rz = (0.058 - 0.004 * t) * (1 + 0.08 * Math.pow(1 - t, 3)) * u * lerp(1, g, 0.5) * (1 - 0.1 * f);
       const pts = [];
@@ -292,7 +310,7 @@ export function buildBody(spec, rig) {
 
   // ── head ──────────────────────────────────────────────────────────────
   buildHead(B, spec, col);
-  if (c.hairLength > 0.02) buildHairFall(B, spec, c.hairLength);
+  if (c.hairLength >= 0.35) buildHairFall(B, spec, c.hairLength * 0.8); // inner volume under long locks
 
   // ── arms ──────────────────────────────────────────────────────────────
   for (const [side, k] of [['left', 1], ['right', -1]]) {
@@ -317,7 +335,8 @@ export function buildBody(spec, rig) {
     const P = profile(keys);
     const r = [];
     const ts = [];
-    for (let j = 0; j <= 72; j++) ts.push(lerp(-0.025, 1.0, j / 72));
+    const NA = qn(72, 20);
+    for (let j = 0; j <= NA; j++) ts.push(lerp(-0.025, 1.0, j / NA));
     ts.push(sleeveT - 0.0001, sleeveT + 0.0001);
     ts.sort((a, b) => a - b);
     for (const t of ts) {
@@ -347,8 +366,9 @@ export function buildBody(spec, rig) {
     // straight-leg cut below the knee)
     const P = shape.legRaw;
     const r = [];
-    for (let j = 0; j <= 84; j++) {
-      const t = lerp(-0.07, 1.0, j / 84); // starts below the shirt hem
+    const NL = qn(84, 24);
+    for (let j = 0; j <= NL; j++) {
+      const t = lerp(-0.07, 1.0, j / NL); // starts below the shirt hem
       const [rx, rz, zc] = P(t);
       const gg = shape.legGirth(t);
       const y = spec.hipJointY - t * L;
@@ -378,12 +398,14 @@ export function buildBody(spec, rig) {
   });
   const hairColor = { value: col.hair.clone() };
   const browColor = { value: col.hair.clone().lerp(col.skin, 0.12).multiplyScalar(0.85) };
+  const hairSwing = { value: new THREE.Vector3() };
   mat.onBeforeCompile = (sh) => {
     sh.uniforms.hairColor = hairColor;
+    sh.uniforms.hairSwing = hairSwing;
     sh.uniforms.browColor = browColor;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float hairD;\nattribute float matId;\nattribute float browD;\nvarying float vBrowD;\nvarying float vHairD;\nvarying float vMat;\nvarying vec3 vRest;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHairD = hairD;\nvBrowD = browD;\nvMat = matId;\nvRest = position;');
+      .replace('#include <common>', '#include <common>\nattribute float hairD;\nattribute float matId;\nattribute float browD;\nattribute float sway;\nuniform vec3 hairSwing;\nvarying float vBrowD;\nvarying float vHairD;\nvarying float vMat;\nvarying vec3 vRest;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += hairSwing * sway; // long hair lags the head\nvHairD = hairD;\nvBrowD = browD;\nvMat = matId;\nvRest = position;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform vec3 hairColor;
@@ -433,11 +455,12 @@ export function buildBody(spec, rig) {
         #endif
         material.specularColor *= 1.0 - 0.75 * clothM;`);
   };
-  mat.customProgramCacheKey = () => 'walker-body-v3';
+  mat.customProgramCacheKey = () => 'walker-body-v4';
   const mesh = new THREE.SkinnedMesh(geo, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.frustumCulled = false;
+  mesh.userData.hairSwing = hairSwing;
   mesh.add(rig.list[0]);
   mesh.updateMatrixWorld(true);
   mesh.bind(new THREE.Skeleton(rig.list));
@@ -526,8 +549,8 @@ export function faceParams(c) {
     eyeW: 0.0148 * (1 + 0.06 * f + 0.05 * r(2)),
     eyeH: 0.0058 * (1 + 0.12 * f + 0.08 * r(3)),
     eyeTilt: 0.10 + 0.08 * r(4) + 0.05 * f,
-    browY: 0.0205 + 0.003 * f,
-    browArch: 0.004 + 0.003 * f + 0.0015 * r(5),
+    browY: 0.0235 + 0.003 * f,
+    browArch: 0.0055 + 0.003 * f + 0.0015 * r(5),
     browThick: 0.0085 * (1 - 0.35 * f) * (1 + 0.15 * r(6)),
     ridge: 0.0045 * (1 - 0.75 * f) * (1 + 0.3 * r(7)),
     noseLen: 0.050 * (1 - 0.08 * f) * (1 + 0.10 * r(8)),
@@ -572,6 +595,15 @@ function buildHead(B, s, col) {
   const cy = s.headY + 0.094 * sc, cz = 0.026 * u; // skull sits forward of the neck
   const rx = 0.080 * sc, ry = 0.116 * sc, rz = 0.101 * sc;
   const re = 0.0118 * sc; // eyeball radius
+  const L = s.c.hairLength ?? 0;
+  const CAP = L < 0.06 ? 0.05 : 0.03; // scalp hair thickness under the locks
+  // hairline: a real forehead (~5–6 cm above the brows); short hair recedes a
+  // little at the temples. fn: −1 back … 1 front, normalised height y.
+  const hairlineOf = (a, fn) => {
+    const longish = smooth(L / 0.6);
+    const temple = 0.05 * (1 - longish) * Math.exp(-Math.pow((Math.abs(Math.sin(a)) - 0.45) / 0.28, 2));
+    return lerp(-0.42, lerp(0.64, 0.58, longish), smooth((fn + 1) / 2)) - 0.16 * Math.pow(Math.abs(Math.sin(a)), 3) * smooth(fn + 0.2) + temple * smooth(fn);
+  };
 
   // base skull + jaw (no facial features), normalised sphere angles in
   function skull(a, phi) {
@@ -600,12 +632,13 @@ function buildHead(B, s, col) {
     const ax = Math.sqrt(X * X + 0.0025 * 0.0025); // smooth |X|: no crease down the midline
     let d = 0;
     const exo = ax - F.eyeX, eyo = Y - F.eyeY;
-    d -= 0.0068 * G2(exo, eyo, 0.018, 0.0125);                 // orbits
+    d -= 0.0054 * G2(exo, eyo, 0.018, 0.0125);                 // orbits
     d += F.ridge * G2(0, Y - F.browY + 0.002, 1, 0.0075) * smooth((0.06 - ax) / 0.02); // brow ridge
     d += 0.0025 * G2(X, Y - F.browY + 0.004, 0.012, 0.010);    // glabella
     d -= 0.0020 * G2(X, Y - F.eyeY - 0.006, 0.010, 0.006);     // nasion
     d -= 0.0030 * G2(ax - 0.066, Y - 0.022, 0.012, 0.018);     // temples
     d += F.cheek * G2(ax - 0.046, Y + 0.010, 0.017, 0.013);    // cheekbones
+    d += (0.0026 + 0.0014 * fem) * G2(ax - 0.034, Y + 0.034, 0.02, 0.018); // soft malar pads under them
     d -= 0.0022 * (1 - 0.6 * fem) * lerp(1.1, 0.4, smooth((s.c.build - 0.8) / 0.5)) * G2(ax - 0.044, Y + 0.050, 0.016, 0.018); // cheek hollows
     // nose: a ridge growing from the nasion to the tip, then the columella
     const yN = F.eyeY + 0.004, yT = yN - F.noseLen * 0.82, yS = yT - 0.011;
@@ -650,8 +683,8 @@ function buildHead(B, s, col) {
   const eyeAt = (X) => eyes[X > 0 ? 0 : 1];
 
   // sampling: dense across the face, sparse over the back of the skull
-  const vs = warp(112, (v) => 1 + 2.2 * Math.exp(-Math.pow((v - 0.56) / 0.17, 2)));
-  const as = warp(152, (t) => { const dd = Math.min(t, 1 - t); return 1 + 3.2 * Math.exp(-Math.pow(dd / 0.13, 2)); });
+  const vs = warp(qn(112, 40), (v) => 1 + 2.2 * Math.exp(-Math.pow((v - 0.56) / 0.17, 2)));
+  const as = warp(qn(152, 48), (t) => { const dd = Math.min(t, 1 - t); return 1 + 3.2 * Math.exp(-Math.pow(dd / 0.13, 2)); });
   const rings = [];
   for (let j = 1; j < vs.length; j++) {
     const phi = vs[j] * Math.PI;
@@ -690,15 +723,11 @@ function buildHead(B, s, col) {
         if (q < 1) lid = 1;
       }
       const fn = z / (rr || 1);
-      // hairline: a real forehead (~5–6 cm above the brows); a fringe sits lower,
-      // and short hair recedes a little at the temples
-      const fringe = smooth((s.c.hairLength ?? 0) / 0.6);
-      const temple = 0.05 * (1 - fringe) * Math.exp(-Math.pow((Math.abs(Math.sin(a)) - 0.45) / 0.28, 2));
-      const hairline = lerp(-0.42, lerp(0.64, 0.50, fringe), smooth((fn + 1) / 2)) - 0.16 * Math.pow(Math.abs(Math.sin(a)), 3) * smooth(fn + 0.2) + temple * smooth(fn);
+      const hairline = hairlineOf(a, fn);
       const hairT = smooth((y - hairline) / 0.16 + 0.5);
       if (hairT > 0) {
-        const clumps = vnoise3(x * 7, y * 5, z * 7) - 0.5;
-        const fh = 1 + hairT * (0.075 * smooth((y - hairline) / 0.45) + 0.03 * clumps * smooth((y - hairline - 0.1) / 0.2));
+        // the cap is the dense underlayer; locks on top give the silhouette
+        const fh = 1 + hairT * CAP * smooth((y - hairline) / 0.45);
         X *= fh; Z *= fh; Zc *= fh; Y += 0.006 * u * smooth(y);
       }
       pts.push([X, cy + Y, cz + Z]);
@@ -734,7 +763,7 @@ function buildHead(B, s, col) {
   for (const e of eyes) {
     const look = new THREE.Vector3(-e.k * 0.02, -0.09, 1).normalize(); // gaze a little down, slightly converged
     const qL = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), look);
-    const R = 22, S = 32, er = [];
+    const R = qn(22, 10), S = qn(32, 12), er = [];
     for (let j = 1; j < R; j++) {
       const th = (j / R) * Math.PI;
       const pts = [], cols = [];
@@ -761,6 +790,7 @@ function buildHead(B, s, col) {
 
   // ears, unless long hair covers them
   if ((s.c.hairLength ?? 0) < 0.4) for (const k of [1, -1]) buildEar(B, s, col, k, cy, cz, skull, sc);
+  if (L >= 0.06) buildHairLocks(B, s, col, { skull, hairlineOf, sc, cy, cz, rx, ry, rz, CAP });
 }
 
 // An ear: a thin shell with a rolled rim (helix), a hollow bowl (concha) and
@@ -773,7 +803,7 @@ function buildEar(B, s, col, k, cy, cz, skull, sc) {
   const ec = new THREE.Vector3(k * (side + 0.002 * sc), cy - 0.019 * sc, cz - 0.014 * sc);
   const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -0.26);
   const flare = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), k * 0.42); // stands off the head at the back
-  const R = 18, S = 26, rings = [];
+  const R = qn(18, 8), S = qn(26, 10), rings = [];
   for (let j = 1; j < R; j++) {
     const th = (j / R) * Math.PI; // 0 outer face … π inner face
     const pts = [], cols = [];
@@ -806,6 +836,108 @@ function vnoise3(x, y, z) {
   return L(L(L(c(0, 0, 0), c(1, 0, 0), fx), L(c(0, 1, 0), c(1, 1, 0), fx), fy), L(L(c(0, 0, 1), c(1, 0, 1), fx), L(c(0, 1, 1), c(1, 1, 1), fx), fy), fz);
 }
 
+// Hair as locks: tapered ribbons grown from roots on the scalp, combed away
+// from a parting, kept off the skull, bent by gravity, draped over the
+// shoulders when long. Each lock gets its own tone; a sway weight lets the
+// shader swing long hair with the walk.
+function buildHairLocks(B, s, col, H) {
+  const { skull, hairlineOf, sc, cy, cz, rx, ry, rz, CAP } = H;
+  const u = s.u, L = s.c.hairLength ?? 0, fem = s.c.sex ?? 0;
+  const long = L >= 0.35;
+  const len = long ? (0.10 + 0.40 * (L - 0.35) / 0.65) * sc : (0.022 + 0.06 * (L - 0.06) / 0.29) * sc;
+  const partX = (fem > 0.5 ? -1 : 1) * 0.024 * sc * (((s.c.face ?? 0.5) * 7) % 1 > 0.5 ? 1 : -1);
+  const c = new THREE.Vector3(0, cy, cz);
+  const rnd = (i, k) => vhash(i * 1.37, k * 7.1, 3.3);
+  const N = qn(long ? 560 : 900, 160), K = qn(long ? 16 : 6, 4), RING = 5;
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const neckR = 0.068 * sc, shoulderY = s.shoulderY + 0.03 * u;
+  const grav = new THREE.Vector3(0, -1, 0);
+  for (let i = 0; i < N; i++) {
+    // even roots over the sphere (golden spiral), kept where hair grows
+    const yy = 1 - (i + 0.5) / N * 1.6; // skip the very bottom of the sphere
+    const phi = Math.acos(Math.max(-1, Math.min(1, yy)));
+    const a = (i * golden) % TAU;
+    const p0 = skull(a, phi);
+    const fn = p0.z / (p0.rr || 1);
+    if (p0.y < hairlineOf(a, fn) + 0.04) continue;
+    const layer = 1 + CAP * 0.9 + 0.035 * rnd(i, 1); // roots inside the cap, at mixed depths
+    const p = new THREE.Vector3(p0.X * layer, cy + p0.Y * layer, cz + p0.Z * layer);
+    const off = long ? (CAP + 0.02 + 0.05 * rnd(i, 2)) * 1.2 : CAP + 0.004 + 0.012 * rnd(i, 2); // how far the lock floats over the skull
+    // short hair shortens toward its hairline so nothing dangles at the nape
+    const lockLen = len * (0.75 + 0.5 * rnd(i, 3)) * (long ? 1 : 0.2 + 0.8 * smooth((p0.y - hairlineOf(a, fn)) / 0.5));
+    const W0 = (long ? 0.017 : 0.011) * sc * (0.75 + 0.5 * rnd(i, 4));
+    const TH = (long ? 0.0032 : 0.0022) * sc;
+    const tone = long ? 0.8 + 0.32 * rnd(i, 5) : 0.95 + 0.08 * rnd(i, 5);
+    const normalAt = (q) => new THREE.Vector3((q.x - c.x) / (rx * rx), (q.y - c.y) / (ry * ry), (q.z - c.z) / (rz * rz)).normalize();
+    // combing: away from the part, down and back; long hair to the sides
+    const side = Math.sign(p.x - partX) || 1;
+    let d = long ? new THREE.Vector3(side * 0.9, -0.5, -0.35) : new THREE.Vector3(side * 0.55, -0.25, -0.75);
+    if (!long && p.z - cz > 0.3 * rz) d.set(side * 0.35, 0.15, -0.9); // short: front swept up and back
+    { const n0 = normalAt(p); d.addScaledVector(n0, -d.dot(n0)).normalize(); } // combed along the scalp
+    const path = [];
+    for (let k = 0; k <= K; k++) {
+      const t = k / K;
+      const n = normalAt(p);
+      if (k > 0) {
+        // gravity takes over once the lock leaves the top of the head
+        const g = long ? (p.y > cy - 0.15 * ry ? 0.25 : 0.9) : 0.05;
+        d.addScaledVector(grav, g).normalize();
+        p.addScaledVector(d, lockLen / K);
+        // over the crown hair lies on its layer (combed flat by its own
+        // weight); below the widest point it hangs free but never inside
+        const e = new THREE.Vector3((p.x - c.x) / (rx * (1 + off)), (p.y - c.y) / (ry * (1 + off)), (p.z - c.z) / (rz * (1 + off)));
+        const rho = e.length();
+        const onTop = p.y > cy - 0.15 * ry;
+        if ((rho < 1 && p.y > cy - 0.7 * ry) || (onTop && rho > 1)) {
+          e.multiplyScalar(1 / rho);
+          p.set(c.x + e.x * rx * (1 + off), c.y + e.y * ry * (1 + off), c.z + e.z * rz * (1 + off));
+          d.addScaledVector(n, -d.dot(n)).normalize();
+        }
+        if (long) {
+          // never across the face; around the neck; over the shoulders
+          if (p.z > cz + 0.15 * rz && p.y < cy + 0.25 * ry && Math.abs(p.x) < 0.082 * sc) p.x = Math.sign(p.x || side) * 0.082 * sc;
+          if (p.y < cy - 0.6 * ry) {
+            const nx = p.x, nz = p.z - (cz - 0.02 * sc);
+            const nr = Math.hypot(nx, nz);
+            if (nr < neckR + 0.01 * sc) { p.x = nx / nr * (neckR + 0.01 * sc); p.z = cz - 0.02 * sc + nz / nr * (neckR + 0.01 * sc); }
+          }
+          const top = shoulderY - 0.22 * Math.max(0, Math.abs(p.x) - 0.06 * u);
+          const zc0 = cz - 0.02 * sc, depth = 0.11 * u;
+          if (p.y < top && Math.abs(p.z - zc0) < depth) {
+            // meets the shoulder: falls down the back or onto the chest,
+            // whichever side it is nearer, and keeps hanging
+            const back = p.z < zc0 + 0.01 * u;
+            p.z = zc0 + (back ? -1 : 1) * depth;
+            d.set(d.x * 0.3, -1, (back ? -1 : 1) * 0.15).normalize();
+          }
+        }
+      }
+      path.push({ p: p.clone(), d: d.clone(), n: normalAt(p), t });
+    }
+    // ribbon rings: wide across the lock, thin off the scalp, tapering to a tip
+    const rings = [];
+    for (const { p: q, d: dd, n, t } of path) {
+      const nn = n.clone().addScaledVector(dd, -n.dot(dd)).normalize();
+      const xx = new THREE.Vector3().crossVectors(nn, dd);
+      const w = W0 * (1 - 0.8 * Math.pow(t, 1.6)), th = TH * (1 - 0.6 * t);
+      const pts = [];
+      for (let r = 0; r < RING; r++) {
+        const ang = (r / RING) * TAU;
+        pts.push([q.x + xx.x * w * Math.sin(ang) + nn.x * th * Math.cos(ang), q.y + xx.y * w * Math.sin(ang) + nn.y * th * Math.cos(ang), q.z + xx.z * w * Math.sin(ang) + nn.z * th * Math.cos(ang)]);
+      }
+      const below = smooth((cy - 0.55 * ry - q.y) / (0.2 * sc));
+      const wh = 1 - 0.7 * below;
+      const shade = col.hair.clone().multiplyScalar(tone * (0.86 + 0.22 * t));
+      rings.push({
+        pts, hair: new Array(RING).fill(1), mat: MAT.hair, color: shade,
+        sway: new Array(RING).fill((long ? 1 : 0.15) * Math.pow(t, 1.3) * (0.4 + 0.6 * below)),
+        weights: () => (wh >= 0.999 ? { head: 1 } : { head: wh, spine2: 1 - wh }),
+      });
+    }
+    B.loft(rings, { capEnd: true });
+  }
+}
+
 // Hair that falls below the skull: a thin shell, open at the face, hanging
 // from the crown to the shoulders. Drawn as hair by the same shader flag.
 function buildHairFall(B, s, len) {
@@ -814,10 +946,11 @@ function buildHairFall(B, s, len) {
   const rx = 0.080 * u * hs, rz = 0.101 * u * hs;
   const y0 = cy + 0.02 * u, y1 = cy - (0.07 + 0.2 * len) * u;
   const A0 = (78 * Math.PI) / 180; // where the fall parts around the face
-  const M = 36, rings = [];
+  const M = qn(36, 12), rings = [];
   const ones = new Array(M * 2).fill(1);
-  for (let j = 0; j <= 24; j++) {
-    const t = j / 24, y = lerp(y0, y1, t);
+  const NF = qn(24, 8);
+  for (let j = 0; j <= NF; j++) {
+    const t = j / NF, y = lerp(y0, y1, t);
     // follows the skull at the top, then hangs straight and flares a little
     const sk = Math.sqrt(Math.max(0, 1 - Math.pow((y - cy) / (0.12 * u * hs), 2)));
     const wide = lerp(1.07, 1.0, smooth(t * 3)) * Math.max(sk, 0.92) + 0.10 * t * t;
@@ -890,13 +1023,15 @@ function buildHand(B, s, col, side, k, x0, wristY, z0) {
   ];
   const P = profile(keys);
   const r = [];
-  for (let j = 0; j <= 16; j++) {
-    const t = j / 16;
+  const NP = qn(16, 6);
+  for (let j = 0; j <= NP; j++) {
+    const t = j / NP;
     const [hx, hz, cup, zc] = P(t);
     const y = wristY + 0.014 * u - t * (palmLen + 0.014 * u); // starts inside the forearm: no crack at the wrist
     const pts = [];
-    for (let i = 0; i < 40; i++) {
-      const a = (i / 40) * TAU;
+    const NPa = qn(40, 12);
+    for (let i = 0; i < NPa; i++) {
+      const a = (i / NPa) * TAU;
       let [px, pz] = se(a, hx * u * gw, hz * u * gw, 2.6);
       // palm side a little hollow in the middle, thenar pad near the thumb
       if (px * k < 0) px *= 1 - 0.18 * Math.exp(-Math.pow(pz / (0.02 * u), 2)) * smooth((t - 0.2) / 0.4);
@@ -935,7 +1070,7 @@ function buildHand(B, s, col, side, k, x0, wristY, z0) {
       p = p.clone().addScaledVector(d, len);
     }
     path.push([p.x, p.y, p.z, rad * u * gw * 0.68]);
-    tubeAlong(B, path, 16, ring);
+    tubeAlong(B, path, qn(16, 8), ring);
   }
 
   // thumb: from the heel of the palm, forward and down, curling toward the index
@@ -958,7 +1093,7 @@ function buildHand(B, s, col, side, k, x0, wristY, z0) {
       p = p.clone().addScaledVector(d, len);
     }
     path.push([p.x, p.y, p.z, 0.0085 * u * gw]);
-    tubeAlong(B, path, 16, ring);
+    tubeAlong(B, path, qn(16, 8), ring);
   }
 }
 
@@ -978,7 +1113,7 @@ function buildShoe(B, s, col, side, k, x0) {
   const midsole = col.shoes.clone().lerp(new THREE.Color('#f4f1ea'), 0.65);
   // ── sole ──
   {
-    const r = [], NZ = 56, NA = 40, SH = 0.026 * u;
+    const r = [], NZ = qn(56, 16), NA = qn(40, 12), SH = 0.026 * u;
     for (let j = 0; j <= NZ; j++) {
       const z = lerp(z0, z1, j / NZ);
       const hw = (outline([(z - z0) / L])[0] + 0.004) * u;
@@ -998,7 +1133,7 @@ function buildShoe(B, s, col, side, k, x0) {
   // ── upper ──
   {
     const height = profile([[0, 0.060], [0.05, 0.088], [0.16, 0.102], [0.3, 0.108], [0.45, 0.092], [0.62, 0.070], [0.78, 0.056], [0.92, 0.046], [1, 0.030]]);
-    const r = [], NZ = 60, NA = 44;
+    const r = [], NZ = qn(60, 16), NA = qn(44, 12);
     for (let j = 0; j <= NZ; j++) {
       const z = lerp(z0 + 0.004 * u, z1 - 0.005 * u, j / NZ);
       const f = (z - z0) / L;

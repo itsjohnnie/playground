@@ -48,6 +48,18 @@ hairline are drawn per pixel from distance fields, so they stay crisp. **Face**
 walks smoothly through variations (nose, eyes, lips, cheekbones, chin), and
 `sex` shifts the same features the way they differ on average.
 
+## Hair
+
+Hair is grown, not modelled: a few hundred tapered locks rooted over the
+scalp, combed away from a parting, kept off the skull, bent by gravity and
+draped down the back or onto the chest when they reach the shoulders. A dense
+cap underneath keeps it full; each lock has its own tone, darker at the root.
+Long hair swings on a damped spring driven by the head's motion. **Hair** runs
+from buzzed (cap only) through short, combed locks to past the shoulders.
+
+Slider drags rebuild a light draft (~50 ms) so the body follows your hand; a
+full-quality build follows once you let go.
+
 ## Files
 
 - `src/proportions.js`: creator sliders → a spec of lengths (anthropometric

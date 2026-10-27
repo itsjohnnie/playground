@@ -100,23 +100,28 @@ scene.add(body);
 const walker = new Walker(spec, gait);
 let skeletonHelper = null;
 
-function rebuild() {
+function rebuild(draft = false) {
   spec = makeSpec(character);
   scene.remove(body);
   body.geometry.dispose();
   body.material.dispose();
   rig = buildRig(spec);
-  body = buildBody(spec, rig);
+  body = buildBody(spec, rig, { draft });
   scene.add(body);
   walker.setSpec(spec);
   setSkeleton(view.skeleton);
   clearOverlays();
 }
-let rebuildQueued = false;
+// While a slider moves, rebuild a light draft each frame (~40 ms) so the body
+// follows the drag; once it settles, rebuild at full quality.
+let rebuildQueued = false, fullTimer = 0;
 const queueRebuild = () => {
-  if (rebuildQueued) return;
-  rebuildQueued = true;
-  requestAnimationFrame(() => { rebuildQueued = false; rebuild(); });
+  if (!rebuildQueued) {
+    rebuildQueued = true;
+    requestAnimationFrame(() => { rebuildQueued = false; rebuild(true); });
+  }
+  clearTimeout(fullTimer);
+  fullTimer = setTimeout(() => rebuild(false), 250);
 };
 
 function setSkeleton(on) {
@@ -468,7 +473,7 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
 // starting points, not stereotypes: every value stays on its slider
 const PRESETS = {
-  man: { face: 0.5, eyes: '#4a3424', height: 1.78, legs: 1.0, shoulders: 1.04, hips: 0.97, build: 1.04, muscle: 0.6, head: 1.0, sex: 0, hairLength: 0,
+  man: { face: 0.5, eyes: '#4a3424', height: 1.78, legs: 1.0, shoulders: 1.04, hips: 0.97, build: 1.04, muscle: 0.6, head: 1.0, sex: 0, hairLength: 0.22,
     skin: '#c99678', hair: '#2a1d16', shirt: '#3d5a73', pants: '#2b2b30', shoes: '#e8e4dc' },
   woman: { face: 0.27, eyes: '#4f6a52', height: 1.65, legs: 1.02, shoulders: 1.0, hips: 1.0, build: 0.96, muscle: 0.35, head: 1.0, sex: 1, hairLength: 0.75,
     skin: '#e2b593', hair: '#5a3620', shirt: '#b5462f', pants: '#2d3a55', shoes: '#efefea' },
@@ -531,6 +536,26 @@ const REBASE = 100; // metres; keeps float precision on an endless walk
 let last = performance.now(), readoutT = 0, arcClock = 0;
 const pts = { lToe: new THREE.Vector3(), rToe: new THREE.Vector3(), lHand: new THREE.Vector3(), rHand: new THREE.Vector3(), head: new THREE.Vector3(), hips: new THREE.Vector3() };
 
+// long hair: a damped spring (≈1.6 Hz) driven by the head's acceleration, so
+// the ends lag, bounce with each step and swing with the sway
+const hair = { prev: null, vel: new THREE.Vector3(), x: new THREE.Vector3(), v: new THREE.Vector3(), hp: new THREE.Vector3() };
+function updateHairSwing(dt) {
+  const u = body.userData.hairSwing;
+  if (!u || dt <= 0) return;
+  body.updateMatrixWorld(true);
+  rig.bones.head.getWorldPosition(hair.hp);
+  if (!hair.prev) { hair.prev = hair.hp.clone(); return; }
+  const vel = hair.hp.clone().sub(hair.prev).divideScalar(dt);
+  const acc = vel.clone().sub(hair.vel).divideScalar(dt);
+  hair.prev.copy(hair.hp); hair.vel.copy(vel);
+  const w = 2 * Math.PI * 1.6, zeta = 0.22;
+  acc.clampLength(0, 30);
+  const f = hair.x.clone().multiplyScalar(-w * w).addScaledVector(hair.v, -2 * zeta * w).addScaledVector(acc, -1);
+  hair.v.addScaledVector(f, dt);
+  hair.x.addScaledVector(hair.v, dt).clampLength(0, 0.035);
+  u.value.copy(hair.x);
+}
+
 function sampleArcs() {
   if (!view.arcs) return;
   applyPose(walker.pose, rig.bones);
@@ -564,6 +589,7 @@ function frame(now) {
     }
     applyPose(walker.pose, rig.bones);
     if (body.morphTargetInfluences) body.morphTargetInfluences[0] = walker.pose.blink || 0;
+    updateHairSwing(dt);
     prints.update(dt);
     graph.record(walker.pose.phase, walker.pose.diag.right);
   }
