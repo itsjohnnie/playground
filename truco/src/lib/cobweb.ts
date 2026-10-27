@@ -10,11 +10,13 @@
 //
 //  - every radius is jittered, so no ring is a true circle;
 //  - the capture threads bow back toward the corner (`SAG`);
-//  - past the first tier a segment is missing, because a web nobody
-//    maintains tears.
+//  - once it has been up a while a segment is missing, because a web
+//    nobody maintains tears.
 //
 // The jitter is seeded, not random: a web that reshuffled itself on
 // every score tap would read as noise rather than as neglect.
+
+import { SEQUIA_ROUNDS } from '@/utils/scoring'
 
 // Everything is spun from the top-right of a 100×100 viewBox.
 const ANCHOR_X = 100
@@ -30,15 +32,45 @@ const BASE_RINGS = [23, 39, 56, 75, 96]
 // taut arc; much below 0.8 starts to look like a spiral staircase.
 const SAG = 0.86
 
-// The drought grows the web rather than just fading it up. Every tier
-// is a *complete* web — enough rings to fill its radials — because a
-// couple of rings on long spokes reads as a paper fan, not a web. What
-// deepens is the size and the presence.
-const TIERS = [
-  { radials: 5, rings: 3, scale: 0.66, opacity: 0.2 },
-  { radials: 6, rings: 4, scale: 0.84, opacity: 0.28 },
-  { radials: 6, rings: 5, scale: 1.0, opacity: 0.36 },
-]
+// The drought grows the web rather than just fading it up, and it keeps
+// growing: there's no round at which a team is "as cold as it gets".
+// Growth is asymptotic rather than linear — the first few dry rounds
+// move it visibly, then it eases toward a ceiling, so a blowout leaves
+// a web that has clearly taken over the corner without ever swallowing
+// the panel.
+//
+// `TAU` is the drought length (in rounds past onset) at which growth
+// has run ~63% of its course.
+const TAU = 6
+
+// The web fills its own viewBox first, then the whole thing is scaled
+// up on screen. Splitting it this way matters: the geometry is spun
+// into a 100×100 box and SVG clips to that box, so growing the radii
+// past it would shear the outer rings off. Once the box is full, the
+// element grows instead.
+const FILL_MIN = 0.66     // radius scale at onset
+const FILL_MAX = 1.0      // radius scale once it fills the viewBox
+const SIZE_MIN = 1.0      // on-screen multiplier at onset
+const SIZE_MAX = 1.7      // …and at the far end of a long drought
+const OPACITY_MIN = 0.2
+const OPACITY_MAX = 0.5
+
+// Fraction of total growth spent filling the viewBox. Past this the
+// geometry is done and further drought only enlarges the element.
+const FILL_PHASE = 0.5
+
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+const clamp01 = (n: number) => Math.min(1, Math.max(0, n))
+
+/**
+ * Drought progress, 0..1. 0 the round the web first appears, easing
+ * toward 1 the longer the team stays cold. Never quite reaches 1, so
+ * the web is always still creeping.
+ */
+export function growthFor(rounds: number): number {
+  const t = Math.max(0, rounds - SEQUIA_ROUNDS)
+  return 1 - Math.exp(-t / TAU)
+}
 
 /** Deterministic 0..1 from an integer seed. */
 function rand(seed: number): number {
@@ -58,21 +90,35 @@ function pt(r: number, deg: number): [number, number] {
 
 const f = (n: number) => n.toFixed(2)
 
-export function tierFor(rounds: number): number {
-  if (rounds >= 7) return 2
-  if (rounds >= 5) return 1
-  return 0
-}
-
 export interface Web {
   radialPaths: string[]
   ringPaths: string[]
   strand: string | null
   opacity: number
+  /**
+   * On-screen multiplier for the whole web, anchored at the corner.
+   * Applied as a transform, so the threads keep their drawn width —
+   * they carry `vector-effect: non-scaling-stroke`, which is what
+   * keeps silk reading as silk however far the web spreads.
+   */
+  sizeScale: number
 }
 
-export function buildWeb(tier: number): Web {
-  const { radials, rings, scale, opacity } = TIERS[tier]
+export function buildWeb(rounds: number): Web {
+  const g = growthFor(rounds)
+
+  // Geometry finishes filling the viewBox over the first half of the
+  // curve; the element carries the growth from there.
+  const fill = clamp01(g / FILL_PHASE)
+  const scale = lerp(FILL_MIN, FILL_MAX, fill)
+  const sizeScale = lerp(SIZE_MIN, SIZE_MAX, g)
+  const opacity = lerp(OPACITY_MIN, OPACITY_MAX, g)
+
+  // Structure steps rather than tweens — a fractional ring is not a
+  // thing. A sixth radial comes in early, and the last two rings land
+  // as the web fills out.
+  const radials = g < 0.18 ? 5 : 6
+  const rings = Math.min(BASE_RINGS.length, 3 + Math.floor(fill / 0.4))
 
   const angles = BASE_ANGLES.slice(0, radials).map((a, i) => a + wobble(i + 1, 6))
   const radii = BASE_RINGS.slice(0, rings).map((r, j) => r * scale * (1 + wobble(j + 11, 0.08)))
@@ -89,9 +135,13 @@ export function buildWeb(tier: number): Web {
     return `M${ANCHOR_X} ${ANCHOR_Y} L${f(x)} ${f(y)}`
   })
 
-  // One torn segment on the outermost ring, from the second tier on.
+  // One torn segment on the outermost ring, once the web is old enough
+  // to have gone unmaintained. Seeded off the ring count rather than
+  // the drought itself, so the tear stays put as the web keeps growing
+  // instead of jumping to a new segment every round.
   const tornRing = radii.length - 1
-  const tornSeg = tier > 0 ? Math.floor(rand(tier + 41) * (angles.length - 1)) : -1
+  const torn = g >= 0.18
+  const tornSeg = torn ? Math.floor(rand(radii.length + 41) * (angles.length - 1)) : -1
 
   const ringPaths = radii.map((_, ring) => {
     let d = ''
@@ -106,9 +156,10 @@ export function buildWeb(tier: number): Web {
     return d.trim()
   })
 
-  // A single strand hanging loose off the torn edge, top tier only.
+  // A single strand hanging loose off the torn edge, once the drought
+  // is properly long.
   let strand: string | null = null
-  if (tier === 2 && tornSeg >= 0) {
+  if (g >= 0.45 && tornSeg >= 0) {
     const [sx, sy] = pt(at(tornRing, tornSeg), angles[tornSeg])
     strand =
       `M${f(sx)} ${f(sy)} ` +
@@ -116,5 +167,5 @@ export function buildWeb(tier: number): Web {
       `q${f(1.5)} ${f(7)} ${f(-2.5)} ${f(12)}`
   }
 
-  return { radialPaths, ringPaths, strand, opacity }
+  return { radialPaths, ringPaths, strand, opacity, sizeScale }
 }
