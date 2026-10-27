@@ -461,7 +461,7 @@ function buildGlasses(headBone, def, R, at, eg, eR, eyeCenters) {
 
 // ------------------------------------------------------------------ hands
 const GRIPS = {
-  fist:  { f: [[1.45, 1.7], [1.5, 1.7], [1.55, 1.7], [1.6, 1.7]], t: [0.9, 0.9] },
+  fist:  { f: [[1.55, 1.75], [1.6, 1.75], [1.6, 1.75], [1.65, 1.75]], t: [0.9, 0.9] },
   open:  { f: [[0.15, 0.15], [0.12, 0.12], [0.15, 0.15], [0.2, 0.2]], t: [0.1, 0.2] },
   relax: { f: [[0.45, 0.5], [0.55, 0.6], [0.6, 0.65], [0.7, 0.7]], t: [0.4, 0.3] },
   point: { f: [[0.0, 0.05], [1.5, 1.7], [1.55, 1.7], [1.6, 1.7]], t: [0.9, 0.9] },
@@ -476,12 +476,12 @@ export function setGrip(hand, grip) {
   hand.fingers.forEach(([a, b, c], i) => {
     a.rotation.set(0, 0, -hand.sx * g.f[i][0]);
     b.rotation.set(0, 0, -hand.sx * g.f[i][1]);
-    c.rotation.set(0, 0, -hand.sx * g.f[i][1] * 0.75);
+    c.rotation.set(0, 0, -hand.sx * g.f[i][1] * (hand.mh ? 0.29 : 0.75));
   });
   // MakeHuman thumbs rest along the index finger; fold them over the palm.
-  if (hand.mh) hand.thumb[0].rotation.set(g.t[0] * 0.95, 0, -hand.sx * g.t[0] * 0.25);
+  if (hand.mh) hand.thumb[0].rotation.set(g.t[0], -g.t[0] * 0.33 * hand.sx, -hand.sx * g.t[0] * 0.67);
   else hand.thumb[0].rotation.set(-0.5 - g.t[0] * 0.3, 0, -hand.sx * g.t[0]);
-  hand.thumb[1].rotation.set(0, 0, -hand.sx * g.t[1]);
+  hand.thumb[1].rotation.set(0, 0, -hand.sx * g.t[1] * (hand.mh ? 0.45 : 1));
   hand.thumb[2].rotation.set(0, 0, -hand.sx * g.t[1] * 0.6);
 }
 
@@ -700,7 +700,9 @@ export function buildFighterModel(def) {
     // Bind in the pose it was modelled in, then rest with limbs hanging.
     for (const n of rig.bones) J[n].quaternion.fromArray(rig.bind[n]);
     g.updateMatrixWorld(true);
-    const m = clayMat('#ffffff', { vertexColors: true, physical: true, roughness: def.top.type === 'leather' ? 0.42 : 0.6, smooth: true, rim: 0.2 });
+    const tex = asset.mh.texture;
+    const m = tex ? new THREE.MeshStandardMaterial({ map: tex, roughness: 0.62, metalness: 0 })
+      : clayMat('#ffffff', { vertexColors: true, physical: true, roughness: def.top.type === 'leather' ? 0.42 : 0.6, smooth: true, rim: 0.2 });
     J.torsoMesh = skin(geo, m);
     for (const n of rig.bones) J[n].quaternion.identity();
     g.updateMatrixWorld(true);
@@ -728,42 +730,46 @@ export function buildFighterModel(def) {
   // Wardrobe details on the chest bone.
   const top = def.top;
   const chestZ = rig ? rig.chest.front : b.depth * 1.02;
-  const nY = rig ? rig.chest.neck : NECK_Y;
-  const C2 = J.chest;
-  if (top.type === 'hoodie') {
-    for (const sx of [1, -1]) C2.add(capsule(0.006, 0.12, '#f2f2f2', { pos: [sx * 0.035, nY - 0.04, chestZ * 0.9], rot: [0.1, 0, 0] }));
-    C2.add(box(0.2, 0.09, 0.03, darken(top.color, 0.85), { pos: [0, -0.12, chestZ * 0.92] }));
-  }
-  if (top.type === 'quarterzip') C2.add(box(0.02, 0.035, 0.012, '#c8c8d0', { pos: [0, nY - 0.06, chestZ * 0.95], metalness: 0.7, roughness: 0.3 }));
-  if (top.type === 'sweater' && !rig) {
-    for (const sx of [1, -1]) C2.add(cone(0.035, 0.08, top.inner, { pos: [sx * 0.045, nY - 0.03, chestZ * 0.6], rot: [-0.6, 0, sx * 2.4], scale: [1, 1, 0.35] }));
-  }
-  if (top.type === 'leather') C2.add(box(0.012, 0.3, 0.01, '#c8c8d0', { pos: [0.05, -0.04, chestZ * 0.98], metalness: 0.8, roughness: 0.3 }));
-  if (top.type === 'vest') for (let i = 0; i < 3; i++) J.spine.add(sphere(0.008, '#2a2a2a', { pos: [0.03, 0.06 + i * 0.07, b.depth * 0.95] }));
-  if (top.logo === 'triangle') {
-    const tri = new THREE.Shape(); tri.moveTo(-0.045, -0.035); tri.lineTo(0.045, -0.035); tri.lineTo(0, 0.04); tri.closePath();
-    const m = mesh(new THREE.ExtrudeGeometry(tri, { depth: 0.006, bevelEnabled: false }), '#f4f4f4', { smooth: true, rim: 0, boil: 0.3 });
-    m.position.set(0, -0.0, chestZ * 1.02);
-    C2.add(m);
-  }
-  if (top.logo === 'spark') {
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      C2.add(capsule(0.008, 0.035, '#f4ede4', { centered: true, pos: [Math.sin(a) * 0.022, Math.cos(a) * 0.022, chestZ * 1.03], rot: [0, 0, -a], boil: 0.3 }));
+  // AI models have their clothes, logos and glasses painted in.
+  const wardrobe = !rig?.ai;
+  if (wardrobe) {
+    const nY = rig ? rig.chest.neck : NECK_Y;
+    const C2 = J.chest;
+    if (top.type === 'hoodie') {
+      for (const sx of [1, -1]) C2.add(capsule(0.006, 0.12, '#f2f2f2', { pos: [sx * 0.035, nY - 0.04, chestZ * 0.9], rot: [0.1, 0, 0] }));
+      C2.add(box(0.2, 0.09, 0.03, darken(top.color, 0.85), { pos: [0, -0.12, chestZ * 0.92] }));
     }
-  }
-  if (def.acc.includes('chain')) C2.add(torus(0.1, 0.012, '#e8b830', { pos: [0, nY - 0.06, 0.05], rot: [1.15, 0, 0], scale: [1.1, 1.5, 1], metalness: 0.85, roughness: 0.25 }));
-  if (def.acc.includes('tie')) {
-    C2.add(box(0.045, 0.22, 0.015, def.tie || '#c23838', { pos: [0, 0.02, chestZ * 1.0], round: 0.5 }));
-    C2.add(box(0.05, 0.035, 0.02, def.tie || '#c23838', { pos: [0, nY - 0.075, chestZ * 0.9] }));
-  }
-  if (def.acc.includes('bowtie')) {
-    for (const sx of [1, -1]) C2.add(cone(0.035, 0.07, '#111114', { pos: [sx * 0.032, nY - 0.06, chestZ * 0.88], rot: [0, 0, sx * Math.PI / 2] }));
-    C2.add(sphere(0.018, '#111114', { pos: [0, nY - 0.06, chestZ * 0.92] }));
-  }
-  if (def.acc.includes('core')) {
-    C2.add(sphere(0.07, '#3af0ff', { pos: [0, 0.05, chestZ * 0.98], scale: [1, 1, 0.4], emissive: '#3af0ff', emissiveIntensity: 3 }));
-    for (let i = 0; i < 5; i++) C2.add(box(0.3, 0.008, 0.01, '#6a6e78', { pos: [0, -0.15 + i * 0.035 - (i > 2 ? 0.15 : 0), chestZ * 0.97] }));
+    if (top.type === 'quarterzip') C2.add(box(0.02, 0.035, 0.012, '#c8c8d0', { pos: [0, nY - 0.06, chestZ * 0.95], metalness: 0.7, roughness: 0.3 }));
+    if (top.type === 'sweater' && !rig) {
+      for (const sx of [1, -1]) C2.add(cone(0.035, 0.08, top.inner, { pos: [sx * 0.045, nY - 0.03, chestZ * 0.6], rot: [-0.6, 0, sx * 2.4], scale: [1, 1, 0.35] }));
+    }
+    if (top.type === 'leather') C2.add(box(0.012, 0.3, 0.01, '#c8c8d0', { pos: [0.05, -0.04, chestZ * 0.98], metalness: 0.8, roughness: 0.3 }));
+    if (top.type === 'vest') for (let i = 0; i < 3; i++) J.spine.add(sphere(0.008, '#2a2a2a', { pos: [0.03, 0.06 + i * 0.07, b.depth * 0.95] }));
+    if (top.logo === 'triangle') {
+      const tri = new THREE.Shape(); tri.moveTo(-0.045, -0.035); tri.lineTo(0.045, -0.035); tri.lineTo(0, 0.04); tri.closePath();
+      const m = mesh(new THREE.ExtrudeGeometry(tri, { depth: 0.006, bevelEnabled: false }), '#f4f4f4', { smooth: true, rim: 0, boil: 0.3 });
+      m.position.set(0, -0.0, chestZ * 1.02);
+      C2.add(m);
+    }
+    if (top.logo === 'spark') {
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        C2.add(capsule(0.008, 0.035, '#f4ede4', { centered: true, pos: [Math.sin(a) * 0.022, Math.cos(a) * 0.022, chestZ * 1.03], rot: [0, 0, -a], boil: 0.3 }));
+      }
+    }
+    if (def.acc.includes('chain')) C2.add(torus(0.1, 0.012, '#e8b830', { pos: [0, nY - 0.06, 0.05], rot: [1.15, 0, 0], scale: [1.1, 1.5, 1], metalness: 0.85, roughness: 0.25 }));
+    if (def.acc.includes('tie')) {
+      C2.add(box(0.045, 0.22, 0.015, def.tie || '#c23838', { pos: [0, 0.02, chestZ * 1.0], round: 0.5 }));
+      C2.add(box(0.05, 0.035, 0.02, def.tie || '#c23838', { pos: [0, nY - 0.075, chestZ * 0.9] }));
+    }
+    if (def.acc.includes('bowtie')) {
+      for (const sx of [1, -1]) C2.add(cone(0.035, 0.07, '#111114', { pos: [sx * 0.032, nY - 0.06, chestZ * 0.88], rot: [0, 0, sx * Math.PI / 2] }));
+      C2.add(sphere(0.018, '#111114', { pos: [0, nY - 0.06, chestZ * 0.92] }));
+    }
+    if (def.acc.includes('core')) {
+      C2.add(sphere(0.07, '#3af0ff', { pos: [0, 0.05, chestZ * 0.98], scale: [1, 1, 0.4], emissive: '#3af0ff', emissiveIntensity: 3 }));
+      for (let i = 0; i < 5; i++) C2.add(box(0.3, 0.008, 0.01, '#6a6e78', { pos: [0, -0.15 + i * 0.035 - (i > 2 ? 0.15 : 0), chestZ * 0.97] }));
+    }
   }
 
   const build = { ...b, scale: b.scale * (rig ? 1 : def.height ?? 1) };
@@ -834,11 +840,11 @@ function mhFace(headBone, def, rig, mesh) {
   // Catchlights: what makes clay eyes look alive.
   const glints = new THREE.Group();
   headBone.add(glints);
-  for (const e of eyes) {
+  if (!rig.ai) for (const e of eyes) {
     glints.add(sphere(eR * 0.2, '#ffffff', { pos: [e.x + eR * 0.3, e.y + eR * 0.32, e.z + eR * 0.9], lump: 0, roughness: 0.05, boil: 0, rim: 0, smooth: true, emissive: '#ffffff', emissiveIntensity: 1.3 }));
     glints.add(sphere(eR * 0.09, '#ffffff', { pos: [e.x - eR * 0.25, e.y - eR * 0.2, e.z + eR * 0.95], lump: 0, roughness: 0.05, boil: 0, rim: 0, smooth: true, emissive: '#ffffff', emissiveIntensity: 1 }));
   }
-  if (def.glasses) buildGlasses(headBone, def, r[0], at, 0, eR, eyes.map((e) => e.clone().add(new THREE.Vector3(0, 0, eR * 1.5))));
+  if (def.glasses && !rig.ai) buildGlasses(headBone, def, r[0], at, 0, eR, eyes.map((e) => e.clone().add(new THREE.Vector3(0, 0, eR * 1.5))));
   if (def.hair?.style === 'antenna') {
     const p = at(0, 1, 0, 0);
     headBone.add(cyl(r[0] * 0.03, r[0] * 0.03, r[0] * 0.5, '#6a6e78', { pos: [p.x, p.y + r[0] * 0.25, p.z] }));
@@ -854,7 +860,7 @@ function setMHExpression(face, expr) {
   if (bias.lid < 0) w.wide = Math.min(1, (w.wide || 0) - bias.lid);
   if (bias.open) w.jaw = Math.max(w.jaw || 0, bias.open);
   const inf = face.mesh.morphTargetInfluences;
-  for (const k in face.idx) inf[face.idx[k]] = w[k] || 0;
+  if (inf) for (const k in face.idx) inf[face.idx[k]] = w[k] || 0;
   face.glints.visible = (w.blink || 0) < 0.6;
 }
 

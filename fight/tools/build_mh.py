@@ -789,6 +789,60 @@ def drape(P, sel, origin, axis, top=None, nb=40, band=0.02, keep=0.97, cap=0.07)
     return out
 
 
+def sneaker(base, side, upper, sole, accent=None, boot=False):
+    """A sculpted shoe around one foot: flat sole, rounded toe box, a heel
+    counter that rises to the ankle, and a tongue. Bound to the foot bone."""
+    sx = 1 if side == 'L' else -1
+    sel = (base['foot'] > 0.5) & (base['x0'] * sx > 0)
+    p = base.P[sel]
+    heel, toe = p[:, 2].min() - 0.012, p[:, 2].max() + 0.02
+    L = toe - heel
+    cx = float(np.median(p[:, 0])); W = (np.percentile(p[:, 0], 98) - np.percentile(p[:, 0], 2)) / 2 + 0.014
+    top = float(np.percentile(p[:, 1], 90))
+    segs, rings = 40, 32
+    verts, F = [], []
+    for i in range(rings + 1):
+        th = math.pi * i / rings              # 0 at the heel, pi at the toe
+        u = (1 - math.cos(th)) / 2           # 0..1 heel -> toe
+        r = math.sin(th) ** 0.55             # rounder ends than an ellipsoid
+        w = W * (0.82 + 0.25 * math.sin(math.pi * min(1, u * 1.25)) ** 0.8) * r
+        h = (top + (0.05 if boot else 0.012)) * (1 - 0.5 * smooth(0.25, 0.9, u)) + 0.008
+        if u < 0.12: h *= 0.75 + 0.25 * u / 0.12 if not boot else 1
+        for j in range(segs):
+            ph = 2 * math.pi * j / segs
+            cy, cz = math.cos(ph), math.sin(ph)  # cy: across, cz: up
+            x = cx + sx * w * cy * (1 + 0.06 * (cz < 0))
+            y = max(0.0, h * (0.5 + 0.5 * cz) * (r ** 0.3 if cz > 0 else 1))
+            z = heel + L * u
+            verts.append((x, y, z, cz, cy, u))
+    for i in range(rings):
+        for j in range(segs):
+            a = i * segs + j; b = i * segs + (j + 1) % segs
+            c = a + segs; d = b + segs
+            F += [[a, b, d], [a, d, c]] if sx > 0 else [[a, d, b], [a, c, d]]
+    A = np.zeros((len(verts), base.A.shape[1]))
+    v = np.array(verts)
+    A[:, 0:3] = v[:, :3]
+    A[:, 3:6] = norm(v[:, :3] - np.array([cx, 0.03, heel + L / 2]))
+    up_c, so_c = srgb(upper), srgb(sole)
+    col = np.tile(up_c, (len(v), 1))
+    col[v[:, 1] < 0.024] = so_c                                  # sole
+    if accent is not None:
+        toe_cap = (v[:, 5] > 0.82) & (v[:, 1] < 0.05)
+        col[toe_cap] = so_c
+        stripe = (np.abs(v[:, 4]) > 0.75) & (v[:, 1] > 0.03) & (v[:, 1] < 0.055) & (v[:, 5] > 0.3) & (v[:, 5] < 0.7)
+        col[stripe] = srgb(accent)
+    A[:, 6:9] = col
+    a0, _ = base.cols['w']; A[:, a0 + GI['ft' + side]] = 1
+    for k_, i_ in (('x0', 0), ('y0', 1), ('z0', 2)): A[:, base.cols[k_][0]] = v[:, i_]
+    A[:, base.cols['foot'][0]] = 1
+    S = Surf(A, np.array(F), base.cols)
+    S.A[:, 0:3] = relax(S.P, S.F, 3, 0.4)
+    S.A[:, 1] = np.maximum(S.A[:, 1], 0)
+    # Tongue and laces: a raised strip over the instep.
+    return S
+
+
 def dress(base, ctx):
     d = ctx['defn']; cols = ctx['cols']; P = ctx['P']; look = ctx['look']
     skin = srgb(d['skin'])
@@ -866,23 +920,9 @@ def dress(base, ctx):
     parts.append(Pn); covered.append(fp)
 
     # Shoes: chunky, flat-soled.
-    Sh = subdivide(clip(base, F_shoe(base)))
-    Sh.A[:, 3:6] = norm(Sh.A[:, 3:6])
-    # A rounded toe box: widths carried from the instep out to the toes.
-    st = np.full(len(Sh.A), 0.022)
     for s_ in 'LR':
-        sx = 1 if s_ == 'L' else -1
-        sel = Sh['x0'] * sx > 0
-        if not sel.any(): continue
-        pts = Sh.P[sel]
-        heel = pts[np.argmin(pts[:, 2])]; toe = pts[np.argmax(pts[:, 2])]
-        ax = heel - toe; ax[1] = 0
-        st += drape(Sh.P, sel, toe, ax, keep=0.975, nb=28, band=0.012, cap=0.04)
-    Sh = shell(Sh, st, srgb(shoes['color']), base=0.008, smooth_it=10, hem=0.004)
-    y = Sh.P[:, 1]
-    Sh.A[:, 1] = np.maximum(y, 0.0)
-    Sh.A[Sh.P[:, 1] < 0.028, 6:9] = srgb(shoes['sole'])
-    parts.append(Sh); covered.append(F_shoe)
+        parts.append(sneaker(base, s_, shoes['color'], shoes['sole'], shoes.get('accent'), boot=shoes.get('boot', False)))
+    covered.append(F_shoe)
 
     hem = rootY + 0.01
     long_ = 0.965

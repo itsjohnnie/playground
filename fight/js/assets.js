@@ -1,6 +1,7 @@
 // Character meshes built from the MakeHuman base mesh (tools/build_mh.py).
 // Loaded once, then shared by every puppet of that character.
 import * as THREE from 'three';
+import { loadAI, useAI } from './ai_models.js';
 
 const cache = new Map();   // id -> { mh: { geometry, rig } } once loaded
 const pending = new Map(); // id -> Promise
@@ -43,7 +44,8 @@ async function loadMHC(id) {
 export function loadCharacter(id) {
   if (cache.has(id)) return Promise.resolve(cache.get(id));
   if (pending.has(id)) return pending.get(id);
-  const p = loadMHC(id).catch(() => null).then((mh) => { cache.set(id, mh); return mh; });
+  const ai = useAI(id) ? loadAI(id).catch((e) => { console.warn('AI model failed, using the sculpted one', e); return null; }) : Promise.resolve(null);
+  const p = ai.then((a) => a || loadMHC(id).catch(() => null)).then((mh) => { cache.set(id, mh); return mh; });
   pending.set(id, p);
   return p;
 }
