@@ -61,20 +61,43 @@ void main() {
   float ar = u_resolution.x / u_resolution.y;
   c.x *= ar;
 
-  // Subtle noise displacement on the radial coordinate so the falloff
-  // boundary is irregular instead of a clean ellipse. Two independent
-  // FBM samples slowly drifting in opposite directions over time.
+  // Per-axis normalisation: q runs -1..1 on both axes whatever the
+  // panel's shape, so the border sits at |q| = 1 all the way round.
+  vec2 q = vec2(c.x / ar, c.y);
+
+  // Subtle noise displacement so the falloff boundary is irregular
+  // rather than a clean curve. Two independent FBM samples drifting
+  // slowly in opposite directions. Sampled in aspect-corrected space
+  // so the grain stays the same physical size at any shape, then
+  // applied in q space where the falloff is measured.
   vec2 d = vec2(
     fbm(c * 1.4 + vec2(0.0,  u_time * 0.35)),
     fbm(c * 1.4 + vec2(7.3, -u_time * 0.30))
   );
-  vec2 cd = c + (d - 0.5) * 0.42;
+  vec2 qd = q + (d - 0.5) * 0.30;
 
-  float r = length(cd);
+  // Superellipse distance. The exponent is what decides the rim's
+  // shape: 2.0 is an ellipse, 4.0 a rounded rectangle, and higher
+  // tends to a hard frame.
+  //
+  // An ellipse is the wrong curve here, and it's why a wide panel
+  // looked unlit. Its rim bunches at the corners and pulls far inside
+  // the middle of a long edge, so a landscape panel lit its corners
+  // (0.65) while the long edges sat at 0.03 — nearly nothing, across
+  // most of the border you actually see. A rounded rectangle tracks
+  // the panel's own border instead, so every edge is lit and the rim
+  // reads the same whichever way the phone is held.
+  float r = pow(pow(abs(qd.x), 4.0) + pow(abs(qd.y), 4.0), 0.25);
 
-  // Edge-leaning falloff — the rim picks up most of the glow, with a
-  // gentle bleed inward so the panel feels lit rather than ringed.
-  float edge = smoothstep(0.55, 1.3, r);
+  // Narrow, edge-hugging falloff. The band is tight on purpose: the
+  // glow has to be legible on a wide panel without becoming the wash
+  // that the elliptical version produced in landscape.
+  // The upper bound sits past the border (which is r = 1) rather than
+  // on it, so the edge midpoints land partway up the curve instead of
+  // pinned at the ceiling. The corners of a rounded rectangle reach
+  // r = 1.19, so they stay the brightest point without the rest of the
+  // border having to saturate to get there.
+  float edge = smoothstep(0.72, 1.35, r);
 
   // Modulate by another noise octave so the rim itself shimmers
   // softly rather than reading as a uniform band.
@@ -83,7 +106,7 @@ void main() {
 
   // Faint inner wash so the centre isn't a hole — the panel glows as
   // a whole, just brighter at the edges.
-  float wash = (1.0 - smoothstep(0.0, 0.95, r)) * 0.08;
+  float wash = (1.0 - smoothstep(0.0, 1.0, r)) * 0.08;
 
   float a = clamp((edge + wash) * u_intensity, 0.0, 0.65);
   gl_FragColor = vec4(u_color, a);
