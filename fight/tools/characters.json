@@ -4,7 +4,7 @@
   "name": "Dario Amodei",
   "short": "DARIO",
   "title": "The Safety Scaler",
-  "skin": "#e9bf9c",
+  "skin": "#e8b892",
   "build": "slim",
   "head": {
    "W": 0.9,
@@ -50,20 +50,20 @@
   },
   "facial": {},
   "glasses": {
-   "type": "round",
-   "color": "#2a2622"
+   "type": "rect",
+   "color": "#1e2a3a"
   },
   "top": {
-   "type": "blazer",
-   "color": "#3a4250",
-   "inner": "#e8e4dc"
+   "type": "buttonup",
+   "color": "#7896d4"
   },
   "bottom": {
-   "color": "#2c3140"
+   "color": "#48484c"
   },
   "shoes": {
-   "color": "#3a2a20",
-   "sole": "#1c1410"
+   "color": "#5c3b24",
+   "sole": "#2a1c14",
+   "boot": true
   },
   "acc": [],
   "stats": {
@@ -97,7 +97,7 @@
   "name": "Sam Altman",
   "short": "SAM",
   "title": "The Hype Scaler",
-  "skin": "#f0cdb0",
+  "skin": "#efc3a2",
   "build": "slim",
   "head": {
    "W": 0.88,
@@ -137,19 +137,17 @@
    "arch": 0.35
   },
   "hair": {
-   "style": "short",
-   "color": "#5a4030",
-   "color2": "#6e5040",
-   "fringe": 0.85
+   "style": "curly",
+   "color": "#2e2018",
+   "color2": "#4a3324"
   },
   "facial": {},
   "top": {
-   "type": "sweater",
-   "color": "#8a9478",
-   "inner": "#f0ede6"
+   "type": "henley",
+   "color": "#3e5d8c"
   },
   "bottom": {
-   "color": "#3b4f7a"
+   "color": "#1f2b46"
   },
   "shoes": {
    "color": "#ece8e0",
@@ -743,7 +741,7 @@
   "name": "Jensen Huang",
   "short": "JENSEN",
   "title": "The Leather Jacket",
-  "skin": "#e6c4a0",
+  "skin": "#e4b48c",
   "build": "average",
   "head": {
    "W": 1.06,
@@ -797,8 +795,13 @@
    "color": "#141416"
   },
   "shoes": {
-   "color": "#121212",
-   "sole": "#202020"
+   "color": "#141414",
+   "sole": "#0c0c0c",
+   "boot": true
+  },
+  "glasses": {
+   "type": "rimless",
+   "color": "#6a6a70"
   },
   "acc": [],
   "stats": {

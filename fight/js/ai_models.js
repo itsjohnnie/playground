@@ -8,8 +8,8 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const CDN = 'https://d8j0ntlcm91z4.cloudfront.net/user_3HC3FxFiUcm9iyfEXhR7cCc1scA/';
 export const AI_MODELS = {
-  sam: CDN + 'hf_20261027_030746_4d30c058-8a29-4e16-aa7e-4b91df86fa08.glb',
-  jensen: CDN + 'hf_20261027_030748_c3203064-7e07-4a3c-b241-7c40af868ce6.glb',
+  sam: CDN + 'hf_20261027_033639_9c4c310f-a6b5-4b59-89f1-97bad9f3b5e3.glb',
+  jensen: CDN + 'hf_20261027_033640_7afbec03-2737-45ef-bbfa-68ef70ecc643.glb',
 };
 
 export function useAI(id) {

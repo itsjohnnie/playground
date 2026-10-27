@@ -634,7 +634,7 @@ def build(defn):
     K = 1 + (look['headK'] - 1) * k
     for s in 'LR':
         wr = jp(f'wrist.{s}____head')
-        kh = 1 + 0.22 * smooth(0.3, 0.9, wHand[s])
+        kh = 1 + 0.38 * smooth(0.3, 0.9, wHand[s])
         V = np.where((kh > 1)[:, None], wr + (V - wr) * kh[:, None], V); K *= kh
         an = jp(f'foot.{s}____head'); an = np.array([an[0], V[:, 1].min(), an[2]])
         kf = 1 + 0.18 * smooth(0.3, 0.9, wFoot[s])
@@ -795,9 +795,9 @@ def sneaker(base, side, upper, sole, accent=None, boot=False):
     sx = 1 if side == 'L' else -1
     sel = (base['foot'] > 0.5) & (base['x0'] * sx > 0)
     p = base.P[sel]
-    heel, toe = p[:, 2].min() - 0.012, p[:, 2].max() + 0.02
+    heel, toe = p[:, 2].min() - 0.02, p[:, 2].max() + 0.035
     L = toe - heel
-    cx = float(np.median(p[:, 0])); W = (np.percentile(p[:, 0], 98) - np.percentile(p[:, 0], 2)) / 2 + 0.014
+    cx = float(np.median(p[:, 0])); W = (np.percentile(p[:, 0], 98) - np.percentile(p[:, 0], 2)) / 2 + 0.024
     top = float(np.percentile(p[:, 1], 90))
     segs, rings = 40, 32
     verts, F = [], []
@@ -894,7 +894,7 @@ def dress(base, ctx):
             sx = 1 if s_ == 'L' else -1
             arm = (S['arm'] > 0.5) & (S['x0'] * sx > 0)
             ax = P['sh' + s_] - P['hand' + s_]
-            t = t + 0.85 * drape(S.P, arm, P['hand' + s_], ax, keep=0.992, nb=24, band=0.015, cap=0.025)
+            t = t + 0.6 * drape(S.P, arm, P['hand' + s_], ax, keep=0.975, nb=24, band=0.015, cap=0.012)
         return shell(S, t, color, base=base_off, smooth_it=14, hem=0.004 * cuff / 0.6)
 
     top = d['top']; tt = top['type']
@@ -930,6 +930,14 @@ def dress(base, ctx):
         if tt in ('tee', 'vneck'):
             f1 = lambda S: F_top(S, 0.4, hem, vdepth=0.06 if tt == 'vneck' else 0.0)
             col1 = shirt
+        elif tt == 'henley':
+            # Sleeves pushed up past the wrist, a buttoned placket.
+            f1 = lambda S: F_top(S, 0.84, hem - 0.01, vdepth=0.025)
+            col1 = shirt
+        elif tt == 'buttonup':
+            # Rolled sleeves, open collar, untucked.
+            f1 = lambda S: F_top(S, 0.7, hem - 0.04, vdepth=0.075, high=0.02)
+            col1 = shirt
         elif tt == 'sweater':
             f1 = lambda S: F_top(S, long_, hem - 0.01)
             col1 = shirt
@@ -947,6 +955,15 @@ def dress(base, ctx):
         if tt == 'quarterzip':
             z = (np.abs(T1['x0']) < 0.007) & (T1['z0'] > neckZ) & (T1['y0'] > chestY - 0.1)
             T1.A[z, 6:9] = np.array([0.62, 0.62, 0.66])
+        if tt in ('henley', 'buttonup'):
+            pl = (np.abs(T1['x0']) < (0.011 if tt == 'henley' else 0.007)) & (T1['z0'] > neckZ) & (T1['y0'] > (neckY - 0.13 if tt == 'henley' else hem))
+            T1.A[pl, 6:9] = shirt * 0.82
+        if tt == 'buttonup':
+            # Collar: a band of cloth standing around the neck, open at the front.
+            collar = lambda S: np.where(S['arm'] > 0.5, -1.0, np.minimum(np.minimum(S['y0'] - (neckY - 0.03), neckY + 0.045 - S['y0']), np.where(S['z0'] > neckZ, np.abs(S['x0']) - 0.035, 1.0)))
+            Cl = clip(base, collar(base))
+            if len(Cl.A):
+                parts.append(shell(Cl, 0.006, shirt * 0.95, base=0.026, smooth_it=4, hem=0.003))
         if tt == 'sweater':
             rib = (T1['y0'] > neckY - 0.03) & (T1['arm'] < 0.5)
             T1.A[rib, 6:9] = shirt * 0.85

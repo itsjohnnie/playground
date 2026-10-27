@@ -175,7 +175,8 @@ export class Crew {
     let p;
     const s = this.refState;
     if (s === 'walk') {
-      const ph = this.walkPhase % 4, i = Math.floor(ph);
+      if (!Number.isFinite(this.walkPhase)) this.walkPhase = 0;
+      const ph = ((this.walkPhase % 4) + 4) % 4, i = Math.floor(ph) % 4;
       const names = ['walk1', 'walk2', 'walk3', 'walk4'];
       p = blend(POSES[names[i]], POSES[names[(i + 1) % 4]], ph - i);
       p = { ...p, shL: POSES.stand.shL, shR: POSES.stand.shR, elL: POSES.stand.elL, elR: POSES.stand.elR, spine: [4, 0, 0] };
