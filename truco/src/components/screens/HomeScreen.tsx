@@ -2,14 +2,15 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { SuitMark } from '@/components/ui/SuitMark'
 import { Screen } from '@/components/ui/Screen'
-import type { Match } from '@/types/game'
+import type { Match, Player } from '@/types/game'
 
 interface HomeScreenProps {
-  /** The match currently being played, if any. Null once it's won. */
-  activeMatch: Match | null
+  /** Every match in play right now, oldest first. */
+  liveMatches: Match[]
+  playerById: (id: string) => Player | undefined
   rosterSize: number
   matchCount: number
-  onContinue: () => void
+  onContinue: (matchId: string) => void
   onNewMatch: () => void
   onMesa: () => void
   onHistorial: () => void
@@ -18,7 +19,8 @@ interface HomeScreenProps {
 const stagger = (i: number) => ({ delay: i * 0.04 })
 
 export function HomeScreen({
-  activeMatch,
+  liveMatches,
+  playerById,
   rosterSize,
   matchCount,
   onContinue,
@@ -27,7 +29,7 @@ export function HomeScreen({
   onHistorial,
 }: HomeScreenProps) {
   const reduced = useReducedMotion()
-  const hasActiveMatch = activeMatch !== null
+  const hasActiveMatch = liveMatches.length > 0
   return (
     <Screen className="px-5 pb-6">
       <div className="flex-1 flex flex-col justify-center gap-10">
@@ -50,48 +52,26 @@ export function HomeScreen({
 
         {/* Primary CTAs */}
         <div className="flex flex-col gap-3">
-          {activeMatch && (
-            <motion.button
-              type="button"
-              onClick={onContinue}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...stagger(0), duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
-              aria-label={`Partida en juego, ${activeMatch.teamA.name} ${activeMatch.scoreA} a ${activeMatch.teamB.name} ${activeMatch.scoreB}. Tocá para volver.`}
-              className="pressable w-full rounded-md border border-accent/50 bg-accent/10 px-4 py-3 text-left hover-elevate"
-            >
-              <span className="flex items-center gap-2">
-                {/* Breathing dot — the match is live right now, and a
-                    static label reads like a leftover from last week. */}
-                <motion.span
-                  aria-hidden
-                  className="size-1.5 rounded-full bg-accent shrink-0"
-                  animate={reduced ? {} : { opacity: [1, 0.35, 1] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                />
-                <span className="eyebrow text-accent">Partida en juego</span>
-              </span>
-              <span className="mt-2 flex items-baseline justify-between gap-3">
-                <span className="font-display text-ink truncate">{activeMatch.teamA.name}</span>
-                {/* text-sm to match the counts on the Mesa / Historial
-                    tiles below, which pair a 16px label with a 14px
-                    number. The card reads as the same kind of row, so
-                    it keeps the same relationship: names at body size,
-                    the score one step down. */}
-                <span className="tabular text-sm font-medium text-ink shrink-0">
-                  {activeMatch.scoreA}
-                  <span className="text-ink-soft mx-1.5">—</span>
-                  {activeMatch.scoreB}
-                </span>
-                <span className="font-display text-ink truncate text-right">{activeMatch.teamB.name}</span>
-              </span>
-            </motion.button>
-          )}
+          {liveMatches.map((m, i) => (
+            <LiveMatchCard
+              key={m.id}
+              match={m}
+              playerById={playerById}
+              /* Eight people split into two tables both default to
+                 "Nosotros" and "Ellos", so with more than one card up
+                 the team names alone can't tell you which table is
+                 which. The line-up can. */
+              showLineups={liveMatches.length > 1}
+              reduced={!!reduced}
+              index={i}
+              onClick={() => onContinue(m.id)}
+            />
+          ))}
 
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ ...stagger(1), duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
+            transition={{ ...stagger(liveMatches.length), duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
           >
             <Button
               variant={hasActiveMatch ? 'outline' : 'primary'}
@@ -106,7 +86,7 @@ export function HomeScreen({
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ ...stagger(2), duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
+            transition={{ ...stagger(liveMatches.length + 1), duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
             className="grid grid-cols-2 gap-3"
           >
             <Button variant="ghost" size="lg" className="w-full justify-between" onClick={onMesa}>
@@ -130,5 +110,72 @@ export function HomeScreen({
         Instalá la app para llevar tu propio marcador en cada mesa.
       </motion.p>
     </Screen>
+  )
+}
+
+function LiveMatchCard({
+  match, playerById, showLineups, reduced, index, onClick,
+}: {
+  match: Match
+  playerById: (id: string) => Player | undefined
+  showLineups: boolean
+  reduced: boolean
+  index: number
+  onClick: () => void
+}) {
+  const names = (ids: string[]) =>
+    ids.map((id) => playerById(id)?.name).filter(Boolean).join(', ')
+  const lineA = names(match.teamA.playerIds)
+  const lineB = names(match.teamB.playerIds)
+
+  return (
+    <motion.button
+      type="button"
+      onClick={onClick}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...stagger(index), duration: 0.24, ease: [0.23, 1, 0.32, 1] }}
+      aria-label={
+        `Partida en juego, ${match.teamA.name} ${match.scoreA} a ` +
+        `${match.teamB.name} ${match.scoreB}` +
+        (showLineups && (lineA || lineB) ? `. ${lineA} contra ${lineB}` : '') +
+        '. Tocá para volver.'
+      }
+      className="pressable w-full rounded-md border border-accent/50 bg-accent/10 px-4 py-3 text-left hover-elevate"
+    >
+      <span className="flex items-center gap-2">
+        {/* Breathing dot — the match is live right now, and a
+            static label reads like a leftover from last week. */}
+        <motion.span
+          aria-hidden
+          className="size-1.5 rounded-full bg-accent shrink-0"
+          animate={reduced ? {} : { opacity: [1, 0.35, 1] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <span className="eyebrow text-accent">Partida en juego</span>
+      </span>
+      <span className="mt-2 flex items-baseline justify-between gap-3">
+        <span className="font-display text-ink truncate">{match.teamA.name}</span>
+        {/* text-sm to match the counts on the Mesa / Historial
+            tiles below, which pair a 16px label with a 14px
+            number. The card reads as the same kind of row, so
+            it keeps the same relationship: names at body size,
+            the score one step down. */}
+        <span className="tabular text-sm font-medium text-ink shrink-0">
+          {match.scoreA}
+          <span className="text-ink-soft mx-1.5">—</span>
+          {match.scoreB}
+        </span>
+        <span className="font-display text-ink truncate text-right">{match.teamB.name}</span>
+      </span>
+      {showLineups && (lineA || lineB) && (
+        /* aria-hidden: the label above already reads the line-ups out,
+           and in the right order. */
+        <span aria-hidden className="mt-1 flex items-baseline justify-between gap-3">
+          <span className="text-xs text-ink-muted truncate">{lineA}</span>
+          <span className="text-xs text-ink-muted truncate text-right">{lineB}</span>
+        </span>
+      )}
+    </motion.button>
   )
 }
