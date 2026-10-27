@@ -742,6 +742,20 @@ def hair_mask(front, back, side=0.14):
     return m
 
 
+def hairline(points, noise=0.0, seed=0):
+    """Hair mask from a hairline drawn around the head: points are
+    (angle from the front in radians, height on the unit skull) pairs, read
+    symmetrically left/right. Positive above the line."""
+    th_k = np.array([p[0] for p in points]); y_k = np.array([p[1] for p in points])
+    def m(x, y, z):
+        th = np.abs(np.arctan2(x, z))
+        lim = np.interp(th, th_k, y_k)
+        if noise: lim = lim + noise * (np.sin(th * 23 + seed) * 0.6 + np.sin(th * 41 + seed * 2) * 0.4)
+        ear = (np.abs(x) > 0.82) & (y < 0.2) & (y > -0.5) & (np.abs(z) < 0.38)
+        return np.where(ear, -1, y - lim)
+    return m
+
+
 def bumps(U, count, rmin, rmax, amp, mask, seed):
     """Lumpy curls: the max of round bumps scattered over the scalp."""
     rng = np.random.default_rng(seed)
@@ -866,16 +880,18 @@ def ringlets(H, n_outer, mask_u, U_of, R, colors, seed, size, density=1.0, layer
     rng = np.random.default_rng(seed)
     P = H.P[:n_outer]; N = vertex_normals(H.P, H.F)[:n_outer]
     u = U_of(H)[:n_outer]
-    ok = np.nonzero(mask_u(*u.T) > 0.035)[0]
+    ok = np.nonzero(mask_u(*u.T) > 0.02)[0]
     rng.shuffle(ok)
     parts = []
     for layer in range(layers):
         taken = []
-        rc_all = size(u) * R
+        mval = mask_u(*u.T)
+        rc_all = size(u) * R * (0.5 + 0.5 * smooth(0.035, 0.2, mval))
         for i in ok:
             rc = rc_all[i] * (1.0 if layer == 0 else 0.9) * rng.uniform(0.75, 1.3)
             if layer and u[i, 1] < 0.25: continue          # volume on top only
             p = P[i] + N[i] * (rc * (0.2 + (1.1 + rng.uniform(0, 0.9) * (u[i, 1] > 0.55)) * layer))
+            if mval[i] < 0.08 and rng.random() < 0.45: continue      # sparse at the edge
             if taken:
                 d = np.linalg.norm(np.array(taken)[:, :3] - p, axis=1)
                 if (d < (np.array(taken)[:, 3] + rc) * 0.62 / density).any(): continue
@@ -1107,6 +1123,7 @@ def dress(base, ctx):
     streak = lambda k: (lambda u: mix(hcol[None], hcol2[None], 0.55 * ((0.5 + 0.5 * np.sin(u[:, 0] * k + u[:, 2] * 3)) * (0.5 + 0.5 * np.sin(u[:, 1] * k * 0.7 + 1)))[:, None]))
     edge = lambda m: 0.35 + 0.65 * smooth(0.0, 0.1, m)
     seed = sum(map(ord, d['id']))
+    hair_soft = None
     back_flow = lambda p: np.array([p[0] * 0.25, -0.25, -1.0])
     fringe_flow = lambda p: np.array([p[0] * 0.4 + 0.25, -0.8, 0.6]) if p[2] > 0.25 and p[1] > 0.3 else back_flow(p)
     wobble = lambda u: 0.025 * np.sin(u[:, 0] * 11 + 1.3) + 0.02 * np.sin(u[:, 2] * 7)
@@ -1125,11 +1142,12 @@ def dress(base, ctx):
         elif style == 'curly':
             # A dark cap for coverage, then tight coils: bigger and stacked on
             # top, small and close on the sides and back.
-            mk0 = hair_mask(hair.get('front', 0.44), -0.36, 0.08)
-            # Temples slightly receded, a few curls falling onto the forehead.
-            mk = lambda x, y, z: (mk0(x, y, z) - 0.06 * smooth(0.3, 0.7, z) * smooth(0.2, 0.42, np.abs(x)) * (y < 0.75)
-                                  + 0.07 * smooth(0.45, 0.8, z) * smooth(0.3, 0.0, np.abs(x)) + 0.02 * np.sin(x * 17 + 2) * (z > 0.4))
-            th = lambda u, m: R * edge(m) * (0.02 + 0.05 * smooth(0.35, 0.95, u[:, 1]))
+            # High rounded front, receding temples, short sideburns, around
+            # the ears, down to the nape.
+            mk = hairline(hair.get('line', [(0.0, 0.67), (0.3, 0.7), (0.58, 0.8), (0.9, 0.5), (1.22, 0.12), (1.33, -0.16),
+                                            (1.45, -0.1), (1.7, 0.08), (2.2, -0.32), (np.pi, -0.42)]), noise=0.018, seed=seed)
+            hair_soft = mk
+            th = lambda u, m: R * smooth(0.0, 0.16, m) * (0.02 + 0.05 * smooth(0.35, 0.95, u[:, 1]))
             S0 = clip(base, np.where(base['head'] > 0.5, mk(*U(base).T), -1.0))
             S0 = subdivide(S0); S0.A[:, 3:6] = norm(S0.A[:, 3:6])
             n0 = len(S0.A)
@@ -1168,6 +1186,13 @@ def dress(base, ctx):
         mk = lambda x, y, z: np.minimum(np.minimum(y + 0.38, 0.2 - y), np.where(z > -0.35, np.abs(x) - 0.62, 1))
         th = lambda u, m: R * edge(m) * 0.035
         parts.append(head_layer(mk, th, hcol))
+
+    # A soft hairline: skin just under the line picks up a little hair colour,
+    # like fine short hair, so the edge fades in instead of stopping.
+    if hair_soft is not None:
+        mb = hair_soft(*U(body).T)
+        k = (smooth(-0.1, 0.01, mb) * (body['head'] > 0.5))[:, None] * 0.55
+        body.A[:, 6:9] = mix(body.A[:, 6:9], (hcol * 0.9)[None], k)
 
     # Brows: a band of clay above each eye; they ride the brow morphs.
     bro = d.get('brows', {})
