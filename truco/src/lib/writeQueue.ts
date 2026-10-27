@@ -110,7 +110,40 @@ export async function drain(): Promise<void> {
   }
 }
 
-export async function execOp(op: QueuedOp, label: string): Promise<void> {
+// ─── Unacked-write tracking ────────────────────────────────────
+//
+// Supabase echoes our own writes back over realtime, and they arrive
+// one per write, in order, well after the local state has moved on.
+// Tap four points quickly and the echo of the first write still says
+// "score is 1" — applying it would drag the display backwards. So
+// callers can tag a write with a scope (a row id) and ask whether
+// that row still has writes this device hasn't seen come back yet.
+//
+// The grace period matters as much as the counter: the HTTP response
+// for a write lands *before* its realtime echo, so a scope that went
+// quiet the instant the last write acked would still be unguarded
+// when the stale echoes turn up. Holding it briefly covers that gap.
+const ECHO_GRACE_MS = 1500
+
+const inFlight = new Map<string, number>()
+const settledAt = new Map<string, number>()
+
+/** True while this device's copy of `scope` is likely ahead of the server's. */
+export function hasUnackedWrites(scope: string): boolean {
+  if ((inFlight.get(scope) ?? 0) > 0) return true
+  const t = settledAt.get(scope)
+  return t != null && Date.now() - t < ECHO_GRACE_MS
+}
+
+function release(scope: string) {
+  const n = (inFlight.get(scope) ?? 1) - 1
+  if (n > 0) inFlight.set(scope, n)
+  else inFlight.delete(scope)
+  settledAt.set(scope, Date.now())
+}
+
+export async function execOp(op: QueuedOp, label: string, scope?: string): Promise<void> {
+  if (scope) inFlight.set(scope, (inFlight.get(scope) ?? 0) + 1)
   // Serialize all writes through a single promise chain so dependent ops
   // (e.g. events.insert that references a freshly-created match) can never
   // hit Supabase before their parent has committed.
@@ -118,6 +151,7 @@ export async function execOp(op: QueuedOp, label: string): Promise<void> {
   // Decouple chain progression from caller-visible result — a thrown error
   // inside doExec must not poison every subsequent op.
   writeChain = next.catch(() => undefined)
+  if (scope) void next.catch(() => undefined).then(() => release(scope))
   return next
 }
 
