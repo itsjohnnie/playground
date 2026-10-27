@@ -33,7 +33,7 @@ heavy builds.
 (~9% of stature), broadens the hips (~7%), slims the waist, arms, neck and
 calves, adds a bust and softens the jaw and brow. It also changes the walk the
 way measured gait does: more pelvic rotation and drop, a narrower base and a
-slightly higher cadence. `hairLength` adds a hair fall that frames the face.
+slightly higher cadence.
 **Man** and **Woman** are starting presets; every value stays on its slider.
 
 ## Faces

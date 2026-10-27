@@ -310,7 +310,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
 
   // ── head ──────────────────────────────────────────────────────────────
   buildHead(B, spec, col);
-  if (c.hairLength >= 0.35) buildHairFall(B, spec, c.hairLength * 0.8); // inner volume under long locks
+  if (c.hairLength >= 0.35) buildHairFall(B, spec, c.hairLength * 0.55); // inner volume, ending well above the lock tips
 
   // ── arms ──────────────────────────────────────────────────────────────
   for (const [side, k] of [['left', 1], ['right', -1]]) {
@@ -860,20 +860,30 @@ function buildHairLocks(B, s, col, H) {
     const p0 = skull(a, phi);
     const fn = p0.z / (p0.rr || 1);
     if (p0.y < hairlineOf(a, fn) + 0.04) continue;
+    if (L >= 0.06 && Math.abs(p0.X - (fem > 0.5 ? -1 : 1) * 0.024 * sc * (((s.c.face ?? 0.5) * 7) % 1 > 0.5 ? 1 : -1)) < 0.006 * sc && p0.z > -0.4 * p0.rr) continue; // the parting itself, front to crown
     const layer = 1 + CAP * 0.9 + 0.035 * rnd(i, 1); // roots inside the cap, at mixed depths
     const p = new THREE.Vector3(p0.X * layer, cy + p0.Y * layer, cz + p0.Z * layer);
     const off = long ? (CAP + 0.02 + 0.05 * rnd(i, 2)) * 1.2 : CAP + 0.004 + 0.012 * rnd(i, 2); // how far the lock floats over the skull
     // short hair shortens toward its hairline so nothing dangles at the nape
-    const lockLen = len * (0.75 + 0.5 * rnd(i, 3)) * (long ? 1 : 0.2 + 0.8 * smooth((p0.y - hairlineOf(a, fn)) / 0.5));
+    const lockLen = len * (long ? 0.55 + 0.75 * Math.pow(rnd(i, 3), 0.8) : 0.75 + 0.5 * rnd(i, 3)) * (long ? 1 : 0.2 + 0.8 * smooth((p0.y - hairlineOf(a, fn)) / 0.5));
     const W0 = (long ? 0.017 : 0.011) * sc * (0.75 + 0.5 * rnd(i, 4));
     const TH = (long ? 0.0032 : 0.0022) * sc;
     const tone = long ? 0.8 + 0.32 * rnd(i, 5) : 0.95 + 0.08 * rnd(i, 5);
     const normalAt = (q) => new THREE.Vector3((q.x - c.x) / (rx * rx), (q.y - c.y) / (ry * ry), (q.z - c.z) / (rz * rz)).normalize();
     // combing: away from the part, down and back; long hair to the sides
     const side = Math.sign(p.x - partX) || 1;
+    const nearPart = 1 - smooth(Math.abs(p.x - partX) / (0.03 * sc)); // close to the part: fall, don't fan
     let d = long ? new THREE.Vector3(side * 0.9, -0.5, -0.35) : new THREE.Vector3(side * 0.55, -0.25, -0.75);
     if (!long && p.z - cz > 0.3 * rz) d.set(side * 0.35, 0.15, -0.9); // short: front swept up and back
-    { const n0 = normalAt(p); d.addScaledVector(n0, -d.dot(n0)).normalize(); } // combed along the scalp
+    d.y -= nearPart * 0.8; d.normalize();
+    {
+      // combed along the scalp; where the comb points almost straight out of
+      // it (the crown), fall back to down-and-back so no lock shoots off
+      const n0 = normalAt(p);
+      d.addScaledVector(n0, -d.dot(n0));
+      if (d.length() < 0.35) d.set(0, -1, -0.6).addScaledVector(n0, -new THREE.Vector3(0, -1, -0.6).dot(n0));
+      d.normalize();
+    }
     const path = [];
     for (let k = 0; k <= K; k++) {
       const t = k / K;
@@ -902,24 +912,28 @@ function buildHairLocks(B, s, col, H) {
             if (nr < neckR + 0.01 * sc) { p.x = nx / nr * (neckR + 0.01 * sc); p.z = cz - 0.02 * sc + nz / nr * (neckR + 0.01 * sc); }
           }
           const top = shoulderY - 0.22 * Math.max(0, Math.abs(p.x) - 0.06 * u);
-          const zc0 = cz - 0.02 * sc, depth = 0.11 * u;
-          if (p.y < top && Math.abs(p.z - zc0) < depth) {
-            // meets the shoulder: falls down the back or onto the chest,
-            // whichever side it is nearer, and keeps hanging
-            const back = p.z < zc0 + 0.01 * u;
-            p.z = zc0 + (back ? -1 : 1) * depth;
-            d.set(d.x * 0.3, -1, (back ? -1 : 1) * 0.15).normalize();
+          // meets the shoulder: eases down the back or onto the chest, each
+          // lock at its own distance so the ends don't stack into a ledge
+          const zc0 = cz - 0.02 * sc, depth = (0.105 + 0.03 * rnd(i, 7)) * u;
+          if (p.y < top + 0.02 * u && Math.abs(p.z - zc0) < depth) {
+            const back = p.z < zc0 + (rnd(i, 8) - 0.5) * 0.02 * u;
+            const want = zc0 + (back ? -1 : 1) * depth;
+            p.z += (want - p.z) * 0.55;
+            p.y = Math.min(p.y, top + 0.02 * u);
+            d.set(d.x * 0.4, -1, (back ? -1 : 1) * (0.1 + 0.15 * rnd(i, 9))).normalize();
           }
         }
       }
-      path.push({ p: p.clone(), d: d.clone(), n: normalAt(p), t });
+      const pp = p.clone();
+      if (long && t > 0.8) pp.addScaledVector(normalAt(p), -0.006 * sc * smooth((t - 0.8) / 0.2)); // ends turn in a touch
+      path.push({ p: pp, d: d.clone(), n: normalAt(p), t });
     }
     // ribbon rings: wide across the lock, thin off the scalp, tapering to a tip
     const rings = [];
     for (const { p: q, d: dd, n, t } of path) {
       const nn = n.clone().addScaledVector(dd, -n.dot(dd)).normalize();
       const xx = new THREE.Vector3().crossVectors(nn, dd);
-      const w = W0 * (1 - 0.8 * Math.pow(t, 1.6)), th = TH * (1 - 0.6 * t);
+      const w = W0 * (1 - 0.88 * Math.pow(t, long ? 1.25 : 1.6)), th = TH * (1 - 0.6 * t);
       const pts = [];
       for (let r = 0; r < RING; r++) {
         const ang = (r / RING) * TAU;
