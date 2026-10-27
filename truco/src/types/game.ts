@@ -98,7 +98,28 @@ export interface AppState {
   schemaVersion: 2
   roster: Player[]
   matches: Match[]      // newest first
-  activeMatchId: string | null
+}
+
+/**
+ * How long a match can sit unfinished before it stops counting as live.
+ *
+ * Which matches are in play used to be a single shared pointer, so
+ * starting a second one silently orphaned the first: no winner, no
+ * finishedAt, invisible in Historial and in the stats. Liveness is now
+ * read off the match itself, which means those old orphans would come
+ * back as permanently live games on the home screen.
+ *
+ * A night of truco runs a few hours at the outside, so anything still
+ * open after twelve is not a game anyone is playing — it's a match
+ * someone walked away from. It stays in the table, still uncounted,
+ * just no longer presented as live.
+ */
+export const LIVE_MAX_AGE_MS = 12 * 60 * 60 * 1000
+
+/** Is this match being played right now? */
+export function isLive(m: Match, now: number = Date.now()): boolean {
+  if (m.winner !== null || m.finishedAt !== null || m.abandoned) return false
+  return now - m.startedAt < LIVE_MAX_AGE_MS
 }
 
 // ─── Constants ────────────────────────────────────────────────
@@ -123,5 +144,4 @@ export const INITIAL_STATE: AppState = {
   schemaVersion: 2,
   roster: [],
   matches: [],
-  activeMatchId: null,
 }

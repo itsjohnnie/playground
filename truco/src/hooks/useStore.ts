@@ -8,6 +8,7 @@ import {
   type ScoreReason,
   INITIAL_STATE,
   MAX_SCORE,
+  isLive,
 } from '@/types/game'
 import {
   supabase,
@@ -169,37 +170,34 @@ export function useStore() {
     async function load() {
       setError(null)
       try {
-        const [pRes, mRes, eRes, aRes] = await Promise.all([
+        // `app_state.active_match_id` is deliberately not read any more:
+        // which matches are in play is a property of the matches
+        // themselves, and which one *this device* is looking at is local
+        // UI state. See the note on `liveMatches` below.
+        const [pRes, mRes, eRes] = await Promise.all([
           supabase.from('players').select('*'),
           supabase.from('matches').select('*').order('started_at', { ascending: false }),
           supabase.from('events').select('*'),
-          supabase.from('app_state').select('*').eq('id', 'singleton').maybeSingle(),
         ])
         if (cancelled) return
         if (pRes.error) throw pRes.error
         if (mRes.error) throw mRes.error
         if (eRes.error) throw eRes.error
-        if (aRes.error) throw aRes.error
 
         const playerRows = (pRes.data ?? []) as PlayerRow[]
         const matchRows = (mRes.data ?? []) as MatchRow[]
         const eventRows = (eRes.data ?? []) as EventRow[]
-        const appRow = aRes.data as AppStateRow | null
 
         // Filter to current mesa (id-prefix scoped).
         const myMatches = matchRows.filter((m) => idBelongsToMesa(m.id))
         const myMatchIds = new Set(myMatches.map((m) => m.id))
         const myEvents = eventRows.filter((e) => myMatchIds.has(e.match_id))
         const myPlayers = playerRows.filter((p) => idBelongsToMesa(p.id))
-        const activeId = appRow?.active_match_id ?? null
-        const scopedActive = activeId && idBelongsToMesa(activeId) ? activeId : null
-
         eventsRef.current = myEvents
         setState({
           schemaVersion: 2,
           roster: myPlayers.map(rowToPlayer),
           matches: myMatches.map((m) => rowToMatch(m, myEvents)),
-          activeMatchId: scopedActive,
         })
         setLoading(false)
       } catch (e) {
@@ -287,12 +285,6 @@ export function useStore() {
             ),
           }))
         }
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_state' }, (payload) => {
-        const row = payload.new as AppStateRow
-        const next = row.active_match_id ?? null
-        const scoped = next && idBelongsToMesa(next) ? next : null
-        setState((s) => ({ ...s, activeMatchId: scoped }))
       })
       .subscribe()
 
@@ -527,11 +519,7 @@ export function useStore() {
         winner: null,
         seats,
       }
-      setState((s) => ({
-        ...s,
-        matches: [m, ...s.matches],
-        activeMatchId: m.id,
-      }))
+      setState((s) => ({ ...s, matches: [m, ...s.matches] }))
       execOp(
         {
           kind: 'insert',
@@ -547,6 +535,12 @@ export function useStore() {
         },
         'iniciar partida',
       )
+      // Compatibility only. Nothing in this build reads
+      // `active_match_id`, but a phone still running the previous one
+      // does, and on a game night they won't all have reloaded at the
+      // same moment. Pointing it at the newest match keeps those
+      // clients working exactly as they did. Safe to delete once
+      // everyone has picked up this version.
       execOp(
         {
           kind: 'update',
@@ -561,10 +555,8 @@ export function useStore() {
     [],
   )
 
-  const score = useCallback((ev: Omit<ScoreEvent, 'at'>) => {
+  const score = useCallback((matchId: string, ev: Omit<ScoreEvent, 'at'>) => {
     setState((s) => {
-      if (!s.activeMatchId) return s
-      const matchId = s.activeMatchId
       const current = s.matches.find((x) => x.id === matchId)
       if (!current) return s
       const clamp = (n: number) => Math.max(0, Math.min(n, MAX_SCORE))
@@ -618,10 +610,8 @@ export function useStore() {
     })
   }, [])
 
-  const undo = useCallback(() => {
+  const undo = useCallback((matchId: string) => {
     setState((s) => {
-      if (!s.activeMatchId) return s
-      const matchId = s.activeMatchId
       const m = s.matches.find((x) => x.id === matchId)
       if (!m || m.events.length === 0) return s
       const last = m.events[m.events.length - 1]
@@ -665,23 +655,14 @@ export function useStore() {
     })
   }, [])
 
-  const finishMatch = useCallback(() => {
-    setState((s) => ({ ...s, activeMatchId: null }))
-    execOp(
-      {
-        kind: 'update',
-        table: 'app_state',
-        patch: { active_match_id: null },
-        eq: [['id', 'singleton']],
-      },
-      'terminar partida',
-    )
-  }, [])
+  // No `finishMatch` any more. Reaching 30 already writes `winner` and
+  // `finished_at` from `score`, which is what made the match live in the
+  // first place — so the win *is* the finish. All the old one did was
+  // clear the shared pointer, and there is no pointer left to clear.
 
-  const abandonMatch = useCallback(() => {
+  const abandonMatch = useCallback((matchId: string) => {
     setState((s) => {
-      if (!s.activeMatchId) return s
-      const matchId = s.activeMatchId
+      if (!s.matches.some((m) => m.id === matchId)) return s
       execOp(
         {
           kind: 'update',
@@ -691,18 +672,8 @@ export function useStore() {
         },
         'abandonar partida',
       )
-      execOp(
-        {
-          kind: 'update',
-          table: 'app_state',
-          patch: { active_match_id: null },
-          eq: [['id', 'singleton']],
-        },
-        'abandonar partida',
-      )
       return {
         ...s,
-        activeMatchId: null,
         matches: s.matches.map((m) =>
           m.id === matchId ? { ...m, abandoned: true, finishedAt: Date.now() } : m,
         ),
@@ -718,11 +689,7 @@ export function useStore() {
     // local cache is what rebuilds Match.events on the next realtime
     // push — leaving them behind resurrects the match's plays.
     eventsRef.current = eventsRef.current.filter((e) => e.match_id !== id)
-    setState((s) => ({
-      ...s,
-      matches: s.matches.filter((m) => m.id !== id),
-      activeMatchId: s.activeMatchId === id ? null : s.activeMatchId,
-    }))
+    setState((s) => ({ ...s, matches: s.matches.filter((m) => m.id !== id) }))
     execOp(
       { kind: 'delete', table: 'matches', eq: [['id', id]] },
       'eliminar partida',
@@ -760,9 +727,33 @@ export function useStore() {
   }, [])
 
   // ── Selectors ────────────────────────────────────────────────
-  const activeMatch = useMemo<Match | null>(
-    () => (state.activeMatchId ? state.matches.find((m) => m.id === state.activeMatchId) ?? null : null),
-    [state.activeMatchId, state.matches],
+
+  /**
+   * Every match being played right now, oldest first.
+   *
+   * This used to be a single `activeMatch`, resolved through a shared
+   * `app_state.active_match_id`. That made two things one thing: which
+   * match is in play (true of the match, and there can be more than
+   * one — eight people split into two tables) and which match a given
+   * phone is looking at (true of that phone, and necessarily different
+   * at each table). Starting a second match overwrote the pointer and
+   * orphaned the first: it stayed unfinished forever and never reached
+   * Historial or the stats.
+   *
+   * Liveness now comes off the match row, so any number can run at
+   * once, and the match a device is on is local state in App.
+   *
+   * Oldest first so the first table to start stays at the top of the
+   * home screen when a second one joins it.
+   */
+  const liveMatches = useMemo<Match[]>(
+    () => state.matches.filter((m) => isLive(m)).sort((a, b) => a.startedAt - b.startedAt),
+    [state.matches],
+  )
+
+  const matchById = useCallback(
+    (id: string) => state.matches.find((m) => m.id === id) ?? null,
+    [state.matches],
   )
 
   const activeRoster = useMemo(() => state.roster.filter((p) => !p.retiredAt), [state.roster])
@@ -783,7 +774,8 @@ export function useStore() {
     loading,
     error,
     user,
-    activeMatch,
+    liveMatches,
+    matchById,
     activeRoster,
     retiredRoster,
     finishedMatches,
@@ -803,7 +795,6 @@ export function useStore() {
     startMatch,
     score,
     undo,
-    finishMatch,
     abandonMatch,
     deleteMatch,
     clearAll,

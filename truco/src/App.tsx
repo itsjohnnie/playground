@@ -18,34 +18,63 @@ type Route = 'home' | 'mesa' | 'new' | 'game' | 'win' | 'historial'
 
 // Restore the last route across reloads so a refresh lands the user
 // back where they were. The mid-session sync effect below still
-// kicks them out of `game` / `win` if the active match no longer
-// exists, so a stale value can't strand them on an empty screen.
-const ROUTE_KEY = 'truco.route.v1'
+// kicks them out of `game` / `win` if that match no longer exists, so
+// a stale value can't strand them on an empty screen.
+//
+// The match id rides along with the route now. Several matches can be
+// live at once — eight people split into two tables — so "which one
+// is this phone scoring" is this phone's business, not shared state.
+// Two devices on two different tables each keep their own.
+const ROUTE_KEY = 'truco.route.v2'
 const ROUTES: Route[] = ['home', 'mesa', 'new', 'game', 'win', 'historial']
-function readSavedRoute(): Route {
-  if (typeof window === 'undefined') return 'home'
+
+interface SavedRoute { route: Route; matchId: string | null }
+
+function readSavedRoute(): SavedRoute {
+  const fallback: SavedRoute = { route: 'home', matchId: null }
+  if (typeof window === 'undefined') return fallback
   try {
-    const v = window.localStorage.getItem(ROUTE_KEY)
-    return v && (ROUTES as string[]).includes(v) ? (v as Route) : 'home'
+    const raw = window.localStorage.getItem(ROUTE_KEY)
+    if (!raw) return fallback
+    const v = JSON.parse(raw) as Partial<SavedRoute>
+    if (!v.route || !(ROUTES as string[]).includes(v.route)) return fallback
+    return {
+      route: v.route,
+      matchId: typeof v.matchId === 'string' ? v.matchId : null,
+    }
   } catch {
-    return 'home'
+    // Unparseable, or storage blocked in private mode.
+    return fallback
   }
 }
 
 export default function App() {
   const store = useStore()
-  const { activeMatch, loading, error } = store
+  const { liveMatches, matchById, loading, error } = store
 
-  const [route, setRoute] = useState<Route>(readSavedRoute)
+  const saved = readSavedRoute()
+  const [route, setRoute] = useState<Route>(saved.route)
+  // The match this device is scoring. Null anywhere outside game / win.
+  const [matchId, setMatchId] = useState<string | null>(saved.matchId)
+
+  const currentMatch = matchId ? matchById(matchId) : null
+
+  // Open a match on this device and go to its scoreboard.
+  const openMatch = (id: string) => { setMatchId(id); setRoute('game') }
+  // Step away from whatever match is on screen, without ending it.
+  const leaveMatch = () => { setMatchId(null); setRoute('home') }
 
   // Hold the screen awake while a match is on screen — the phone lives
   // face-up on the table and only gets touched between manos.
   useWakeLock(route === 'game' || route === 'win')
 
-  // Persist route changes so a refresh comes back to the same screen.
+  // Persist route changes so a refresh comes back to the same screen,
+  // and to the same match when there's more than one in play.
   useEffect(() => {
-    try { window.localStorage.setItem(ROUTE_KEY, route) } catch { /* private mode etc. */ }
-  }, [route])
+    try {
+      window.localStorage.setItem(ROUTE_KEY, JSON.stringify({ route, matchId }))
+    } catch { /* private mode etc. */ }
+  }, [route, matchId])
 
   // No auto-jump into a live match from home. It used to pull you into
   // `game` whenever an active match existed, and since `route` was a
@@ -62,9 +91,12 @@ export default function App() {
   // empty screen.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (activeMatch?.winner && route === 'game') setRoute('win')
-    if (!activeMatch && (route === 'game' || route === 'win')) setRoute('home')
-  }, [activeMatch, route])
+    if (currentMatch?.winner && route === 'game') setRoute('win')
+    if (!currentMatch && (route === 'game' || route === 'win')) {
+      setRoute('home')
+      setMatchId(null)
+    }
+  }, [currentMatch, route])
 
   if (loading) {
     return (
@@ -100,10 +132,11 @@ export default function App() {
       {route === 'home' && (
         <HomeScreen
           key="home"
-          activeMatch={activeMatch && !activeMatch.winner ? activeMatch : null}
+          liveMatches={liveMatches}
+          playerById={store.playerById}
           rosterSize={store.activeRoster.length}
           matchCount={store.finishedMatches.length}
-          onContinue={() => setRoute('game')}
+          onContinue={openMatch}
           onNewMatch={() => setRoute('new')}
           onMesa={() => setRoute('mesa')}
           onHistorial={() => setRoute('historial')}
@@ -141,46 +174,44 @@ export default function App() {
           defaultTeamNames={['Nosotros', 'Ellos']}
           onAddPlayer={store.addPlayer}
           onBack={() => setRoute('home')}
-          onStart={(a, b, seats) => {
-            store.startMatch(a, b, seats)
-            setRoute('game')
-          }}
+          onStart={(a, b, seats) => openMatch(store.startMatch(a, b, seats).id)}
         />
       )}
 
-      {route === 'game' && activeMatch && !activeMatch.winner && (
+      {route === 'game' && currentMatch && !currentMatch.winner && (
         <GameScreen
           key="game"
-          match={activeMatch}
+          match={currentMatch}
           playerById={store.playerById}
           onScore={(team, points, reason) =>
-            store.score({
+            store.score(currentMatch.id, {
               team,
               points,
               reason,
-              roundMode: detectRoundMode(activeMatch.scoreA, activeMatch.scoreB),
+              roundMode: detectRoundMode(currentMatch.scoreA, currentMatch.scoreB),
             })
           }
-          onUndo={store.undo}
-          onLeave={() => setRoute('home')}
-          onAbandon={() => { store.abandonMatch(); setRoute('home') }}
+          onUndo={() => store.undo(currentMatch.id)}
+          onLeave={leaveMatch}
+          onAbandon={() => { store.abandonMatch(currentMatch.id); leaveMatch() }}
         />
       )}
 
-      {route === 'win' && activeMatch?.winner && (
+      {route === 'win' && currentMatch?.winner && (
         <WinScreen
           key="win"
-          match={activeMatch}
+          match={currentMatch}
           playerById={store.playerById}
-          onHome={() => { store.finishMatch(); setRoute('home') }}
+          // The win already wrote `winner` and `finishedAt`, so there's
+          // nothing left to close out — just step off the match.
+          onHome={leaveMatch}
           onRevancha={() => {
             // Keep the same left/right layout across a rematch so the
             // scorer's mental model ("Nosotros left, Ellos right")
             // doesn't flip mid-night. Who "sale primero" is a truco
             // convention, but the scoreboard side ordering is a UI
             // stability concern that wins here.
-            store.startMatch(activeMatch.teamA, activeMatch.teamB)
-            setRoute('game')
+            openMatch(store.startMatch(currentMatch.teamA, currentMatch.teamB).id)
           }}
         />
       )}
