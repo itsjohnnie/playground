@@ -18,6 +18,7 @@ import { buildFighterModel, applyRigPose } from './model.js';
 import { POSES, JOINTS } from './poses.js';
 import { rand, pick, chance, DEG, clamp } from './util.js';
 import { clayMat } from './clay.js';
+import { modelSource, MODELS_KEY } from './ai_models.js';
 
 const TICK = 1 / 12;           // stop-motion frame rate
 const ROUND_TIME = 90;
@@ -91,6 +92,13 @@ export class Game {
     shake.onchange = () => { s.shake = shake.checked; this.applySettings(); };
     voice.onchange = () => { s.voice = voice.checked; this.applySettings(); };
     grain.onchange = () => { s.grain = grain.checked; this.applySettings(); };
+    // Switching puppet sets reloads, since models load once at boot.
+    const models = document.getElementById('opt-models');
+    models.value = modelSource();
+    models.onchange = () => {
+      try { localStorage.setItem(MODELS_KEY, models.value); } catch {}
+      const u = new URL(location.href); u.searchParams.delete('models'); location.href = u.toString();
+    };
   }
 
   // ------------------------------------------------------------- portraits

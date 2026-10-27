@@ -94,6 +94,7 @@ button { font: inherit; color: inherit; }
 .menu-list .row { cursor: default; }
 .menu-list .row input[type=range] { width: 50%; accent-color: var(--gold); }
 .menu-list .row input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--gold); }
+.menu-list .row select { font: inherit; font-size: 15px; color: #fff; background: rgba(10, 16, 48, 0.9); border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 8px; padding: 6px 10px; }
 .menu-list.row-list { flex-direction: row; flex-wrap: wrap; justify-content: center; min-width: 0; }
 
 .panel { background: linear-gradient(#111c50, #0a1030); border-radius: 18px; padding: 22px; box-shadow: 0 0 0 3px #c8d0dc, 0 0 0 5px #4a5468, 0 20px 60px rgba(0, 0, 0, 0.6); max-width: 100%; max-height: 92vh; overflow: auto; }

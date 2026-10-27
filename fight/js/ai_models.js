@@ -1,21 +1,25 @@
 // AI-built characters: concept art turned into a textured, rigged 3D model
 // by Meshy (via Higgsfield). They're streamed from Higgsfield's CDN and
 // fitted onto the game's skeleton at load time, so they play exactly like
-// the MakeHuman-built puppets. Add ?models=code to the URL to compare
-// against the code-built versions.
+// the MakeHuman-built puppets. Options > Puppets switches between these and
+// the code-built versions (or add ?models=code / ?models=ai to the URL).
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const CDN = 'https://d8j0ntlcm91z4.cloudfront.net/user_3HC3FxFiUcm9iyfEXhR7cCc1scA/';
 export const AI_MODELS = {
-  sam: CDN + 'hf_20261027_033639_9c4c310f-a6b5-4b59-89f1-97bad9f3b5e3.glb',
-  jensen: CDN + 'hf_20261027_033640_7afbec03-2737-45ef-bbfa-68ef70ecc643.glb',
+  sam: CDN + 'hf_20261027_044317_beae3eae-1e82-485c-b82e-423ea6641e5d.glb',
+  jensen: CDN + 'hf_20261027_044318_60423b06-d1a7-4579-a068-a3b759eceb24.glb',
 };
 
-export function useAI(id) {
-  if (!AI_MODELS[id]) return false;
+export const MODELS_KEY = 'claymatch.models';
+export function modelSource() {
   const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('models') : null;
-  return q !== 'code';
+  if (q === 'ai' || q === 'code') return q;
+  try { return localStorage.getItem(MODELS_KEY) || 'code'; } catch { return 'code'; }
+}
+export function useAI(id) {
+  return !!AI_MODELS[id] && modelSource() === 'ai';
 }
 
 const HIP_Y = 0.41 + 0.4 + 0.085;
