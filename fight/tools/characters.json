@@ -40,18 +40,19 @@
   },
   "brows": {
    "color": "#2a1d16",
-   "thick": 1.3,
-   "arch": 0.15
+   "thick": 0.95,
+   "arch": 0.35
   },
   "hair": {
    "style": "curly",
-   "color": "#2b1f19",
-   "color2": "#3d2c22"
+   "color": "#22170f",
+   "color2": "#3b2a1e",
+   "density": 0.85
   },
   "facial": {},
   "glasses": {
-   "type": "rect",
-   "color": "#1e2a3a"
+   "type": "roundrect",
+   "color": "#23324c"
   },
   "top": {
    "type": "buttonup",

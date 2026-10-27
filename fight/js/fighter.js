@@ -1087,9 +1087,29 @@ export class Fighter {
     let expr = this.expr;
     if (this.state === 'ko') expr = 'ko';
     else if (this.state === 'dizzy') expr = 'ko';
-    else if (this.state === 'attack' && this.move?.hit && this.exprT <= 0) expr = 'angry';
-    else if (this.state === 'victory') expr = this.def.mouth === 'smile' ? 'smile' : 'open';
-    if (expr !== this.lastExpr) { setExpression(this.face, expr); this.lastExpr = expr; }
+    else if (this.state === 'attack' && this.move?.hit && this.exprT <= 0) expr = Math.floor(this.animClock * 3) % 2 ? 'angry' : 'grit';
+    else if (this.state === 'victory') expr = Math.floor(this.animClock * 1.2) % 3 ? 'laugh' : 'smile';
+    else if (this.moveName === 'taunt' && this.state === 'attack') expr = 'laugh';
+    else if (expr === 'idle' || expr === 'angry') expr = this.restingMood(dt);
+    // Blink every few seconds, like a puppet with swapped eyelids.
+    this.blinkT = (this.blinkT ?? 1 + Math.random() * 3) - dt;
+    if (this.blinkT < -0.12) this.blinkT = 2 + Math.random() * 3.5;
+    const blink = this.blinkT < 0 && expr !== 'ko';
+    const key = expr + (blink ? '*' : '');
+    if (key !== this.lastExpr) { setExpression(this.face, expr, blink); this.lastExpr = key; }
+  }
+
+  // Between hits the face drifts through a few resting moods; worried and
+  // gritty when health runs low.
+  restingMood(dt) {
+    this.moodT = (this.moodT ?? 0) - dt;
+    if (this.moodT <= 0 || !this.mood) {
+      const low = this.hp < this.maxHp * 0.3;
+      const pool = low ? ['worried', 'grit', 'focus', 'worried'] : (this.def.moods || ['idle', 'idle', 'smile', 'smirk', 'focus']);
+      this.mood = pool[Math.floor(Math.random() * pool.length)];
+      this.moodT = 1.2 + Math.random() * 2.8;
+    }
+    return this.mood;
   }
 
   applyPose(p) {
@@ -1149,7 +1169,7 @@ export class Fighter {
     setGrip(this.model.hands.L, s.grips[0]);
     setGrip(this.model.hands.R, s.grips[1]);
     J.head.scale.fromArray(s.head);
-    if (s.expr && s.expr !== this.lastExpr) { setExpression(this.face, s.expr); this.lastExpr = s.expr; }
+    if (s.expr && s.expr !== this.lastExpr) { setExpression(this.face, s.expr.replace('*', ''), s.expr.endsWith('*')); this.lastExpr = s.expr; }
     boil(this.model.group, 1);
   }
 }

@@ -428,7 +428,7 @@ function hairParts(S, def, R, sk, at) {
   if (fh.mustache) for (const sx of [1, -1]) roll([at(0, -0.33, 1, 0.03), at(sx * 0.18, -0.36, 0.98, 0.03), at(sx * 0.3, -0.46, 0.93, 0.02)], 0.04, 0.025, fh.mustache, 0.02);
 }
 
-function buildGlasses(headBone, def, R, at, eg, eR, eyeCenters) {
+function buildGlasses(headBone, def, R, at, eg, eR, eyeCenters, ears) {
   const gl = def.glasses;
   if (!gl) return;
   const col = gl.color;
@@ -436,23 +436,24 @@ function buildGlasses(headBone, def, R, at, eg, eR, eyeCenters) {
   headBone.add(g);
   const lensMat = new THREE.MeshStandardMaterial({ color: gl.type === 'aviator' ? '#4a3a1a' : '#cfe4ff', transparent: true, opacity: gl.type === 'aviator' ? 0.75 : 0.18, roughness: 0.05, metalness: 0.3 });
   const centers = eyeCenters || [1, -1].map((sx) => at(sx * eg, 0.1, 0.94, 0.11));
-  const w = eR * (gl.type === 'rect' ? 1.55 : gl.type === 'aviator' ? 1.5 : 1.35), hh = eR * (gl.type === 'rect' ? 1.15 : gl.type === 'aviator' ? 1.35 : 1.3);
+  const w = eR * (gl.type === 'rect' || gl.type === 'roundrect' ? 1.55 : gl.type === 'aviator' ? 1.5 : 1.35), hh = eR * (gl.type === 'rect' ? 1.15 : gl.type === 'roundrect' ? 1.2 : gl.type === 'aviator' ? 1.35 : 1.3);
   centers.forEach((c, i) => {
     const sx = i ? -1 : 1;
     let pts;
     if (gl.type === 'round') pts = Array.from({ length: 16 }, (_, k) => { const a = (k / 16) * Math.PI * 2; return new THREE.Vector3(Math.cos(a) * w, Math.sin(a) * hh, 0); });
     else if (gl.type === 'aviator') pts = Array.from({ length: 16 }, (_, k) => { const a = (k / 16) * Math.PI * 2; const s = Math.sin(a); return new THREE.Vector3(Math.cos(a) * w * (s < 0 ? 0.85 + 0.15 * sx * Math.cos(a) : 1), s * hh * (s < 0 ? 1.2 : 0.75), 0); });
+    else if (gl.type === 'roundrect') pts = Array.from({ length: 24 }, (_, k) => { const a = (k / 24) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a); return new THREE.Vector3(Math.sign(c) * Math.abs(c) ** 0.55 * w, Math.sign(s) * Math.abs(s) ** 0.55 * hh * (s < 0 ? 0.92 : 1), 0); });
     else pts = [[-1, -0.8], [-0.95, 0.85], [0, 1], [0.95, 0.85], [1, -0.8], [0, -1]].map(([x, y]) => new THREE.Vector3(x * w, y * hh, 0));
     const ring = new THREE.Group();
     ring.position.copy(c);
     ring.rotation.y = sx * 0.12;
-    if (gl.type !== 'rimless') ring.add(curveTube(pts, R * (gl.type === 'rect' ? 0.024 : 0.016), col, { closed: true, seg: 32, radial: 6, taper: false, roughness: 0.35, metalness: gl.type === 'aviator' ? 0.7 : 0.2, boil: 0.3 }));
+    if (gl.type !== 'rimless') ring.add(curveTube(pts, R * (gl.type === 'rect' ? 0.024 : gl.type === 'roundrect' ? 0.028 : 0.016), col, { closed: true, seg: 32, radial: 6, taper: false, roughness: 0.35, metalness: gl.type === 'aviator' ? 0.7 : 0.2, boil: 0.3 }));
     const lens = new THREE.Mesh(new THREE.CircleGeometry(1, 24), lensMat);
     lens.scale.set(w, hh, 1);
     ring.add(lens);
     g.add(ring);
     // Temple arm back to the ear.
-    const ear = at(sx, 0.05, -0.05, 0.04);
+    const ear = ears ? ears[i] : at(sx, 0.05, -0.05, 0.04);
     g.add(curveTube([c.clone().add(new THREE.Vector3(sx * w, hh * 0.5, -0.01)), ear.clone().add(new THREE.Vector3(0, 0.0, 0.02))], R * 0.012, col, { taper: false, seg: 4, radial: 5, metalness: 0.3 }));
   });
   const bridge = eyeCenters ? centers[0].clone().add(centers[1]).multiplyScalar(0.5).add(new THREE.Vector3(0, hh * 0.3, w * 0.25)) : at(0, 0.18, 1, 0.13);
@@ -743,6 +744,11 @@ export function buildFighterModel(def) {
     if (top.type === 'sweater' && !rig) {
       for (const sx of [1, -1]) C2.add(cone(0.035, 0.08, top.inner, { pos: [sx * 0.045, nY - 0.03, chestZ * 0.6], rot: [-0.6, 0, sx * 2.4], scale: [1, 1, 0.35] }));
     }
+    // Shirt buttons down the placket.
+    if (top.type === 'buttonup' || top.type === 'henley') {
+      const n = top.type === 'henley' ? 3 : 5, bc = '#' + new THREE.Color(top.color).lerp(new THREE.Color('#ffffff'), 0.65).getHexString();
+      for (let i = 0; i < n; i++) C2.add(sphere(0.009, bc, { pos: [0, nY - 0.07 - i * (top.type === 'henley' ? 0.035 : 0.075), chestZ * 1.0 - i * 0.006], scale: [1, 1, 0.5], lump: 0, smooth: true, roughness: 0.3 }));
+    }
     if (top.type === 'leather') C2.add(box(0.012, 0.3, 0.01, '#c8c8d0', { pos: [0.05, -0.04, chestZ * 0.98], metalness: 0.8, roughness: 0.3 }));
     if (top.type === 'vest') for (let i = 0; i < 3; i++) J.spine.add(sphere(0.008, '#2a2a2a', { pos: [0.03, 0.06 + i * 0.07, b.depth * 0.95] }));
     if (top.logo === 'triangle') {
@@ -826,6 +832,10 @@ const MH_EXPR = {
   ko:    { blink: 1, browSad: 0.6, jaw: 0.6 },
   shock: { wide: 1, browUp: 1, jaw: 1 },
   blink: { blink: 1 },
+  smirk: { smileL: 1, squint: 0.25, browDown: 0.15 },
+  laugh: { smile: 0.95, jaw: 0.45, squint: 0.7, browUp: 0.35 },
+  worried: { browSad: 1, frown: 0.45, wide: 0.15 },
+  focus: { squint: 0.55, browDown: 0.45, frown: 0.1 },
 };
 
 function mhFace(headBone, def, rig, mesh) {
@@ -844,7 +854,9 @@ function mhFace(headBone, def, rig, mesh) {
     glints.add(sphere(eR * 0.2, '#ffffff', { pos: [e.x + eR * 0.3, e.y + eR * 0.32, e.z + eR * 0.9], lump: 0, roughness: 0.05, boil: 0, rim: 0, smooth: true, emissive: '#ffffff', emissiveIntensity: 1.3 }));
     glints.add(sphere(eR * 0.09, '#ffffff', { pos: [e.x - eR * 0.25, e.y - eR * 0.2, e.z + eR * 0.95], lump: 0, roughness: 0.05, boil: 0, rim: 0, smooth: true, emissive: '#ffffff', emissiveIntensity: 1 }));
   }
-  if (def.glasses && !rig.ai) buildGlasses(headBone, def, r[0], at, 0, eR, eyes.map((e) => e.clone().add(new THREE.Vector3(0, 0, eR * 1.5))));
+  // Temple arms run back over the ears.
+  const ears = eyes.map((e, i) => new THREE.Vector3((i ? -1 : 1) * Math.max(Math.abs(e.x) + eR * 1.6, r[0] * 0.8), e.y + eR * 0.4, c.z - r[2] * 0.55));
+  if (def.glasses && !rig.ai) buildGlasses(headBone, def, r[0], at, 0, eR, eyes.map((e) => e.clone().add(new THREE.Vector3(0, 0, eR * 1.5))), ears);
   if (def.hair?.style === 'antenna') {
     const p = at(0, 1, 0, 0);
     headBone.add(cyl(r[0] * 0.03, r[0] * 0.03, r[0] * 0.5, '#6a6e78', { pos: [p.x, p.y + r[0] * 0.25, p.z] }));
@@ -853,8 +865,9 @@ function mhFace(headBone, def, rig, mesh) {
   return { R: r[0], mh: true, mesh, idx: Object.fromEntries(rig.morphs.map((m, i) => [m, i])), eyes: [], glints };
 }
 
-function setMHExpression(face, expr) {
+function setMHExpression(face, expr, blink) {
   const w = { ...(MH_EXPR[expr] || MH_EXPR.idle) };
+  if (blink) w.blink = 1;
   const bias = face.bias || {};
   if (bias.lid > 0) w.blink = Math.min(1, (w.blink || 0) + bias.lid * 0.6);
   if (bias.lid < 0) w.wide = Math.min(1, (w.wide || 0) - bias.lid);
@@ -864,8 +877,9 @@ function setMHExpression(face, expr) {
   face.glints.visible = (w.blink || 0) < 0.6;
 }
 
-export function setExpression(face, expr) {
-  if (face.mh) return setMHExpression(face, expr);
+export function setExpression(face, expr, blink = false) {
+  if (face.mh) return setMHExpression(face, expr, blink);
+  if (blink) expr = 'blink';
   const m = face.mouth;
   let lidU = 0.35, lidL = 0.15, brow = 0.0, browY = 0, open = 0, look = 0, squint = 0;
   let teeth = false;

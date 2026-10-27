@@ -131,7 +131,12 @@ EXPR = {
     'smile':    ['mouth-corner-puller', 'mouth-upward-retraction'],
     'frown':    ['mouth-depression'],
     'teeth':    ['mouth-retraction', 'mouth-parling'],
+    'smileL':   ['mouth-corner-puller'],   # left half only: a smirk
 }
+
+
+# Puppet faces act bigger than real ones.
+EXPR_GAIN = {'browUp': 1.8, 'browDown': 1.8, 'browSad': 1.8, 'smile': 1.15, 'smileL': 1.25, 'squint': 1.3, 'frown': 1.4}
 
 
 # ------------------------------------------------------------------ bones
@@ -521,10 +526,11 @@ def uv_sphere(center, r, cols, ncol, color_fn, weights_bone, segs=28, rings=20, 
 # (name: amount, signed; see data/targets for the vocabulary), then the
 # caricature (head scale) and dressing.
 LOOKS = {
-    'dario': dict(age=42, muscle=0.4, weight=0.42, height=0.5, eth=(0, 0.1, 0.9), headK=1.84,
-                  mods={'head-round': 0.4, 'head-scale-vert': -0.2, 'l-eye-scale': 0.3, 'nose-scale-vert': 0.2, 'nose-point-width': 0.4,
-                        'mouth-scale-horiz': 0.2, 'chin-prominent': -0.2, 'l-ear-scale': 0.2, 'neck-scale-horiz': -0.3, 'mouth-angles': 0.3,
-                        'l-eye-height2': 0.3, 'l-cheek-bones': 0.2}),
+    'dario': dict(age=42, muscle=0.4, weight=0.62, height=0.5, eth=(0, 0.1, 0.9), headK=1.84,
+                  mods={'head-round': 0.65, 'head-fat': 0.15, 'head-scale-vert': -0.2, 'head-scale-horiz': 0.08, 'l-cheek-volume': 0.25,
+                        'chin-width': 0.25, 'chin-prominent': -0.1, 'nose-scale-vert': 0.3, 'nose-volume': 0.35, 'nose-point-width': 0.45,
+                        'mouth-scale-horiz': 0.3, 'mouth-angles': 0.35, 'l-ear-scale': 0.2,
+                        'l-eye-height2': 0.15}),
     'sam': dict(age=38, muscle=0.35, weight=0.3, height=0.25, eth=(0, 0, 1), headK=1.88,
                 mods={'head-oval': 0.4, 'l-eye-scale': 0.8, 'l-eye-height2': 0.5, 'l-eye-trans': 0.15, 'nose-scale-horiz': -0.2,
                       'nose-scale-vert': -0.15, 'mouth-scale-horiz': -0.25, 'mouth-lowerlip-volume': -0.2, 'chin-width': -0.3,
@@ -583,7 +589,9 @@ CARICATURE = 1.7   # how hard each likeness is pushed
 
 # Puppet proportions for everyone: big eyes, a little more nose and mouth.
 BASE_MODS = {'l-eye-scale': 1.25, 'l-eye-height2': 0.35, 'l-eye-height1': 0.2, 'nose-scale-vert': 0.15, 'nose-point-width': 0.2,
-             'mouth-scale-horiz': 0.1, 'l-ear-scale': 0.2, 'neck-scale-horiz': 0.25, 'l-eye-bag': -0.8}
+             'mouth-scale-horiz': 0.1, 'l-ear-scale': 0.2, 'neck-scale-horiz': 0.25, 'l-eye-bag': -0.8,
+             # Puppet body: short legs, thick clay fingers.
+             'upperlegs-height': -0.7, 'lowerlegs-height': -0.6, 'l-hand-fingers-diameter': 2.2, 'l-hand-fingers-length': -0.5, 'l-hand-scale': 0.4}
 
 
 # ------------------------------------------------------------------ build
@@ -605,10 +613,13 @@ def build(defn):
     # Expression deltas (relative, applied in the game).
     eth = 'caucasian'
     D = np.zeros((len(EXPR), n, 3))
-    for i, names in enumerate(EXPR.values()):
+    for i, (key, names) in enumerate(EXPR.items()):
         for t in names:
             idx, d = target(f'expression/units/{eth}/{t}')
-            D[i, idx] += d
+            D[i, idx] += d * EXPR_GAIN.get(key, 1.0)
+    # One-sided morphs keep only the character's left half (+x).
+    ks = list(EXPR)
+    D[ks.index('smileL')] *= smooth(-0.004, 0.012, V0[:, 0])[:, None]
 
     # Skin weights folded into the game's bones.
     W = np.zeros((n, len(GAME_BONES)))
@@ -795,9 +806,9 @@ def sneaker(base, side, upper, sole, accent=None, boot=False):
     sx = 1 if side == 'L' else -1
     sel = (base['foot'] > 0.5) & (base['x0'] * sx > 0)
     p = base.P[sel]
-    heel, toe = p[:, 2].min() - 0.02, p[:, 2].max() + 0.035
+    heel, toe = p[:, 2].min() - 0.025, p[:, 2].max() + 0.05
     L = toe - heel
-    cx = float(np.median(p[:, 0])); W = (np.percentile(p[:, 0], 98) - np.percentile(p[:, 0], 2)) / 2 + 0.024
+    cx = float(np.median(p[:, 0])); W = (np.percentile(p[:, 0], 98) - np.percentile(p[:, 0], 2)) / 2 + 0.032
     top = float(np.percentile(p[:, 1], 90))
     segs, rings = 40, 32
     verts, F = [], []
@@ -806,13 +817,14 @@ def sneaker(base, side, upper, sole, accent=None, boot=False):
         u = (1 - math.cos(th)) / 2           # 0..1 heel -> toe
         r = math.sin(th) ** 0.55             # rounder ends than an ellipsoid
         w = W * (0.82 + 0.25 * math.sin(math.pi * min(1, u * 1.25)) ** 0.8) * r
-        h = (top + (0.05 if boot else 0.012)) * (1 - 0.5 * smooth(0.25, 0.9, u)) + 0.008
-        if u < 0.12: h *= 0.75 + 0.25 * u / 0.12 if not boot else 1
+        heelH = top + (0.075 if boot else 0.01)
+        h = heelH + (0.068 - heelH) * float(smooth(0.3, 0.88, u))
         for j in range(segs):
             ph = 2 * math.pi * j / segs
             cy, cz = math.cos(ph), math.sin(ph)  # cy: across, cz: up
-            x = cx + sx * w * cy * (1 + 0.06 * (cz < 0))
             y = max(0.0, h * (0.5 + 0.5 * cz) * (r ** 0.3 if cz > 0 else 1))
+            if cz < -0.2: y = min(y, 0.0)                       # flat sole
+            x = cx + sx * w * cy * (1 + 0.07 * (y < 0.03))     # the sole sticks out a little
             z = heel + L * u
             verts.append((x, y, z, cz, cy, u))
     for i in range(rings):
@@ -826,7 +838,11 @@ def sneaker(base, side, upper, sole, accent=None, boot=False):
     A[:, 3:6] = norm(v[:, :3] - np.array([cx, 0.03, heel + L / 2]))
     up_c, so_c = srgb(upper), srgb(sole)
     col = np.tile(up_c, (len(v), 1))
-    col[v[:, 1] < 0.024] = so_c                                  # sole
+    col[v[:, 1] < 0.03] = so_c                                   # sole
+    laces = (v[:, 3] > 0.7) & (np.abs(v[:, 4]) < 0.42) & (v[:, 5] > 0.3) & (v[:, 5] < 0.72)
+    col[laces] = up_c * 0.55
+    stripes = laces & (np.sin(v[:, 5] * 70) > 0.55)
+    col[stripes] = np.array([0.85, 0.75, 0.6])
     if accent is not None:
         toe_cap = (v[:, 5] > 0.82) & (v[:, 1] < 0.05)
         col[toe_cap] = so_c
@@ -841,6 +857,69 @@ def sneaker(base, side, upper, sole, accent=None, boot=False):
     S.A[:, 1] = np.maximum(S.A[:, 1], 0)
     # Tongue and laces: a raised strip over the instep.
     return S
+
+
+def ringlets(H, n_outer, mask_u, U_of, R, colors, seed, size, density=1.0, layers=2):
+    """Tight curls: small clay coils sitting on the hair cap H, sized by
+    region (size(u) -> coil radius in units of R). Each coil copies the skin
+    weights of the cap vertex it grows from."""
+    rng = np.random.default_rng(seed)
+    P = H.P[:n_outer]; N = vertex_normals(H.P, H.F)[:n_outer]
+    u = U_of(H)[:n_outer]
+    ok = np.nonzero(mask_u(*u.T) > 0.035)[0]
+    rng.shuffle(ok)
+    parts = []
+    for layer in range(layers):
+        taken = []
+        rc_all = size(u) * R
+        for i in ok:
+            rc = rc_all[i] * (1.0 if layer == 0 else 0.9) * rng.uniform(0.75, 1.3)
+            if layer and u[i, 1] < 0.25: continue          # volume on top only
+            p = P[i] + N[i] * (rc * (0.2 + (1.1 + rng.uniform(0, 0.9) * (u[i, 1] > 0.55)) * layer))
+            if taken:
+                d = np.linalg.norm(np.array(taken)[:, :3] - p, axis=1)
+                if (d < (np.array(taken)[:, 3] + rc) * 0.62 / density).any(): continue
+            taken.append([*p, rc])
+            n = N[i]
+            t = np.cross(n, rng.normal(size=3)); t /= np.linalg.norm(t)
+            a = norm(n * rng.uniform(0.2, 0.6) + t)
+            b1 = norm(np.cross(a, n)); b2 = np.cross(a, b1)
+            turns = rng.uniform(1.1, 1.7)
+            segs = int(11 * turns); sides = 6
+            pitch = rc * rng.uniform(0.5, 0.9)
+            tr = rc * rng.uniform(0.5, 0.62)
+            col = colors[rng.integers(len(colors))] * rng.uniform(0.82, 1.12)
+            ph0 = rng.uniform(0, 2 * np.pi)
+            pts, fr = [], []
+            for k in range(segs + 1):
+                sv = ph0 + 2 * np.pi * turns * k / segs
+                c = p + a * (pitch * (k / segs - 0.5) * turns) + rc * (np.cos(sv) * b1 + np.sin(sv) * b2)
+                pts.append(c)
+            pts = np.array(pts)
+            T = norm(np.gradient(pts, axis=0))
+            A0 = H.A[i]
+            rows, F = [], []
+            for k in range(segs + 1):
+                q = norm(np.cross(T[k], a)); w_ = np.cross(T[k], q)
+                taper = 0.55 + 0.45 * np.sin(np.pi * min(1, (k + 0.6) / (segs + 0.2)))
+                for j in range(sides):
+                    ang = 2 * np.pi * j / sides
+                    d = q * np.cos(ang) + w_ * np.sin(ang)
+                    r_ = A0.copy(); r_[0:3] = pts[k] + d * tr * taper; r_[3:6] = d; r_[6:9] = col
+                    rows.append(r_)
+            for k in range(segs):
+                for j in range(sides):
+                    a0, b0 = k * sides + j, k * sides + (j + 1) % sides
+                    F += [[a0, b0 + sides, b0], [a0, a0 + sides, b0 + sides]]
+            # Cap the ends.
+            for end, base_k in ((0, 0), (1, segs)):
+                cen = A0.copy(); cen[0:3] = pts[base_k]; cen[6:9] = col
+                rows.append(cen); ci = len(rows) - 1
+                for j in range(sides):
+                    a0, b0 = base_k * sides + j, base_k * sides + (j + 1) % sides
+                    F.append([ci, b0, a0] if end == 0 else [ci, a0, b0])
+            parts.append(Surf(np.array(rows), np.array(F), H.cols))
+    return parts
 
 
 def dress(base, ctx):
@@ -951,7 +1030,7 @@ def dress(base, ctx):
             f1 = lambda S: F_top(S, long_, hem, vdepth=0.03 if tt in ('blazer', 'leather') else 0.0)
             col1 = inner if tt in ('blazer', 'leather', 'vest') else shirt
         thick = 0.012 if tt != 'hoodie' else 0.02
-        T1 = layer(f1, col1, 0.014, thick)
+        T1 = layer(f1, col1, 0.014, thick, cuff=1.6 if tt in ('buttonup', 'henley') else 0.6)
         if tt == 'quarterzip':
             z = (np.abs(T1['x0']) < 0.007) & (T1['z0'] > neckZ) & (T1['y0'] > chestY - 0.1)
             T1.A[z, 6:9] = np.array([0.62, 0.62, 0.66])
@@ -959,11 +1038,20 @@ def dress(base, ctx):
             pl = (np.abs(T1['x0']) < (0.011 if tt == 'henley' else 0.007)) & (T1['z0'] > neckZ) & (T1['y0'] > (neckY - 0.13 if tt == 'henley' else hem))
             T1.A[pl, 6:9] = shirt * 0.82
         if tt == 'buttonup':
-            # Collar: a band of cloth standing around the neck, open at the front.
-            collar = lambda S: np.where(S['arm'] > 0.5, -1.0, np.minimum(np.minimum(S['y0'] - (neckY - 0.03), neckY + 0.045 - S['y0']), np.where(S['z0'] > neckZ, np.abs(S['x0']) - 0.035, 1.0)))
+            # Collar: two folded wings lying around the neck, meeting in points
+            # over the collarbone, open at the throat.
+            def collar(S):
+                x, y, z = S['x0'], S['y0'], S['z0']
+                front = smooth(neckZ - 0.02, neckZ + 0.04, z)
+                ax = np.abs(x)
+                low = neckY - 0.045 - front * 0.055 * np.exp(-((ax - 0.055) ** 2) / 0.0009)
+                top = neckY + 0.012 + 0.03 * (1 - front)
+                f = np.minimum(y - low, top - y)
+                f = np.minimum(f, np.where(front > 0.5, ax - 0.012 - (y - low) * 0.5, 1.0))
+                return np.where((S['arm'] > 0.5) | (S['head'] > 0.6), -1.0, f)
             Cl = clip(base, collar(base))
             if len(Cl.A):
-                parts.append(shell(Cl, 0.006, shirt * 0.95, base=0.026, smooth_it=4, hem=0.003))
+                parts.append(shell(Cl, 0.005, shirt * 1.04, base=0.03, smooth_it=3, hem=0.0035))
         if tt == 'sweater':
             rib = (T1['y0'] > neckY - 0.03) & (T1['arm'] < 0.5)
             T1.A[rib, 6:9] = shirt * 0.85
@@ -996,7 +1084,7 @@ def dress(base, ctx):
     keep = lambda S: 0.012 - np.max(np.stack([np.maximum(f(S), -1) for f in covered]), axis=0)
     body = clip(base, keep(base)) if covered else base.copy()
     lips = srgb(d['lips']) if d.get('lips') else skin * np.array([0.84, 0.58, 0.58])
-    body.A[:, 6:9] = mix(skin[None], lips[None], smooth(0.45, 0.85, body['lip'])[:, None] * 0.75)
+    body.A[:, 6:9] = mix(skin[None], lips[None], smooth(0.45, 0.85, body['lip'])[:, None] * 0.5)
     fh = d.get('facial', {})
     Ub = U(body)
 
@@ -1035,9 +1123,20 @@ def dress(base, ctx):
             th = lambda u, m: R * edge(m) * 0.04 + R * locks(u, 30, back_flow, 0.3, 0.1, 0.012, mk, seed)
             parts.append(head_layer(mk, th, streak(13), sub=1))
         elif style == 'curly':
-            mk = hair_mask(0.4, -0.38)
-            th = lambda u, m: R * edge(m) * (0.08 + 0.06 * smooth(0.2, 0.9, u[:, 1])) + R * bumps(u, 150, 0.11, 0.18, 0.1, mk, seed)
-            parts.append(head_layer(mk, th, streak(7), sub=2, smooth_it=1))
+            # A dark cap for coverage, then tight coils: bigger and stacked on
+            # top, small and close on the sides and back.
+            mk0 = hair_mask(hair.get('front', 0.44), -0.36, 0.08)
+            # Temples slightly receded, a few curls falling onto the forehead.
+            mk = lambda x, y, z: (mk0(x, y, z) - 0.06 * smooth(0.3, 0.7, z) * smooth(0.2, 0.42, np.abs(x)) * (y < 0.75)
+                                  + 0.07 * smooth(0.45, 0.8, z) * smooth(0.3, 0.0, np.abs(x)) + 0.02 * np.sin(x * 17 + 2) * (z > 0.4))
+            th = lambda u, m: R * edge(m) * (0.02 + 0.05 * smooth(0.35, 0.95, u[:, 1]))
+            S0 = clip(base, np.where(base['head'] > 0.5, mk(*U(base).T), -1.0))
+            S0 = subdivide(S0); S0.A[:, 3:6] = norm(S0.A[:, 3:6])
+            n0 = len(S0.A)
+            cap = shell(S0, th(U(S0), mk(*U(S0).T)), hcol * 0.62, base=0.002, smooth_it=2)
+            parts.append(cap)
+            size = lambda u: 0.042 + 0.07 * smooth(0.3, 0.9, u[:, 1])
+            parts += ringlets(cap, n0, mk, U, R, [hcol, hcol2, hcol * 0.85], seed, size, density=hair.get('density', 1.0))
         elif style == 'tightcurls':
             mk = hair_mask(0.47, -0.38)
             th = lambda u, m: R * edge(m) * (0.05 + 0.02 * smooth(0.2, 0.9, u[:, 1])) + R * bumps(u, 240, 0.065, 0.1, 0.05, mk, seed)
