@@ -10,8 +10,10 @@ const pending = new Map(); // id -> Promise
 // facial expression morphs.
 const TYPES = { f32: Float32Array, u8: Uint8Array, u16: Uint16Array, u32: Uint32Array, i16: Int16Array };
 async function loadMHC(id) {
-  const r = await fetch(`assets/chars/${id}.mhc`);
-  if (!r.ok) return null;
+  // Some static hosts only serve known binary types, so a .wasm copy is a fallback.
+  let r = await fetch(`assets/chars/${id}.mhc`).catch(() => null);
+  if (!r?.ok) r = await fetch(`assets/chars/${id}.mhc.wasm`).catch(() => null);
+  if (!r?.ok) return null;
   // Gzipped on disk; inflate in the browser.
   const buf = await new Response(r.body.pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
   if (new TextDecoder().decode(new Uint8Array(buf, 0, 4)) !== 'MHC2') return null;
