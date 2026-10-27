@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Silicon Valley Claymatch</title>
+  <meta name="description" content="A claymation tech-celebrity wrestling brawler in the browser, built with Three.js." />
+  <meta name="theme-color" content="#060918" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+    { "imports": { "three": "./lib/three.module.min.js", "three/addons/": "./lib/addons/" } }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="grain" aria-hidden="true"></div>
+  <div id="vignette" aria-hidden="true"></div>
+
+  <!-- Loading -->
+  <section id="boot" class="screen show">
+    <div class="logo small"><span class="l1">SILICON VALLEY</span><span class="l2">CLAYMATCH</span></div>
+    <p class="boot-msg">Sculpting celebrities…</p>
+  </section>
+
+  <!-- Title -->
+  <section id="title" class="screen">
+    <div class="logo big"><span class="tv">TV</span><span class="l1">SILICON VALLEY</span><span class="l2">CLAYMATCH</span></div>
+    <p class="tag">Ship it. Then hit it with a chair.</p>
+    <button class="start blink" data-action="start">PRESS START</button>
+    <p class="credit">Clay caricatures for parody · Built with Three.js · Every sound synthesized</p>
+  </section>
+
+  <!-- Main menu -->
+  <section id="menu" class="screen">
+    <div class="logo small"><span class="l1">SILICON VALLEY</span><span class="l2">CLAYMATCH</span></div>
+    <nav class="menu-list">
+      <button data-action="pvc">Exhibition <small>1P vs CPU</small></button>
+      <button data-action="pvp">Exhibition <small>1P vs 2P</small></button>
+      <button data-action="tourney">Tournament <small>7 fights to the title</small></button>
+      <button data-action="cvc">Watch <small>CPU vs CPU</small></button>
+      <button data-action="difficulty" class="toggle">Difficulty <small id="diff-label">◀ Normal ▶</small></button>
+      <button data-action="howto">How to play</button>
+      <button data-action="options">Options</button>
+    </nav>
+  </section>
+
+  <!-- Character select -->
+  <section id="select" class="screen">
+    <h2 class="screen-title">Choose your founder</h2>
+    <div class="select-wrap">
+      <aside class="pick-card p1" id="card-p1"></aside>
+      <div class="roster" id="roster"></div>
+      <aside class="pick-card p2" id="card-p2"></aside>
+    </div>
+    <p class="hint" id="select-hint">P1: WASD + J to pick · P2: Arrows + Enter · Esc to go back</p>
+  </section>
+
+  <!-- Tournament ladder -->
+  <section id="ladder" class="screen">
+    <h2 class="screen-title">Tournament ladder</h2>
+    <ol class="ladder" id="ladder-list"></ol>
+    <button class="start" data-action="ladder-go">Fight! <small>(Enter)</small></button>
+  </section>
+
+  <!-- Versus banner -->
+  <section id="versus" class="screen passthrough">
+    <div class="vs-banner left" id="vs-left"></div>
+    <div class="vs-mid">VS</div>
+    <div class="vs-banner right" id="vs-right"></div>
+  </section>
+
+  <!-- In-fight HUD -->
+  <section id="hud" class="screen passthrough">
+    <div class="bars">
+      <div class="side p1">
+        <div class="name" id="n1"></div>
+        <div class="hp"><div class="hp-ghost" id="hg1"></div><div class="hp-fill" id="h1"></div></div>
+        <div class="sp"><div class="sp-fill" id="s1"></div><span class="sp-label">SPECIAL</span></div>
+        <div class="pips" id="pips1"></div>
+      </div>
+      <div class="clock"><div class="timer" id="timer">90</div><div class="round" id="round-label">ROUND 1</div></div>
+      <div class="side p2">
+        <div class="name" id="n2"></div>
+        <div class="hp"><div class="hp-ghost" id="hg2"></div><div class="hp-fill" id="h2"></div></div>
+        <div class="sp"><div class="sp-fill" id="s2"></div><span class="sp-label">SPECIAL</span></div>
+        <div class="pips" id="pips2"></div>
+      </div>
+    </div>
+    <div class="live"><span class="dot"></span>LIVE</div>
+    <div class="bug">CCM<small>TV</small></div>
+    <div class="combo p1" id="combo1"></div>
+    <div class="combo p2" id="combo2"></div>
+    <div class="replay-bug" id="replay-bug"><span class="dot"></span>INSTANT REPLAY</div>
+    <div class="lower-third" id="lower-third"><div class="lt-name" id="lt-name"></div><div class="lt-text" id="lt-text"></div></div>
+    <div class="pause-hint">Esc / Start to pause</div>
+  </section>
+
+  <div id="big" class="big-text"></div>
+  <div id="count" class="count-text"></div>
+  <div id="flash"></div>
+
+  <!-- Pause / options -->
+  <section id="pause" class="screen modal">
+    <div class="panel">
+      <h2 id="pause-title">Paused</h2>
+      <nav class="menu-list compact">
+        <button data-action="resume" class="only-pause">Resume</button>
+        <label class="row">Volume <input type="range" id="opt-vol" min="0" max="1" step="0.05" /></label>
+        <label class="row">Music <input type="range" id="opt-music" min="0" max="1" step="0.05" /></label>
+        <label class="row check">Camera shake <input type="checkbox" id="opt-shake" /></label>
+        <label class="row check">Commentary voice <input type="checkbox" id="opt-voice" /></label>
+        <label class="row check">Film grain <input type="checkbox" id="opt-grain" /></label>
+        <label class="row check">Glow (bloom) <input type="checkbox" id="opt-bloom" /></label>
+        <label class="row">Puppets <select id="opt-models"><option value="code">Sculpted (code)</option><option value="ai">AI 3D (Sam, Jensen)</option></select></label>
+        <button data-action="howto">Controls</button>
+        <button data-action="quit" class="only-pause">Quit to menu</button>
+        <button data-action="close-options" class="only-options">Back</button>
+      </nav>
+    </div>
+  </section>
+
+  <!-- How to play -->
+  <section id="howto" class="screen modal">
+    <div class="panel wide">
+      <h2>How to play</h2>
+      <div class="controls-grid">
+        <table>
+          <thead><tr><th></th><th>P1 keys</th><th>P2 keys</th><th>Gamepad</th></tr></thead>
+          <tbody>
+            <tr><td>Move</td><td>W A S D</td><td>Arrows</td><td>Stick / D-pad</td></tr>
+            <tr><td>Punch</td><td>J</td><td>Num1 / ,</td><td>X / □</td></tr>
+            <tr><td>Kick</td><td>K</td><td>Num2 / .</td><td>A / ✕</td></tr>
+            <tr><td>Grab</td><td>L</td><td>Num3 / /</td><td>B / ○</td></tr>
+            <tr><td>Block / pick up</td><td>I</td><td>Num5 / ;</td><td>RB / RT</td></tr>
+            <tr><td>Special / taunt</td><td>U</td><td>Num4 / '</td><td>Y / △</td></tr>
+            <tr><td>Run</td><td>Shift or double-tap</td><td>Num0 or double-tap</td><td>LB / LT</td></tr>
+          </tbody>
+        </table>
+        <ul class="tips">
+          <li><b>Combo:</b> Punch, Punch, Punch: jab, cross, uppercut.</li>
+          <li><b>Grab</b>, then Punch to headbutt, Kick to body slam, Grab + direction to whip them into the ropes, or Special for the Airplane Spin.</li>
+          <li><b>Run</b> + Punch is a clothesline, Run + Kick a dropkick. Hit a fighter bouncing off the ropes for extra damage.</li>
+          <li>Hold toward the ropes to climb out of the ring, or into a <b>corner</b> to go up top. Press any attack to dive.</li>
+          <li><b>Block</b> near a chair, bat, bell, trash can or mic to pick it up. Punch swings it, Kick throws it, Grab drops it.</li>
+          <li><b>Special</b> costs half the meter. With less than half it's a taunt, which fills the meter and pleases the crowd.</li>
+          <li>Grab a downed opponent to <b>pin</b>. Mash buttons to escape grabs, pins and get up faster.</li>
+          <li>Knock out your opponent in the deciding round with half a meter or more and it's <b>CLAY TIME</b>: press Special next to them for your finisher.</li>
+        </ul>
+      </div>
+      <button data-action="close-howto">Back</button>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section id="results" class="screen">
+    <div class="results-card">
+      <div class="res-kicker" id="res-kicker">WINNER</div>
+      <h2 id="res-name"></h2>
+      <p id="res-sub"></p>
+      <dl class="res-stats" id="res-stats"></dl>
+      <nav class="menu-list row-list" id="res-actions"></nav>
+    </div>
+  </section>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
