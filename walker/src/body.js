@@ -149,6 +149,17 @@ export function buildRig(spec) {
     bones[b.name] = bone;
     list.push(bone);
   }
+  // eye bones at the eyeball centres, so the gaze can move
+  const H = headModel(spec);
+  for (const e of H.eyes) {
+    const bone = new THREE.Bone();
+    bone.name = e.k > 0 ? 'leftEye' : 'rightEye';
+    bone.userData.rest = new THREE.Vector3(e.x, H.cy + e.y, H.cz + e.z);
+    bones.head.add(bone);
+    bone.position.copy(bone.userData.rest).sub(bones.head.userData.rest);
+    bones[bone.name] = bone;
+    list.push(bone);
+  }
   return { bones, list, index: Object.fromEntries(list.map((b, i) => [b.name, i])) };
 }
 
@@ -546,25 +557,27 @@ function legWeights(side, t, kneeT) {
 export function faceParams(c) {
   const f = c.sex ?? 0, t = (c.face ?? 0.5) * 10;
   const r = (k) => Math.sin(t * (1.3 + k * 0.71) + k * 2.17) * 0.6 + Math.sin(t * (0.53 + k * 0.29) + k * 4.1) * 0.4;
+  const st = c.style ?? 0.7; // 0 realistic … 1 stylised (appeal over likeness)
   return {
-    eyeX: 0.0315 * (1 + 0.04 * r(1)),
-    eyeY: 0.004,
-    eyeW: 0.0154 * (1 + 0.05 * f + 0.04 * r(2)),
-    eyeH: 0.0055 * (1 + 0.08 * f + 0.05 * r(3)), // a relaxed eye: lids overlap the iris
-    lidDrop: 0.0011,
+    eyeX: 0.0315 * (1 + 0.04 * r(1)) * (1 + 0.05 * st),
+    eyeY: 0.004 - 0.005 * st, // eyes a little lower reads younger and kinder
+    eyeW: 0.0154 * (1 + 0.05 * f + 0.04 * r(2)) * (1 + 0.16 * st),
+    eyeH: 0.0055 * (1 + 0.08 * f + 0.05 * r(3)) * (1 + 0.22 * st), // a relaxed eye: lids overlap the iris
+    lidDrop: 0.0011 * (1 - 0.4 * st),
     eyeTilt: 0.10 + 0.08 * r(4) + 0.05 * f,
     browY: 0.0195 + 0.003 * f,
     browArch: 0.0035 + 0.0025 * f + 0.001 * r(5),
     browThick: 0.0098 * (1 - 0.3 * f) * (1 + 0.12 * r(6)),
-    ridge: 0.0022 * (1 - 0.7 * f) * (1 + 0.3 * r(7)),
-    noseLen: 0.045 * (1 - 0.08 * f) * (1 + 0.08 * r(8)),
-    noseProj: 0.0175 * (1 - 0.12 * f) * (1 + 0.12 * r(9)),
-    noseW: 0.0170 * (1 - 0.10 * f) * (1 + 0.12 * r(10)),
-    mouthY: -0.066,
-    mouthW: 0.0245 * (1 + 0.07 * r(11)),
-    lips: (1.0 + 0.4 * f) * (1 + 0.15 * r(12)),
-    chin: 0.0055 * (1 - 0.3 * f) * (1 + 0.4 * r(13)),
-    cheek: 0.003 * (1 + 0.3 * r(14)) * (1 + 0.2 * f),
+    ridge: 0.0022 * (1 - 0.7 * f) * (1 + 0.3 * r(7)) * (1 - 0.8 * st),
+    noseLen: 0.045 * (1 - 0.08 * f) * (1 + 0.08 * r(8)) * (1 - 0.2 * st),
+    noseProj: 0.0175 * (1 - 0.12 * f) * (1 + 0.12 * r(9)) * (1 - 0.35 * st),
+    noseW: 0.0170 * (1 - 0.10 * f) * (1 + 0.12 * r(10)) * (1 - 0.1 * st),
+    mouthY: -0.066 + 0.005 * st, // a shorter lower face
+    mouthW: 0.0245 * (1 + 0.07 * r(11)) * (1 - 0.08 * st),
+    lips: (1.0 + 0.4 * f) * (1 + 0.15 * r(12)) * (1 - 0.45 * st), // stylised: colour, not sculpture
+    chin: 0.0055 * (1 - 0.3 * f) * (1 + 0.4 * r(13)) * (1 - 0.5 * st),
+    cheek: 0.003 * (1 + 0.3 * r(14)) * (1 + 0.2 * f) * (1 - 0.6 * st),
+    st,
   };
 }
 
@@ -588,17 +601,22 @@ function warp(n, density) {
 // t = −y below the head's centre (0 … 1)
 const JAW = [profile([[0, 1], [0.35, 0.925], [0.62, 0.81], [0.82, 0.585], [0.94, 0.40], [1, 0.28]]),
              profile([[0, 1], [0.35, 0.915], [0.62, 0.765], [0.82, 0.54], [0.94, 0.37], [1, 0.26]])];
-function jawWidth(t, fem) {
-  // a spline, so the outline has no ripples where the keys join
-  return lerp(JAW[0](t)[0], JAW[1](t)[0], fem);
+const JAW_SOFT = profile([[0, 1], [0.35, 0.95], [0.62, 0.86], [0.82, 0.68], [0.94, 0.48], [1, 0.34]]);
+function jawWidth(t, fem, st = 0) {
+  // a spline, so the outline has no ripples where the keys join; stylised = rounder
+  return lerp(lerp(JAW[0](t)[0], JAW[1](t)[0], fem), JAW_SOFT(t)[0], st * 0.7);
 }
 
-function buildHead(B, s, col) {
+// The head's measurements: skull, facial relief and where the eyes sit.
+// Shared by the mesh (buildHead) and the rig (eye bones), cached per spec.
+const _heads = new WeakMap();
+export function headModel(s) {
+  if (_heads.has(s)) return _heads.get(s);
   const u = s.u, hs = s.c.head, sc = u * hs;
-  const F = faceParams(s.c), fem = s.c.sex ?? 0;
+  const F = faceParams(s.c), fem = s.c.sex ?? 0, st = s.c.style ?? 0.7;
   const cy = s.headY + 0.094 * sc, cz = 0.026 * u; // skull sits forward of the neck
   const rx = 0.080 * sc, ry = 0.116 * sc, rz = 0.101 * sc;
-  const re = 0.0118 * sc; // eyeball radius
+  const re = 0.0118 * sc * (1 + 0.16 * st); // eyeball radius; a stylised face carries bigger eyes
   const L = s.c.hairLength ?? 0;
   const CAP = L < 0.06 ? 0.05 : 0.03; // scalp hair thickness under the locks
   // hairline: a real forehead (~5–6 cm above the brows); short hair recedes a
@@ -617,7 +635,7 @@ function buildHead(B, s, col) {
     // lower face: an explicit width profile (cheek → jaw → mandible angle →
     // broad chin) instead of the sphere's own taper, which reads as a V
     if (y < 0) {
-      const target = jawWidth(-y, fem);
+      const target = jawWidth(-y, fem, st);
       x *= Math.min(1.7, target / Math.max(rr, 0.2));
     }
     z *= 1 - 0.04 * jaw;
@@ -636,13 +654,14 @@ function buildHead(B, s, col) {
     const ax = Math.sqrt(X * X + 0.0025 * 0.0025); // smooth |X|: no crease down the midline
     let d = 0;
     const exo = ax - F.eyeX, eyo = Y - F.eyeY;
-    d -= 0.0054 * G2(exo, eyo, 0.018, 0.0125);                 // orbits
+    const soft = 1 - 0.75 * F.st; // stylised faces lose creases and hollows
+    d -= 0.0054 * (1 - 0.45 * F.st) * G2(exo, eyo, 0.018, 0.0125); // orbits
     d += F.ridge * G2(0, Y - F.browY + 0.002, 1, 0.0075) * smooth((0.06 - ax) / 0.02); // brow ridge
     d -= 0.0010 * G2(X, Y - F.eyeY - 0.006, 0.012, 0.007);     // nasion
-    d -= 0.0015 * G2(ax - 0.066, Y - 0.022, 0.014, 0.02);      // temples
+    d -= 0.0015 * soft * G2(ax - 0.066, Y - 0.022, 0.014, 0.02); // temples
     d += F.cheek * G2(ax - 0.046, Y + 0.010, 0.017, 0.013);    // cheekbones
-    d += (0.0026 + 0.0014 * fem) * G2(ax - 0.034, Y + 0.034, 0.02, 0.018); // soft malar pads under them
-    d -= 0.0022 * (1 - 0.6 * fem) * lerp(1.1, 0.4, smooth((s.c.build - 0.8) / 0.5)) * G2(ax - 0.044, Y + 0.050, 0.016, 0.018); // cheek hollows
+    d += (0.0026 + 0.0014 * fem + 0.003 * F.st) * G2(ax - 0.034, Y + 0.034, 0.022, 0.02); // soft malar pads under them
+    d -= 0.0022 * soft * (1 - 0.6 * fem) * lerp(1.1, 0.4, smooth((s.c.build - 0.8) / 0.5)) * G2(ax - 0.044, Y + 0.050, 0.016, 0.018); // cheek hollows
     // nose: a ridge growing from the nasion to the tip, then the columella
     const yN = F.eyeY + 0.004, yT = yN - F.noseLen * 0.82, yS = yT - 0.011;
     if (Y < yN + 0.004 && Y > yS - 0.004) {
@@ -654,18 +673,18 @@ function buildHead(B, s, col) {
       d += proj * Math.pow(q, 1.2) * smooth((Y - yS + 0.004) / 0.004);
     }
     d += 0.0035 * G2(X, Y - yT, 0.0075, 0.0075);               // tip bulb
-    d += 0.0105 * G2(ax - F.noseW * 0.5, Y - yT + 0.004, 0.0062, 0.0062); // alae
-    d -= 0.0014 * G2(ax - F.noseW * 0.72, Y - yT + 0.012, 0.0035, 0.014) * smooth((Y - F.mouthY) / 0.02); // alar crease
+    d += 0.0105 * (1 - 0.4 * F.st) * G2(ax - F.noseW * 0.5, Y - yT + 0.004, 0.0062, 0.0062); // alae
+    d -= 0.0014 * soft * G2(ax - F.noseW * 0.72, Y - yT + 0.012, 0.0035, 0.014) * smooth((Y - F.mouthY) / 0.02); // alar crease
     // nasolabial folds
     const nlT = clamp01((yT - 0.004 - Y) / (yT - 0.004 - F.mouthY));
-    d -= 0.0006 * (1 - 0.5 * fem) * Math.exp(-Math.pow((ax - lerp(F.noseW * 0.75, F.mouthW * 1.25, nlT)) / 0.0045, 2)) * smooth((yT - Y) / 0.004) * smooth((Y - F.mouthY + 0.006) / 0.004);
+    d -= 0.0006 * soft * (1 - 0.5 * fem) * Math.exp(-Math.pow((ax - lerp(F.noseW * 0.75, F.mouthW * 1.25, nlT)) / 0.0045, 2)) * smooth((yT - Y) / 0.004) * smooth((Y - F.mouthY + 0.006) / 0.004);
     // philtrum and lips
-    d -= 0.0011 * G2(X, 0, 0.0035, 1) * smooth((yS - Y) / 0.003) * smooth((Y - F.mouthY - 0.004) / 0.003);
+    d -= 0.0011 * soft * G2(X, 0, 0.0035, 1) * smooth((yS - Y) / 0.003) * smooth((Y - F.mouthY - 0.004) / 0.003);
     const lw = (yy, w) => Math.max(0, 1 - Math.pow(ax / w, 2.2)) * G2(0, yy, 1, 1);
     d += 0.0040 * F.lips * lw((Y - F.mouthY - 0.0045) / 0.0048, F.mouthW);
     d += 0.0046 * F.lips * lw((Y - F.mouthY + 0.0055) / 0.0055, F.mouthW * 0.88);
     d -= 0.0014 * G2(0, Y - F.mouthY - 0.0022 * Math.pow(ax / F.mouthW, 2), 1, 0.0011) * smooth((F.mouthW * 1.05 - ax) / 0.004);  // mouth line, corners up a touch
-    d -= 0.0026 * G2(X, Y - F.mouthY + 0.017, 0.018, 0.005);  // mentolabial sulcus
+    d -= 0.0026 * soft * G2(X, Y - F.mouthY + 0.017, 0.018, 0.005); // mentolabial sulcus
     d += F.chin * G2(X, Y + 0.098, 0.022, 0.013);             // chin
     return d;
   }
@@ -683,6 +702,13 @@ function buildHead(B, s, col) {
     }
     return { k, x: ex, y: ey, z: best.Z + 0.0012 * sc - re };
   });
+  const H = { u, hs, sc, F, fem, st, cy, cz, rx, ry, rz, re, L, CAP, hairlineOf, skull, relief, eyes };
+  _heads.set(s, H);
+  return H;
+}
+
+function buildHead(B, s, col) {
+  const { u, hs, sc, F, fem, st, cy, cz, rx, ry, rz, re, L, CAP, hairlineOf, skull, relief, eyes } = headModel(s);
   const eyeAt = (X) => eyes[X > 0 ? 0 : 1];
 
   // sampling: dense across the face, sparse over the back of the skull
@@ -742,7 +768,8 @@ function buildHead(B, s, col) {
       // eyebrows as a distance field: thick at the head, tapering and arching
       const bt = (Math.abs(Xs) - 0.011) / 0.047;
       const by = F.browY + 0.0012 * (1 - clamp01(bt)) + F.browArch * Math.sin(Math.PI * clamp01(bt) * 0.8) - 0.0035 * bt * bt; // relaxed: inner heads never dip
-      const bth = Math.max(0.0024 * sc / sc, F.browThick * (1 - 0.45 * clamp01(bt)) * 0.5);
+      // rounded head at the inner end, tapering to a fine tail
+      const bth = Math.max(0.0024, F.browThick * (1 - 0.45 * clamp01(bt)) * 0.5) * (0.35 + 0.65 * smooth((bt + 0.04) / 0.14)) * (0.3 + 0.7 * smooth((1.04 - bt) / 0.22));
       // continuous everywhere (a jump would smear brow colour down the face)
       brow.push(bth - Math.abs(Ys - by) - 0.05 * (Math.max(0, -bt) + Math.max(0, bt - 1)) - 0.05 * (1 - front));
       // colour: lips, a little warmth on nose and cheeks, lash lines, nostrils
@@ -752,9 +779,12 @@ function buildHead(B, s, col) {
         const upper = Math.max(0, 1 - Math.pow(ax / F.mouthW, 2.4)) * smooth(1 - Math.abs(Ys - F.mouthY - 0.0045) / (0.0055 * Math.sqrt(F.lips)));
         const lower = Math.max(0, 1 - Math.pow(ax / (F.mouthW * 0.9), 2.4)) * smooth(1 - Math.abs(Ys - F.mouthY + 0.0055) / (0.0065 * Math.sqrt(F.lips)));
         c.lerp(col.lip, Math.min(1, (upper + lower) * 1.4) * 0.75);
+        // a defined mouth line, curving up a touch at the corners
+        const ml = Math.exp(-Math.pow((Ys - F.mouthY - 0.0022 * Math.pow(ax / F.mouthW, 2)) / 0.0010, 2)) * smooth((F.mouthW * 1.02 - ax) / 0.003);
+        c.lerp(col.lip.clone().multiplyScalar(0.5), ml * 0.8);
         const yT = F.eyeY + 0.004 - F.noseLen * 0.82;
         c.lerp(col.flush, 0.5 * G2(ax - 0.045, Ys + 0.03, 0.02, 0.018) + 0.35 * G2(Xs, Ys - yT, 0.01, 0.01));
-        const nostril = G2(ax - F.noseW * 0.24, Ys - yT + 0.0105, 0.0032, 0.0022);
+        const nostril = G2(ax - F.noseW * 0.24, Ys - yT + 0.0105, 0.0032, 0.0022) * (1 - 0.6 * st);
         c.lerp(col.nostril, Math.min(1, nostril * 1.3));
         if (lash > 0) c.lerp(col.lash, Math.min(1, lash * 0.95));
         if (crease > 0) c.lerp(col.flush.clone().multiplyScalar(0.78), crease * 0.35);
@@ -768,9 +798,13 @@ function buildHead(B, s, col) {
 
   // eyeballs: sclera, iris, pupil; glossy so they catch the light
   for (const e of eyes) {
-    const look = new THREE.Vector3(0, -0.04, 1).normalize(); // straight ahead, a hair down // gaze a little down, slightly converged
+    const look = new THREE.Vector3(0, -0.04, 1).normalize(); // rest gaze; the eye bones move it
+    const eyeBone = e.k > 0 ? 'leftEye' : 'rightEye';
+    const irisR = 0.55 + 0.1 * st, pupilR = 0.16 + 0.05 * st;
+    // the catch-light: the window reflection that makes an eye read as alive
+    const glint = new THREE.Vector3(-0.30, 0.34, 1).normalize(); // gaze a little down, slightly converged
     const qL = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), look);
-    const R = qn(22, 10), S = qn(32, 12), er = [];
+    const R = qn(40, 14), S = qn(56, 16), er = [];
     for (let j = 1; j < R; j++) {
       const th = (j / R) * Math.PI;
       const pts = [], cols = [];
@@ -783,13 +817,15 @@ function buildHead(B, s, col) {
         v.multiplyScalar(re * cornea).applyQuaternion(qL);
         pts.push([e.x + v.x, cy + e.y + v.y, cz + e.z + v.z]);
         let cc;
-        if (ang < 0.16) cc = col.pupil;
-        else if (ang < 0.55) cc = col.iris.clone().lerp(col.irisInner, smooth((0.42 - ang) / 0.2) * 0.6);
-        else if (ang < 0.60) cc = col.iris.clone().multiplyScalar(0.55).lerp(col.sclera, smooth((ang - 0.55) / 0.05) * 0.4); // soft limbal ring
+        const vl = v.clone().applyQuaternion(qL.clone().invert()).normalize();
+        if (Math.acos(Math.min(1, vl.dot(glint))) < 0.11 + 0.05 * st) cc = new THREE.Color(2.2, 2.2, 2.1);
+        else if (ang < pupilR) cc = col.pupil;
+        else if (ang < irisR) cc = col.iris.clone().lerp(col.irisInner, smooth((0.42 - ang) / 0.2) * 0.6);
+        else if (ang < irisR + 0.05) cc = col.iris.clone().multiplyScalar(0.55).lerp(col.sclera, smooth((ang - irisR) / 0.05) * 0.4); // soft limbal ring
         else cc = col.sclera.clone().lerp(col.scleraEdge, smooth((ang - 1.2) / 0.8));
         cols.push(cc);
       }
-      er.push({ pts, mat: MAT.eye, color: (i) => cols[i], weights: () => ({ head: 1 }) });
+      er.push({ pts, mat: MAT.eye, color: (i) => cols[i], weights: () => ({ [eyeBone]: 1 }) });
     }
     // rings run from the front pole backward; flip to keep normals outward
     B.loft(er, { capStart: true, capEnd: true, flip: true });

@@ -55,6 +55,10 @@ gtao.updateGtaoMaterial({ radius: 0.16, distanceExponent: 1.6, thickness: 0.6, s
 gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 16 });
 composer.addPass(gtao);
 composer.addPass(new OutputPass());
+// soft fill from the camera's side, as in portrait lighting: faces would
+// otherwise sit in the key light's shadow from the isometric angle
+const fill = new THREE.DirectionalLight('#fff4ea', 0.55);
+scene.add(fill, fill.target);
 const rim = new THREE.DirectionalLight('#dfe8ff', 0.55);
 scene.add(rim, rim.target);
 
@@ -325,6 +329,8 @@ function updateCamera(dt) {
   ground.position.set(Math.round(t.x / TILE) * TILE, 0, Math.round(t.z / TILE) * TILE);
   sun.position.set(t.x - 2.2, 6, t.z + 3.2);
   sun.target.position.set(t.x, 0.4, t.z);
+  fill.position.copy(cam.position).add(new THREE.Vector3(0, 4, 0));
+  fill.target.position.set(t.x, t.y, t.z);
   rim.position.set(t.x + 3, 2.5, t.z - 4);
   rim.target.position.set(t.x, 1, t.z);
 }
@@ -396,6 +402,7 @@ const CHAR_SLIDERS = [
   ['sex', 'Sex', 0, 1, 0.01, (v) => (v < 0.15 ? 'male' : v > 0.85 ? 'female' : `${Math.round(v * 100)}`)],
   ['hairLength', 'Hair', 0, 1, 0.01, (v) => (v < 0.05 ? 'short' : pct(v))],
   ['face', 'Face', 0, 1, 0.005, (v) => `${Math.round(v * 100)}`],
+  ['style', 'Style', 0, 1, 0.01, (v) => (v < 0.2 ? 'real' : v > 0.8 ? 'toon' : `${Math.round(v * 100)}`)],
 ];
 const GAIT_SLIDERS = [
   ['speed', 'Speed', 0.5, 2.0, 0.01, (v) => `${v.toFixed(2)}`],

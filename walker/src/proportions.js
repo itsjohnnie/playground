@@ -15,6 +15,7 @@ export const DEFAULT_CHARACTER = {
   sex: 0,           // 0 male … 1 female: frame, fat distribution, face, gait
   hairLength: 0,    // 0 short … 1 past the shoulders
   face: 0.5,        // walks smoothly through facial variations
+  style: 0.7,       // 0 realistic … 1 stylised: bigger eyes, softer features
   eyes: '#5b4030',  // iris
   skin: '#c99678',
   hair: '#2a1d16',

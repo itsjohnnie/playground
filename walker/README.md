@@ -48,6 +48,14 @@ hairline are drawn per pixel from distance fields, so they stay crisp. **Face**
 walks smoothly through variations (nose, eyes, lips, cheekbones, chin), and
 `sex` shifts the same features the way they differ on average.
 
+Near-realistic procedural faces fall into the uncanny valley, so **Style**
+(default 0.7) leans toward appeal: larger eyes set a little lower, a
+smaller, softer nose and mouth, rounder cheeks and jaw, no hollows or
+creases. Slide it to 0 for the realistic proportions. Either way the eyes are
+alive: they sit on their own bones and saccade (a quick jump to a new target
+every second or two, an occasional glance aside), carry a catch-light, and
+blink. A soft fill light from the camera's side keeps faces out of shadow.
+
 ## Hair
 
 Hair is grown, not modelled: a few hundred tapered locks rooted over the

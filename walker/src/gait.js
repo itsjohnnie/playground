@@ -327,6 +327,18 @@ export class Walker {
       this.nextBlink = Math.random() < 0.15 ? 0.32 : 2 + Math.random() * 4;
     }
     const ba = this.blinkAge;
+    // gaze: holds on a spot a few metres ahead, then saccades — a quick (~40 ms)
+    // jump to a new nearby target every 0.6–2.4 s, now and then a glance aside
+    const G = this.gaze || (this.gaze = { yaw: 0, pitch: 0, ty: 0, tp: 0, next: 0.8 });
+    G.next -= dt;
+    if (G.next <= 0) {
+      const aside = Math.random() < 0.15;
+      G.ty = (Math.random() - 0.5) * (aside ? 0.5 : 0.14);
+      G.tp = -0.07 + (Math.random() - 0.5) * 0.08;
+      G.next = aside ? 0.7 : 0.6 + Math.random() * 1.8;
+    }
+    const sk = 1 - Math.exp(-dt / 0.018);
+    G.yaw += (G.ty - G.yaw) * sk; G.pitch += (G.tp - G.pitch) * sk;
     this.pose.blink = ba < 0.06 ? smooth(ba / 0.06) : ba < 0.17 ? 1 - smooth((ba - 0.06) / 0.11) : 0;
     this.dist += k.v * dt;
     const prev = this.phase;
@@ -523,6 +535,10 @@ export class Walker {
     const headPitch = (3 - 9 * g.posture + 1.0 * Math.cos(2 * TAU * (φ - 0.30)) * g.bounce) * D - lean * 0.75;
     qFromEuler((0.12 * thYaw / D + look) * D, -0.2 * thRoll, headPitch + lean, P.q.head);
     P.q.neck.copy(P.q.spine2).slerp(P.q.head, 0.5);
+    const G = this.gaze || { yaw: 0, pitch: -0.07 };
+    _q.setFromEuler(new THREE.Euler(-G.pitch, G.yaw, 0, 'YXZ'));
+    P.q.leftEye.copy(P.q.head).multiply(_q);
+    P.q.rightEye.copy(P.q.head).multiply(_q);
 
     // ── arms ────────────────────────────────────────────────────────────
     for (const f of this.feet) {
@@ -692,7 +708,7 @@ function tmpFoot(i) { return _tf[i]; }
 
 function makePose() {
   const q = {};
-  for (const n of ['hips', 'spine', 'spine1', 'spine2', 'neck', 'head']) q[n] = new THREE.Quaternion();
+  for (const n of ['hips', 'spine', 'spine1', 'spine2', 'neck', 'head', 'leftEye', 'rightEye']) q[n] = new THREE.Quaternion();
   for (const side of ['left', 'right']) {
     for (const n of ['Shoulder', 'Arm', 'ForeArm', 'Hand', 'UpLeg', 'Leg', 'Foot', 'ToeBase']) q[side + n] = new THREE.Quaternion();
   }
