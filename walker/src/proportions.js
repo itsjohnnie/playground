@@ -20,7 +20,8 @@ export const DEFAULT_CHARACTER = {
   skin: '#c99678',
   hair: '#2a1d16',
   shirt: '#3d5a73',
-  pants: '#2b2b30',
+  pants: '#33425c',
+  pantsStyle: 'jeans', // 'jeans': a straight-leg cut that hangs; 'leggings': follows the leg
   shoes: '#e8e4dc',
 };
 

@@ -12,7 +12,7 @@ const TAU = Math.PI * 2;
 let Q = 1;
 const qn = (n, min = 6) => Math.max(min, Math.round(n * Q));
 // surface kinds: each gets its own roughness, sheen and micro-detail in the shader
-const MAT = { skin: 0, cloth: 1, hair: 2, shoe: 3, sole: 4, eye: 5 };
+const MAT = { skin: 0, cloth: 1, hair: 2, shoe: 3, sole: 4, eye: 5, denim: 6 };
 const smooth = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -47,7 +47,7 @@ function se(a, rx, rz, e) {
 
 class Builder {
   constructor(boneIndex) {
-    this.pos = []; this.col = []; this.si = []; this.sw = []; this.idx = []; this.hair = []; this.mat = []; this.brow = []; this.blink = []; this.sway = [];
+    this.pos = []; this.col = []; this.si = []; this.sw = []; this.idx = []; this.hair = []; this.mat = []; this.brow = []; this.blink = []; this.sway = []; this.aux = [];
     this.bi = boneIndex;
     this.parts = [];
     this.fields = {}; // extra distance fields parts register for smooth unions
@@ -55,9 +55,10 @@ class Builder {
   }
   // tag the vertices that follow as one body part (for the smooth-union pass)
   mark(name) { this.parts.push({ name, start: this.pos.length / 3 }); }
-  vert(x, y, z, color, weights, hair = -1, mat = MAT.cloth, brow = -1, blink = 0, sway = 0) {
+  vert(x, y, z, color, weights, hair = -1, mat = MAT.cloth, brow = -1, blink = 0, sway = 0, aux = 1) {
     this.pos.push(x, y, z);
     this.sway.push(sway);
+    this.aux.push(aux);
     this.hair.push(hair);
     this.brow.push(brow);
     this.blink.push(blink);
@@ -93,7 +94,7 @@ class Builder {
       r.pts.forEach((p, i) => {
         const c = typeof r.color === 'function' ? r.color(i, p) : r.color;
         const mt = r.mat === undefined ? MAT.cloth : typeof r.mat === 'function' ? r.mat(i, p) : r.mat;
-        this.vert(p[0], p[1], p[2], c, r.weights(p[0], p[1], p[2]), r.hair ? r.hair[i] : -1, mt, r.brow ? r.brow[i] : -1, r.blink ? r.blink[i] : 0, r.sway ? r.sway[i] : 0);
+        this.vert(p[0], p[1], p[2], c, r.weights(p[0], p[1], p[2]), r.hair ? r.hair[i] : -1, mt, r.brow ? r.brow[i] : -1, r.blink ? r.blink[i] : 0, r.sway ? r.sway[i] : 0, r.aux ? r.aux[i] : 1);
       });
       base.push(start);
     }
@@ -129,6 +130,7 @@ class Builder {
     g.setAttribute('matId', new THREE.Float32BufferAttribute(this.mat, 1));
     g.setAttribute('browD', new THREE.Float32BufferAttribute(this.brow, 1));
     g.setAttribute('sway', new THREE.Float32BufferAttribute(this.sway, 1));
+    g.setAttribute('aux', new THREE.Float32BufferAttribute(this.aux, 1)); // seams: signed distance (m) to the nearest one
     // blink: lids close by moving skin forward over the eyeballs (a relative morph)
     const blink = new Float32Array(this.pos.length);
     for (let i = 0; i < this.blink.length; i++) blink[i * 3 + 2] = this.blink[i];
@@ -213,6 +215,15 @@ export function bodyShape(spec) {
     [1.0, 0.051, 0.054, 0.000],
   ];
   const legRaw = profile(legKeys);
+  // jeans: a straight-leg cut that hangs from the seat and thighs; below the
+  // knee it no longer touches the calf. [t, rx, rz, zc] at 1.75 m
+  const jeans = (c.pantsStyle ?? 'jeans') === 'jeans';
+  const cutRaw = profile([
+    [-0.07, 0.076, 0.092, -0.022], [0.06, 0.094, 0.103, -0.012], [0.22, 0.086, 0.090, 0.004],
+    [kneeT - 0.03, 0.068, 0.072, 0.004], [kneeT + 0.08, 0.064, 0.069, -0.002],
+    [0.86, 0.062, 0.067, -0.002], [1.0, 0.063, 0.068, 0.000], [1.045, 0.066, 0.071, 0.002],
+  ]);
+  const hemT = jeans ? 1.04 : 1.0; // jeans break over the shoe
   // arms: t from the shoulder joint (0) to the wrist (1)
   const elbowT = spec.upperArm / (spec.upperArm + spec.foreArm);
   const armKeys = [
@@ -235,7 +246,19 @@ export function bodyShape(spec) {
     torso: profile(torsoKeys),
     legRaw,
     legGirth,
-    leg: (t) => { const [rx, rz, zc] = legRaw(t); const gg = legGirth(t); return [rx * u * gg, rz * u * gg, zc * u]; },
+    leg: (t) => {
+      const [rx, rz, zc] = legRaw(Math.min(t, 1)); const gg = legGirth(Math.min(t, 1));
+      let ax = rx * u * gg, az = rz * u * gg, azc = zc * u;
+      if (jeans) {
+        // the cloth never goes tighter than the cut, and stands off the body a little
+        const [cx, cz, czc] = cutRaw(t), cg = lerp(1, g, 0.7);
+        const sx = cx * u * cg, sz = cz * u * cg;
+        ax = Math.max(ax + 0.006 * u, sx); az = Math.max(az + 0.006 * u, sz);
+        azc = lerp(azc, czc * u, 0.6);
+      }
+      return [ax, az, azc];
+    },
+    jeans, hemT,
     armRaw, elbowT, sleeveT,
     arm: (t) => {
       const [rx, rz, zc] = armRaw(t);
@@ -279,6 +302,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
   col.scleraEdge = new THREE.Color('#c9ab9c');
   col.collar = col.shirt.clone().multiplyScalar(0.8);
   col.belt = col.pants.clone().multiplyScalar(0.6);
+  col.stitch = new THREE.Color('#c08a3e');
   const g = c.build;           // girth
   const m = c.muscle;          // 0 … 1
   const f = c.sex ?? 0;        // 0 male … 1 female
@@ -328,7 +352,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
     const isShirt = y > shirtEnd;
     rings.push({
       pts,
-      mat: (i, p) => (p[1] > collarY + 0.012 * u ? MAT.skin : MAT.cloth),
+      mat: (i, p) => (p[1] > collarY + 0.012 * u ? MAT.skin : p[1] < shirtEnd && shape.jeans ? MAT.denim : MAT.cloth),
       color: (i, p) => {
         if (p[1] > collarY) return p[1] > collarY + 0.012 * u ? col.skin : col.collar;
         if (!isShirt) return p[1] > shirtEnd - 0.022 * u ? col.belt : col.pants;
@@ -429,26 +453,43 @@ export function buildBody(spec, rig, { draft = false } = {}) {
     const kneeT = spec.thigh / L;
     // trousers: anatomy underneath, cloth on top (never tighter than a
     // straight-leg cut below the knee)
-    const P = shape.legRaw;
     B.mark(`leg_${side}`);
     const r = [];
     const NL = qn(84, 24);
     for (let j = 0; j <= NL; j++) {
-      const t = lerp(-0.07, 1.0, j / NL); // starts below the shirt hem
-      const [rx, rz, zc] = P(t);
-      const gg = shape.legGirth(t);
+      const t = lerp(-0.07, shape.hemT, j / NL); // starts below the shirt hem
+      const [rx, rz, zc] = shape.leg(t);
       const y = spec.hipJointY - t * L;
-      const pts = [];
+      const pts = [], cols = [], aux = [];
+      const jeans = shape.jeans;
       for (let i = 0; i < SEG; i++) {
         const a = (i / SEG) * TAU;
-        let [px, pz] = se(a, rx * u * gg, rz * u * gg, 2.1);
+        let rr = 1;
+        if (jeans) {
+          // cloth: soft folds where the knee bends, a little stacking at the hem
+          const back = Math.max(0, -Math.cos(a));
+          rr += 0.016 * back * Math.sin((t - kneeT) * 160) * Math.exp(-Math.pow((t - kneeT) / 0.05, 2));
+          rr += 0.022 * Math.sin(t * 150 + 2 * a) * smooth((t - 0.9) / 0.1);
+          rr += 0.012 * Math.sin(a * 3 + t * 40) * smooth((t - 0.45) / 0.3); // a hanging leg is never a perfect tube
+        }
+        let [px, pz] = se(a, rx * rr, rz * rr, 2.1);
         // inner thighs flatter where they meet
         if (px * k < 0 && t < 0.25) px *= lerp(0.86, 1, smooth(t / 0.25));
-        pts.push([x0 + px, y, pz + zc * u]);
+        pts.push([x0 + px, y, pz + zc]);
+        // distance along the surface to the outseam (outside) and inseam (inside)
+        const lat = Math.abs(Math.atan2(Math.sin(a - k * Math.PI / 2), Math.cos(a - k * Math.PI / 2)));
+        aux.push(Math.min(lat, Math.PI - lat) * (rx + rz) * 0.5);
+        let c = col.pants.clone();
+        if (jeans) {
+          const front = Math.max(0, Math.cos(a));
+          // wear: lighter across the front of the thighs and the knees
+          c.multiplyScalar(1 + 0.22 * front * Math.exp(-Math.pow((t - 0.24) / 0.13, 2)) + 0.12 * front * Math.exp(-Math.pow((t - kneeT) / 0.05, 2)));
+          if (t > shape.hemT - 0.02) c.multiplyScalar(0.82); // folded hem
+        } else if (t > 0.975) c.multiplyScalar(0.8);
+        cols.push(c);
       }
-      const w = legWeights(side, t, kneeT);
-      const hem = t > 0.975;
-      r.push({ pts, color: hem ? col.pants.clone().multiplyScalar(0.8) : col.pants, weights: () => w });
+      const w = legWeights(side, Math.min(t, 1), kneeT);
+      r.push({ pts, aux, mat: jeans ? MAT.denim : MAT.cloth, color: (i) => cols[i], weights: () => w });
     }
     B.loft(r, { capEnd: true });
     B.mark('other');
@@ -473,13 +514,14 @@ export function buildBody(spec, rig, { draft = false } = {}) {
     sh.uniforms.hairSwing = hairSwing;
     sh.uniforms.browColor = browColor;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute float hairD;\nattribute float matId;\nattribute float browD;\nattribute float sway;\nuniform vec3 hairSwing;\nvarying float vBrowD;\nvarying float vHairD;\nvarying float vMat;\nvarying vec3 vRest;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += hairSwing * sway; // long hair lags the head\nvHairD = hairD;\nvBrowD = browD;\nvMat = matId;\nvRest = position;');
+      .replace('#include <common>', '#include <common>\nattribute float hairD;\nattribute float matId;\nattribute float browD;\nattribute float sway;\nattribute float aux;\nvarying float vAux;\nuniform vec3 hairSwing;\nvarying float vBrowD;\nvarying float vHairD;\nvarying float vMat;\nvarying vec3 vRest;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed += hairSwing * sway; // long hair lags the head\nvAux = aux;\nvHairD = hairD;\nvBrowD = browD;\nvMat = matId;\nvRest = position;');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform vec3 hairColor;
         uniform vec3 browColor;
         varying float vBrowD;
+        varying float vAux;
         varying float vHairD;
         varying float vMat;
         varying vec3 vRest;
@@ -495,7 +537,8 @@ export function buildBody(spec, rig, { draft = false } = {}) {
       .replace('#include <color_fragment>', `#include <color_fragment>
         float hw = max(fwidth(vHairD), 1e-4) * 0.8;
         float hairM = max(smoothstep(-hw, hw, vHairD), wMask(2.0));
-        float skinM = wMask(0.0) * (1.0 - hairM), clothM = wMask(1.0), shoeM = wMask(3.0), soleM = wMask(4.0);
+        float denimM = wMask(6.0);
+        float skinM = wMask(0.0) * (1.0 - hairM), clothM = wMask(1.0) + denimM, shoeM = wMask(3.0), soleM = wMask(4.0);
         diffuseColor.rgb = mix(diffuseColor.rgb, hairColor, hairM);
         // eyebrows: crisp edge from the distance field, broken up into hairs
         float bw = max(fwidth(vBrowD), 1e-5) * 1.2;
@@ -507,6 +550,16 @@ export function buildBody(spec, rig, { draft = false } = {}) {
         float knit = wNoise(vRest * vec3(900.0, 1300.0, 900.0));
         float drift = wNoise(vRest * 18.0);
         diffuseColor.rgb *= 1.0 + clothM * ((drift - 0.5) * 0.08 + (knit - 0.5) * 0.10 * wDetail(900.0));
+        // denim: a diagonal twill weave and heathered yarn
+        float twill = sin((vRest.y * 1.0 + (vRest.x + vRest.z) * 0.6) * 2400.0) * 0.5 + 0.5;
+        float yarn = wNoise(vRest * vec3(1800.0, 300.0, 1800.0));
+        diffuseColor.rgb *= 1.0 + denimM * ((twill - 0.5) * 0.14 * wDetail(2400.0) + (yarn - 0.5) * 0.16 * wDetail(1800.0));
+        // seams: a fine felled seam, a shade darker, with a stitch line beside it
+        float sw = max(fwidth(vAux), 1e-5);
+        float seamLine = 1.0 - smoothstep(0.0015, 0.0015 + sw, vAux);
+        float stitch = (1.0 - smoothstep(0.0006, 0.0006 + sw, abs(vAux - 0.0042))) * step(0.5, fract(vRest.y * 220.0));
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.72, denimM * seamLine);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.42, 0.2), denimM * stitch * 0.38 * wDetail(220.0));
         // hair: strands running down the head
         float strand = wNoise(vec3(vRest.x * 520.0, vRest.y * 26.0, vRest.z * 520.0));
         float clump = wNoise(vec3(vRest.x * 90.0, vRest.y * 8.0, vRest.z * 90.0));
@@ -527,7 +580,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
         #endif
         material.specularColor *= 1.0 - 0.75 * clothM - 0.35 * skinM;`);
   };
-  mat.customProgramCacheKey = () => 'walker-body-v4';
+  mat.customProgramCacheKey = () => 'walker-body-v6';
   const mesh = new THREE.SkinnedMesh(geo, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -997,7 +1050,7 @@ function partFields(s, sh) {
     return capped(ellipseDist(x, z - zc, hw, hd, e), Math.abs(y - yy));
   };
   const leg = (k) => (x, y, z) => {
-    const t0 = (s.hipJointY - y) / s.legLen, t = clamp(t0, -0.07, 1);
+    const t0 = (s.hipJointY - y) / s.legLen, t = clamp(t0, -0.07, sh.hemT);
     const [rx, rz, zc] = sh.leg(t);
     return capped(ellipseDist(x - k * s.hipSep * 0.5, z - zc, rx, rz, 2.1), Math.abs(t0 - t) * s.legLen);
   };

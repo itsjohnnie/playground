@@ -452,6 +452,28 @@ for (const [key, label] of COLORS) {
   colorHost.append(el);
 }
 
+// pants: a two-way choice under the colours
+{
+  const row = document.createElement('div');
+  row.className = 'actions';
+  row.setAttribute('role', 'radiogroup');
+  row.setAttribute('aria-label', 'Pants');
+  const opts = [['jeans', 'Jeans'], ['leggings', 'Leggings']];
+  const btns = opts.map(([v, label]) => {
+    const b = document.createElement('button');
+    b.className = 'toggle';
+    b.textContent = label;
+    b.setAttribute('role', 'radio');
+    b.onclick = () => { character.pantsStyle = v; sync(); queueRebuild(); persist(); };
+    return [v, b];
+  });
+  const sync = () => btns.forEach(([v, b]) => { b.setAttribute('aria-pressed', character.pantsStyle === v); b.setAttribute('aria-checked', character.pantsStyle === v); });
+  btns.forEach(([, b]) => row.append(b));
+  colorHost.after(row);
+  inputs.pantsStyle = sync;
+  sync();
+}
+
 const TOGGLES = [['footprints', 'Footprints'], ['arcs', 'Motion arcs'], ['skeleton', 'Skeleton'], ['graph', 'Gait graph'], ['ao', 'Occlusion']];
 const toggleHost = document.getElementById('toggles');
 function applyView() {
@@ -481,9 +503,9 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
 // starting points, not stereotypes: every value stays on its slider
 const PRESETS = {
-  man: { face: 0.5, eyes: '#4a3424', height: 1.78, legs: 1.0, shoulders: 1.04, hips: 0.97, build: 1.04, muscle: 0.6, head: 1.0, sex: 0, hairLength: 0.22,
-    skin: '#c99678', hair: '#2a1d16', shirt: '#3d5a73', pants: '#2b2b30', shoes: '#e8e4dc' },
-  woman: { face: 0.27, eyes: '#4f6a52', height: 1.65, legs: 1.02, shoulders: 1.0, hips: 1.0, build: 0.96, muscle: 0.35, head: 1.0, sex: 1, hairLength: 0.75,
+  man: { pantsStyle: 'jeans', face: 0.5, eyes: '#4a3424', height: 1.78, legs: 1.0, shoulders: 1.04, hips: 0.97, build: 1.04, muscle: 0.6, head: 1.0, sex: 0, hairLength: 0.22,
+    skin: '#c99678', hair: '#2a1d16', shirt: '#3d5a73', pants: '#33425c', shoes: '#e8e4dc' },
+  woman: { pantsStyle: 'leggings', face: 0.27, eyes: '#4f6a52', height: 1.65, legs: 1.02, shoulders: 1.0, hips: 1.0, build: 0.96, muscle: 0.35, head: 1.0, sex: 1, hairLength: 0.75,
     skin: '#e2b593', hair: '#5a3620', shirt: '#b5462f', pants: '#2d3a55', shoes: '#efefea' },
 };
 function applyPreset(name) {
@@ -498,7 +520,7 @@ document.getElementById('random').onclick = () => {
   const broad = Math.random();
   const fem = Math.random() < 0.5 ? 1 : 0;
   Object.assign(character, {
-    face: +Math.random().toFixed(3), eyes: pick(EYES),
+    face: +Math.random().toFixed(3), eyes: pick(EYES), pantsStyle: fem && Math.random() < 0.5 ? 'leggings' : 'jeans',
     sex: fem, hairLength: +(fem ? rnd(0.3, 1) : rnd(0, 0.25)).toFixed(2),
     height: +(fem ? rnd(1.54, 1.78) : rnd(1.64, 1.96)).toFixed(2), legs: +rnd(0.94, 1.06).toFixed(2),
     shoulders: +(0.9 + broad * 0.22).toFixed(2), hips: +(1.12 - broad * 0.2 + rnd(-0.05, 0.05)).toFixed(2),
