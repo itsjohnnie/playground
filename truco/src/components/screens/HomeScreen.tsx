@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { SuitMark } from '@/components/ui/SuitMark'
 import { Screen } from '@/components/ui/Screen'
+import { InstallSheet } from '@/components/ui/InstallSheet'
+import { useInstallState } from '@/hooks/useInstallState'
 import type { Match, Player } from '@/types/game'
 
 interface HomeScreenProps {
@@ -30,6 +33,8 @@ export function HomeScreen({
 }: HomeScreenProps) {
   const reduced = useReducedMotion()
   const hasActiveMatch = liveMatches.length > 0
+  const install = useInstallState()
+  const [installOpen, setInstallOpen] = useState(false)
   return (
     <Screen className="px-5 pb-6">
       <div className="flex-1 flex flex-col justify-center gap-10">
@@ -101,14 +106,31 @@ export function HomeScreen({
         </div>
       </div>
 
-      <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.35, duration: 0.3 }}
-        className="pt-6 text-center text-sm text-ink-soft text-balance"
-      >
-        Instalá la app para llevar tu propio marcador en cada mesa.
-      </motion.p>
+      {/* Nothing to offer someone who already has it on their home
+          screen — the hint was showing there too, which is where it
+          reads as the app not knowing what it is. */}
+      {!install.installed && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.35, duration: 0.3 }}
+          className="pt-6 flex justify-center"
+        >
+          <button
+            type="button"
+            onClick={() => setInstallOpen(true)}
+            className="pressable text-center text-sm text-ink-soft text-balance underline decoration-ink-soft/40 underline-offset-4 hover:text-ink-muted"
+          >
+            Instalá la app para llevar tu propio marcador en cada mesa.
+          </button>
+        </motion.div>
+      )}
+
+      <InstallSheet
+        open={installOpen}
+        onClose={() => setInstallOpen(false)}
+        install={install}
+      />
     </Screen>
   )
 }
