@@ -591,9 +591,9 @@ function armWeights(side, t, elbowT) {
   if (t < 0.06) {
     const a = smooth((t + 0.1) / 0.16);
     w[sh] = 1 - a; w[ua] = a;
-  } else if (t < elbowT - 0.045) w[ua] = 1;
-  else if (t < elbowT + 0.045) {
-    const a = smooth((t - (elbowT - 0.045)) / 0.09);
+  } else if (t < elbowT - 0.07) w[ua] = 1;
+  else if (t < elbowT + 0.07) {
+    const a = smooth((t - (elbowT - 0.07)) / 0.14);
     w[ua] = 1 - a; w[fa] = a;
   } else if (t < 0.9) w[fa] = 1;
   else { const a = smooth((t - 0.9) / 0.1); w[fa] = 1 - a * 0.5; w[hd] = a * 0.5; } // a wide wrist: the bend spreads, no fold
@@ -606,9 +606,10 @@ function legWeights(side, t, kneeT) {
   if (t < 0.04) {
     const a = smooth((t + 0.07) / 0.11);
     w.hips = (1 - a) * 0.85; w[ul] = 1 - w.hips;
-  } else if (t < kneeT - 0.05) w[ul] = 1;
-  else if (t < kneeT + 0.05) {
-    const a = smooth((t - (kneeT - 0.05)) / 0.1);
+  } else if (t < kneeT - 0.085) w[ul] = 1;
+  else if (t < kneeT + 0.085) {
+    // a wide knee: the bend spreads into a rounded curve instead of a pinch
+    const a = smooth((t - (kneeT - 0.085)) / 0.17);
     w[ul] = 1 - a; w[l] = a;
   } else if (t < 0.93) w[l] = 1;
   else { const a = smooth((t - 0.93) / 0.07); w[l] = 1 - a * 0.2; w[f] = a * 0.2; } // the hem hangs from the shin, not the foot
