@@ -574,7 +574,7 @@ export class Walker {
       const gu = s.u * s.c.build * (1 - 0.1 * fem); // same girth scaling as the arm mesh
       // [t along segment, 0 elbow · 1 forearm · 2 hand, radius at 1.75 m]: incl. the forearm's widest point
       const pts = [[0, 0, 0.039], [0.2, 1, 0.042], [0.5, 1, 0.036], [1, 1, 0.028], [0.45, 2, 0.021], [0.9, 2, 0.017]];
-      const margin = 0.006 * s.u;
+      const margin = 0.0095 * s.u; // skin gap, plus room for the hip and shoulder fillets
       const pen = (extra) => {
         pose(extra);
         const qa = P.q[`${side}Arm`], qf = P.q[`${side}ForeArm`], qh = P.q[`${side}Hand`];

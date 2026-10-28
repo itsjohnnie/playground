@@ -49,7 +49,10 @@ class Builder {
   constructor(boneIndex) {
     this.pos = []; this.col = []; this.si = []; this.sw = []; this.idx = []; this.hair = []; this.mat = []; this.brow = []; this.blink = []; this.sway = [];
     this.bi = boneIndex;
+    this.parts = [];
   }
+  // tag the vertices that follow as one body part (for the smooth-union pass)
+  mark(name) { this.parts.push({ name, start: this.pos.length / 3 }); }
   vert(x, y, z, color, weights, hair = -1, mat = MAT.cloth, brow = -1, blink = 0, sway = 0) {
     this.pos.push(x, y, z);
     this.sway.push(sway);
@@ -173,16 +176,16 @@ export function bodyShape(spec) {
   const kneeT = spec.thigh / spec.legLen;
   const torsoKeys = [
     // y,                         halfW,                      halfD,           zc,      exp
-    [spec.hipJointY - 0.075 * u, 0.085 * g,                  0.075 * g,       -0.012, 2.2],
-    [spec.hipJointY - 0.035 * u, 0.150 * g * c.hips,         0.104 * g,       -0.016, 2.5],
-    [spec.hipJointY + 0.005 * u, 0.172 * g * c.hips,         0.118 * g,       -0.020, 2.6],
+    [spec.hipJointY - 0.075 * u, 0.060 * g,                  0.058 * g,       -0.006, 2.2],
+    [spec.hipJointY - 0.035 * u, 0.125 * g * c.hips,         0.086 * g,       -0.008, 2.5],
+    [spec.hipJointY + 0.005 * u, 0.166 * g * c.hips,         0.102 * g,       -0.010, 2.6],
     [spec.hipsY + 0.040 * u,     0.160 * g * c.hips,         0.106 * g,       -0.006, 2.6],
     [spec.spineY + 0.050 * u,    0.142 * g * lerp(c.hips, c.shoulders, 0.4), 0.100 * g, 0.004, 2.4],
     [spec.spine1Y + 0.010 * u,   0.150 * g * lerp(1, c.shoulders, 0.6), 0.108 * g, 0.004, 2.3],
     [spec.spine2Y - 0.010 * u,   0.165 * c.shoulders * lerp(1, g, 0.7), (0.116 + 0.008 * m) * g, 0.014, 2.3],
-    [spec.shoulderY - 0.085 * u, 0.186 * c.shoulders * lerp(1, g, 0.6), (0.114 + 0.006 * m) * g, 0.008, 2.4],
-    [spec.shoulderY - 0.030 * u, 0.206 * c.shoulders * lerp(1, g, 0.5), 0.098 * g,       -0.004, 2.6],
-    [spec.shoulderY + 0.006 * u, 0.180 * c.shoulders * lerp(1, g, 0.5), 0.078 * g,       -0.016, 2.6],
+    [spec.shoulderY - 0.085 * u, 0.200 * c.shoulders * lerp(1, g, 0.6), (0.114 + 0.006 * m) * g, 0.008, 2.4],
+    [spec.shoulderY - 0.030 * u, 0.222 * c.shoulders * lerp(1, g, 0.5), 0.098 * g,       -0.004, 2.6],
+    [spec.shoulderY + 0.006 * u, 0.192 * c.shoulders * lerp(1, g, 0.5), 0.078 * g,       -0.016, 2.6],
     [spec.shoulderY + 0.024 * u, 0.098 * lerp(1, g, 0.5),    0.068 * g,       -0.018, 2.3], // trapezius
     [spec.neckY + 0.012 * u,     0.068 * lerp(1, g, 0.5),    0.062 * lerp(1, g, 0.5), -0.018, 2.0],
   ].map(([y, w, d, z, e], i) => {
@@ -193,9 +196,10 @@ export function bodyShape(spec) {
     return [y, w * u * lerp(1, wf, f), d * u * lerp(1, df, f), (z + zf * f) * u, e];
   });
   const legKeys = [
-    [-0.07, 0.066, 0.076, -0.010],
-    [-0.04, 0.080, 0.088, -0.008],
-    [0.06, 0.088, 0.090, 0.004],
+    // the top of the thigh carries the buttock, so hip flows into leg
+    [-0.07, 0.070, 0.088, -0.022],
+    [-0.02, 0.086, 0.104, -0.026],
+    [0.06, 0.088, 0.097, -0.012],
     [0.20, 0.078, 0.080, 0.010],
     [0.36, 0.066, 0.068, 0.010],
     [kneeT - 0.02, 0.056, 0.058, 0.010],
@@ -206,6 +210,23 @@ export function bodyShape(spec) {
     [1.0, 0.051, 0.054, 0.000],
   ];
   const legRaw = profile(legKeys);
+  // arms: t from the shoulder joint (0) to the wrist (1)
+  const elbowT = spec.upperArm / (spec.upperArm + spec.foreArm);
+  const armKeys = [
+    // t (0 shoulder → 1 wrist), rx, rz, zc
+    [0.015, 0.034, 0.038, 0.000], // the arm starts under the deltoid, which the torso carries
+    [0.045, 0.050, 0.052, 0.000],
+    [0.02, (0.055 + 0.006 * m) * g, (0.056 + 0.004 * m) * g, 0.002],
+    [0.17, (0.048 + 0.006 * m) * g, (0.052 + 0.003 * m) * g, 0.004],
+    [0.33, (0.042 + 0.003 * m) * g, (0.046 + 0.004 * m) * g, 0.006],
+    [elbowT - 0.04, 0.035 * g, 0.038 * g, 0.000],
+    [elbowT + 0.02, 0.036 * g, 0.039 * g, -0.002],
+    [elbowT + 0.12, (0.037 + 0.003 * m) * g, 0.039 * g, 0.002],
+    [0.86, 0.025 * lerp(1, g, 0.6), 0.030 * lerp(1, g, 0.6), 0.000],
+    [1.0, 0.020 * lerp(1, g, 0.4), 0.028 * lerp(1, g, 0.4), 0.000],
+  ];
+  const armRaw = profile(armKeys);
+  const sleeveT = 0.36;
   const legGirth = (t) => (t < kneeT + 0.1 ? g : lerp(g, 1, 0.4)) * (1 + f * (t < 0.3 ? 0.05 * (1 - t / 0.3) : t > kneeT + 0.05 ? -0.08 : 0));
   return {
     torsoKeys,
@@ -213,6 +234,20 @@ export function bodyShape(spec) {
     legRaw,
     legGirth,
     leg: (t) => { const [rx, rz, zc] = legRaw(t); const gg = legGirth(t); return [rx * u * gg, rz * u * gg, zc * u]; },
+    armRaw, elbowT, sleeveT,
+    arm: (t) => {
+      const [rx, rz, zc] = armRaw(t);
+      const puff = t < sleeveT ? 0.004 * u : 0;
+      return [rx * u * (1 - 0.12 * f) + puff, rz * u * (1 - 0.1 * f) + puff, zc * u];
+    },
+    // neck: t from its base (0, inside the chest) to the skull (1)
+    neckY0: spec.neckY - 0.02 * u, neckY1: spec.headY + 0.035 * u,
+    neck: (t) => {
+      const base = 1 + 0.22 * Math.pow(1 - t, 3); // flares into the shoulders
+      return [(0.056 - 0.006 * t) * base * u * lerp(1, g, 0.5) * (1 - 0.14 * f),
+              (0.058 - 0.004 * t) * (1 + 0.08 * Math.pow(1 - t, 3)) * u * lerp(1, g, 0.5) * (1 - 0.1 * f),
+              -0.022 * u + 0.018 * u * t]; // leans forward
+    },
     kneeT,
   };
 }
@@ -247,6 +282,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
   const SEG = qn(56, 16);
 
   // ── torso ─────────────────────────────────────────────────────────────
+  B.mark('torso');
   const shirtEnd = spec.hipsY + 0.035 * u;
   const shape = bodyShape(spec);
   const torsoKeys = shape.torsoKeys;
@@ -298,21 +334,21 @@ export function buildBody(spec, rig, { draft = false } = {}) {
       weights: torsoW,
     });
   }
-  B.loft(rings, { capStart: true, flip: true }); // rings run upward
+  B.loft(rings, { capStart: true, capEnd: true, flip: true }); // rings run upward; closed at the collar
 
   // ── neck ──────────────────────────────────────────────────────────────
+  B.mark('neck');
   {
     const r = [];
-    const n0 = spec.neckY - 0.02 * u, n1 = spec.headY + 0.035 * u;
+    const n0 = shape.neckY0, n1 = shape.neckY1;
     const NN = qn(14, 5);
     for (let j = 0; j <= NN; j++) {
       const t = j / NN, y = lerp(n0, n1, t);
-      const base = 1 + 0.22 * Math.pow(1 - t, 3); // flares into the shoulders
-      const rx = (0.056 - 0.006 * t) * base * u * lerp(1, g, 0.5) * (1 - 0.14 * f), rz = (0.058 - 0.004 * t) * (1 + 0.08 * Math.pow(1 - t, 3)) * u * lerp(1, g, 0.5) * (1 - 0.1 * f);
+      const [rx, rz, zc] = shape.neck(t);
       const pts = [];
       for (let i = 0; i < SEG; i++) {
         const [px, pz] = se((i / SEG) * TAU, rx, rz, 2);
-        pts.push([px, y, pz - 0.022 * u + 0.018 * u * t]); // neck leans forward
+        pts.push([px, y, pz + zc]);
       }
       r.push({ pts, mat: MAT.skin, color: col.skin, weights: () => ({ neck: 1 - smooth(t * 1.2 - 0.2), head: smooth(t * 1.2 - 0.2) }) });
     }
@@ -320,7 +356,9 @@ export function buildBody(spec, rig, { draft = false } = {}) {
   }
 
   // ── head ──────────────────────────────────────────────────────────────
+  B.mark('head');
   buildHead(B, spec, col);
+  B.mark('other');
   if (c.hairLength >= 0.35) buildHairFall(B, spec, c.hairLength * 0.55); // inner volume, ending well above the lock tips
 
   // ── arms ──────────────────────────────────────────────────────────────
@@ -330,24 +368,12 @@ export function buildBody(spec, rig, { draft = false } = {}) {
     const ua = spec.upperArm, fa = spec.foreArm, total = ua + fa;
     const elbowT = ua / total;
     const sleeveT = 0.36;
-    const keys = [
-      // t (0 shoulder → 1 wrist), rx, rz, zc
-      [-0.025, 0.026, 0.030, 0.000], // the arm's top sits inside the shoulder
-      [-0.008, 0.042, 0.047, 0.000],
-      [0.02, (0.055 + 0.006 * m) * g, (0.056 + 0.004 * m) * g, 0.002],
-      [0.17, (0.048 + 0.006 * m) * g, (0.052 + 0.003 * m) * g, 0.004],
-      [0.33, (0.042 + 0.003 * m) * g, (0.046 + 0.004 * m) * g, 0.006],
-      [elbowT - 0.04, 0.035 * g, 0.038 * g, 0.000],
-      [elbowT + 0.02, 0.036 * g, 0.039 * g, -0.002],
-      [elbowT + 0.12, (0.037 + 0.003 * m) * g, 0.039 * g, 0.002],
-      [0.86, 0.025 * lerp(1, g, 0.6), 0.030 * lerp(1, g, 0.6), 0.000],
-      [1.0, 0.020 * lerp(1, g, 0.4), 0.028 * lerp(1, g, 0.4), 0.000],
-    ];
-    const P = profile(keys);
+    const P = shape.armRaw;
+    B.mark(`arm_${side}`);
     const r = [];
     const ts = [];
     const NA = qn(72, 20);
-    for (let j = 0; j <= NA; j++) ts.push(lerp(-0.025, 1.0, j / NA));
+    for (let j = 0; j <= NA; j++) ts.push(lerp(0.015, 1.0, j / NA));
     ts.push(sleeveT - 0.0001, sleeveT + 0.0001);
     ts.sort((a, b) => a - b);
     for (const t of ts) {
@@ -358,13 +384,14 @@ export function buildBody(spec, rig, { draft = false } = {}) {
       const pts = [];
       for (let i = 0; i < SEG; i++) {
         const a = (i / SEG) * TAU;
-        const [px, pz] = se(a, rx * u * (1 - 0.12 * f) + puff, rz * u * (1 - 0.1 * f) + puff, 2.1);
+        const [px, pz] = se(a, rx * u * (1 - 0.12 * f) + puff, rz * u * (1 - 0.1 * f) + puff, 2.1); // = shape.arm(t)
         pts.push([x0 + px, y, z0 + pz + zc * u]);
       }
       const w = armWeights(side, t, elbowT);
       r.push({ pts, mat: sleeve ? MAT.cloth : MAT.skin, color: sleeve ? (t > sleeveT - 0.03 ? col.collar : col.shirt) : col.skin, weights: () => w });
     }
     B.loft(r, { capStart: true });
+    B.mark('other');
     buildHand(B, spec, col, side, k, x0, top - total, z0);
   }
 
@@ -376,6 +403,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
     // trousers: anatomy underneath, cloth on top (never tighter than a
     // straight-leg cut below the knee)
     const P = shape.legRaw;
+    B.mark(`leg_${side}`);
     const r = [];
     const NL = qn(84, 24);
     for (let j = 0; j <= NL; j++) {
@@ -396,10 +424,13 @@ export function buildBody(spec, rig, { draft = false } = {}) {
       r.push({ pts, color: hem ? col.pants.clone().multiplyScalar(0.8) : col.pants, weights: () => w });
     }
     B.loft(r, { capEnd: true });
+    B.mark('other');
     buildShoe(B, spec, col, side, k, x0);
   }
 
   const geo = B.geometry();
+  smoothUnions(geo, B.parts, spec, shape);
+  geo.computeVertexNormals();
   // One physical material; each surface kind (skin, cloth, hair, shoe, sole)
   // gets its own roughness, sheen and micro-detail in the shader, driven by
   // a per-vertex tag and the rest-pose position (so detail sticks to the body).
@@ -509,6 +540,13 @@ function torsoWeights(s, x, y) {
     const side = x > 0 ? 'leftShoulder' : 'rightShoulder';
     for (const key in w) w[key] *= 1 - t;
     w[side] = (w[side] || 0) + t;
+    // the deltoid cap swings with the upper arm
+    const dt = smooth((ax - (s.armX - 0.035 * s.u)) / (0.04 * s.u)) * smooth((y - (s.shoulderY - 0.13 * s.u)) / (0.05 * s.u)) * 0.6;
+    if (dt > 0) {
+      const arm = x > 0 ? 'leftArm' : 'rightArm';
+      for (const key in w) w[key] *= 1 - dt;
+      w[arm] = (w[arm] || 0) + dt;
+    }
   }
   // hips and buttocks follow the thighs a little
   if (y < s.hipJointY + 0.06 * s.u) {
@@ -803,6 +841,7 @@ function buildHead(B, s, col) {
     rings.push({ pts, hair, brow, blink, mat: MAT.skin, color: (i) => colors[i], weights: () => ({ head: 1 }) });
   }
   B.loft(rings, { capStart: true, capEnd: true });
+  B.mark('other');
 
   // eyeballs: sclera, iris, pupil; glossy so they catch the light
   for (const e of eyes) {
@@ -878,6 +917,114 @@ function buildEar(B, s, col, k, cy, cz, skull, sc) {
 }
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
+
+// ── smooth unions ─────────────────────────────────────────────────────────
+// The body is lofted part by part; where two parts meet they would cross at a
+// hard crease and read as shapes stuck together. This pass gives every
+// junction a fillet, as a sculptor's smooth union would: each vertex near a
+// neighbouring part is pushed out onto smin(own surface, neighbour), using the
+// same cross-sections the parts were lofted from as distance fields (rest pose).
+function ellipseDist(x, z, rx, rz, e = 2) {
+  const rho = Math.pow(Math.pow(Math.abs(x / rx), e) + Math.pow(Math.abs(z / rz), e), 1 / e);
+  return Math.hypot(x, z) * (1 - 1 / Math.max(rho, 1e-6));
+}
+function partFields(s, sh) {
+  const keys = sh.torsoKeys, ty0 = keys[0][0], ty1 = keys[keys.length - 1][0];
+  const capped = (d, over) => (over > 0 ? Math.hypot(Math.max(d, 0), over) : d);
+  const torso = (x, y, z) => {
+    const yy = clamp(y, ty0, ty1);
+    const [hw, hd, zc, e] = sh.torso(yy);
+    return capped(ellipseDist(x, z - zc, hw, hd, e), Math.abs(y - yy));
+  };
+  const leg = (k) => (x, y, z) => {
+    const t0 = (s.hipJointY - y) / s.legLen, t = clamp(t0, -0.07, 1);
+    const [rx, rz, zc] = sh.leg(t);
+    return capped(ellipseDist(x - k * s.hipSep * 0.5, z - zc, rx, rz, 2.1), Math.abs(t0 - t) * s.legLen);
+  };
+  const top = s.shoulderY - 0.012 * s.u, total = s.upperArm + s.foreArm;
+  const arm = (k) => (x, y, z) => {
+    const t0 = (top - y) / total, t = clamp(t0, 0.015, 1);
+    const [rx, rz, zc] = sh.arm(t);
+    return capped(ellipseDist(x - k * s.armX, z - (-0.008 * s.u + zc), rx, rz, 2.1), Math.abs(t0 - t) * total);
+  };
+  const neck = (x, y, z) => {
+    const t0 = (y - sh.neckY0) / (sh.neckY1 - sh.neckY0), t = clamp(t0, 0, 1);
+    const [rx, rz, zc] = sh.neck(t);
+    return capped(ellipseDist(x, z - zc, rx, rz), Math.abs(t0 - t) * (sh.neckY1 - sh.neckY0));
+  };
+  const H = headModel(s);
+  const head = (x, y, z) => {
+    const ex = x / H.rx, ey = (y - H.cy) / H.ry, ez = (z - H.cz) / H.rz;
+    const rho = Math.hypot(ex, ey, ez);
+    return (rho - 1) * Math.min(H.rx, H.ry, H.rz) * 0.95;
+  };
+  return { torso, neck, head, leg_left: leg(1), leg_right: leg(-1), arm_left: arm(1), arm_right: arm(-1) };
+}
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+// which parts blend into which, how wide the fillet is (m, at 1.75 m), and
+// where on this part a junction can be at all: parts that merely lie close in
+// the rest pose (a hanging arm beside the hip) must not grow lumps
+function unionsFor(s) {
+  const top = s.shoulderY - 0.012 * s.u, total = s.upperArm + s.foreArm;
+  const armT = (y) => (top - y) / total, legT = (y) => (s.hipJointY - y) / s.legLen;
+  const nearShoulder = (x, y) => y > s.shoulderY - 0.16 * s.u && Math.abs(x) > s.armX - 0.08 * s.u;
+  const nearHip = (x, y) => y < s.hipJointY + 0.1 * s.u;
+  return {
+    torso: [['neck', 0.02, (x, y) => y > s.shoulderY - 0.04 * s.u], ['arm_left', 0.04, (x, y) => x > 0 && nearShoulder(x, y)], ['arm_right', 0.04, (x, y) => x < 0 && nearShoulder(x, y)], ['leg_left', 0.05, nearHip], ['leg_right', 0.05, nearHip]],
+    neck: [['torso', 0.02, () => true]],
+    head: [['neck', 0.03, (x, y) => y < s.headY + 0.03 * s.u]],
+    arm_left: [['torso', 0.04, (x, y) => armT(y) < 0.14]], arm_right: [['torso', 0.04, (x, y) => armT(y) < 0.14]],
+    leg_left: [['torso', 0.05, (x, y) => legT(y) < 0.16], ['leg_right', 0.016, (x, y) => legT(y) < 0.14]],
+    leg_right: [['torso', 0.05, (x, y) => legT(y) < 0.16], ['leg_left', 0.016, (x, y) => legT(y) < 0.14]],
+  };
+}
+function smoothUnions(geo, parts, s, sh) {
+  if (Q < 0.6) return; // drafts skip it: they only need to follow the slider
+  const F = partFields(s, sh), U = unionsFor(s);
+  geo.computeVertexNormals();
+  const P = geo.attributes.position.array, N = geo.attributes.normal.array;
+  const n = P.length / 3;
+  const push = new Float32Array(n);
+  const partOf = new Int16Array(n).fill(-1);
+  for (let pi = 0; pi < parts.length; pi++) {
+    const { name, start } = parts[pi];
+    const end = pi + 1 < parts.length ? parts[pi + 1].start : n;
+    const nb = U[name];
+    if (!nb) continue;
+    for (let i = start; i < end; i++) {
+      partOf[i] = pi;
+      const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2];
+      let best = 0;
+      for (const [other, k0, zone] of nb) {
+        if (!zone(x, y)) continue;
+        const k = k0 * s.u;
+        const d = F[other](x, y, z);
+        if (d <= 0 || d >= k) continue; // inside the other part (hidden) or too far to matter
+        const h = (k - d) / k;
+        best = Math.max(best, k * h * h * 0.25); // polynomial smin: how far the union surface sits outside
+      }
+      push[i] = best;
+    }
+  }
+  // smooth the push over the mesh so fillets flow rather than step ring by ring
+  const idx = geo.index.array, sum = new Float32Array(n), cnt = new Uint16Array(n);
+  for (let it = 0; it < 6; it++) {
+    sum.fill(0); cnt.fill(0);
+    for (let t = 0; t < idx.length; t += 3) {
+      for (let e = 0; e < 3; e++) {
+        const a = idx[t + e], b = idx[t + (e + 1) % 3];
+        if (partOf[a] < 0 || partOf[a] !== partOf[b]) continue;
+        sum[a] += push[b]; cnt[a]++; sum[b] += push[a]; cnt[b]++;
+      }
+    }
+    for (let i = 0; i < n; i++) if (cnt[i]) push[i] = 0.4 * push[i] + 0.6 * sum[i] / cnt[i];
+  }
+  for (let i = 0; i < n; i++) {
+    const q = push[i];
+    if (q > 1e-6) { P[i * 3] += N[i * 3] * q; P[i * 3 + 1] += N[i * 3 + 1] * q; P[i * 3 + 2] += N[i * 3 + 2] * q; }
+  }
+  geo.attributes.position.needsUpdate = true;
+}
 function vhash(x, y, z) { const h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return h - Math.floor(h); }
 function vnoise3(x, y, z) {
   const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
