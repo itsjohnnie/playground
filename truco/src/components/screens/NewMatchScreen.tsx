@@ -744,7 +744,7 @@ const TeamColumn = function TeamColumn({
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           maxLength={18}
-          className="h-9 px-2 text-base font-display border-transparent bg-transparent focus:border-line min-w-0 flex-1"
+          className="h-9 px-2 text-base border-transparent bg-transparent focus:border-line min-w-0 flex-1"
         />
         <span
           className={cn(

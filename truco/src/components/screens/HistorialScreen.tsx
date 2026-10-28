@@ -304,7 +304,7 @@ function MatchRow({ match, playerById, onClick, onDelete, swipeOpen, onSwipeOpen
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-3">
           <div className="min-w-0">
-            <p className={`font-display truncate ${aWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamA.name}</p>
+            <p className={`truncate ${aWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamA.name}</p>
             {playersA && <p className="text-eyebrow text-ink-soft truncate">{playersA}</p>}
           </div>
           <div className="tabular font-semibold text-ink">
@@ -313,7 +313,7 @@ function MatchRow({ match, playerById, onClick, onDelete, swipeOpen, onSwipeOpen
             <span className={bWon ? 'text-accent' : ''}>{match.scoreB}</span>
           </div>
           <div className="min-w-0 text-right">
-            <p className={`font-display truncate ${bWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamB.name}</p>
+            <p className={`truncate ${bWon ? 'text-ink' : 'text-ink-muted'}`}>{match.teamB.name}</p>
             {playersB && <p className="text-eyebrow text-ink-soft truncate">{playersB}</p>}
           </div>
         </div>
@@ -547,7 +547,7 @@ function Leaderboard({ rows, playerById, focusId, onFocus }: {
             }`}
           >
             <div className="min-w-0">
-              <p className="font-display text-ink text-base truncate">{p?.name ?? '?'}</p>
+              <p className="text-ink text-base truncate">{p?.name ?? '?'}</p>
               <div className="flex gap-0.5 mt-1">
                 {s.recentForm.map((f, i) => (
                   <span
@@ -592,7 +592,7 @@ function DuelsList({ duels: rows, playerById }: { duels: Duel[]; playerById: (id
             className="grid grid-cols-[1fr_auto_1fr] gap-3 px-4 py-3 border-b border-line/40 last:border-b-0 items-center"
           >
             <div className="min-w-0 text-right">
-              <p className={`font-display text-base truncate ${aLeads ? 'text-ink' : 'text-ink-muted'}`}>
+              <p className={`text-base truncate ${aLeads ? 'text-ink' : 'text-ink-muted'}`}>
                 {pa?.name ?? '?'}
               </p>
             </div>
@@ -607,7 +607,7 @@ function DuelsList({ duels: rows, playerById }: { duels: Duel[]; playerById: (id
               </p>
             </div>
             <div className="min-w-0 text-left">
-              <p className={`font-display text-base truncate ${bLeads ? 'text-ink' : 'text-ink-muted'}`}>
+              <p className={`text-base truncate ${bLeads ? 'text-ink' : 'text-ink-muted'}`}>
                 {pb?.name ?? '?'}
               </p>
             </div>

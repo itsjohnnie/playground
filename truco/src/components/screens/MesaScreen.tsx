@@ -142,7 +142,7 @@ export function MesaScreen({
               className="pressable text-left flex items-center gap-3 rounded-md border border-line bg-surface px-3 py-2.5 hover-elevate"
             >
               <Avatar player={p} size={40} />
-              <span className="font-display text-ink text-h2 truncate flex-1">{p.name}</span>
+              <span className="text-ink text-h2 truncate flex-1">{p.name}</span>
               {!!user && p.authUserId === user.id && (
                 <span className="eyebrow text-accent shrink-0">Vos</span>
               )}
@@ -184,7 +184,7 @@ export function MesaScreen({
           <div className="flex flex-col gap-1">
             {retired.map((p) => (
               <div key={p.id} className="flex items-center justify-between rounded-md border border-line/60 bg-surface/60 px-4 py-2.5">
-                <span className="font-display text-ink-muted text-base">{p.name}</span>
+                <span className="text-ink-muted text-base">{p.name}</span>
                 <div className="flex gap-1">
                   <button
                     onClick={() => onRestore(p.id)}

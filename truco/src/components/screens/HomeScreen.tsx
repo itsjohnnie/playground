@@ -155,7 +155,7 @@ function LiveMatchCard({
         <span className="eyebrow text-accent">Partida en juego</span>
       </span>
       <span className="mt-2 flex items-baseline justify-between gap-3">
-        <span className="font-display text-ink truncate">{match.teamA.name}</span>
+        <span className="text-ink truncate">{match.teamA.name}</span>
         {/* text-sm to match the counts on the Mesa / Historial
             tiles below, which pair a 16px label with a 14px
             number. The card reads as the same kind of row, so
@@ -166,7 +166,7 @@ function LiveMatchCard({
           <span className="text-ink-soft mx-1.5">—</span>
           {match.scoreB}
         </span>
-        <span className="font-display text-ink truncate text-right">{match.teamB.name}</span>
+        <span className="text-ink truncate text-right">{match.teamB.name}</span>
       </span>
       {showLineups && (lineA || lineB) && (
         /* aria-hidden: the label above already reads the line-ups out,

@@ -18,7 +18,7 @@ export function JugadaRow({ event, match }: { event: ScoreEvent; match: Match })
   const team = event.team === 'A' ? match.teamA.name : match.teamB.name
   return (
     <div className="grid grid-cols-[5.5rem_1fr_2.75rem_2.25rem] items-center gap-2 rounded-sm bg-surface-hi px-3 py-2">
-      <span className="font-display text-ink text-sm truncate">{team}</span>
+      <span className="text-ink text-sm truncate">{team}</span>
       <span className="text-xs text-ink-muted truncate">
         {SCORE_REASON_LABEL[event.reason]}
       </span>

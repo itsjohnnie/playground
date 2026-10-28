@@ -153,7 +153,7 @@ export function ProfileSheet({
         <div className="flex items-center gap-3">
           <Avatar player={player} size={64} />
           <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <div className="font-display text-h2 text-ink truncate">{player.name}</div>
+            <div className="text-h2 text-ink truncate">{player.name}</div>
             <div className="text-eyebrow text-ink-soft">
               {isMine ? 'Tu perfil'
                 : isClaimed ? 'Reclamado por otra persona'

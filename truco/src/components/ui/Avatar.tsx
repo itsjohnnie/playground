@@ -31,7 +31,7 @@ export function Avatar({ player, size = 40, className }: AvatarProps) {
       style={dim}
       aria-hidden
       className={cn(
-        'rounded-full inline-flex items-center justify-center font-display text-ink',
+        'rounded-full inline-flex items-center justify-center font-medium text-ink',
         'bg-surface-hi border border-line shrink-0',
         className,
       )}
