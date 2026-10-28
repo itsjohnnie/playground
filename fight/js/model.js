@@ -862,10 +862,217 @@ function mhFace(headBone, def, rig, mesh) {
     headBone.add(cyl(r[0] * 0.03, r[0] * 0.03, r[0] * 0.5, '#6a6e78', { pos: [p.x, p.y + r[0] * 0.25, p.z] }));
     headBone.add(sphere(r[0] * 0.08, '#3af0ff', { pos: [p.x, p.y + r[0] * 0.55, p.z], emissive: '#3af0ff', emissiveIntensity: 3 }));
   }
-  return { R: r[0], mh: true, mesh, idx: Object.fromEntries(rig.morphs.map((m, i) => [m, i])), eyes: [], glints };
+  const ai = rig.ai && rig.head.face ? aiFace(headBone, rig.head.face, mesh) : null;
+  return { R: r[0], mh: true, mesh, idx: Object.fromEntries(rig.morphs.map((m, i) => [m, i])), eyes: [], glints, ai };
+}
+
+// ------------------------------------------------------------------ AI faces
+// AI-built heads have their face painted on, so expressions come from
+// replacement parts laid over it, as in stop-motion: skin-matched eyelids at
+// a few closure levels, and sculpted mouths that cover the painted one.
+const srgbColor = (c) => new THREE.Color().setRGB(c[0] / 255, c[1] / 255, c[2] / 255, THREE.SRGBColorSpace);
+const LID_LEVELS = [0.3, 0.55, 0.8, 1];
+
+function lidShape(w, h, c, lower) {
+  // The part of the eye's ellipse a lid closed by c covers, with a gently
+  // curved edge. Upper lids come down from the top, lower ones up.
+  const pts = [], edge = [], sgn = lower ? -1 : 1;
+  const yc = sgn * h * (1 - 2 * c);
+  const N = 40;
+  for (let k = 0; k <= N; k++) {
+    const a = (k / N) * Math.PI;
+    const x = Math.cos(a) * w, y = sgn * Math.sin(a) * h;
+    if (sgn * y >= sgn * yc - 1e-6) pts.push(new THREE.Vector2(x, y));
+  }
+  const xw = w * Math.sqrt(Math.max(0, 1 - (yc / h) ** 2));
+  for (let k = 0; k <= 16; k++) {
+    const t = 1 - (2 * k) / 16, x = -t * xw;
+    edge.push(new THREE.Vector2(-x, yc - sgn * h * 0.18 * (1 - t * t)));
+  }
+  const shape = new THREE.Shape([...pts, ...edge.reverse()]);
+  return { shape, edge: edge.map((p) => new THREE.Vector3(p.x, p.y, 0.0015)) };
+}
+
+// Fine triangulation of a star-shaped outline (rings toward its centre), so
+// the whole part bends when hugged, not just its rim.
+function tessShape(shape, rings = 8) {
+  const out = shape.getSpacedPoints(64).slice(0, -1);
+  const c = out.reduce((a, p) => a.add(p), new THREE.Vector2()).multiplyScalar(1 / out.length);
+  const n = out.length, pos = [c.x, c.y, 0], idx = [];
+  for (let r = 1; r <= rings; r++) for (const p of out) { const t = r / rings; pos.push(c.x + (p.x - c.x) * t, c.y + (p.y - c.y) * t, 0); }
+  for (let j = 0; j < n; j++) idx.push(0, 1 + j, 1 + ((j + 1) % n));
+  for (let r = 1; r < rings; r++) for (let j = 0; j < n; j++) {
+    const a = 1 + (r - 1) * n + j, b = 1 + (r - 1) * n + ((j + 1) % n), c2 = a + n, d = b + n;
+    idx.push(a, c2, d, a, d, b);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+// Bend a flat part (built facing +z around `origin`) onto the face surface.
+function hug(obj, origin, zAt, lift) {
+  obj.updateMatrix();
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    const p = o.geometry.attributes.position, v = new THREE.Vector3();
+    o.updateMatrix();
+    const toG = new THREE.Matrix4();
+    for (let q = o; q && q !== obj; q = q.parent) { q.updateMatrix(); toG.premultiply(q.matrix); }
+    const back = toG.clone().invert();
+    for (let i = 0; i < p.count; i++) {
+      v.fromBufferAttribute(p, i).applyMatrix4(toG);
+      const zs = zAt(origin.x + v.x, origin.y + v.y) - origin.z;
+      v.z += zs + lift;
+      v.applyMatrix4(back);
+      p.setXYZ(i, v.x, v.y, v.z);
+    }
+    o.geometry.computeVertexNormals();
+  });
+}
+
+function aiFace(headBone, F, skinMesh) {
+  const face = { lids: [], mouths: {}, state: '', mesh: skinMesh, mat: skinMesh?.material, base: skinMesh?.material?.map, erased: F.erased };
+  const lash = new THREE.MeshStandardMaterial({ color: '#2a1a14', roughness: 0.6 });
+  F.eyes.forEach((e, i) => {
+    const g = new THREE.Group();
+    g.position.set(e.c[0], e.c[1], e.c[2]);
+    headBone.add(g);
+    const skin = new THREE.MeshStandardMaterial({ color: srgbColor(e.skin), roughness: 0.62 });
+    const w = e.w * 1.18, h = e.h * 1.35;
+    const make = (lower) => LID_LEVELS.map((c) => {
+      const { geo, edge, shape } = lidShape(w, h, c, lower);
+      const m = new THREE.Group();
+      m.add(new THREE.Mesh(tessShape(shape, 6), skin));
+      if (!lower) m.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(edge), 16, Math.max(0.0012, h * 0.07), 5), lash));
+      m.visible = false;
+      g.add(m);
+      hug(m, g.position, e.zAt || F.zAt, 0.0035);
+      return m;
+    });
+    face.lids.push({ g, upper: make(false), lower: make(true), sx: e.c[0] > 0 ? 1 : -1 });
+  });
+  // Mouths, on a skin patch that hides the painted one.
+  const M = F.mouth, mg = new THREE.Group();
+  mg.position.set(M.c[0], M.c[1], M.c[2]);
+  headBone.add(mg);
+  const w = M.w, h = Math.max(M.h, w * 0.32);
+  const mat = (c, r = 0.6) => new THREE.MeshStandardMaterial({ color: typeof c === 'string' ? c : srgbColor(c), roughness: r });
+  const skinM = mat(M.skin, 0.62), lipM = mat(M.lip, 0.5), cav = mat('#3a0e12', 0.9), teeth = mat('#f6f2ea', 0.3), tongue = mat('#c85660', 0.5);
+  const ellipse = (rx, ry, n = 40) => new THREE.Shape(Array.from({ length: n }, (_, k) => new THREE.Vector2(Math.cos((k / n) * 2 * Math.PI) * rx, Math.sin((k / n) * 2 * Math.PI) * ry)));
+  const flat = (shape, m, z) => { const o = new THREE.Mesh(tessShape(shape), m); o.position.z = z; return o; };
+  const ring = (pts, r, m) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 48, r, 6, true), m);
+  const outline = (shape, z) => shape.getSpacedPoints(48).slice(0, -1).map((p) => new THREE.Vector3(p.x, p.y, z));
+  // With the painted mouth erased from the texture, no skin patch is needed.
+  const patch = () => new THREE.Group();
+  const openMouth = (rx, ry, topTeeth, botTeeth, tng, dShape) => {
+    const grp = new THREE.Group();
+    grp.add(patch());
+    const sh = dShape
+      ? new THREE.Shape([...Array.from({ length: 25 }, (_, k) => { const a = Math.PI + (k / 24) * Math.PI; return new THREE.Vector2(Math.cos(a) * rx, Math.sin(a) * ry * 1.6); }), new THREE.Vector2(rx * 0.9, ry * 0.25), new THREE.Vector2(-rx * 0.9, ry * 0.25)])
+      : ellipse(rx, ry);
+    grp.add(flat(sh, cav, 0.001));
+    // Teeth: a rounded band along the inside of the lip.
+    const band = (hw, hh) => new THREE.Shape(Array.from({ length: 40 }, (_, k) => { const a = (k / 40) * 2 * Math.PI, c = Math.cos(a), s2 = Math.sin(a); return new THREE.Vector2(Math.sign(c) * Math.abs(c) ** 0.3 * hw, Math.sign(s2) * Math.abs(s2) ** 0.5 * hh); }));
+    if (topTeeth) { const t = new THREE.Mesh(tessShape(band(rx * 0.72, ry * 0.17), 4), teeth); t.position.set(0, dShape ? ry * 0.08 : ry * 0.72, 0.0022); grp.add(t); }
+    if (botTeeth) { const t = new THREE.Mesh(tessShape(band(rx * 0.6, ry * 0.13), 4), teeth); t.position.set(0, -ry * 0.76, 0.0022); grp.add(t); }
+    if (tng) { const t = new THREE.Mesh(tessShape(ellipse(rx * 0.55, ry * 0.32), 4), tongue); t.position.set(0, -ry * (dShape ? 1.0 : 0.55), 0.0018); grp.add(t); }
+    grp.add(ring(outline(sh, 0.0015), Math.max(0.002, h * 0.16), lipM));
+    return grp;
+  };
+  const line = (pts, m = mat('#4a1c1e', 0.6)) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, Math.max(0.0018, h * 0.13), 5), m);
+  const closed = (lift, side = 0) => {
+    const grp = new THREE.Group();
+    grp.add(patch());
+    const pts = [-1, -0.5, 0, 0.5, 1].map((u) => new THREE.Vector3(u * w * 0.75, lift * h * (u * u - 0.3) + side * h * 0.8 * Math.max(0, u * Math.sign(side)) ** 2, 0.0015));
+    grp.add(line(pts));
+    return grp;
+  };
+  const grit = () => {
+    const grp = new THREE.Group();
+    grp.add(patch());
+    const rx = w * 0.85, ry = h * 0.75;
+    const sh = new THREE.Shape(Array.from({ length: 40 }, (_, k) => { const a = (k / 40) * 2 * Math.PI, c = Math.cos(a), s2 = Math.sin(a); return new THREE.Vector2(Math.sign(c) * Math.abs(c) ** 0.45 * rx, Math.sign(s2) * Math.abs(s2) ** 0.7 * ry); }));
+    grp.add(flat(sh, teeth, 0.001));
+    grp.add(line([new THREE.Vector3(-rx * 0.95, 0, 0.0018), new THREE.Vector3(0, -ry * 0.05, 0.0018), new THREE.Vector3(rx * 0.95, 0, 0.0018)], cav));
+    for (let k = -3; k <= 3; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.0012, ry * 1.6, 0.001), cav); b.position.set(k * rx * 0.25, 0, 0.0016); grp.add(b); }
+    grp.add(ring(outline(sh, 0.0015), Math.max(0.002, h * 0.16), lipM));
+    return grp;
+  };
+  const kinds = {
+    shout: openMouth(w * 0.78, h * 1.35, true, true, true),
+    O: openMouth(w * 0.42, h * 1.5, false, false, true),
+    oSmall: openMouth(w * 0.28, h * 0.8, false, false, false),
+    grin: openMouth(w * 0.92, h * 0.95, true, false, true, true),
+    grit: grit(),
+    frown: closed(-1.1),
+    smirk: closed(0.2, 1),
+  };
+  for (const k in kinds) { kinds[k].visible = false; mg.add(kinds[k]); hug(kinds[k], mg.position, M.zAt || F.zAt, 0.0035); }
+  // A skin disc over the middle of the flattened mouth, on the smooth fit of
+  // the skin around it: covers whatever the sculpted mouth leaves behind.
+  const dg = tessShape(ellipse(w * 1.15, h * 1.3), 10);
+  // Skin colour, opaque in the middle and fading out toward the rim.
+  {
+    const p = dg.attributes.position, col = new Float32Array(p.count * 4), sc = srgbColor(M.skin);
+    for (let i = 0; i < p.count; i++) {
+      const d = Math.hypot(p.getX(i) / (w * 1.15), p.getY(i) / (h * 1.3));
+      col.set([sc.r, sc.g, sc.b, Math.min(1, Math.max(0, (1 - d) / 0.35))], i * 4);
+    }
+    dg.setAttribute('color', new THREE.BufferAttribute(col, 4));
+  }
+  const disc = new THREE.Mesh(dg, new THREE.MeshStandardMaterial({ vertexColors: true, transparent: true, depthWrite: false, roughness: skinMesh.material.roughness }));
+  hug(disc, mg.position, M.zAt || F.zAt, 0.0022);
+  disc.visible = false;
+  mg.add(disc);
+  face.disc = disc;
+  face.mouths = kinds;
+  return face;
+}
+
+// Expressions for AI faces: upper lid, lower lid (0..1), lid slant (+ angry,
+// - worried) and which replacement mouth, if any.
+const AI_EXPR = {
+  idle:    [0, 0, 0, null],
+  smile:   [0, 0.3, 0, null],
+  grit:    [0.3, 0.15, 0.3, 'grit'],
+  angry:   [0.35, 0.2, 0.4, 'shout'],
+  open:    [0, 0, -0.1, 'shout'],
+  hurt:    [0.8, 0.45, -0.3, 'grit'],
+  ko:      [0.9, 0.3, 0, 'oSmall'],
+  shock:   [0, 0, -0.2, 'O'],
+  blink:   [1, 0, 0, null],
+  smirk:   [0.15, 0.2, 0.15, 'smirk'],
+  laugh:   [0.3, 0.55, 0, 'grin'],
+  worried: [0.25, 0, -0.35, 'frown'],
+  focus:   [0.35, 0.3, 0.2, null],
+};
+
+function setAIExpression(f, expr, blink) {
+  let [up, low, slant, mouth] = AI_EXPR[expr] || AI_EXPR.idle;
+  if (blink) up = 1;
+  const key = [up, low, slant, mouth].join();
+  if (key === f.state) return;
+  f.state = key;
+  const lvl = (c) => (c < 0.15 ? -1 : LID_LEVELS.findIndex((L) => c <= L + 0.12));
+  for (const L of f.lids) {
+    const iu = lvl(up), il = lvl(Math.min(low, 1 - up));
+    L.upper.forEach((m, k) => (m.visible = k === iu));
+    L.lower.forEach((m, k) => (m.visible = k === il));
+    // Angry brows pull the inner corners down: inner is toward the nose.
+    L.upper.forEach((m) => (m.rotation.z = -L.sx * slant * 0.5));
+  }
+  for (const k in f.mouths) f.mouths[k].visible = k === mouth;
+  // Flatten the sculpted mouth and erase the painted one under a replacement.
+  if (f.mesh?.morphTargetInfluences) f.mesh.morphTargetInfluences[0] = mouth ? 1 : 0;
+  if (f.disc) f.disc.visible = !!mouth;
+  if (f.mat && f.erased) f.mat.map = mouth ? f.erased : f.base;
 }
 
 function setMHExpression(face, expr, blink) {
+  if (face.ai) return setAIExpression(face.ai, expr, blink);
   const w = { ...(MH_EXPR[expr] || MH_EXPR.idle) };
   if (blink) w.blink = 1;
   const bias = face.bias || {};
