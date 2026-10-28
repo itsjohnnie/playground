@@ -27,6 +27,11 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear());
 
+// Touch controls (touch.js) drive the same key codes as the keyboard.
+export function virtualKey(code, down) {
+  if (down) { if (!keys.has(code)) pressedThisFrame.add(code); keys.add(code); } else keys.delete(code);
+}
+
 export function endFrame() { pressedThisFrame.clear(); prevPads = padStates(); }
 
 let prevPads = [];

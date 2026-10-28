@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Game } from './game.js';
 import { loadAll } from './assets.js';
 import { loadLogo } from './arena.js';
+import { IS_TOUCH, initTouch } from './touch.js';
 import { ROSTER, BOSS, REF_DEF, ANNOUNCER_DEFS } from './characters.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -11,7 +12,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Phones get fewer pixels, softer shadows and no bloom by default.
+const DPR_CAP = IS_TOUCH ? 1.5 : 2;
+renderer.setPixelRatio(Math.min(devicePixelRatio, DPR_CAP));
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -23,6 +26,7 @@ renderer.shadowMap.type = THREE.PCFShadowMap;
 await loadLogo();
 const game = new Game(renderer);
 window.__game = game;
+initTouch(game);
 
 // Bloom makes the LEDs, pyro, spotlights and glowing specials pop.
 const composer = new EffectComposer(renderer);
@@ -35,7 +39,7 @@ game.bloom = bloom;
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
   composer.setSize(innerWidth, innerHeight);
-  composer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  composer.setPixelRatio(Math.min(devicePixelRatio, DPR_CAP));
   game.resize(innerWidth, innerHeight);
 }
 addEventListener('resize', resize);

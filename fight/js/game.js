@@ -26,7 +26,8 @@ const DIFFS = ['easy', 'normal', 'hard'];
 
 const SETTINGS_KEY = 'claymatch.settings.v1';
 function loadSettings() {
-  const d = { vol: 0.8, music: 0.5, shake: true, voice: false, grain: true, difficulty: 'normal' };
+  const phone = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+  const d = { vol: 0.8, music: 0.5, shake: true, voice: false, grain: !phone, difficulty: 'normal', ...(phone ? { bloom: false } : {}) };
   try { return { ...d, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch { return d; }
 }
 

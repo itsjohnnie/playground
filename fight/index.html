@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Singularity Deathmatch</title>
   <meta name="description" content="Singularity Deathmatch: a claymation tech-celebrity brawler in the browser, built with Three.js." />
   <meta name="theme-color" content="#060918" />
@@ -13,6 +15,7 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="rotate"><img src="assets/logo.webp" alt="" /><div class="phone"></div><p>Turn your phone sideways to fight</p></div>
   <div id="grain" aria-hidden="true"></div>
   <div id="vignette" aria-hidden="true"></div>
 

@@ -187,7 +187,8 @@ export class Arena {
     key.position.set(4, 16, 6);
     key.target.position.set(0, RING_H, 0);
     key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
+    const phone = matchMedia('(pointer: coarse)').matches;
+    key.shadow.mapSize.set(phone ? 1024 : 2048, phone ? 1024 : 2048);
     key.shadow.camera.near = 8;
     key.shadow.camera.far = 30;
     key.shadow.bias = -0.0004;

@@ -262,3 +262,61 @@ button { font: inherit; color: inherit; }
 @media (prefers-reduced-motion: reduce) {
   #grain, .logo.big, .logo-img.big, .blink { animation: none; }
 }
+
+/* ------------------------------------------------------------ touch */
+#touch { position: fixed; inset: 0; z-index: 40; pointer-events: none; display: none; }
+#touch.show { display: block; }
+#touch, #touch * { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.tpad { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); left: max(14px, env(safe-area-inset-left)); right: max(14px, env(safe-area-inset-right)); display: flex; justify-content: space-between; align-items: flex-end; pointer-events: none; }
+.tpad.p2 { display: none; }
+.tstick { pointer-events: auto; width: clamp(110px, 22vmin, 170px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.16)); border: 2px solid rgba(255, 255, 255, 0.35); display: grid; place-items: center; }
+.tstick .knob { width: 44%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9c2d6 60%, #7d879c); box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5); }
+.tbtns { pointer-events: none; display: grid; grid-template-columns: repeat(3, auto); grid-template-areas: ". grab special" "block kick punch"; gap: clamp(6px, 1.6vmin, 12px); }
+.tb { pointer-events: auto; width: clamp(54px, 11vmin, 76px); aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(0, 0, 0, 0.45); font: 800 clamp(9px, 1.9vmin, 12px)/1 system-ui, sans-serif; letter-spacing: 0.04em; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); opacity: 0.82; box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.25), 0 4px 10px rgba(0, 0, 0, 0.4); }
+.tb.on { transform: scale(0.9); opacity: 1; box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.3); }
+.tb.punch { grid-area: punch; background: #e0483a; }
+.tb.kick { grid-area: kick; background: #2f7be0; }
+.tb.grab { grid-area: grab; background: #3cae5a; }
+.tb.block { grid-area: block; background: #8a8f9c; }
+.tb.special { grid-area: special; background: linear-gradient(#ffd54a, #f08a1c); color: #3a1a00; text-shadow: none; }
+/* Two players on one tablet: each gets a stick and buttons on their half. */
+#touch.two .tpad.p1 { right: 50%; }
+#touch.two .tpad.p2 { display: flex; left: 50%; flex-direction: row-reverse; }
+#touch.two .tpad.p2 .tbtns { grid-template-areas: "special grab ." "punch kick block"; }
+#touch.two .tstick { width: clamp(90px, 18vmin, 140px); }
+#touch.two .tb { width: clamp(44px, 9vmin, 62px); }
+.tpause { position: absolute; top: max(8px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); pointer-events: auto; width: 40px; height: 32px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(0, 0, 0, 0.45); color: #fff; font: 900 14px/1 system-ui, sans-serif; }
+/* Keyboard hints make no sense on a phone. */
+body.touch .credit, body.touch .key-hint { display: none; }
+body.touch #hud { padding-top: 46px; }
+body.touch .live, body.touch .bug, body.touch .pause-hint { display: none; }
+body.touch .lower-third { bottom: max(10px, env(safe-area-inset-bottom)); left: calc(50% - 40px); width: min(420px, calc(100% - 470px)); min-width: 220px; }
+body.touch .lower-third .lt-text { font-size: 12px; padding: 6px 10px; }
+body.touch .lower-third .lt-name { font-size: 10px; padding: 2px 8px; }
+
+/* Portrait phones: ask for landscape. */
+#rotate { display: none; }
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate { display: grid; position: fixed; inset: 0; z-index: 100; place-items: center; align-content: center; gap: 18px; background: #060918; color: #fff; text-align: center; font: 700 18px/1.4 system-ui, sans-serif; padding: 24px; }
+  #rotate .phone { width: 46px; height: 80px; border: 4px solid #fff; border-radius: 10px; animation: turn 1.8s ease-in-out infinite; }
+  #rotate img { width: min(320px, 80vw); }
+  @keyframes turn { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+}
+
+/* Landscape phones: short screens. */
+@media (max-height: 520px) {
+  .screen-title { font-size: 18px; margin: 0 0 6px; }
+  .select-wrap { gap: 10px; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .roster { grid-template-columns: repeat(6, clamp(40px, min(25vh, 8.2vw), 92px)); gap: 6px; width: auto; }
+  .pick-card { min-height: 0; padding: 8px; gap: 3px; flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+  .pick-card img { max-width: 110px; width: 24vh; }
+  .pick-card .stat { display: grid; }
+  .pick-card .moves { display: none; }
+  .pick-card .stat { font-size: 10px; grid-template-columns: 54px 1fr; }
+  .pick-card h3 { font-size: 15px; }
+  .logo-img.big { width: min(560px, 70vw); }
+  .logo-img.small { width: min(260px, 40vw); margin-bottom: 6px; }
+  #title .logo-img { margin-top: 2vh; }
+  .menu-list button, .menu-list .row { padding-top: 7px; padding-bottom: 7px; }
+}
+body.touch #select-hint { display: none; }
