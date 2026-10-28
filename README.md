@@ -12,7 +12,7 @@ A collection of experimental web projects, prototypes, and interactive demos.
 | **art** | Daily generative art practice, after Zach Lieberman — lives at [johnnies.life/art](https://johnnies.life/art/); research in [`art-lab/`](art-lab/) | [View](https://johnnies.life/art/) |
 | **ascii** | Terminal-style ASCII animations | [View](https://itsjohnnie.github.io/playground/ascii/) |
 | **cc** | Claude Code internal documentation for stakeholders | [View](https://itsjohnnie.github.io/playground/cc/) |
-| **fight** | Silicon Valley Claymatch — an isometric stop-motion clay brawler starring tech-world caricatures (Three.js, skinned procedural puppets, everything generated in code) | [View](https://itsjohnnie.github.io/playground/fight/) |
+| **fight** | Singularity Deathmatch — an isometric stop-motion clay brawler starring tech-world caricatures (Three.js, skinned procedural puppets, everything generated in code) | [View](https://itsjohnnie.github.io/playground/fight/) |
 | **dithered** | Dithered image effects | [View](https://itsjohnnie.github.io/playground/dithered/) |
 | **dots** | Dot pattern experiments | [View](https://itsjohnnie.github.io/playground/dots/) |
 | **generative-ui** | Generative UI components | [View](https://itsjohnnie.github.io/playground/generative-ui/) |

@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { Game } from './game.js';
 import { loadAll } from './assets.js';
+import { loadLogo } from './arena.js';
 import { ROSTER, BOSS, REF_DEF, ANNOUNCER_DEFS } from './characters.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -18,6 +19,8 @@ renderer.toneMappingExposure = 0.95;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 
+// The arena paints the logo onto the mat and screens as it's built.
+await loadLogo();
 const game = new Game(renderer);
 window.__game = game;
 

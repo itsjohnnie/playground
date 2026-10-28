@@ -5,7 +5,7 @@ import { pick, chance } from './util.js';
 
 const LINES = {
   intro: [
-    [0, "Good evening and welcome to Silicon Valley Claymatch! I'm {A}."],
+    [0, "Good evening and welcome to Singularity Deathmatch! I'm {A}."],
     [1, "And I'm {B}. Tonight: {p1} versus {p2}!"],
   ],
   round: [[0, 'Round {n}! Here we go!'], [1, 'Round {n}, and the referee wants a clean fight. He will not get one.']],
@@ -15,7 +15,7 @@ const LINES = {
     [0, '{a} is working that clay like a pottery wheel!'], [1, 'I felt that one in my kiln, {A}!'],
   ],
   combo: [[0, '{n}-hit combo from {a}!'], [1, '{a} is on fire! Well, baked, anyway.']],
-  weapon: [[0, '{a} grabs a {w}! The ref is looking the other way!'], [1, 'A {w}! Is that legal, {A}?'], [0, 'In Claymatch? Everything is legal, {B}.']],
+  weapon: [[0, '{a} grabs a {w}! The ref is looking the other way!'], [1, 'A {w}! Is that legal, {A}?'], [0, 'In the Deathmatch? Everything is legal, {B}.']],
   weaponBreak: [[1, 'That {w} is in more pieces than {d}!'], [0, 'Shattered!']],
   slam: [[0, 'Body slam! {d} is flatter than a pancake!'], [1, 'You can hear the clay compress from up here!'], [0, 'OH! What a slam by {a}!']],
   spinslam: [[0, 'The Airplane Spin! {d} is going to be dizzy for a week!']],

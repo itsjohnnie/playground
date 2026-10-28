@@ -5,11 +5,22 @@ import { clayMat, clayNormalMap, box, cyl, sphere, mesh } from './clay.js';
 import { RING, RING_H, POST, FLOOR } from './fighter.js';
 import { rand, pick, mulberry32 } from './util.js';
 
-export const LOGO_TOP = 'SILICON VALLEY';
-export const LOGO_BOTTOM = 'CLAYMATCH';
+export const LOGO_TOP = 'SINGULARITY';
+export const LOGO_BOTTOM = 'DEATHMATCH';
+
+// The title logo (assets/logo.webp), loaded before the arena is built.
+let logoImg = null;
+export function loadLogo() {
+  return new Promise((res) => { const im = new Image(); im.onload = () => { logoImg = im; res(im); }; im.onerror = () => res(null); im.src = 'assets/logo.webp'; });
+}
 
 // The badge logo drawn on a canvas, used on the mat, screen and apron.
 export function drawLogo(ctx, cx, cy, w, opts = {}) {
+  if (logoImg) {
+    const h = (w * logoImg.height) / logoImg.width;
+    ctx.drawImage(logoImg, cx - w / 2, cy - h / 2, w, h);
+    return;
+  }
   const h = w * 0.42;
   ctx.save();
   ctx.translate(cx, cy);
@@ -512,7 +523,7 @@ export class Arena {
     const ctx = c.getContext('2d');
     const draw = () => {
       ctx.fillStyle = '#04060f'; ctx.fillRect(0, 0, 2048, 64);
-      const items = ['SILICON VALLEY CLAYMATCH', 'AGI WHEN?', 'SHIP IT', 'LIVE ON CCM', 'MOVE FAST, BREAK FACES', 'TOKENS PER SECOND: ∞', 'NO REFUNDS', 'SCALING LAWS STILL HOLDING'];
+      const items = ['SINGULARITY DEATHMATCH', 'AGI WHEN?', 'SHIP IT', 'LIVE ON CCM', 'MOVE FAST, BREAK FACES', 'TOKENS PER SECOND: ∞', 'NO REFUNDS', 'SCALING LAWS STILL HOLDING'];
       const cols = ['#3af0ff', '#ff4ad0', '#ffd94a', '#ffffff', '#ff8a3a', '#7aff6a', '#ff4a4a', '#9a8aff'];
       ctx.font = '900 40px "Arial Black", Impact, sans-serif';
       ctx.textBaseline = 'middle';

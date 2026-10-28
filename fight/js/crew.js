@@ -193,6 +193,10 @@ export class Crew {
     else if (s === 'wave') p = this.clock % 0.5 < 0.25 ? POSES.refWave : POSES.refWave2;
     else if (s === 'raise') p = POSES.refPoint;
     else p = POSES.stand;
+    // Ease between the ref's states, as the fighters do.
+    if (s !== this.refKey) { if (this.refShown) { this.refFrom = this.refShown; this.refT2 = 0; } this.refKey = s; }
+    if (this.refFrom && this.refT2 < 0.18) { this.refT2 += dt; p = blend(this.refFrom, p, Math.min(1, this.refT2 / 0.18)); } else this.refFrom = null;
+    this.refShown = p;
     applyPose(this.ref, p);
     this.refGroup.position.set(this.refPos.x, RING_H, this.refPos.z);
     this.refGroup.rotation.y = this.refYaw;

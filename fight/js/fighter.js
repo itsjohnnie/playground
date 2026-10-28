@@ -1086,7 +1086,24 @@ export class Fighter {
   // Called at 12fps: pick the pose, apply it, jitter the clay.
   animTick(dt) {
     this.animClock = (this.animClock || 0) + dt;
-    const p = this.scripted && this.scriptPose ? resolve(this.scriptPose) : this.currentPose();
+    let p = this.scripted && this.scriptPose ? resolve(this.scriptPose) : this.currentPose();
+    // In-betweens: whenever the state, move or scripted pose changes, ease
+    // from the pose last shown into the new one over a couple of frames
+    // instead of snapping. Hits snap faster so impacts still land.
+    const pkey = this.state + '|' + (this.moveName || '') + '|' + (this.scripted ? (typeof this.scriptPose === 'string' ? this.scriptPose : 'obj') : '');
+    if (pkey !== this.poseKey) {
+      if (this.shownPose) {
+        this.transFrom = this.shownPose;
+        this.transT = 0;
+        this.transDur = ['hitstun', 'knock', 'thrown', 'whipped'].includes(this.state) ? 0.06 : this.state === 'attack' ? 0.07 : ['down', 'getup', 'pinned', 'pin', 'grabbed', 'grappling'].includes(this.state) ? 0.2 : 0.14;
+      }
+      this.poseKey = pkey;
+    }
+    if (this.transFrom && this.transT < this.transDur) {
+      this.transT += dt;
+      p = blend(this.transFrom, p, easeInOut(Math.min(1, this.transT / this.transDur)));
+    } else this.transFrom = null;
+    this.shownPose = p;
     this.applyPose(p);
     this.syncVisual();
     boil(this.model.group, this.state === 'ko' ? 0.4 : 1);

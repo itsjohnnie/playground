@@ -64,7 +64,12 @@ button { font: inherit; color: inherit; }
 #boot .boot-msg { font-family: var(--display); color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; font-size: 14px; }
 
 #title { justify-content: flex-end; padding-bottom: 8vh; gap: 14px; }
-#title .logo { margin-bottom: auto; margin-top: 10vh; }
+#title .logo, #title .logo-img { margin-bottom: auto; margin-top: 8vh; }
+.logo-img { display: block; height: auto; filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.6)); }
+.logo-img.big { width: min(880px, 88vw); animation: slam 0.5s cubic-bezier(.2, 1.6, .4, 1) both, shake 3s steps(6) 0.6s infinite; }
+.logo-img.small { width: min(420px, 60vw); margin-bottom: 18px; }
+@keyframes slam { from { transform: scale(2.4) rotate(-4deg); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes shake { 0%, 90%, 100% { transform: none; } 93% { transform: translate(-3px, 2px) rotate(-0.6deg); } 96% { transform: translate(3px, -1px) rotate(0.5deg); } }
 .tag { font-family: var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin: 0; font-size: clamp(12px, 1.6vw, 18px); text-shadow: 0 2px 0 #000; }
 .credit { color: var(--muted); font-size: 12px; margin: 0; text-align: center; }
 .start {
@@ -255,5 +260,5 @@ button { font: inherit; color: inherit; }
   .vs-banner { max-width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  #grain, .logo.big, .blink { animation: none; }
+  #grain, .logo.big, .logo-img.big, .blink { animation: none; }
 }

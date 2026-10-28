@@ -653,7 +653,7 @@ export class Game {
     if (m.kind === 'tourney') {
       const l2 = this.ladder;
       if (human) {
-        if (l2.idx >= l2.list.length - 1) { kicker = 'CHAMPION!'; sub = `${w.def.name} is the undisputed Celebrity Claymatch champion.`; actions = [['menu', 'Main menu']]; }
+        if (l2.idx >= l2.list.length - 1) { kicker = 'CHAMPION!'; sub = `${w.def.name} is the undisputed Singularity Deathmatch champion.`; actions = [['menu', 'Main menu']]; }
         else { kicker = `FIGHT ${l2.idx + 1} OF ${l2.list.length} WON`; actions = [['next', 'Next fight'], ['menu', 'Quit']]; }
       } else {
         kicker = 'DEFEATED'; sub = `${w.def.name} beat you. Continue?`;

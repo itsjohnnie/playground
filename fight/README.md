@@ -1,4 +1,4 @@
-# Silicon Valley Claymatch
+# Singularity Deathmatch
 
 A browser claymation wrestling brawler in the spirit of the 2003
 *Celebrity Deathmatch* game, starring clay caricatures of tech figures (for
