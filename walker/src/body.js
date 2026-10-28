@@ -769,7 +769,8 @@ export function headModel(s) {
     const fb = Math.cos(a); // front/back by azimuth: stable at the bottom pole, where z/rr is not
     // only the back of the underside tucks up toward the neck; the sides stay
     // down so the jaw keeps a square angle instead of a V
-    y += 0.34 * smooth(-y) * smooth((-fb + 0.15) / 0.7) * smooth(-y - 0.1);
+    // fades out at the very bottom, where every azimuth meets: no pinch there
+    y += 0.34 * smooth(-y) * smooth((-fb + 0.15) / 0.7) * smooth(-y - 0.1) * smooth(rr / 0.35);
     return { x, y, z, rr, X: x * rx, Y: y * ry, Z: z * rz };
   }
 
@@ -1084,12 +1085,12 @@ function unionsFor(s) {
   const nearShoulder = (x, y) => y > s.shoulderY - 0.12 * s.u && Math.abs(x) > s.armX - 0.045 * s.u;
   const nearHip = (x, y) => y < s.hipJointY + 0.1 * s.u;
   return {
-    torso: [['neck', 0.02, (x, y) => y > s.shoulderY - 0.04 * s.u], ['arm_left', 0.065, (x, y) => x > 0 && nearShoulder(x, y)], ['arm_right', 0.065, (x, y) => x < 0 && nearShoulder(x, y)], ['leg_left', 0.05, nearHip], ['leg_right', 0.05, nearHip]],
+    torso: [['neck', 0.02, (x, y) => y > s.shoulderY - 0.04 * s.u], ['arm_left', 0.09, (x, y) => x > 0 && nearShoulder(x, y)], ['arm_right', 0.09, (x, y) => x < 0 && nearShoulder(x, y)], ['leg_left', 0.05, nearHip], ['leg_right', 0.05, nearHip]],
     neck: [['torso', 0.02, () => true], ['head', 0.05, (x, y) => y > s.headY - 0.05 * s.u]],
     // the jaw's sides and back flow into the neck; under the chin there is a
     // real undercut, so the front stays clear
     head: [['neck', 0.045, (x, y, z) => y < s.headY + 0.05 * s.u && z < headModel(s).cz - 0.004 * s.u]],
-    arm_left: [['torso', 0.065, (x, y) => armT(y) < 0.16]], arm_right: [['torso', 0.065, (x, y) => armT(y) < 0.16]],
+    arm_left: [['torso', 0.085, (x, y) => armT(y) < 0.16]], arm_right: [['torso', 0.085, (x, y) => armT(y) < 0.16]],
     leg_left: [['torso', 0.05, (x, y) => legT(y) < 0.16], ['leg_right', 0.016, (x, y) => legT(y) < 0.14]],
     leg_right: [['torso', 0.05, (x, y) => legT(y) < 0.16], ['leg_left', 0.016, (x, y) => legT(y) < 0.14]],
   };
@@ -1136,11 +1137,14 @@ function smoothUnions(geo, parts, s, sh, B) {
     }
     for (let i = 0; i < n; i++) if (cnt[i]) push[i] = 0.4 * push[i] + 0.6 * sum[i] / cnt[i];
   }
+  const stats = {};
   for (let i = 0; i < n; i++) {
     const q = push[i];
+    if (q > 1e-6 && partOf[i] >= 0) { const nm = parts[partOf[i]].name; stats[nm] = Math.max(stats[nm] || 0, q); }
     if (q > 1e-6) { P[i * 3] += N[i * 3] * q; P[i * 3 + 1] += N[i * 3 + 1] * q; P[i * 3 + 2] += N[i * 3 + 2] * q; }
   }
   geo.attributes.position.needsUpdate = true;
+  geo.userData.unionPush = stats; // largest fillet push per part, for inspection
 }
 function vhash(x, y, z) { const h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return h - Math.floor(h); }
 function vnoise3(x, y, z) {
@@ -1317,10 +1321,11 @@ function addDigit(B, name, palm, path, N, ring, k) {
     return Math.hypot(px - a[0] - abx * t, py - a[1] - aby * t, pz - a[2] - abz * t) - lerp(a[3], b[3], t);
   };
   B.fields[name] = (x, y, z) => { let d = Infinity; for (let i = 0; i + 1 < path.length; i++) d = Math.min(d, seg(x, y, z, path[i], path[i + 1])); return d; };
-  const root = path[0], reach = k * 3;
-  const nearRoot = (x, y, z) => Math.hypot(x - root[0], y - root[1], z - root[2]) < reach + 0.02;
-  B.unions[name] = [[palm, k / (B.su || 1), (x, y, z) => nearRoot(x, y, z)]];
-  (B.unions[palm] = B.unions[palm] || []).push([name, k / (B.su || 1), (x, y, z) => nearRoot(x, y, z)]);
+  // the blend lives at the knuckle only: around the point where the digit
+  // leaves the palm, never back toward the wrist
+  const root = path[Math.min(4, path.length - 1)];
+  const nearRoot = (x, y, z) => Math.hypot(x - root[0], y - root[1], z - root[2]) < 0.026 * (B.su || 1);
+  void k; void nearRoot; void palm; // digits root inside the palm instead of blending (fan-cap normals spike)
 }
 
 // A tube along a polyline: rings carried by parallel-transported frames, so a
@@ -1385,20 +1390,20 @@ function buildHand(B, s, col, side, k, x0, wristY, z0, SEG) {
   const NP = qn(18, 7), NPa = SEG; // same ring size as the forearm it continues
   const ts = [];
   for (let j = 0; j <= NP; j++) ts.push(j / NP);
-  for (const e of [0.4, 0.75]) ts.push(1 + e * 0.07); // the end tucks in under the finger roots
+  for (const e of [0.3, 0.55, 0.78, 0.94]) ts.push(1 + e * 0.12); // a rounded end the finger roots sink into
   ts.shift(); // t = 0 is the forearm's own last ring
   for (const t of ts) {
-    const over = Math.max(0, t - 1) / 0.07;
-    const shrink = 1 - 0.3 * over * over;
+    const over = Math.max(0, t - 1) / 0.12;
+    const shrink = Math.sqrt(Math.max(0, 1 - over * over * 0.92));
     const [hx, hz, cup, zc] = palmAt(t);
-    const y = t <= 1 ? palmY(t) : palmY(1) - over * 0.006 * u;
+    const y = t <= 1 ? palmY(t) : palmY(1) - over * 0.011 * u;
     const pts = [];
     for (let i = 0; i < NPa; i++) {
       const a = (i / NPa) * TAU;
       let [px, pz] = se(a, hx * shrink, hz * (0.85 + 0.15 * shrink), lerp(2.1, 2.15, smooth(t / 0.3))); // rounded, not a box
       // toward the knuckles the section turns into four finger roots: the palm
       // flows into the fingers instead of ending in a flat face
-      const sc4 = smooth((t - 0.78) / 0.3);
+      const sc4 = 0; // (scalloped knuckles spiked; the finger roots now sit inside a rounded palm end)
       if (sc4 > 0) {
         const lane = (pz / (hz || 1)) * 2; // −2 … 2 across the hand → finger lanes
         const roots = 0.5 + 0.5 * Math.cos(Math.PI * (lane + 1)); // 1 on a finger, 0 between
@@ -1442,7 +1447,7 @@ function buildHand(B, s, col, side, k, x0, wristY, z0, SEG) {
   let fi = 0;
   for (const [fz, dy, ls, rad, extra, splay] of fingers) {
     const path = [];
-    let p = new THREE.Vector3(x0 - k * 0.002 * u, wristY - palmLen * 0.8 + dy * u, z0 + fz * u * gw);
+    let p = new THREE.Vector3(x0 - k * 0.0045 * u, wristY - palmLen * 0.86 + dy * u, z0 + fz * 0.9 * u * gw); // roots inside the palm, back and front
     let d = new THREE.Vector3(0, -1, 0).applyAxisAngle(new THREE.Vector3(k, 0, 0), splay * Math.PI / 180 * k);
     const palmward = new THREE.Vector3(-k, 0, 0);
     for (let sgi = 0; sgi < 3; sgi++) {
@@ -1454,13 +1459,13 @@ function buildHand(B, s, col, side, k, x0, wristY, z0, SEG) {
       const r0 = rad * u * gw * (1 - 0.1 * sgi), r1 = rad * u * gw * (1 - 0.1 * (sgi + 1));
       for (let j = 0; j < 5; j++) {
         const t = j / 5;
-        const knuckle = 1 + (sgi === 0 ? 0.22 : 0.07) * Math.exp(-Math.pow(t / 0.22, 2)); // knuckles fuller, the first most
+        const knuckle = 1 + (sgi === 0 ? 0.2 : 0.07) * Math.exp(-Math.pow((t - (sgi === 0 ? 0.25 : 0)) / 0.22, 2)); // knuckles fuller, the first most
         path.push([p.x + d.x * len * t, p.y + d.y * len * t, p.z + d.z * len * t, lerp(r0, r1, t) * knuckle]);
       }
       p = p.clone().addScaledVector(d, len);
     }
     path.push([p.x, p.y, p.z, rad * u * gw * 0.68]);
-    addDigit(B, `finger_${side}_${fi++}`, `palm_${side}`, path, qn(16, 8), ring, 0.024 * u);
+    addDigit(B, `finger_${side}_${fi++}`, `palm_${side}`, path, qn(16, 8), ring, 0.04 * u); // knuckles and webbing
   }
 
   // thumb: from the heel of the palm, forward and down, curling toward the index
@@ -1483,7 +1488,7 @@ function buildHand(B, s, col, side, k, x0, wristY, z0, SEG) {
       p = p.clone().addScaledVector(d, len);
     }
     path.push([p.x, p.y, p.z, 0.0085 * u * gw]);
-    addDigit(B, `thumb_${side}`, `palm_${side}`, path, qn(16, 8), ring, 0.028 * u);
+    addDigit(B, `thumb_${side}`, `palm_${side}`, path, qn(16, 8), ring, 0.045 * u);
   }
   };
   return { rings: r, digits };
