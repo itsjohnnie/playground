@@ -77,23 +77,25 @@ export function InstallSheet({
             { text: 'Confirmá con ', target: 'Instalar' },
           ]
 
+  // The sheet's own title, rather than a heading inside it: Sheet
+  // already renders one in the same face and size, so a generic
+  // "Instalar" above this said the same thing twice. This is the one
+  // that carries information — in an in-app browser the whole message
+  // is "open it somewhere else", and that belongs at the top.
   const heading = install.inAppBrowser
     ? 'Abrilo en el navegador'
     : install.platform === 'ios'
-      ? 'Agregala a tu pantalla de inicio'
+      ? 'Agregala a tu inicio'
       : 'Instalá la app'
 
   return (
-    <Sheet open={open} onClose={onClose} title="Instalar">
+    <Sheet open={open} onClose={onClose} title={heading}>
       <div className="flex flex-col gap-4 pb-2">
-        <div className="flex flex-col gap-1.5">
-          <h3 className="font-display text-h2 text-ink leading-tight">{heading}</h3>
-          <p className="text-sm text-ink-muted text-balance">
-            {install.inAppBrowser
-              ? 'Estás viendo esto dentro de otra app, y desde acá no se puede instalar.'
-              : 'Queda como una app más: abre a pantalla completa y sin la barra del navegador.'}
-          </p>
-        </div>
+        <p className="text-sm text-ink-muted text-balance">
+          {install.inAppBrowser
+            ? 'Estás viendo esto dentro de otra app, y desde acá no se puede instalar.'
+            : 'Queda como una app más: abre a pantalla completa y sin la barra del navegador.'}
+        </p>
 
         {/* Chrome can just do it. Offer the real thing rather than
             describing a menu the browser is willing to open itself. */}
