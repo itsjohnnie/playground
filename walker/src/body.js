@@ -572,7 +572,9 @@ export function faceParams(c) {
     noseLen: 0.045 * (1 - 0.08 * f) * (1 + 0.08 * r(8)) * (1 - 0.2 * st),
     noseProj: 0.0175 * (1 - 0.12 * f) * (1 + 0.12 * r(9)) * (1 - 0.35 * st),
     noseW: 0.0170 * (1 - 0.10 * f) * (1 + 0.12 * r(10)) * (1 - 0.1 * st),
-    mouthY: -0.066 + 0.005 * st, // a shorter lower face
+    // the mouth hangs from the nose base: a fixed upper-lip length (~22 mm in
+    // men, ~20 in women, shorter when stylised) whatever the nose does
+    mouthY: (0.004 - 0.005 * st + 0.004) - 0.045 * (1 - 0.08 * f) * (1 + 0.08 * r(8)) * (1 - 0.2 * st) * 0.82 - 0.011 - (0.0225 - 0.0025 * f - 0.003 * st),
     mouthW: 0.0245 * (1 + 0.07 * r(11)) * (1 - 0.08 * st),
     lips: (1.0 + 0.4 * f) * (1 + 0.15 * r(12)) * (1 - 0.45 * st), // stylised: colour, not sculpture
     chin: 0.0055 * (1 - 0.3 * f) * (1 + 0.4 * r(13)) * (1 - 0.5 * st),
@@ -639,7 +641,10 @@ export function headModel(s) {
       x *= Math.min(1.7, target / Math.max(rr, 0.2));
     }
     z *= 1 - 0.04 * jaw;
-    if (z > 0) z *= 1 - 0.05 - 0.12 * smooth((y - 0.45) / 0.55);
+    if (z > 0) z *= 1 - 0.05 - 0.05 * smooth((y - 0.45) / 0.55);
+    // fill the forehead forward between brow and hairline: a sphere's curve
+    // there reads as a sloping, ape-like brow; a human forehead stands upright
+    if (z > 0 && y > 0) z *= 1 + 0.07 * smooth(y / 0.45) * (1 - smooth((y - 0.6) / 0.35)) * Math.pow(Math.max(0, Math.cos(a)), 2);
     z += 0.42 * Math.pow(Math.max(0, Math.cos(a)), 1.5) * smooth((-y - 0.1) / 0.75);
     if (z < 0) z *= 1 + 0.03 * smooth(y + 0.2);
     const fb = z / (rr || 1);
@@ -685,6 +690,9 @@ export function headModel(s) {
     d += 0.0046 * F.lips * lw((Y - F.mouthY + 0.0055) / 0.0055, F.mouthW * 0.88);
     d -= 0.0014 * G2(0, Y - F.mouthY - 0.0022 * Math.pow(ax / F.mouthW, 2), 1, 0.0011) * smooth((F.mouthW * 1.05 - ax) / 0.004);  // mouth line, corners up a touch
     d -= 0.0026 * soft * G2(X, Y - F.mouthY + 0.017, 0.018, 0.005); // mentolabial sulcus
+    // keep the mouth behind the nose-to-chin line (the orthodontists' E-line):
+    // a forward mouth is a muzzle, and reads as ape rather than human
+    d -= (0.0068 + 0.0035 * fem) * G2(X, Y - F.mouthY + 0.001, 0.032, 0.016);
     d += F.chin * G2(X, Y + 0.098, 0.022, 0.013);             // chin
     return d;
   }
