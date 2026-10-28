@@ -419,9 +419,15 @@ function MatchDetail({ match, playerById, onDelete }: { match: Match; playerById
           </div>
         </section>
       )}
+      {/* Full width, matching "Retirar de la mesa" in the profile
+          sheet — the other destructive action that closes out a sheet.
+          It was a centre-hugging pill in a column where everything
+          else runs edge to edge, and rounded-sm is the radius used by
+          the compact jugada rows, which reads too tight once the
+          element is this wide. */}
       <button
         onClick={onDelete}
-        className="pressable rounded-sm border border-danger/40 px-4 py-2.5 text-danger hover:border-danger text-sm self-center"
+        className="pressable w-full rounded-md border border-danger/40 px-4 py-3 text-danger hover:border-danger"
       >
         Borrar partida
       </button>
