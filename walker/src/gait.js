@@ -564,7 +564,7 @@ export class Walker {
         _q.setFromAxisAngle(Z, sg * carry * D * (1 - elbow / 140)); fa.multiply(_q);
         _q.setFromAxisAngle(X, -elbow * D); fa.multiply(_q);
         const hd = P.q[`${side}Hand`].copy(fa);
-        _q.setFromAxisAngle(X, (6 + 4 * Math.cos(TAU * (armPhase - 0.2))) * D); hd.multiply(_q);
+        _q.setFromAxisAngle(X, (3 + 3 * Math.cos(TAU * (armPhase - 0.2))) * D); hd.multiply(_q); // a relaxed wrist barely flexes
       };
       // keep elbow, forearm and hand off the torso and thighs: find the least
       // extra abduction that clears, the way a real arm swings around the hip

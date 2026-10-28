@@ -50,6 +50,8 @@ class Builder {
     this.pos = []; this.col = []; this.si = []; this.sw = []; this.idx = []; this.hair = []; this.mat = []; this.brow = []; this.blink = []; this.sway = [];
     this.bi = boneIndex;
     this.parts = [];
+    this.fields = {}; // extra distance fields parts register for smooth unions
+    this.unions = {}; // and which neighbours they blend with
   }
   // tag the vertices that follow as one body part (for the smooth-union pass)
   mark(name) { this.parts.push({ name, start: this.pos.length / 3 }); }
@@ -86,6 +88,7 @@ class Builder {
     const N = rings[0].pts.length;
     const base = [];
     for (const r of rings) {
+      if (r.mark) this.mark(r.mark);
       const start = this.pos.length / 3;
       r.pts.forEach((p, i) => {
         const c = typeof r.color === 'function' ? r.color(i, p) : r.color;
@@ -185,7 +188,7 @@ export function bodyShape(spec) {
     [spec.spine2Y - 0.010 * u,   0.165 * c.shoulders * lerp(1, g, 0.7), (0.116 + 0.008 * m) * g, 0.014, 2.3],
     [spec.shoulderY - 0.085 * u, 0.200 * c.shoulders * lerp(1, g, 0.6), (0.114 + 0.006 * m) * g, 0.008, 2.4],
     [spec.shoulderY - 0.030 * u, 0.222 * c.shoulders * lerp(1, g, 0.5), 0.098 * g,       -0.004, 2.6],
-    [spec.shoulderY + 0.006 * u, 0.192 * c.shoulders * lerp(1, g, 0.5), 0.078 * g,       -0.016, 2.6],
+    [spec.shoulderY + 0.006 * u, 0.192 * c.shoulders * lerp(1, g, 0.5), 0.078 * g,       -0.016, 2.45], // a little rounder on top
     [spec.shoulderY + 0.024 * u, 0.098 * lerp(1, g, 0.5),    0.068 * g,       -0.018, 2.3], // trapezius
     [spec.neckY + 0.012 * u,     0.068 * lerp(1, g, 0.5),    0.062 * lerp(1, g, 0.5), -0.018, 2.0],
   ].map(([y, w, d, z, e], i) => {
@@ -214,8 +217,6 @@ export function bodyShape(spec) {
   const elbowT = spec.upperArm / (spec.upperArm + spec.foreArm);
   const armKeys = [
     // t (0 shoulder → 1 wrist), rx, rz, zc
-    [0.015, 0.034, 0.038, 0.000], // the arm starts under the deltoid, which the torso carries
-    [0.045, 0.050, 0.052, 0.000],
     [0.02, (0.055 + 0.006 * m) * g, (0.056 + 0.004 * m) * g, 0.002],
     [0.17, (0.048 + 0.006 * m) * g, (0.052 + 0.003 * m) * g, 0.004],
     [0.33, (0.042 + 0.003 * m) * g, (0.046 + 0.004 * m) * g, 0.006],
@@ -223,6 +224,7 @@ export function bodyShape(spec) {
     [elbowT + 0.02, 0.036 * g, 0.039 * g, -0.002],
     [elbowT + 0.12, (0.037 + 0.003 * m) * g, 0.039 * g, 0.002],
     [0.86, 0.025 * lerp(1, g, 0.6), 0.030 * lerp(1, g, 0.6), 0.000],
+    [0.95, 0.0208 * lerp(1, g, 0.45), 0.0283 * lerp(1, g, 0.45), 0.000], // eases into the wrist
     [1.0, 0.020 * lerp(1, g, 0.4), 0.028 * lerp(1, g, 0.4), 0.000],
   ];
   const armRaw = profile(armKeys);
@@ -256,6 +258,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
   Q = draft ? 0.45 : 1;
   const c = spec.c, u = spec.u;
   const B = new Builder(rig.index);
+  B.su = u; // unions registered in metres are stored relative to the body scale
   const col = {
     skin: new THREE.Color(c.skin), hair: new THREE.Color(c.hair), shirt: new THREE.Color(c.shirt),
     pants: new THREE.Color(c.pants), shoes: new THREE.Color(c.shoes),
@@ -373,9 +376,30 @@ export function buildBody(spec, rig, { draft = false } = {}) {
     const r = [];
     const ts = [];
     const NA = qn(72, 20);
-    for (let j = 0; j <= NA; j++) ts.push(lerp(0.015, 1.0, j / NA));
-    ts.push(sleeveT - 0.0001, sleeveT + 0.0001);
-    ts.sort((a, b) => a - b);
+    for (let j = 0; j <= NA; j++) ts.push(lerp(0.045, 1.0, j / NA));
+    // the top of the arm closes in a smooth dome standing on its first ring
+    // (same width, matching slope), so the tube has no rim to show on the
+    // shoulder; the torso's shoulder covers it and the unions blend the rest
+    {
+      const tj = 0.045, d = tj * total;
+      const [rx0, rz0, zc0] = P(tj);
+      const puff = 0.004 * u;
+      const sx = rx0 * u * (1 - 0.12 * f) + puff, sz = rz0 * u * (1 - 0.1 * f) + puff;
+      const h = 0.4 * Math.max(sx, sz); // a low cap that stays under the torso's shoulder
+      const NC = qn(12, 5);
+      const w = armWeights(side, 0.0, elbowT);
+      for (let j = 1; j <= NC; j++) {
+        const th = (1 - j / (NC + 1)) * Math.PI / 2; // 0 at the ring … π/2 at the pole
+        const c = Math.cos(th);
+        const pts = [];
+        for (let i = 0; i < SEG; i++) {
+          const [qx, qz] = se((i / SEG) * TAU, sx * c, sz * c, 2.1);
+          pts.push([x0 + qx, top - d + h * Math.sin(th), z0 + qz + zc0 * u]);
+        }
+        r.unshift({ pts, mat: MAT.cloth, color: col.shirt, weights: () => w });
+      }
+      r.reverse(); // pole first, ring last
+    }
     for (const t of ts) {
       const [rx, rz, zc] = P(t);
       const sleeve = t < sleeveT;
@@ -390,9 +414,12 @@ export function buildBody(spec, rig, { draft = false } = {}) {
       const w = armWeights(side, t, elbowT);
       r.push({ pts, mat: sleeve ? MAT.cloth : MAT.skin, color: sleeve ? (t > sleeveT - 0.03 ? col.collar : col.shirt) : col.skin, weights: () => w });
     }
-    B.loft(r, { capStart: true });
+    // the palm continues the same loft: one surface from shoulder to knuckles
+    const hand = buildHand(B, spec, col, side, k, x0, top - total, z0, SEG);
+    r.push(...hand.rings);
+    B.loft(r, { capStart: true, capEnd: true });
     B.mark('other');
-    buildHand(B, spec, col, side, k, x0, top - total, z0);
+    hand.digits();
   }
 
   // ── legs ──────────────────────────────────────────────────────────────
@@ -429,7 +456,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
   }
 
   const geo = B.geometry();
-  smoothUnions(geo, B.parts, spec, shape);
+  smoothUnions(geo, B.parts, spec, shape, B);
   geo.computeVertexNormals();
   // One physical material; each surface kind (skin, cloth, hair, shoe, sole)
   // gets its own roughness, sheen and micro-detail in the shader, driven by
@@ -568,8 +595,8 @@ function armWeights(side, t, elbowT) {
   else if (t < elbowT + 0.045) {
     const a = smooth((t - (elbowT - 0.045)) / 0.09);
     w[ua] = 1 - a; w[fa] = a;
-  } else if (t < 0.97) w[fa] = 1;
-  else { const a = smooth((t - 0.97) / 0.03); w[fa] = 1 - a * 0.5; w[hd] = a * 0.5; }
+  } else if (t < 0.9) w[fa] = 1;
+  else { const a = smooth((t - 0.9) / 0.1); w[fa] = 1 - a * 0.5; w[hd] = a * 0.5; } // a wide wrist: the bend spreads, no fold
   return w;
 }
 
@@ -685,7 +712,7 @@ export function headModel(s) {
     if (z > 0 && y > 0) z *= 1 + 0.07 * smooth(y / 0.45) * (1 - smooth((y - 0.6) / 0.35)) * Math.pow(Math.max(0, Math.cos(a)), 2);
     z += 0.42 * Math.pow(Math.max(0, Math.cos(a)), 1.5) * smooth((-y - 0.1) / 0.75);
     if (z < 0) z *= 1 + 0.03 * smooth(y + 0.2);
-    const fb = z / (rr || 1);
+    const fb = Math.cos(a); // front/back by azimuth: stable at the bottom pole, where z/rr is not
     // only the back of the underside tucks up toward the neck; the sides stay
     // down so the jaw keeps a square angle instead of a V
     y += 0.34 * smooth(-y) * smooth((-fb + 0.15) / 0.7) * smooth(-y - 0.1);
@@ -770,7 +797,9 @@ function buildHead(B, s, col) {
       const p = skull(a, phi);
       let { X, Y, Z } = p;
       const { x, y, z, rr } = p;
-      const front = smooth((Math.cos(a) - 0.15) / 0.5);
+      // face detail lives on the face; it fades under the chin, where every
+      // azimuth converges on one point and a forward push would tear a notch
+      const front = smooth((Math.cos(a) - 0.15) / 0.5) * (phi < Math.PI / 2 ? 1 : smooth((Math.sin(phi) - 0.12) / 0.33));
       const Xs = X / sc, Ys = Y / sc;
       Z += relief(Xs, Ys) * sc * front;
       // eyes: an almond opening where the skin sits behind the eyeball, lids
@@ -885,35 +914,65 @@ function buildHead(B, s, col) {
 
 // An ear: a thin shell with a rolled rim (helix), a hollow bowl (concha) and
 // a soft lobe, set flat against the side of the head and tilted back.
+// An ear: a flat shell set on the side of the head and tilted back, with a
+// rolled rim (helix) around the top and back, a ridge inside it (antihelix),
+// a hollow bowl (concha) in front of that, and a soft lobe. Its front edge is
+// sunk into the head and blended there, so it grows out of the skull.
 function buildEar(B, s, col, k, cy, cz, skull, sc) {
-  // head side surface at ear height
   let side = 0;
   for (let i = 0; i <= 60; i++) { const p = skull(k * Math.PI / 2 + (i / 60 - 0.5) * 0.6, Math.PI * 0.55); side = Math.max(side, Math.abs(p.X)); }
-  const H = 0.063 * sc, W = 0.034 * sc, T = 0.018 * sc;
-  const ec = new THREE.Vector3(k * (side + 0.002 * sc), cy - 0.019 * sc, cz - 0.014 * sc);
-  const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -0.26);
-  const flare = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), k * 0.42); // stands off the head at the back
-  const R = qn(18, 8), S = qn(26, 10), rings = [];
+  const H = 0.062 * sc, W = 0.032 * sc, T = 0.016 * sc;
+  const ec = new THREE.Vector3(k * (side - 0.001 * sc), cy - 0.02 * sc, cz - 0.016 * sc);
+  const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), -0.24);
+  const flare = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), k * 0.5); // stands off the head toward the back
+  const q = tilt.clone().premultiply(flare);
+  const R = qn(22, 8), S = qn(36, 12), rings = [];
+  // outline: a in [0, 2π) from the top, round the back, the lobe, up the front
+  const outline = (a) => {
+    const c = Math.cos(a), sn = Math.sin(a);
+    let y = c * (c > 0 ? 1 : 0.86);           // fuller top, a smaller lobe
+    let z = -sn * (sn > 0 ? 1 : 0.55);         // the back bulges, the front edge is near straight
+    if (c < -0.4) z *= 0.78 + 0.22 * smooth((c + 1) / 0.6); // narrow lobe
+    return [y * H * 0.5, z * W * 0.5 + 0.12 * W];
+  };
   for (let j = 1; j < R; j++) {
     const th = (j / R) * Math.PI; // 0 outer face … π inner face
+    const radial = Math.sin(th), outer = Math.cos(th) > 0;
     const pts = [], cols = [];
     for (let i = 0; i < S; i++) {
-      const a = (i / S) * TAU; // around the outline: 0 top, → back, bottom, front
-      let ox = Math.cos(th), oy = Math.sin(th) * Math.cos(a), oz = -Math.sin(th) * Math.sin(a);
-      // outline: wider at the top, narrowing to the lobe
-      const top = Math.cos(a) > 0 ? 1 : 0.78;
-      oy *= top; oz *= Math.cos(a) > 0 ? 1 : 0.8 + 0.2 * Math.cos(a) * -1 * 0;
-      // concha: the outer face hollows in, the rim stays full
-      const radial = Math.sin(th);
-      if (ox > 0) ox *= 1 - 0.85 * Math.exp(-Math.pow(radial / 0.55, 2)) + 0.25 * smooth((radial - 0.75) / 0.25);
-      const v = new THREE.Vector3(k * ox * T * 0.5, oy * H * 0.5, oz * W * 0.5).applyQuaternion(tilt).applyQuaternion(flare);
+      const a = (i / S) * TAU;
+      const [oy, oz] = outline(a);
+      const back = Math.max(0, Math.sin(a)), up = Math.max(0, Math.cos(a));
+      let ox;
+      if (outer) {
+        const rim = smooth((radial - 0.78) / 0.18) * (0.5 + 0.5 * Math.max(back, up));   // helix roll
+        const ridge = Math.exp(-Math.pow((radial - 0.6) / 0.1, 2)) * (0.4 + 0.6 * back);  // antihelix
+        const bowl = Math.exp(-Math.pow(radial / 0.42, 2)) * (0.4 + 0.6 * Math.max(0, -Math.cos(a) + 0.3)); // concha
+        ox = 0.25 + 0.75 * rim + 0.35 * ridge - 0.55 * bowl;
+      } else {
+        ox = -0.45 * (0.6 + 0.4 * smooth((radial - 0.5) / 0.4)); // back of the ear: flat, thicker at the rim
+      }
+      const front = Math.max(0, -Math.sin(a)); // the front edge sinks into the head
+      const v = new THREE.Vector3(k * (ox * T * 0.5 - front * radial * 0.35 * T), oy * radial, oz * radial).applyQuaternion(q);
       pts.push([ec.x + v.x, ec.y + v.y, ec.z + v.z]);
-      const bowl = ox > 0 ? Math.exp(-Math.pow(radial / 0.6, 2)) : 0;
-      cols.push(col.skin.clone().lerp(col.flush, 0.25 + 0.2 * smooth(radial - 0.6)).multiplyScalar(1 - 0.18 * bowl));
+      const bowlShade = outer ? Math.exp(-Math.pow(radial / 0.5, 2)) : 0;
+      cols.push(col.skin.clone().lerp(col.flush, 0.28 + 0.22 * smooth(radial - 0.6)).multiplyScalar(1 - 0.16 * bowlShade));
     }
     rings.push({ pts, mat: MAT.skin, color: (i) => cols[i], weights: () => ({ head: 1 }) });
   }
+  const name = `ear_${k > 0 ? 'l' : 'r'}`;
+  B.mark(name);
   B.loft(rings, { capStart: true, capEnd: true, flip: k > 0 });
+  B.mark('other');
+  // blend the ear's root into the head
+  const inv = q.clone().invert();
+  B.fields[name] = (x, y, z) => {
+    const v = new THREE.Vector3(x - ec.x, y - ec.y, z - ec.z).applyQuaternion(inv);
+    return (Math.hypot(v.x / (T * 0.5), v.y / (H * 0.5), (v.z - 0.12 * W) / (W * 0.5)) - 1) * T * 0.5;
+  };
+  const nearRoot = (x, y, z) => Math.hypot(x - ec.x, y - ec.y, z - ec.z) < 0.04 * sc;
+  B.unions[name] = [['head', 0.012 / (B.su || 1), nearRoot]];
+  B.unions.head = [...(B.unions.head || []), [name, 0.012 / (B.su || 1), nearRoot]];
 }
 
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -943,7 +1002,7 @@ function partFields(s, sh) {
   };
   const top = s.shoulderY - 0.012 * s.u, total = s.upperArm + s.foreArm;
   const arm = (k) => (x, y, z) => {
-    const t0 = (top - y) / total, t = clamp(t0, 0.015, 1);
+    const t0 = (top - y) / total, t = clamp(t0, 0.045, 1); // above: the ball-joint dome, as a capped end
     const [rx, rz, zc] = sh.arm(t);
     return capped(ellipseDist(x - k * s.armX, z - (-0.008 * s.u + zc), rx, rz, 2.1), Math.abs(t0 - t) * total);
   };
@@ -967,20 +1026,24 @@ const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 function unionsFor(s) {
   const top = s.shoulderY - 0.012 * s.u, total = s.upperArm + s.foreArm;
   const armT = (y) => (top - y) / total, legT = (y) => (s.hipJointY - y) / s.legLen;
-  const nearShoulder = (x, y) => y > s.shoulderY - 0.16 * s.u && Math.abs(x) > s.armX - 0.08 * s.u;
+  // only the outer shoulder blends into the arm; the chest and back stay as they are
+  const nearShoulder = (x, y) => y > s.shoulderY - 0.12 * s.u && Math.abs(x) > s.armX - 0.045 * s.u;
   const nearHip = (x, y) => y < s.hipJointY + 0.1 * s.u;
   return {
-    torso: [['neck', 0.02, (x, y) => y > s.shoulderY - 0.04 * s.u], ['arm_left', 0.04, (x, y) => x > 0 && nearShoulder(x, y)], ['arm_right', 0.04, (x, y) => x < 0 && nearShoulder(x, y)], ['leg_left', 0.05, nearHip], ['leg_right', 0.05, nearHip]],
-    neck: [['torso', 0.02, () => true]],
-    head: [['neck', 0.03, (x, y) => y < s.headY + 0.03 * s.u]],
-    arm_left: [['torso', 0.04, (x, y) => armT(y) < 0.14]], arm_right: [['torso', 0.04, (x, y) => armT(y) < 0.14]],
+    torso: [['neck', 0.02, (x, y) => y > s.shoulderY - 0.04 * s.u], ['arm_left', 0.065, (x, y) => x > 0 && nearShoulder(x, y)], ['arm_right', 0.065, (x, y) => x < 0 && nearShoulder(x, y)], ['leg_left', 0.05, nearHip], ['leg_right', 0.05, nearHip]],
+    neck: [['torso', 0.02, () => true], ['head', 0.05, (x, y) => y > s.headY - 0.05 * s.u]],
+    // the jaw's sides and back flow into the neck; under the chin there is a
+    // real undercut, so the front stays clear
+    head: [['neck', 0.045, (x, y, z) => y < s.headY + 0.05 * s.u && z < headModel(s).cz - 0.004 * s.u]],
+    arm_left: [['torso', 0.065, (x, y) => armT(y) < 0.16]], arm_right: [['torso', 0.065, (x, y) => armT(y) < 0.16]],
     leg_left: [['torso', 0.05, (x, y) => legT(y) < 0.16], ['leg_right', 0.016, (x, y) => legT(y) < 0.14]],
     leg_right: [['torso', 0.05, (x, y) => legT(y) < 0.16], ['leg_left', 0.016, (x, y) => legT(y) < 0.14]],
   };
 }
-function smoothUnions(geo, parts, s, sh) {
+function smoothUnions(geo, parts, s, sh, B) {
   if (Q < 0.6) return; // drafts skip it: they only need to follow the slider
-  const F = partFields(s, sh), U = unionsFor(s);
+  const F = { ...partFields(s, sh), ...B.fields }, U = unionsFor(s);
+  for (const name in B.unions) U[name] = [...(U[name] || []), ...B.unions[name]];
   geo.computeVertexNormals();
   const P = geo.attributes.position.array, N = geo.attributes.normal.array;
   const n = P.length / 3;
@@ -996,7 +1059,7 @@ function smoothUnions(geo, parts, s, sh) {
       const x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2];
       let best = 0;
       for (const [other, k0, zone] of nb) {
-        if (!zone(x, y)) continue;
+        if (!zone(x, y, z)) continue;
         const k = k0 * s.u;
         const d = F[other](x, y, z);
         if (d <= 0 || d >= k) continue; // inside the other part (hidden) or too far to matter
@@ -1182,6 +1245,30 @@ function buildHairFall(B, s, len) {
   B.loft(rings);
 }
 
+// the wrist end of the forearm: [half-thickness X, half-width Z]
+function shapeArmEnd(s) {
+  const [rx, rz] = bodyShape(s).arm(1);
+  return [rx, rz];
+}
+
+// a finger or thumb: its own part with a capsule-chain distance field, so its
+// root blends into the palm instead of butting onto it
+function addDigit(B, name, palm, path, N, ring, k) {
+  B.mark(name);
+  tubeAlong(B, path, N, ring);
+  B.mark('other');
+  const seg = (px, py, pz, a, b) => {
+    const abx = b[0] - a[0], aby = b[1] - a[1], abz = b[2] - a[2];
+    const t = clamp(((px - a[0]) * abx + (py - a[1]) * aby + (pz - a[2]) * abz) / (abx * abx + aby * aby + abz * abz || 1), 0, 1);
+    return Math.hypot(px - a[0] - abx * t, py - a[1] - aby * t, pz - a[2] - abz * t) - lerp(a[3], b[3], t);
+  };
+  B.fields[name] = (x, y, z) => { let d = Infinity; for (let i = 0; i + 1 < path.length; i++) d = Math.min(d, seg(x, y, z, path[i], path[i + 1])); return d; };
+  const root = path[0], reach = k * 3;
+  const nearRoot = (x, y, z) => Math.hypot(x - root[0], y - root[1], z - root[2]) < reach + 0.02;
+  B.unions[name] = [[palm, k / (B.su || 1), (x, y, z) => nearRoot(x, y, z)]];
+  (B.unions[palm] = B.unions[palm] || []).push([name, k / (B.su || 1), (x, y, z) => nearRoot(x, y, z)]);
+}
+
 // A tube along a polyline: rings carried by parallel-transported frames, so a
 // finger curls smoothly through its knuckles. `path` is [[x,y,z,r], ...];
 // the far end closes in a rounded tip.
@@ -1218,40 +1305,76 @@ function tubeAlong(B, path, N, ring) {
 // A relaxed hand hanging at the side: palm toward the thigh (−k·X), thumb
 // forward (+Z), the fingers in the gentle cascade of a resting hand, the
 // little finger the most curled.
-function buildHand(B, s, col, side, k, x0, wristY, z0) {
+function buildHand(B, s, col, side, k, x0, wristY, z0, SEG) {
   const u = s.u, L = s.hand, hsc = L / 0.189;
   const f = s.c.sex ?? 0, gw = lerp(1, s.c.build, 0.4) * (1 - 0.08 * f);
-  const hand = `${side}Hand`;
+  const hand = `${side}Hand`, fore = `${side}ForeArm`;
   const ring = { color: col.skin, mat: MAT.skin, weights: () => ({ [hand]: 1 }) };
   const palmLen = 0.46 * L;
-  // palm: thin across X, wide along Z, slightly cupped toward the palm
+  // the forearm's last ring, so the palm starts exactly where the wrist is
+  const [wx, wz] = shapeArmEnd(s);
+  // palm: from the wrist's own cross-section, widening to the knuckles, thin
+  // across X, slightly cupped; the far end rounds into the knuckles
   const keys = [
     // t (wrist → knuckles), halfThick, halfWidth, cup (toward palm), zc
-    [0.00, 0.0175, 0.027, 0.000, 0.000],
-    [0.25, 0.0170, 0.036, 0.001, 0.002],
-    [0.60, 0.0160, 0.041, 0.003, 0.001],
-    [0.92, 0.0145, 0.043, 0.006, 0.000],
-    [1.00, 0.0130, 0.042, 0.007, 0.000],
+    [0.00, wx / (u * gw), wz / (u * gw), 0.000, 0.000],
+    [0.12, wx / (u * gw), wz / (u * gw) * 1.04, 0.0003, 0.0005], // level with the wrist: no corner
+    [0.3, 0.0166, 0.036, 0.0015, 0.002],
+    [0.55, 0.0152, 0.0405, 0.003, 0.001],
+    [0.86, 0.0136, 0.0415, 0.005, 0.000],
+    [1.00, 0.0118, 0.039, 0.006, 0.000],
   ];
   const P = profile(keys);
+  const palmY = (t) => wristY + 0.004 * u - t * (palmLen + 0.004 * u);
+  const palmAt = (t) => { const [hx, hz, cup, zc] = P(clamp01(t)); return [hx * u * gw, hz * u * gw, cup * u, zc * u]; };
   const r = [];
-  const NP = qn(16, 6);
-  for (let j = 0; j <= NP; j++) {
-    const t = j / NP;
-    const [hx, hz, cup, zc] = P(t);
-    const y = wristY + 0.014 * u - t * (palmLen + 0.014 * u); // starts inside the forearm: no crack at the wrist
+  const NP = qn(18, 7), NPa = SEG; // same ring size as the forearm it continues
+  const ts = [];
+  for (let j = 0; j <= NP; j++) ts.push(j / NP);
+  for (const e of [0.4, 0.75]) ts.push(1 + e * 0.07); // the end tucks in under the finger roots
+  ts.shift(); // t = 0 is the forearm's own last ring
+  for (const t of ts) {
+    const over = Math.max(0, t - 1) / 0.07;
+    const shrink = 1 - 0.3 * over * over;
+    const [hx, hz, cup, zc] = palmAt(t);
+    const y = t <= 1 ? palmY(t) : palmY(1) - over * 0.006 * u;
     const pts = [];
-    const NPa = qn(40, 12);
     for (let i = 0; i < NPa; i++) {
       const a = (i / NPa) * TAU;
-      let [px, pz] = se(a, hx * u * gw, hz * u * gw, 2.6);
-      // palm side a little hollow in the middle, thenar pad near the thumb
-      if (px * k < 0) px *= 1 - 0.18 * Math.exp(-Math.pow(pz / (0.02 * u), 2)) * smooth((t - 0.2) / 0.4);
-      pts.push([x0 + px - k * cup * u, y, z0 + pz + zc * u]);
+      let [px, pz] = se(a, hx * shrink, hz * (0.85 + 0.15 * shrink), lerp(2.1, 2.15, smooth(t / 0.3))); // rounded, not a box
+      // toward the knuckles the section turns into four finger roots: the palm
+      // flows into the fingers instead of ending in a flat face
+      const sc4 = smooth((t - 0.78) / 0.3);
+      if (sc4 > 0) {
+        const lane = (pz / (hz || 1)) * 2; // −2 … 2 across the hand → finger lanes
+        const roots = 0.5 + 0.5 * Math.cos(Math.PI * (lane + 1)); // 1 on a finger, 0 between
+        px *= 1 - 0.32 * sc4 * (1 - roots);
+        pz *= 1 - 0.06 * sc4;
+      }
+      // back of the hand gently domed; palm side hollow in the middle with a
+      // fleshy thumb pad (thenar) near the thumb and a heel near the wrist
+      const ease = smooth(t / 0.35); // features grow out of the wrist, never step at it
+      if (px * k > 0) px *= 1 + 0.12 * ease * Math.exp(-Math.pow(pz / (0.025 * u), 2));
+      else {
+        px *= 1 - 0.2 * Math.exp(-Math.pow(pz / (0.018 * u), 2)) * smooth((t - 0.25) / 0.35);
+        px *= 1 + 0.25 * Math.exp(-Math.pow((pz - 0.022 * u) / (0.013 * u), 2) - Math.pow((t - 0.3) / 0.25, 2)); // thenar
+        px *= 1 + 0.1 * ease * Math.exp(-Math.pow((t - 0.2) / 0.14, 2)); // heel of the palm
+      }
+      pts.push([x0 + px - k * cup, y, z0 + pz + zc]);
     }
-    r.push({ pts, ...ring });
+    // the wrist bends: the first part of the palm shares the forearm
+    const wf = 1 - smooth(t / 0.4);
+    r.push({ pts, ...ring, mark: r.length === 0 ? `palm_${side}` : undefined, weights: () => (wf > 0.001 ? { [fore]: 0.5 * wf, [hand]: 1 - 0.5 * wf } : { [hand]: 1 }) });
   }
-  B.loft(r, { capEnd: true });
+  B.fields[`palm_${side}`] = (x, y, z) => {
+    const t = (palmY(0) - y) / (palmY(0) - palmY(1));
+    const tc = clamp(t, 0, 1);
+    const [hx, hz, cup, zc] = palmAt(tc);
+    return Math.hypot(Math.max(0, ellipseDist(x - x0 + k * cup, z - z0 - zc, hx, hz, 2.6)), Math.abs(t - tc) * palmLen);
+  };
+  B.unions[`palm_${side}`] = [];
+
+  const digits = () => {
 
   // fingers: [z across the palm, knuckle height offset, length scale, radius, extra curl, splay]
   const fingers = [
@@ -1262,9 +1385,10 @@ function buildHand(B, s, col, side, k, x0, wristY, z0) {
   ];
   const seg = [0.047, 0.029, 0.021];
   const curl = [16, 30, 16];
+  let fi = 0;
   for (const [fz, dy, ls, rad, extra, splay] of fingers) {
     const path = [];
-    let p = new THREE.Vector3(x0 - k * 0.004 * u, wristY - palmLen * 0.9 + dy * u, z0 + fz * u * gw);
+    let p = new THREE.Vector3(x0 - k * 0.002 * u, wristY - palmLen * 0.8 + dy * u, z0 + fz * u * gw);
     let d = new THREE.Vector3(0, -1, 0).applyAxisAngle(new THREE.Vector3(k, 0, 0), splay * Math.PI / 180 * k);
     const palmward = new THREE.Vector3(-k, 0, 0);
     for (let sgi = 0; sgi < 3; sgi++) {
@@ -1276,13 +1400,13 @@ function buildHand(B, s, col, side, k, x0, wristY, z0) {
       const r0 = rad * u * gw * (1 - 0.1 * sgi), r1 = rad * u * gw * (1 - 0.1 * (sgi + 1));
       for (let j = 0; j < 5; j++) {
         const t = j / 5;
-        const knuckle = 1 + 0.07 * Math.exp(-Math.pow(t / 0.18, 2)); // joints a touch fuller
+        const knuckle = 1 + (sgi === 0 ? 0.22 : 0.07) * Math.exp(-Math.pow(t / 0.22, 2)); // knuckles fuller, the first most
         path.push([p.x + d.x * len * t, p.y + d.y * len * t, p.z + d.z * len * t, lerp(r0, r1, t) * knuckle]);
       }
       p = p.clone().addScaledVector(d, len);
     }
     path.push([p.x, p.y, p.z, rad * u * gw * 0.68]);
-    tubeAlong(B, path, qn(16, 8), ring);
+    addDigit(B, `finger_${side}_${fi++}`, `palm_${side}`, path, qn(16, 8), ring, 0.024 * u);
   }
 
   // thumb: from the heel of the palm, forward and down, curling toward the index
@@ -1305,8 +1429,10 @@ function buildHand(B, s, col, side, k, x0, wristY, z0) {
       p = p.clone().addScaledVector(d, len);
     }
     path.push([p.x, p.y, p.z, 0.0085 * u * gw]);
-    tubeAlong(B, path, qn(16, 8), ring);
+    addDigit(B, `thumb_${side}`, `palm_${side}`, path, qn(16, 8), ring, 0.028 * u);
   }
+  };
+  return { rings: r, digits };
 }
 
 // Sneaker: a midsole slab with an outsole stripe, toe spring and a bevelled

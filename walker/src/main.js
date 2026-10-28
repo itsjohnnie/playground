@@ -316,6 +316,7 @@ function updateCamera(dt) {
   // should be a calm observer, never a passenger
   const t = camState.target;
   t.set(0, spec.H * camState.lookY, walker.dist);
+  if (camState.focus && rig.bones[camState.focus]) rig.bones[camState.focus].getWorldPosition(t); // debug: frame one bone
   const narrow = innerWidth < 720;
   const D = 30;
   cam.position.set(
