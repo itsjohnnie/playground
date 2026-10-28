@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, MonitorDown, MoreVertical, Share, SquarePlus } from 'lucide-react'
+import { MonitorDown, MoreVertical, Share, SquarePlus } from 'lucide-react'
 import { Sheet } from '@/components/ui/Sheet'
 import { Button } from '@/components/ui/button'
 import type { InstallState } from '@/hooks/useInstallState'
@@ -15,11 +15,32 @@ import type { InstallState } from '@/hooks/useInstallState'
  */
 
 interface Step {
-  icon?: React.ComponentType<{ className?: string }>
-  /** The bit to carry out. */
+  /**
+   * The instruction. `{icon}` marks where the glyph belongs *in the
+   * sentence* — the icon is the thing you're being told to look for,
+   * so it reads as a word rather than as a bullet in its own column.
+   */
   text: string
+  icon?: React.ComponentType<{ className?: string }>
   /** What the OS itself calls the thing to tap, quoted verbatim. */
   target?: string
+}
+
+/** Split a step's text around its `{icon}` marker. */
+function renderStep(s: Step) {
+  const Icon = s.icon
+  const [before, after = ''] = s.text.split('{icon}')
+  return (
+    <>
+      {before}
+      {Icon && (
+        <Icon className="inline-block size-4 align-text-bottom mx-0.5 text-ink-muted" aria-hidden />
+      )}
+      {after}
+      {s.target && <span className="text-accent font-medium">{`“${s.target}”`}</span>}
+      {s.target && '.'}
+    </>
+  )
 }
 
 export function InstallSheet({
@@ -33,24 +54,27 @@ export function InstallSheet({
 
   const steps: Step[] = install.inAppBrowser
     ? [
-        { text: 'Tocá el menú de esta app y elegí', target: 'Abrir en el navegador' },
+        { text: 'Tocá el menú de esta app y elegí ', target: 'Abrir en el navegador' },
         { text: 'Una vez abierto ahí, volvé a tocar este mismo mensaje.' },
       ]
     : install.platform === 'ios'
       ? [
-          { icon: Share, text: 'Tocá el botón de compartir, abajo en la barra de Safari.' },
-          { icon: SquarePlus, text: 'Deslizá hacia abajo y elegí', target: 'Agregar a inicio' },
-          { icon: Check, text: 'Tocá', target: 'Agregar' },
+          { text: 'Tocá {icon} abajo en la barra de Safari.', icon: Share },
+          { text: 'Deslizá hacia abajo y elegí {icon} ', icon: SquarePlus, target: 'Agregar a inicio' },
+          { text: 'Tocá ', target: 'Agregar' },
         ]
       : install.platform === 'android'
         ? [
-            { icon: MoreVertical, text: 'Tocá el menú de tres puntos, arriba a la derecha.' },
-            { icon: SquarePlus, text: 'Elegí', target: 'Instalar app' },
-            { icon: Check, text: 'Confirmá con', target: 'Instalar' },
+            { text: 'Tocá {icon} arriba a la derecha.', icon: MoreVertical },
+            { text: 'Elegí {icon} ', icon: SquarePlus, target: 'Instalar app' },
+            { text: 'Confirmá con ', target: 'Instalar' },
           ]
         : [
-            { icon: MonitorDown, text: 'En la barra de direcciones, tocá el ícono de instalar.' },
-            { icon: Check, text: 'Confirmá con', target: 'Instalar' },
+            // No quoted name on the first step: the address-bar icon
+            // has no label, and quoting "Instalar" here would say it
+            // twice running with the step below.
+            { text: 'En la barra de direcciones, tocá el ícono {icon}.', icon: MonitorDown },
+            { text: 'Confirmá con ', target: 'Instalar' },
           ]
 
   const heading = install.inAppBrowser
@@ -91,21 +115,13 @@ export function InstallSheet({
             {steps.map((s, i) => (
               <li
                 key={i}
-                className="grid grid-cols-[1.5rem_1fr] items-start gap-3 rounded-sm bg-surface-hi px-3 py-2.5"
+                className="grid grid-cols-[1rem_1fr] items-start gap-3 rounded-sm bg-surface-hi px-3 py-2.5"
               >
-                <span className="tabular text-eyebrow text-ink-soft pt-0.5 text-center">{i + 1}</span>
-                <span className="text-sm text-ink flex items-start gap-1.5 flex-wrap">
-                  {s.icon && <s.icon className="size-4 shrink-0 text-ink-muted mt-0.5" aria-hidden />}
-                  <span>
-                    {s.text}
-                    {s.target && (
-                      <>
-                        {' '}
-                        <span className="text-accent font-medium">“{s.target}”</span>.
-                      </>
-                    )}
-                  </span>
-                </span>
+                {/* Both columns carry the body text's own line height, so
+                    the numeral sits on the first line of the instruction
+                    however many lines it runs to. */}
+                <span className="tabular text-eyebrow text-ink-soft leading-5">{i + 1}</span>
+                <span className="text-sm leading-5 text-ink">{renderStep(s)}</span>
               </li>
             ))}
           </ol>
