@@ -107,8 +107,7 @@ let skeletonHelper = null;
 function rebuild(draft = false) {
   spec = makeSpec(character);
   scene.remove(body);
-  body.geometry.dispose();
-  body.material.dispose();
+  body.traverse((o) => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
   rig = buildRig(spec);
   body = buildBody(spec, rig, { draft });
   scene.add(body);
@@ -452,27 +451,29 @@ for (const [key, label] of COLORS) {
   colorHost.append(el);
 }
 
-// pants: a two-way choice under the colours
-{
+// two-way choices under the colours: pants and shoes
+function choice(key, label, opts, after) {
   const row = document.createElement('div');
   row.className = 'actions';
   row.setAttribute('role', 'radiogroup');
-  row.setAttribute('aria-label', 'Pants');
-  const opts = [['jeans', 'Jeans'], ['leggings', 'Leggings']];
-  const btns = opts.map(([v, label]) => {
+  row.setAttribute('aria-label', label);
+  const btns = opts.map(([v, text]) => {
     const b = document.createElement('button');
     b.className = 'toggle';
-    b.textContent = label;
+    b.textContent = text;
     b.setAttribute('role', 'radio');
-    b.onclick = () => { character.pantsStyle = v; sync(); queueRebuild(); persist(); };
+    b.onclick = () => { character[key] = v; sync(); queueRebuild(); persist(); };
     return [v, b];
   });
-  const sync = () => btns.forEach(([v, b]) => { b.setAttribute('aria-pressed', character.pantsStyle === v); b.setAttribute('aria-checked', character.pantsStyle === v); });
+  const sync = () => btns.forEach(([v, b]) => { b.setAttribute('aria-pressed', character[key] === v); b.setAttribute('aria-checked', character[key] === v); });
   btns.forEach(([, b]) => row.append(b));
-  colorHost.after(row);
-  inputs.pantsStyle = sync;
+  after.after(row);
+  inputs[key] = sync;
   sync();
+  return row;
 }
+const pantsRow = choice('pantsStyle', 'Pants', [['jeans', 'Jeans'], ['leggings', 'Leggings']], colorHost);
+choice('shoeStyle', 'Shoes', [['sneaker', 'Sneakers'], ['boot', 'Boots']], pantsRow);
 
 const TOGGLES = [['footprints', 'Footprints'], ['arcs', 'Motion arcs'], ['skeleton', 'Skeleton'], ['graph', 'Gait graph'], ['ao', 'Occlusion']];
 const toggleHost = document.getElementById('toggles');
@@ -503,9 +504,9 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const rnd = (lo, hi) => lo + Math.random() * (hi - lo);
 // starting points, not stereotypes: every value stays on its slider
 const PRESETS = {
-  man: { pantsStyle: 'jeans', face: 0.5, eyes: '#4a3424', height: 1.78, legs: 1.0, shoulders: 1.04, hips: 0.97, build: 1.04, muscle: 0.6, head: 1.0, sex: 0, hairLength: 0.22,
-    skin: '#c99678', hair: '#2a1d16', shirt: '#3d5a73', pants: '#33425c', shoes: '#e8e4dc' },
-  woman: { pantsStyle: 'leggings', face: 0.27, eyes: '#4f6a52', height: 1.65, legs: 1.02, shoulders: 1.0, hips: 1.0, build: 0.96, muscle: 0.35, head: 1.0, sex: 1, hairLength: 0.75,
+  man: { shoeStyle: 'boot', pantsStyle: 'jeans', face: 0.5, eyes: '#4a3424', height: 1.78, legs: 1.0, shoulders: 1.04, hips: 0.97, build: 1.04, muscle: 0.6, head: 1.0, sex: 0, hairLength: 0.22,
+    skin: '#c99678', hair: '#2a1d16', shirt: '#3d5a73', pants: '#33425c', shoes: '#9a6a42' },
+  woman: { shoeStyle: 'sneaker', pantsStyle: 'leggings', face: 0.27, eyes: '#4f6a52', height: 1.65, legs: 1.02, shoulders: 1.0, hips: 1.0, build: 0.96, muscle: 0.35, head: 1.0, sex: 1, hairLength: 0.75,
     skin: '#e2b593', hair: '#5a3620', shirt: '#b5462f', pants: '#2d3a55', shoes: '#efefea' },
 };
 function applyPreset(name) {
@@ -520,7 +521,7 @@ document.getElementById('random').onclick = () => {
   const broad = Math.random();
   const fem = Math.random() < 0.5 ? 1 : 0;
   Object.assign(character, {
-    face: +Math.random().toFixed(3), eyes: pick(EYES), pantsStyle: fem && Math.random() < 0.5 ? 'leggings' : 'jeans',
+    face: +Math.random().toFixed(3), eyes: pick(EYES), pantsStyle: fem && Math.random() < 0.5 ? 'leggings' : 'jeans', shoeStyle: Math.random() < 0.4 ? 'boot' : 'sneaker',
     sex: fem, hairLength: +(fem ? rnd(0.3, 1) : rnd(0, 0.25)).toFixed(2),
     height: +(fem ? rnd(1.54, 1.78) : rnd(1.64, 1.96)).toFixed(2), legs: +rnd(0.94, 1.06).toFixed(2),
     shoulders: +(0.9 + broad * 0.22).toFixed(2), hips: +(1.12 - broad * 0.2 + rnd(-0.05, 0.05)).toFixed(2),

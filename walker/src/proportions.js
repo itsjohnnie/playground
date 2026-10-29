@@ -21,8 +21,9 @@ export const DEFAULT_CHARACTER = {
   hair: '#2a1d16',
   shirt: '#3d5a73',
   pants: '#33425c',
+  shoeStyle: 'boot',   // 'boot': suede desert boot; 'sneaker'
   pantsStyle: 'jeans', // 'jeans': a straight-leg cut that hangs; 'leggings': follows the leg
-  shoes: '#e8e4dc',
+  shoes: '#9a6a42',
 };
 
 export function makeSpec(c = DEFAULT_CHARACTER) {

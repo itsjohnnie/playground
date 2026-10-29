@@ -6,13 +6,14 @@
 
 import * as THREE from 'three';
 import { boneLayout } from './proportions.js';
+import { buildHairCards } from './hair.js';
 
 const TAU = Math.PI * 2;
 // build quality: 1 = full; a draft (~0.45) rebuilds fast enough to follow a slider drag
 let Q = 1;
 const qn = (n, min = 6) => Math.max(min, Math.round(n * Q));
 // surface kinds: each gets its own roughness, sheen and micro-detail in the shader
-const MAT = { skin: 0, cloth: 1, hair: 2, shoe: 3, sole: 4, eye: 5, denim: 6 };
+const MAT = { skin: 0, cloth: 1, hair: 2, shoe: 3, sole: 4, eye: 5, denim: 6, suede: 7 };
 const smooth = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
 const lerp = (a, b, t) => a + (b - a) * t;
 
@@ -255,6 +256,10 @@ export function bodyShape(spec) {
         const sx = cx * u * cg, sz = cz * u * cg;
         ax = Math.max(ax + 0.006 * u, sx); az = Math.max(az + 0.006 * u, sz);
         azc = lerp(azc, czc * u, 0.6);
+        if ((c.shoeStyle ?? 'sneaker') === 'boot') { // the hem opens to break over a boot shaft
+          const b = smooth((t - 0.9) / 0.12);
+          ax += 0.006 * u * b; az += 0.016 * u * b; azc -= 0.009 * u * b;
+        }
       }
       return [ax, az, azc];
     },
@@ -386,7 +391,6 @@ export function buildBody(spec, rig, { draft = false } = {}) {
   B.mark('head');
   buildHead(B, spec, col);
   B.mark('other');
-  if (c.hairLength >= 0.35) buildHairFall(B, spec, c.hairLength * 0.55); // inner volume, ending well above the lock tips
 
   // ── arms ──────────────────────────────────────────────────────────────
   for (const [side, k] of [['left', 1], ['right', -1]]) {
@@ -537,8 +541,9 @@ export function buildBody(spec, rig, { draft = false } = {}) {
       .replace('#include <color_fragment>', `#include <color_fragment>
         float hw = max(fwidth(vHairD), 1e-4) * 0.8;
         float hairM = max(smoothstep(-hw, hw, vHairD), wMask(2.0));
-        float denimM = wMask(6.0);
+        float denimM = wMask(6.0), suedeM = wMask(7.0);
         float skinM = wMask(0.0) * (1.0 - hairM), clothM = wMask(1.0) + denimM, shoeM = wMask(3.0), soleM = wMask(4.0);
+        diffuseColor.rgb *= 1.0 + suedeM * (wNoise(vRest * 2600.0) - 0.5) * 0.18 * wDetail(2600.0); // napped suede
         diffuseColor.rgb = mix(diffuseColor.rgb, hairColor, hairM);
         // eyebrows: crisp edge from the distance field, broken up into hairs
         float bw = max(fwidth(vBrowD), 1e-5) * 1.2;
@@ -569,7 +574,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
         // shoes: a faint mesh texture on the upper
         diffuseColor.rgb *= 1.0 + shoeM * (wNoise(vRest * 1400.0) - 0.5) * 0.08 * wDetail(1400.0);`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-        roughnessFactor = skinM * 0.58 + clothM * 0.92 + hairM * 0.62 + shoeM * 0.58 + soleM * 0.78 + eyeM * 0.06;
+        roughnessFactor = skinM * 0.58 + clothM * 0.92 + hairM * 0.62 + shoeM * 0.58 + soleM * 0.78 + eyeM * 0.06 + suedeM * 0.96;
         roughnessFactor += hairM * (strand - 0.5) * 0.3 * wDetail(520.0);`)
       .replace('#include <lights_physical_fragment>', `#include <lights_physical_fragment>
         #ifdef USE_SHEEN
@@ -580,7 +585,7 @@ export function buildBody(spec, rig, { draft = false } = {}) {
         #endif
         material.specularColor *= 1.0 - 0.75 * clothM - 0.35 * skinM;`);
   };
-  mat.customProgramCacheKey = () => 'walker-body-v6';
+  mat.customProgramCacheKey = () => 'walker-body-v7';
   const mesh = new THREE.SkinnedMesh(geo, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -589,6 +594,9 @@ export function buildBody(spec, rig, { draft = false } = {}) {
   mesh.add(rig.list[0]);
   mesh.updateMatrixWorld(true);
   mesh.bind(new THREE.Skeleton(rig.list));
+  // hair: textured cards with their own material, on the same skeleton
+  const hair = buildHairCards(spec, rig, { H: headModel(spec), fields: partFields(spec, shape), hairColor: col.hair, hairSwing, draft });
+  if (hair) { mesh.add(hair); hair.bind(mesh.skeleton, new THREE.Matrix4()); }
   return mesh;
 }
 
@@ -964,7 +972,6 @@ function buildHead(B, s, col) {
 
   // ears, unless long hair covers them
   if ((s.c.hairLength ?? 0) < 0.4) for (const k of [1, -1]) buildEar(B, s, col, k, cy, cz, skull, sc);
-  if (L >= 0.06) buildHairLocks(B, s, col, { skull, hairlineOf, sc, cy, cz, rx, ry, rz, CAP });
 }
 
 // An ear: a thin shell with a rolled rim (helix), a hollow bowl (concha) and
@@ -1155,153 +1162,6 @@ function vnoise3(x, y, z) {
   return L(L(L(c(0, 0, 0), c(1, 0, 0), fx), L(c(0, 1, 0), c(1, 1, 0), fx), fy), L(L(c(0, 0, 1), c(1, 0, 1), fx), L(c(0, 1, 1), c(1, 1, 1), fx), fy), fz);
 }
 
-// Hair as locks: tapered ribbons grown from roots on the scalp, combed away
-// from a parting, kept off the skull, bent by gravity, draped over the
-// shoulders when long. Each lock gets its own tone; a sway weight lets the
-// shader swing long hair with the walk.
-function buildHairLocks(B, s, col, H) {
-  const { skull, hairlineOf, sc, cy, cz, rx, ry, rz, CAP } = H;
-  const u = s.u, L = s.c.hairLength ?? 0, fem = s.c.sex ?? 0;
-  const long = L >= 0.35;
-  const len = long ? (0.10 + 0.40 * (L - 0.35) / 0.65) * sc : (0.022 + 0.06 * (L - 0.06) / 0.29) * sc;
-  const partX = (fem > 0.5 ? -1 : 1) * 0.024 * sc * (((s.c.face ?? 0.5) * 7) % 1 > 0.5 ? 1 : -1);
-  const c = new THREE.Vector3(0, cy, cz);
-  const rnd = (i, k) => vhash(i * 1.37, k * 7.1, 3.3);
-  const N = qn(long ? 560 : 900, 160), K = qn(long ? 16 : 6, 4), RING = 5;
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  const neckR = 0.068 * sc, shoulderY = s.shoulderY + 0.03 * u;
-  const grav = new THREE.Vector3(0, -1, 0);
-  for (let i = 0; i < N; i++) {
-    // even roots over the sphere (golden spiral), kept where hair grows
-    const yy = 1 - (i + 0.5) / N * 1.6; // skip the very bottom of the sphere
-    const phi = Math.acos(Math.max(-1, Math.min(1, yy)));
-    const a = (i * golden) % TAU;
-    const p0 = skull(a, phi);
-    const fn = p0.z / (p0.rr || 1);
-    if (p0.y < hairlineOf(a, fn) + 0.04) continue;
-    if (L >= 0.06 && Math.abs(p0.X - (fem > 0.5 ? -1 : 1) * 0.024 * sc * (((s.c.face ?? 0.5) * 7) % 1 > 0.5 ? 1 : -1)) < 0.006 * sc && p0.z > -0.4 * p0.rr) continue; // the parting itself, front to crown
-    const layer = 1 + CAP * 0.9 + 0.035 * rnd(i, 1); // roots inside the cap, at mixed depths
-    const p = new THREE.Vector3(p0.X * layer, cy + p0.Y * layer, cz + p0.Z * layer);
-    const off = long ? (CAP + 0.02 + 0.05 * rnd(i, 2)) * 1.2 : CAP + 0.004 + 0.012 * rnd(i, 2); // how far the lock floats over the skull
-    // short hair shortens toward its hairline so nothing dangles at the nape
-    const lockLen = len * (long ? 0.55 + 0.75 * Math.pow(rnd(i, 3), 0.8) : 0.75 + 0.5 * rnd(i, 3)) * (long ? 1 : 0.2 + 0.8 * smooth((p0.y - hairlineOf(a, fn)) / 0.5));
-    const W0 = (long ? 0.017 : 0.011) * sc * (0.75 + 0.5 * rnd(i, 4));
-    const TH = (long ? 0.0032 : 0.0022) * sc;
-    const tone = long ? 0.8 + 0.32 * rnd(i, 5) : 0.95 + 0.08 * rnd(i, 5);
-    const normalAt = (q) => new THREE.Vector3((q.x - c.x) / (rx * rx), (q.y - c.y) / (ry * ry), (q.z - c.z) / (rz * rz)).normalize();
-    // combing: away from the part, down and back; long hair to the sides
-    const side = Math.sign(p.x - partX) || 1;
-    const nearPart = 1 - smooth(Math.abs(p.x - partX) / (0.03 * sc)); // close to the part: fall, don't fan
-    let d = long ? new THREE.Vector3(side * 0.9, -0.5, -0.35) : new THREE.Vector3(side * 0.55, -0.25, -0.75);
-    if (!long && p.z - cz > 0.3 * rz) d.set(side * 0.35, 0.15, -0.9); // short: front swept up and back
-    d.y -= nearPart * 0.8; d.normalize();
-    {
-      // combed along the scalp; where the comb points almost straight out of
-      // it (the crown), fall back to down-and-back so no lock shoots off
-      const n0 = normalAt(p);
-      d.addScaledVector(n0, -d.dot(n0));
-      if (d.length() < 0.35) d.set(0, -1, -0.6).addScaledVector(n0, -new THREE.Vector3(0, -1, -0.6).dot(n0));
-      d.normalize();
-    }
-    const path = [];
-    for (let k = 0; k <= K; k++) {
-      const t = k / K;
-      const n = normalAt(p);
-      if (k > 0) {
-        // gravity takes over once the lock leaves the top of the head
-        const g = long ? (p.y > cy - 0.15 * ry ? 0.25 : 0.9) : 0.05;
-        d.addScaledVector(grav, g).normalize();
-        p.addScaledVector(d, lockLen / K);
-        // over the crown hair lies on its layer (combed flat by its own
-        // weight); below the widest point it hangs free but never inside
-        const e = new THREE.Vector3((p.x - c.x) / (rx * (1 + off)), (p.y - c.y) / (ry * (1 + off)), (p.z - c.z) / (rz * (1 + off)));
-        const rho = e.length();
-        const onTop = p.y > cy - 0.15 * ry;
-        if ((rho < 1 && p.y > cy - 0.7 * ry) || (onTop && rho > 1)) {
-          e.multiplyScalar(1 / rho);
-          p.set(c.x + e.x * rx * (1 + off), c.y + e.y * ry * (1 + off), c.z + e.z * rz * (1 + off));
-          d.addScaledVector(n, -d.dot(n)).normalize();
-        }
-        if (long) {
-          // never across the face; around the neck; over the shoulders
-          if (p.z > cz + 0.15 * rz && p.y < cy + 0.25 * ry && Math.abs(p.x) < 0.082 * sc) p.x = Math.sign(p.x || side) * 0.082 * sc;
-          if (p.y < cy - 0.6 * ry) {
-            const nx = p.x, nz = p.z - (cz - 0.02 * sc);
-            const nr = Math.hypot(nx, nz);
-            if (nr < neckR + 0.01 * sc) { p.x = nx / nr * (neckR + 0.01 * sc); p.z = cz - 0.02 * sc + nz / nr * (neckR + 0.01 * sc); }
-          }
-          const top = shoulderY - 0.22 * Math.max(0, Math.abs(p.x) - 0.06 * u);
-          // meets the shoulder: eases down the back or onto the chest, each
-          // lock at its own distance so the ends don't stack into a ledge
-          const zc0 = cz - 0.02 * sc, depth = (0.105 + 0.03 * rnd(i, 7)) * u;
-          if (p.y < top + 0.02 * u && Math.abs(p.z - zc0) < depth) {
-            const back = p.z < zc0 + (rnd(i, 8) - 0.5) * 0.02 * u;
-            const want = zc0 + (back ? -1 : 1) * depth;
-            p.z += (want - p.z) * 0.55;
-            p.y = Math.min(p.y, top + 0.02 * u);
-            d.set(d.x * 0.4, -1, (back ? -1 : 1) * (0.1 + 0.15 * rnd(i, 9))).normalize();
-          }
-        }
-      }
-      const pp = p.clone();
-      if (long && t > 0.8) pp.addScaledVector(normalAt(p), -0.006 * sc * smooth((t - 0.8) / 0.2)); // ends turn in a touch
-      path.push({ p: pp, d: d.clone(), n: normalAt(p), t });
-    }
-    // ribbon rings: wide across the lock, thin off the scalp, tapering to a tip
-    const rings = [];
-    for (const { p: q, d: dd, n, t } of path) {
-      const nn = n.clone().addScaledVector(dd, -n.dot(dd)).normalize();
-      const xx = new THREE.Vector3().crossVectors(nn, dd);
-      const w = W0 * (1 - 0.88 * Math.pow(t, long ? 1.25 : 1.6)), th = TH * (1 - 0.6 * t);
-      const pts = [];
-      for (let r = 0; r < RING; r++) {
-        const ang = (r / RING) * TAU;
-        pts.push([q.x + xx.x * w * Math.sin(ang) + nn.x * th * Math.cos(ang), q.y + xx.y * w * Math.sin(ang) + nn.y * th * Math.cos(ang), q.z + xx.z * w * Math.sin(ang) + nn.z * th * Math.cos(ang)]);
-      }
-      const below = smooth((cy - 0.55 * ry - q.y) / (0.2 * sc));
-      const wh = 1 - 0.7 * below;
-      const shade = col.hair.clone().multiplyScalar(tone * (0.86 + 0.22 * t));
-      rings.push({
-        pts, hair: new Array(RING).fill(1), mat: MAT.hair, color: shade,
-        sway: new Array(RING).fill((long ? 1 : 0.15) * Math.pow(t, 1.3) * (0.4 + 0.6 * below)),
-        weights: () => (wh >= 0.999 ? { head: 1 } : { head: wh, spine2: 1 - wh }),
-      });
-    }
-    B.loft(rings, { capEnd: true });
-  }
-}
-
-// Hair that falls below the skull: a thin shell, open at the face, hanging
-// from the crown to the shoulders. Drawn as hair by the same shader flag.
-function buildHairFall(B, s, len) {
-  const u = s.u, hs = s.c.head;
-  const cy = s.headY + 0.094 * u * hs, cz = 0.026 * u;
-  const rx = 0.080 * u * hs, rz = 0.101 * u * hs;
-  const y0 = cy + 0.02 * u, y1 = cy - (0.07 + 0.2 * len) * u;
-  const A0 = (78 * Math.PI) / 180; // where the fall parts around the face
-  const M = qn(36, 12), rings = [];
-  const ones = new Array(M * 2).fill(1);
-  const NF = qn(24, 8);
-  for (let j = 0; j <= NF; j++) {
-    const t = j / NF, y = lerp(y0, y1, t);
-    // follows the skull at the top, then hangs straight and flares a little
-    const sk = Math.sqrt(Math.max(0, 1 - Math.pow((y - cy) / (0.12 * u * hs), 2)));
-    const wide = lerp(1.07, 1.0, smooth(t * 3)) * Math.max(sk, 0.92) + 0.10 * t * t;
-    const pts = [];
-    for (const k of [0, 1]) {
-      for (let i = 0; i < M; i++) {
-        const q = k === 0 ? i / (M - 1) : 1 - i / (M - 1);
-        const a = lerp(A0, TAU - A0, q);
-        const edge = smooth(Math.min(q, 1 - q) / 0.08); // thin out toward the parting edges
-        const rr = (k ? wide - 0.16 * (0.35 + 0.65 * edge) : wide) * (1 + 0.025 * (vnoise3(a * 3, y * 40, 0) - 0.5) * (k ? 0 : 1));
-        pts.push([Math.sin(a) * rx * rr * 1.04, y, cz + Math.cos(a) * rz * rr - 0.004 * u * t]);
-      }
-    }
-    const wh = 1 - 0.55 * smooth(t);
-    rings.push({ pts, hair: ones, mat: MAT.hair, color: new THREE.Color(1, 1, 1), weights: () => ({ head: wh, neck: 1 - wh }) });
-  }
-  B.loft(rings);
-}
 
 // the wrist end of the forearm: [half-thickness X, half-width Z]
 function shapeArmEnd(s) {
@@ -1494,66 +1354,123 @@ function buildHand(B, s, col, side, k, x0, wristY, z0, SEG) {
   return { rings: r, digits };
 }
 
-// Sneaker: a midsole slab with an outsole stripe, toe spring and a bevelled
-// heel; a rounded upper with a toe box, a padded collar dipping under the
-// ankle bones, and a lace panel.
+// Shoes, built from their real parts. A sneaker: a gum outsole and white
+// midsole with a trim line, an upper with a toe cap, heel counter and a side
+// accent, eyelets with actual laces crossing them, a tongue and a padded
+// collar. A boot (desert boot): a high suede shaft that follows the shin, a
+// thick crepe sole and a welt. shoeStyle picks one.
 function buildShoe(B, s, col, side, k, x0) {
   const u = s.u;
-  const foot = `${side}Foot`, toe = `${side}ToeBase`;
-  const z0 = s.heelZ - 0.018 * u, z1 = s.toeZ + 0.016 * u;
+  const boot = (s.c.shoeStyle ?? 'sneaker') === 'boot';
+  const foot = `${side}Foot`, toe = `${side}ToeBase`, shin = `${side}Leg`;
+  const z0 = s.heelZ - 0.018 * u, z1 = s.toeZ + (boot ? 0.02 : 0.016) * u;
   const L = z1 - z0;
   const wt = (z) => smooth((z - (s.ballZ - 0.02 * u)) / (0.04 * u));
-  const weights = (z) => ({ [foot]: 1 - wt(z), [toe]: wt(z) });
-  // outline half-width along the foot (fraction of length → m at 1.75 m)
-  const outline = profile([[0, 0.022], [0.06, 0.034], [0.2, 0.039], [0.42, 0.040], [0.66, 0.050], [0.82, 0.047], [0.94, 0.036], [1, 0.012]]);
-  const spring = (z) => 0.013 * u * Math.pow(smooth((z - s.ballZ) / (z1 - s.ballZ)), 1.6) + 0.006 * u * Math.pow(smooth((z0 + 0.03 * u - z) / (0.03 * u)), 1.5);
-  const midsole = col.shoes.clone().lerp(new THREE.Color('#f4f1ea'), 0.65);
+  // the boot's shaft rides the shin above the ankle
+  const weights = (z, y = 0) => {
+    const up = boot ? smooth((y - (s.ankleY + 0.01 * u)) / (0.05 * u)) * 0.8 : 0;
+    const w = { [foot]: (1 - wt(z)) * (1 - up), [toe]: wt(z) * (1 - up) };
+    if (up > 0) w[shin] = up;
+    return w;
+  };
+  const outline = profile(boot
+    ? [[0, 0.026], [0.06, 0.037], [0.2, 0.041], [0.42, 0.042], [0.66, 0.050], [0.82, 0.048], [0.94, 0.040], [1, 0.018]]
+    : [[0, 0.022], [0.06, 0.034], [0.2, 0.039], [0.42, 0.040], [0.66, 0.050], [0.82, 0.047], [0.94, 0.036], [1, 0.012]]);
+  const spring = (z) => (boot ? 0.009 : 0.013) * u * Math.pow(smooth((z - s.ballZ) / (z1 - s.ballZ)), 1.6) + 0.006 * u * Math.pow(smooth((z0 + 0.03 * u - z) / (0.03 * u)), 1.5);
+  const white = new THREE.Color('#f2efe8');
+  const accent = col.shoes.clone().lerp(col.pants, 0.5).multiplyScalar(0.7);
+  const gum = new THREE.Color(boot ? '#b98a52' : '#8a5a36');
+  const SH = (boot ? 0.027 : 0.026) * u; // sole height
   // ── sole ──
   {
-    const r = [], NZ = qn(56, 16), NA = qn(40, 12), SH = 0.026 * u;
+    const r = [], NZ = qn(60, 16), NA = qn(44, 12);
     for (let j = 0; j <= NZ; j++) {
       const z = lerp(z0, z1, j / NZ);
-      const hw = (outline([(z - z0) / L])[0] + 0.004) * u;
+      const hw = (outline([(z - z0) / L])[0] + (boot ? 0.003 : 0.004)) * u;
       const yb = spring(z);
       const pts = [], colors = [];
       for (let i = 0; i < NA; i++) {
         const a = (i / NA) * TAU;
-        const [px, py] = se(a, hw, SH / 2, 6);
+        const [px, py] = se(a, hw, SH / 2, boot ? 8 : 6);
         const y = yb + SH / 2 + py;
+        const h = (y - yb) / SH;
         pts.push([x0 + px * (px * k < 0 ? 0.93 : 1.04), y, z]);
-        colors.push(y - yb < SH * 0.32 ? col.sole : midsole);
+        let c;
+        if (boot) c = h > 0.86 ? col.shoes.clone().multiplyScalar(0.55) /* welt */ : gum.clone().multiplyScalar(0.96 + 0.06 * vhash(Math.round(z * 4000), i, 2)); // crepe: speckled, not striped
+        else c = h < 0.22 ? gum : h > 0.82 && h < 0.93 ? accent : white; // outsole · midsole · trim line
+        colors.push(c);
       }
       r.push({ pts, mat: MAT.sole, color: (i) => colors[i], weights: () => weights(z) });
     }
     B.loft(r, { capStart: true, capEnd: true });
   }
   // ── upper ──
+  const height = profile(boot
+    ? [[0, 0.150], [0.06, 0.162], [0.2, 0.168], [0.36, 0.150], [0.48, 0.110], [0.62, 0.080], [0.78, 0.064], [0.92, 0.052], [1, 0.034]]
+    : [[0, 0.060], [0.05, 0.088], [0.16, 0.102], [0.3, 0.108], [0.45, 0.092], [0.62, 0.070], [0.78, 0.056], [0.92, 0.046], [1, 0.030]]);
+  const laceZ0 = (boot ? 0.004 : 0.012) * u, laceZ1 = s.ballZ * (boot ? 0.75 : 0.9);
+  const upperAt = (z) => {
+    const f = (z - z0) / L;
+    const hw = outline([f])[0] * u * 0.97;
+    const top = height([f])[0] * u;
+    const yb = spring(z) + SH * 0.7;
+    return { f, hw, top, yb, hh: top - yb + spring(z) * 0.6 };
+  };
   {
-    const height = profile([[0, 0.060], [0.05, 0.088], [0.16, 0.102], [0.3, 0.108], [0.45, 0.092], [0.62, 0.070], [0.78, 0.056], [0.92, 0.046], [1, 0.030]]);
-    const r = [], NZ = qn(60, 16), NA = qn(44, 12);
+    const r = [], NZ = qn(64, 16), NA = qn(48, 12);
     for (let j = 0; j <= NZ; j++) {
       const z = lerp(z0 + 0.004 * u, z1 - 0.005 * u, j / NZ);
-      const f = (z - z0) / L;
-      const hw = outline([f])[0] * u * 0.97;
-      const top = height([f])[0] * u;
-      const yb = spring(z) + 0.018 * u;
-      const hh = top - yb + spring(z) * 0.6;
+      const { f, hw, yb, hh } = upperAt(z);
       const pts = [], colors = [];
       for (let i = 0; i < NA; i++) {
         const a = (i / NA) * TAU; // 0 = top, around through the lateral side
-        let [px, py] = se(a, hw, hh / 2, 2.7);
-        let y = yb + hh / 2 + py;
-        y = Math.max(y, yb);
-        // collar dips under the ankle bones at the sides
-        const side = Math.abs(Math.sin(a));
-        if (py > 0) y -= 0.016 * u * Math.pow(side, 2) * Math.exp(-Math.pow((z - 0.005 * u) / (0.035 * u), 2));
+        let [px, py] = se(a, hw * (boot ? 1.02 : 1), hh / 2, boot ? 2.4 : 2.7);
+        if (boot && py > 0) px *= 1 - 0.22 * smooth((py / (hh / 2) - 0.3) / 0.7) * smooth((0.45 - f) / 0.25); // the shaft hugs the ankle
+        let y = Math.max(yb + hh / 2 + py, yb);
+        const sideA = Math.abs(Math.sin(a));
+        // sneaker collar dips under the ankle bones; the boot shaft stays round
+        if (!boot && py > 0) y -= 0.016 * u * Math.pow(sideA, 2) * Math.exp(-Math.pow((z - 0.005 * u) / (0.035 * u), 2));
         pts.push([x0 + px * (px * k < 0 ? 0.93 : 1.04), y, z]);
-        const lace = py > hh * 0.36 && z > 0.012 * u && z < s.ballZ * 0.95 && Math.abs(px) < hw * 0.32;
-        const laceRow = lace && Math.sin((z / (0.012 * u)) * Math.PI) > 0.2;
-        colors.push(laceRow ? col.lace.clone().multiplyScalar(0.9) : lace ? col.lace : col.shoes);
+        const hy = (y - yb) / hh; // 0 at the sole … 1 at the top
+        let c = col.shoes.clone();
+        const panel = py > hh * 0.36 && z > laceZ0 && z < laceZ1 && Math.abs(px) < hw * 0.34;
+        if (boot) {
+          c.multiplyScalar(0.94 + 0.12 * vhash(Math.round(z * 3000), Math.round(a * 30), 1)); // napped suede
+          if (panel) c.multiplyScalar(0.9);
+        } else {
+          if (f > 0.8 && !panel) c.multiplyScalar(0.94);                               // toe cap
+          if (f < 0.22 && hy < 0.75) c = c.lerp(accent, 0.55);                         // heel counter
+          if (panel) c.multiplyScalar(0.97);
+        }
+        // eyelets: dark rings along both edges of the lace panel
+        const edge = Math.abs(Math.abs(px) - hw * 0.34) < hw * 0.06 && py > hh * 0.3;
+        const rows = boot ? 4 : 6;
+        const rowT = (z - laceZ0) / (laceZ1 - laceZ0) * (rows - 1);
+        if (edge && z > laceZ0 && z < laceZ1 && Math.abs(rowT - Math.round(rowT)) < 0.18) c = col.sole.clone().multiplyScalar(0.6);
+        colors.push(c);
       }
-      r.push({ pts, mat: MAT.shoe, color: (i) => colors[i], weights: () => weights(z) });
+      r.push({ pts, mat: boot ? MAT.suede : MAT.shoe, color: (i) => colors[i], weights: () => weights(z, upperAt(z).top) });
     }
     B.loft(r, { capStart: true, capEnd: true });
   }
+  // ── laces: real cords crossing between the eyelets ──
+  {
+    const rows = boot ? 4 : 6, ring = { color: col.lace.clone().lerp(white, boot ? 0 : 0.6), mat: MAT.cloth };
+    for (let rI = 0; rI < rows - 1; rI++) {
+      for (const sgn of [1, -1]) {
+        const za = lerp(laceZ0, laceZ1, rI / (rows - 1)), zb = lerp(laceZ0, laceZ1, (rI + 1) / (rows - 1));
+        if (boot && upperAt(za).top > 0.1 * u) continue; // under the jeans hem anyway
+        const path = [];
+        for (let j = 0; j <= 6; j++) {
+          const t = j / 6, z = lerp(za, zb, t);
+          const U = upperAt(z);
+          const x = x0 + sgn * lerp(1, -1, t) * U.hw * 0.32;
+          const y = U.yb + U.hh * (0.5 + 0.5 * Math.sqrt(Math.max(0, 1 - Math.pow(Math.abs(x - x0) / (U.hw), 2.7)))) + 0.0025 * u;
+          path.push([x, y, z, 0.0019 * u]);
+        }
+        tubeAlong(B, path, 6, { ...ring, weights: () => weights(lerp(za, zb, 0.5)) });
+      }
+    }
+  }
 }
+

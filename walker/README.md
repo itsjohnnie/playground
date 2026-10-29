@@ -59,12 +59,25 @@ blink. A soft fill light from the camera's side keeps faces out of shadow.
 
 ## Hair
 
-Hair is grown, not modelled: a few hundred tapered locks rooted over the
-scalp, combed away from a parting, kept off the skull, bent by gravity and
-draped down the back or onto the chest when they reach the shoulders. A dense
-cap underneath keeps it full; each lock has its own tone, darker at the root.
-Long hair swings on a damped spring driven by the head's motion. **Hair** runs
-from buzzed (cap only) through short, combed locks to past the shoulders.
+Hair is made of hair cards, as in games: a few hundred thin strips, each with
+a painted texture of many strands (generated at load, four variants), drawn
+with alpha-to-coverage so the edges are soft without sorting, and an
+anisotropic highlight that runs along the strands. Each card is a chain of
+points that settles when the body is built: combed from the parting, flat
+over the crown, then hanging under gravity, pushed out of the head, neck,
+shoulders and back by the same distance fields as the smooth unions, and kept
+off the face. So long hair drapes over the shoulders instead of being snapped
+onto them. Inner layers are darker, roots darker than tips; long ends swing on
+a damped spring driven by the head's motion. Long hair is about 19k vertices,
+short hair about 8k (see `src/hair.js`).
+
+## Clothes
+
+**Pants**: jeans (a straight-leg cut that hangs, breaks over the shoe, with
+denim twill, wear and stitched seams) or leggings. **Shoes**: sneakers (gum
+outsole, white midsole with a trim line, toe cap, heel counter, real crossed
+laces) or suede desert boots (crepe sole, welt, a shaft that follows the shin
+under the jeans hem).
 
 Slider drags rebuild a light draft (~50 ms) so the body follows your hand; a
 full-quality build follows once you let go.
