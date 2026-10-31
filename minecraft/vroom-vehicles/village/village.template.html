@@ -1,0 +1,348 @@
+<title>Vroom Harbor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800&family=Figtree:wght@500;600&family=JetBrains+Mono:wght@600&display=swap">
+<style>
+/* Layout: the village fills the screen; a title card sits top-left and the
+   landmark buttons wrap along the bottom. One look: Minecraft daylight with
+   navy glass panels, matching the Vroom Garage. */
+:root {
+  --ink: #081625;
+  --glass: rgba(8, 22, 37, 0.74);
+  --line: rgba(170, 205, 232, 0.2);
+  --fg: #eaf3fa;
+  --muted: #9db4c7;
+  --buoy: #ff6b3d;
+  --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --font-body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--ink); color: var(--fg); font: 15px/1.45 var(--font-body); overflow: hidden; }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.panel { background: var(--glass); border: 1px solid var(--line); border-radius: 14px;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.card { position: absolute; top: 16px; left: 16px; width: min(330px, calc(100% - 32px)); padding: 14px 18px; display: grid; gap: 6px; }
+.eyebrow { font: 600 11px/1 var(--font-data); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font: 800 40px/0.95 var(--font-display); text-transform: uppercase; }
+.card p { margin: 0; color: var(--muted); font-size: 13.5px; }
+#place { color: var(--fg); font-weight: 600; }
+.spots { position: absolute; left: 16px; right: 16px; bottom: 16px; padding: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.spots button { font: 500 13px/1 var(--font-body); color: var(--fg); background: transparent;
+  border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; cursor: pointer; }
+.spots button[aria-pressed="true"] { background: var(--fg); color: var(--ink); }
+button:focus-visible { outline: 2px solid var(--buoy); outline-offset: 2px; }
+.fail { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; color: var(--muted); }
+@media (max-width: 700px) {
+  .card { right: 16px; width: auto; }
+  h1 { font-size: 32px; }
+  .spots button { padding: 7px 10px; font-size: 12.5px; }
+}
+</style>
+
+<canvas id="scene" aria-label="A 3D model of the Vroom Harbor village"></canvas>
+<section class="card panel">
+  <div class="eyebrow">A Minecraft village for Indi &amp; Luna</div>
+  <h1>Vroom Harbor</h1>
+  <p>Drag to look around, scroll or pinch to zoom. <span id="place">The whole village</span></p>
+</section>
+<nav class="spots panel" id="spots" aria-label="Landmarks"></nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>/*__MODEL_LIB__*/</script>
+<script>
+// Built by tools/build_village_view.py: the village blocks, their textures,
+// and the vehicles parked around town.
+const DATA = /*__DATA__*/;
+</script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const canvas = $("scene");
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true }); }
+  catch (e) {
+    canvas.insertAdjacentHTML("afterend", '<p class="fail">This preview needs WebGL. Turn on hardware acceleration in your browser, then reload.</p>');
+    return;
+  }
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  const VIDEO = window.VIDEO_MODE === true;
+  const B = 16;                                  // one block is 16 units, like the vehicle models
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, 1, 1, 20000);
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.maxPolarAngle = Math.PI * 0.48;
+
+  // --- Minecraft sky, square sun and the flat cloud layer
+  const SKIES = {
+    day: { top: 0x78a7ff, horizon: 0xc0d8ff, sun: [0.3, 0.72, -0.62], sunColor: 0xfffbe2, cloud: 0xffffff, light: 0xffffff },
+    sunset: { top: 0x4b5f9f, horizon: 0xf2ac6e, sun: [0.2, 0.08, 0.98], sunColor: 0xffe9a8, cloud: 0xf6caa8, light: 0xffd9b4 },
+  };
+  const U = {
+    uTime: { value: 0 }, uSunDir: { value: new THREE.Vector3() }, uSunColor: { value: new THREE.Color() },
+    uSkyTop: { value: new THREE.Color() }, uSkyHorizon: { value: new THREE.Color() }, uCloud: { value: new THREE.Color() },
+  };
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(15000, 48, 24), new THREE.ShaderMaterial({
+    uniforms: U, side: THREE.BackSide, depthWrite: false,
+    vertexShader: `varying vec3 vDir; void main() { vDir = normalize(position);
+      vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }`,
+    fragmentShader: `uniform vec3 uSunDir, uSunColor, uSkyTop, uSkyHorizon; varying vec3 vDir;
+      void main() { vec3 d = normalize(vDir);
+        vec3 col = mix(uSkyHorizon, uSkyTop, smoothstep(-0.02, 0.4, d.y));
+        vec3 s = normalize(uSunDir), r = normalize(cross(vec3(0.0, 1.0, 0.0), s)), u = cross(s, r);
+        if (dot(d, s) > 0.0 && max(abs(dot(d, r)), abs(dot(d, u))) < 0.055) col = uSunColor;
+        gl_FragColor = vec4(col, 1.0); }`,
+  }));
+  sky.frustumCulled = false;
+  scene.add(sky);
+  const cloudGeo = new THREE.PlaneGeometry(40000, 40000); cloudGeo.rotateX(-Math.PI / 2);
+  const clouds = new THREE.Mesh(cloudGeo, new THREE.ShaderMaterial({
+    uniforms: U, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    vertexShader: `varying vec3 vPos; void main() { vec4 wp = modelMatrix * vec4(position, 1.0); vPos = wp.xyz;
+      gl_Position = projectionMatrix * viewMatrix * wp; }`,
+    fragmentShader: `uniform float uTime; uniform vec3 uCloud; varying vec3 vPos;
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+      void main() { vec2 cell = floor((vPos.xz + vec2(uTime * 30.0, 0.0)) / 192.0);
+        if (noise(cell * 0.31) < 0.56) discard;
+        float fade = 1.0 - smoothstep(6000.0, 15000.0, length(vPos.xz - cameraPosition.xz));
+        gl_FragColor = vec4(uCloud, 0.85 * fade); }`,
+  }));
+  clouds.position.y = 112 * B;
+  scene.add(clouds);
+
+  // --- the sea beyond the village edge, and grass all round it
+  const [W, H, D] = DATA.size;
+  const farGeo = () => { const g = new THREE.PlaneGeometry(60000, 60000); g.rotateX(-Math.PI / 2); return g; };
+  const sea = new THREE.Mesh(farGeo(), new THREE.MeshBasicMaterial({ color: 0x3f76e4 }));
+  sea.position.set(W * B / 2, (DATA.ground + 0.875) * B - 0.5, 30000 + 78 * B);
+  sea.scale.set(1, 1, 1);
+  const land = new THREE.Mesh(farGeo(), new THREE.MeshBasicMaterial({ color: 0x6fae45 }));
+  land.position.set(W * B / 2, (DATA.ground + 1) * B - 0.6, -30000 + 74 * B);
+  scene.add(sea, land);
+
+  // --- block textures
+  const atlas = new THREE.TextureLoader().load(DATA.atlasImage, img => {
+    // the sea and the land beyond the edge reuse the water and grass tiles
+    for (const [plane, key, face] of [[sea, "water", 0], [land, "grass", 0]]) {
+      const tile = DATA.blocks[key].tex[face], c = document.createElement("canvas");
+      c.width = c.height = 16;
+      c.getContext("2d").drawImage(img.image, (tile % DATA.atlas.cols) * 16, Math.floor(tile / DATA.atlas.cols) * 16, 16, 16, 0, 0, 16, 16);
+      const t = new THREE.CanvasTexture(c);
+      t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(60000 / B, 60000 / B);
+      t.magFilter = THREE.NearestFilter; t.encoding = THREE.sRGBEncoding;
+      plane.material.map = t; plane.material.color.copy(MAT.solid.color); plane.material.needsUpdate = true;
+    }
+  });
+  atlas.magFilter = THREE.NearestFilter; atlas.minFilter = THREE.NearestFilter;
+  atlas.encoding = THREE.sRGBEncoding;
+  const COLS = DATA.atlas.cols, ROWS = DATA.atlas.rows;
+  const MAT = {
+    solid: new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true }),
+    cutout: new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true, alphaTest: 0.5, side: THREE.DoubleSide }),
+    glass: new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true, transparent: true, depthWrite: false }),
+    water: new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true, transparent: true, depthWrite: false, opacity: 0.97 }),
+  };
+
+  // --- turn the block grid into meshes
+  const grid = Uint8Array.from(atob(DATA.grid), c => c.charCodeAt(0));
+  const keys = DATA.keys, info = keys.map(k => DATA.blocks[k]);
+  const at = (x, y, z) => (x < 0 || y < 0 || z < 0 || x >= W || y >= H || z >= D) ? 0 : grid[(y * D + z) * W + x];
+  const blockOf = (x, y, z) => { const i = at(x, y, z); return i ? info[i - 1] : null; };
+  const opaque = b => b && b.render === "solid" && b.shape === "cube";
+  const connects = b => b && (b.shape === "post" || b.shape === "pane" || (b.render === "solid" && b.shape === "cube"));
+  // Minecraft's per-face shading: top, bottom, north/south, east/west
+  const SHADE = { up: 1, down: 0.5, n: 0.8, s: 0.8, e: 0.6, w: 0.6 };
+  const bufs = {};
+  const buf = r => bufs[r] || (bufs[r] = { pos: [], uv: [], col: [], idx: [] });
+
+  function quad(r, pts, tile, shade, uvRect = [0, 0, 1, 1]) {
+    const b = buf(r), base = b.pos.length / 3;
+    const tx = tile % COLS, ty = Math.floor(tile / COLS), e = 0.002;
+    const u0 = (tx + uvRect[0]) / COLS + e, u1 = (tx + uvRect[2]) / COLS - e;
+    const v0 = 1 - (ty + uvRect[3]) / ROWS + e, v1 = 1 - (ty + uvRect[1]) / ROWS - e;
+    const uvs = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
+    pts.forEach((p, i) => { b.pos.push(p[0], p[1], p[2]); b.uv.push(...uvs[i]); b.col.push(shade, shade, shade); });
+    b.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+
+  // an axis-aligned box in block-local units (0..1), with faces culled where told
+  function box(r, x, y, z, a, bb, tex, cull = {}) {
+    const [x0, y0, z0] = a, [x1, y1, z1] = bb;
+    const X = v => (x + v) * B, Y = v => (y + v) * B, Z = v => (z + v) * B;
+    const [top, side, bottom] = tex;
+    if (!cull.up) quad(r, [[X(x0), Y(y1), Z(z1)], [X(x1), Y(y1), Z(z1)], [X(x1), Y(y1), Z(z0)], [X(x0), Y(y1), Z(z0)]], top, SHADE.up, [x0, z0, x1, z1]);
+    if (!cull.down) quad(r, [[X(x0), Y(y0), Z(z0)], [X(x1), Y(y0), Z(z0)], [X(x1), Y(y0), Z(z1)], [X(x0), Y(y0), Z(z1)]], bottom, SHADE.down, [x0, z0, x1, z1]);
+    const vr = [1 - y1, 1 - y0];
+    if (!cull.s) quad(r, [[X(x0), Y(y0), Z(z1)], [X(x1), Y(y0), Z(z1)], [X(x1), Y(y1), Z(z1)], [X(x0), Y(y1), Z(z1)]], side, SHADE.s, [x0, vr[0], x1, vr[1]]);
+    if (!cull.n) quad(r, [[X(x1), Y(y0), Z(z0)], [X(x0), Y(y0), Z(z0)], [X(x0), Y(y1), Z(z0)], [X(x1), Y(y1), Z(z0)]], side, SHADE.n, [1 - x1, vr[0], 1 - x0, vr[1]]);
+    if (!cull.e) quad(r, [[X(x1), Y(y0), Z(z1)], [X(x1), Y(y0), Z(z0)], [X(x1), Y(y1), Z(z0)], [X(x1), Y(y1), Z(z1)]], side, SHADE.e, [1 - z1, vr[0], 1 - z0, vr[1]]);
+    if (!cull.w) quad(r, [[X(x0), Y(y0), Z(z0)], [X(x0), Y(y0), Z(z1)], [X(x0), Y(y1), Z(z1)], [X(x0), Y(y1), Z(z0)]], side, SHADE.w, [z0, vr[0], z1, vr[1]]);
+  }
+
+  const DIRS = { e: [1, 0, 0], w: [-1, 0, 0], s: [0, 0, 1], n: [0, 0, -1], up: [0, 1, 0], down: [0, -1, 0] };
+  for (let y = 0; y < H; y++) for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) {
+    const i = at(x, y, z);
+    if (!i) continue;
+    const b = info[i - 1], tex = b.tex, k = keys[i - 1];
+    const nb = d => { const v = DIRS[d]; return blockOf(x + v[0], y + v[1], z + v[2]); };
+    const nk = d => { const v = DIRS[d]; const j = at(x + v[0], y + v[1], z + v[2]); return j ? keys[j - 1] : null; };
+    if (b.shape === "cube") {
+      const cull = {};
+      for (const d in DIRS) {
+        const n = nb(d);
+        cull[d] = opaque(n) || (b.render !== "solid" && nk(d) === k);
+      }
+      if (b.render === "glass" || b.render === "cutout") box(b.render, x, y, z, [0, 0, 0], [1, 1, 1], tex, cull);
+      else box("solid", x, y, z, [0, 0, 0], [1, 1, 1], tex, cull);
+    } else if (b.shape === "slab") {
+      box("solid", x, y, z, [0, 0, 0], [1, 0.5, 1], tex, { down: opaque(nb("down")) });
+    } else if (b.shape.startsWith("stair_")) {
+      const d = b.shape.slice(6);
+      box("solid", x, y, z, [0, 0, 0], [1, 0.5, 1], tex, { down: opaque(nb("down")) });
+      const half = { n: [[0, 0.5, 0], [1, 1, 0.5]], s: [[0, 0.5, 0.5], [1, 1, 1]], e: [[0.5, 0.5, 0], [1, 1, 1]], w: [[0, 0.5, 0], [0.5, 1, 1]] }[d];
+      box("solid", x, y, z, half[0], half[1], tex, {});
+    } else if (b.shape === "post" || b.shape === "pane") {
+      const r = b.shape === "post" ? 0.125 : 0.0625, rd = b.render === "glass" ? "glass" : (b.shape === "post" ? "solid" : "cutout");
+      if (b.shape === "post") box(rd, x, y, z, [0.5 - r, 0, 0.5 - r], [0.5 + r, 1, 0.5 + r], tex, {});
+      const arms = ["n", "s", "e", "w"].filter(d => connects(nb(d)));
+      const list = arms.length || b.shape === "post" ? arms : ["n", "s", "e", "w"];
+      const t = b.shape === "post" ? 0.0625 : r;
+      for (const d of list) {
+        const ranges = b.shape === "post" ? [[0.375, 0.5625], [0.75, 0.9375]] : [[0, 1]];
+        for (const [ya, yb] of ranges) {
+          const lo = { n: [0.5 - t, ya, 0], s: [0.5 - t, ya, 0.5], e: [0.5, ya, 0.5 - t], w: [0, ya, 0.5 - t] }[d];
+          const hi = { n: [0.5 + t, yb, 0.5], s: [0.5 + t, yb, 1], e: [1, yb, 0.5 + t], w: [0.5, yb, 0.5 + t] }[d];
+          box(rd, x, y, z, lo, hi, tex, {});
+        }
+      }
+    } else if (b.shape === "cross") {
+      const X = v => (x + v) * B, Y = v => (y + v) * B, Z = v => (z + v) * B, t = tex[1];
+      quad("cutout", [[X(0.15), Y(0), Z(0.15)], [X(0.85), Y(0), Z(0.85)], [X(0.85), Y(1), Z(0.85)], [X(0.15), Y(1), Z(0.15)]], t, 0.9);
+      quad("cutout", [[X(0.85), Y(0), Z(0.15)], [X(0.15), Y(0), Z(0.85)], [X(0.15), Y(1), Z(0.85)], [X(0.85), Y(1), Z(0.15)]], t, 0.9);
+    } else if (b.shape === "lantern") {
+      box("solid", x, y, z, [0.3125, 0, 0.3125], [0.6875, 0.5, 0.6875], tex, {});
+      box("solid", x, y, z, [0.375, 0.5, 0.375], [0.625, 0.625, 0.625], tex, {});
+    } else if (b.shape === "carpet") {
+      box("solid", x, y, z, [0, 0, 0], [1, 0.0625, 1], tex, { down: true });
+    } else if (b.shape === "water") {
+      const above = nk("up");
+      const h = above === k ? 1 : 0.875;
+      const cull = { down: true, up: above === k || opaque(nb("up")) };
+      for (const d of ["n", "s", "e", "w"]) cull[d] = nk(d) === k || opaque(nb(d)) || (nb(d) && nb(d).shape !== "water");
+      box("water", x, y, z, [0, 0, 0], [1, h, 1], tex, cull);
+    }
+  }
+  const world = new THREE.Group();
+  for (const [r, b] of Object.entries(bufs)) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(b.pos, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(b.uv, 2));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(b.col, 3));
+    g.setIndex(b.idx);
+    const m = new THREE.Mesh(g, MAT[r]);
+    if (r === "glass" || r === "water") m.renderOrder = 2;
+    world.add(m);
+  }
+  scene.add(world);
+
+  // --- the vehicles parked around town
+  const vtex = new THREE.TextureLoader().load(DATA.vehicleAtlas);
+  vtex.encoding = THREE.sRGBEncoding; vtex.magFilter = THREE.NearestFilter;
+  const VMAT = {
+    solid: new THREE.MeshBasicMaterial({ map: vtex, alphaTest: 0.5, vertexColors: true }),
+    glass: new THREE.MeshBasicMaterial({ map: vtex, transparent: true, depthWrite: false, vertexColors: true }),
+  };
+  const parked = DATA.vehicles.map(p => {
+    const built = buildBedrockModel(DATA.models[p.id], VMAT, { mcShade: true });
+    const g = new THREE.Group();
+    g.add(built.model);
+    g.position.set(p.pos[0] * B, p.pos[1] * B, p.pos[2] * B);
+    g.rotation.y = p.yaw * Math.PI / 180;
+    scene.add(g);
+    return { ...p, group: g, bones: built.bones, base: g.position.y };
+  });
+
+  function applySky(name) {
+    const s = SKIES[name];
+    U.uSunDir.value.set(...s.sun).normalize();
+    U.uSunColor.value.setHex(s.sunColor); U.uSkyTop.value.setHex(s.top);
+    U.uSkyHorizon.value.setHex(s.horizon); U.uCloud.value.setHex(s.cloud);
+    for (const m of [...Object.values(MAT), ...Object.values(VMAT), sea.material, land.material]) m.color.setHex(s.light);
+    scene.fog = new THREE.Fog(s.horizon, 140 * B, 420 * B);
+    for (const m of [...Object.values(MAT), ...Object.values(VMAT), sea.material, land.material]) m.fog = true;
+  }
+
+  let time = 0;
+  function step(dt) {
+    time += dt;
+    U.uTime.value = time;
+    MAT.water.map = atlas;
+    for (const p of parked) {
+      if (p.pos[1] < DATA.ground + 1) {                  // boats bob gently
+        p.group.position.y = p.base + Math.sin(time * 1.6 + p.pos[0]) * 0.35;
+        p.group.rotation.z = Math.sin(time * 1.2 + p.pos[0]) * 0.02;
+      }
+      if (p.id === "hot_air_balloon") p.group.position.y = p.base + Math.sin(time * 0.5) * 6;
+      if (p.bones.rotor && p.id === "helicopter") setBoneRotation(p.bones.rotor, [0, time * 30, 0]);
+    }
+    sky.position.copy(camera.position);
+    renderer.render(scene, camera);
+  }
+
+  function resize() {
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  addEventListener("resize", resize);
+  resize();
+  applySky("day");
+
+  // camera spots, in blocks: eye and target
+  const SPOTS = [
+    ["The whole village", [64, 58, 150], [64, 6, 46]],
+    ["Harbor", [36, 14, 104], [80, 8, 86]],
+    ["Vroom Motors", [17, 5.6, 40], [13, 5, 58]],
+    ["Gem Gallery", [45.5, 6.4, 50], [45.5, 5, 62]],
+    ["Town Hall", [63.5, 5.6, 42], [63.5, 14, 18]],
+    ["Police", [93, 5.6, 47], [93, 8, 34]],
+    ["Grocery & Café", [24, 6.5, 47], [24, 6, 34]],
+    ["Luna & Indi Park", [79, 7.5, 47], [85.5, 9, 64]],
+    ["The tribute", [85.5, 6.6, 55.5], [85.5, 10, 64]],
+  ];
+  const look = (eye, target) => {
+    camera.position.set(eye[0] * B, eye[1] * B, eye[2] * B);
+    controls.target.set(target[0] * B, target[1] * B, target[2] * B);
+    camera.lookAt(controls.target);
+  };
+
+  if (VIDEO) {
+    $("spots").hidden = true;
+    document.querySelector(".card").hidden = true;
+    window.village = { step, look, applySky, B };
+    return;
+  }
+  $("spots").innerHTML = SPOTS.map(([n], i) => `<button data-i="${i}" aria-pressed="${i === 0}">${n}</button>`).join("");
+  $("spots").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const [n, eye, target] = SPOTS[+b.dataset.i];
+    for (const x of $("spots").querySelectorAll("button")) x.setAttribute("aria-pressed", String(x === b));
+    $("place").textContent = n;
+    look(eye, target);
+  });
+  look(SPOTS[0][1], SPOTS[0][2]);
+  const clock = new THREE.Clock();
+  (function frame() {
+    controls.update();
+    step(Math.min(clock.getDelta(), 0.05));
+    requestAnimationFrame(frame);
+  })();
+})();
+</script>

@@ -18,6 +18,34 @@ the throttle (wheels roll, rotors spin, bikes lean, aircraft climb), the
 camera (Names jumps to the hidden name), the time of day, and switch
 between a realistic look and the in-game look.
 
+## Vroom Harbor: the village
+
+The add-on also carries a whole village, **Vroom Harbor**: 128 by 96 blocks
+on the water, built from ordinary Minecraft blocks, so everything in it can
+be explored, changed and built on.
+
+- **Town Hall** with a clock tower, a red-carpet hall and a helipad on the roof
+- **Police Station** with a jail cell and a light bar on the roof
+- **Grocery store** ("FOOD") and a **Café** with tables outside
+- **Vroom Motors**, a glass-fronted showroom for the vehicles
+- **Gem Gallery**: glass cases of diamond, emerald, gold, amethyst, lapis,
+  redstone, iron, copper, netherite and coal, an emerald pyramid and a wall
+  of every ore
+- **Luna & Indi Park**: trees, flowers, benches and a fountain, and a tribute
+  monument with LUNA and INDI in gold and two golden statues on top
+- **The harbor**: a promenade, a beach, piers, a marina with boat slips, a
+  boathouse and a lighthouse
+- Two houses with gardens, street lamps and trees along Main Street
+
+**To place it** (in a world with the add-on and cheats on): stand on flat
+ground where the village's north-west corner should go and run
+`/function vroom/village`. The village spreads 128 blocks east and 96 blocks
+south (the harbor is at the south end), and clears the space above it. Then
+spawn boats at the piers and cars outside Vroom Motors.
+
+`village/index.html` is a 3D preview of the village you can fly around.
+`python3 tools/village.py` rebuilds it from the layout in that file.
+
 ## The Switch catch (and the way around it)
 
 The Switch can't import add-ons directly. Only Marketplace content installs
@@ -61,6 +89,8 @@ python3 tools/gen_art.py        # build every model and the shared paint atlas
 python3 tools/gen_packs.py      # write the Minecraft files (entities, items, recipes, animations)
 node tools/preview.js <id>      # render previews/<id>-*.png and the item icon (needs Playwright)
 python3 tools/build_garage.py   # rebuild the Vroom Garage previewer
+python3 tools/village.py        # build the Vroom Harbor village structures
+python3 tools/build_village_view.py   # rebuild the village preview
 python3 tools/build.py          # check JSON, package dist/VroomVehicles.mcaddon
 ```
 
