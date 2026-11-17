@@ -148,6 +148,8 @@ export default function App() {
           key="mesa"
           active={store.activeRoster}
           retired={store.retiredRoster}
+          matches={store.state.matches}
+          playerById={store.playerById}
           mesa={store.mesa}
           user={store.user}
           onSwitchMesa={store.switchMesa}
