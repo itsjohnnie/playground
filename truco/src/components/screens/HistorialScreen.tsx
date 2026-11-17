@@ -7,11 +7,12 @@ import { Chip } from '@/components/ui/Chip'
 import { Sheet } from '@/components/ui/Sheet'
 import { Screen, staggerItem } from '@/components/ui/Screen'
 import { SeasonChart } from '@/components/ui/SeasonChart'
+import { PartnersCard } from '@/components/ui/PartnersCard'
 import { JugadaRow } from '@/components/ui/JugadaRow'
 import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
 import type { Match, Player } from '@/types/game'
 import { rebuildSeats } from '@/types/game'
-import { leaderboard, duels, seasonProgress, sortLeaderboard, type Duel, type LeaderboardSort } from '@/utils/scoring'
+import { leaderboard, duels, seasonProgress, sortLeaderboard, partnerExtremes, type Duel, type LeaderboardSort } from '@/utils/scoring'
 import { formatClock } from '@/utils/time'
 
 interface HistorialScreenProps {
@@ -38,9 +39,11 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
   const stats = useMemo(() => leaderboard(roster, matches), [roster, matches])
   const allDuels = useMemo(() => duels(matches), [matches])
   const progress = useMemo(() => seasonProgress(roster, matches), [roster, matches])
-  // Which player the chart draws in full. Defaults to whoever leads
-  // the table, and follows whatever row you tap.
+  // Which player the chart draws in full and the compañeros card
+  // reports on. Defaults to whoever leads the table, and follows
+  // whatever row you tap.
   const [focusId, setFocusId] = useState<string | null>(null)
+  const selectedId = focusId ?? stats[0]?.playerId ?? ''
   // `openMatch` is the row as it was when tapped. Re-read it from
   // `matches` so an edit made inside the sheet shows up immediately
   // instead of the sheet holding a stale snapshot.
@@ -135,14 +138,24 @@ export function HistorialScreen({ matches, roster, playerById, onBack, onDeleteM
                 {progress.timeline.length > 1 && (
                   <SeasonChart
                     progress={progress}
-                    selectedId={focusId ?? stats[0]?.playerId ?? null}
+                    selectedId={selectedId}
                     playerById={playerById}
                   />
                 )}
+                {/* Both this and the chart read the standings
+                    selection below them, so one tap drives the whole
+                    tab. A fourth segmented tab was the alternative and
+                    "Estadisticas" already fills its third of the
+                    control at phone width. */}
+                <PartnersCard
+                  extremes={partnerExtremes(selectedId, matches)}
+                  playerName={playerById(selectedId)?.name ?? '?'}
+                  playerById={playerById}
+                />
                 <Leaderboard
                   rows={stats}
                   playerById={playerById}
-                  focusId={focusId ?? stats[0]?.playerId ?? null}
+                  focusId={selectedId}
                   onFocus={setFocusId}
                 />
               </>
