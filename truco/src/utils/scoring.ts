@@ -265,6 +265,93 @@ export function seasonProgress(roster: Player[], matches: Match[]): SeasonProgre
   return { timeline, series, max }
 }
 
+// ─── Compañeros (who you win with) ───────────────────────────
+//
+// The other half of Duelos. A duel is the player across the table
+// from you; a compañero is anyone who was on your side, and you
+// share every result with them.
+//
+// Deliberately rate, not raw wins. "Who do I win most matches with"
+// answered by count just names whoever you've played most — the
+// person you've sat beside thirty times beats the one you're 4-0
+// with every time. The rate is the interesting answer, and the
+// record is shown beside it so a lopsided sample is visible.
+//
+// Worth knowing when reading it: in a 3v3 there is always a third
+// player on your side, so a pairing's record carries their results
+// too. This finds who you tend to win alongside, not proof that one
+// person is the cause.
+
+/**
+ * Matches two players must have played together before their record
+ * is ranked. One game together makes a 100% partner out of anybody,
+ * which would make "mejor compañero" meaningless in exactly the week
+ * it gets read most. Three is where the app already draws the line
+ * for a drought, and it stays reachable early in a season.
+ */
+export const MIN_TOGETHER = 3
+
+export interface Partner {
+  playerId: string
+  matches: number
+  wins: number
+  losses: number
+  winRate: number
+}
+
+/** Everyone who has been on `playerId`'s side, best rate first. */
+export function partnersFor(playerId: string, matches: Match[]): Partner[] {
+  const map = new Map<string, Partner>()
+  for (const m of matches) {
+    if (m.winner === null || m.abandoned) continue
+    const onA = m.teamA.playerIds.includes(playerId)
+    const onB = m.teamB.playerIds.includes(playerId)
+    if (!onA && !onB) continue
+    const won = (onA && m.winner === 'A') || (onB && m.winner === 'B')
+    for (const id of (onA ? m.teamA : m.teamB).playerIds) {
+      if (id === playerId) continue
+      let p = map.get(id)
+      if (!p) {
+        p = { playerId: id, matches: 0, wins: 0, losses: 0, winRate: 0 }
+        map.set(id, p)
+      }
+      p.matches++
+      if (won) p.wins++
+      else p.losses++
+    }
+  }
+  const out = [...map.values()]
+  for (const p of out) p.winRate = p.matches > 0 ? p.wins / p.matches : 0
+  // Rate first; more games breaks a tie, since it's the firmer number.
+  return out.sort((a, b) => b.winRate - a.winRate || b.matches - a.matches)
+}
+
+export interface PartnerExtremes {
+  best: Partner | null
+  worst: Partner | null
+  /** Partners who cleared MIN_TOGETHER. */
+  ranked: Partner[]
+  /** Everyone who has ever been on their side, threshold or not. */
+  total: number
+}
+
+export function partnerExtremes(playerId: string, matches: Match[]): PartnerExtremes {
+  const all = partnersFor(playerId, matches)
+  const ranked = all.filter((p) => p.matches >= MIN_TOGETHER)
+  const best = ranked[0] ?? null
+  const worst = ranked[ranked.length - 1] ?? null
+  // Two names only mean something if they differ. With one qualifying
+  // partner, or with everyone on the same record, calling one "best"
+  // and another "worst" invents a gap that isn't in the data.
+  const spread = best && worst && best !== worst && best.winRate > worst.winRate
+  return {
+    best: spread ? best : null,
+    worst: spread ? worst : null,
+    ranked,
+    total: all.length,
+  }
+}
+
 // ─── Duelos (pica pica head-to-head) ─────────────────────────
 //
 // For every finished match that has a `seats` array (3v3 only),

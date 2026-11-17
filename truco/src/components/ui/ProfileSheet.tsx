@@ -5,13 +5,17 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Sheet } from '@/components/ui/Sheet'
 import { Avatar } from '@/components/ui/Avatar'
-import type { Player } from '@/types/game'
+import { PartnerStats } from '@/components/ui/PartnerStats'
+import type { Match, Player } from '@/types/game'
 import type { PlayerProfilePatch } from '@/hooks/useStore'
 
 interface ProfileSheetProps {
   open: boolean
   player: Player | null
   user: User | null
+  /** Every match in the mesa — the profile reports this player's record. */
+  matches: Match[]
+  playerById: (id: string) => Player | undefined
   onClose: () => void
   onUpdate: (id: string, patch: PlayerProfilePatch) => Promise<void>
   onSetPhoto: (id: string, file: File) => Promise<string>
@@ -23,7 +27,7 @@ interface ProfileSheetProps {
 }
 
 export function ProfileSheet({
-  open, player, user,
+  open, player, user, matches, playerById,
   onClose, onUpdate, onSetPhoto, onRemovePhoto,
   onClaim, onUnclaim, onRetire, onSignInPress,
 }: ProfileSheetProps) {
@@ -148,7 +152,13 @@ export function ProfileSheet({
 
   return (
     <Sheet open={open} onClose={onClose} title="Perfil">
-      <div className="flex flex-col gap-4 pb-2">
+      {/* The profile had no scroll container because it had never
+          needed one — the form just fit. Adding the record pushed the
+          sheet past the top of the screen on a small phone, where a
+          Sheet has no scroll of its own and the overflow is simply
+          unreachable. Capped and scrollable, the same way the match
+          detail handles its jugadas list. */}
+      <div className="flex flex-col gap-4 pb-2 max-h-[70vh] overflow-y-auto">
         {/* Avatar + claim status */}
         <div className="flex items-center gap-3">
           <Avatar player={player} size={64} />
@@ -196,6 +206,10 @@ export function ProfileSheet({
             </>
           )}
         </div>
+
+        {/* Who this person is, before the machinery for changing it:
+            identity, then record, then the actions and the form. */}
+        <PartnerStats player={player} matches={matches} playerById={playerById} />
 
         {/* Sign-in nudge: anon can still edit unclaimed rows, but only
             authed users can reclaim. Show the CTA on claimed-by-other rows

@@ -17,12 +17,14 @@ import { Avatar } from '@/components/ui/Avatar'
 import { ProfileSheet } from '@/components/ui/ProfileSheet'
 import { SignInSheet } from '@/components/ui/SignInSheet'
 import { useEdgeSwipeBack } from '@/hooks/useEdgeSwipeBack'
-import type { Player } from '@/types/game'
+import type { Match, Player } from '@/types/game'
 import type { PlayerProfilePatch } from '@/hooks/useStore'
 
 interface MesaScreenProps {
   active: Player[]
   retired: Player[]
+  matches: Match[]
+  playerById: (id: string) => Player | undefined
   mesa: string
   user: User | null
   onSwitchMesa: (code: string) => void
@@ -42,7 +44,7 @@ interface MesaScreenProps {
 }
 
 export function MesaScreen({
-  active, retired, mesa, user, onSwitchMesa, onBack, onAdd, onRetire, onRestore, onDelete, onWipe,
+  active, retired, matches, playerById, mesa, user, onSwitchMesa, onBack, onAdd, onRetire, onRestore, onDelete, onWipe,
   onUpdatePlayer, onSetPhoto, onRemovePhoto, onClaim, onUnclaim, onSignIn, onSignOut,
 }: MesaScreenProps) {
   const [adding, setAdding] = useState(false)
@@ -267,6 +269,8 @@ export function MesaScreen({
         open={!!profilePlayer}
         player={profilePlayer}
         user={user}
+        matches={matches}
+        playerById={playerById}
         onClose={() => setProfileFor(null)}
         onUpdate={onUpdatePlayer}
         onSetPhoto={onSetPhoto}
