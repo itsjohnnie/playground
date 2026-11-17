@@ -65,9 +65,10 @@ export function PartnerStats({
                 : 'Por ahora gana lo mismo con todos.'}
             </p>
           )}
-          <p className="text-eyebrow text-ink-soft">
-            {ranked.length} de {total} compañeros · mínimo {MIN_TOGETHER} partidas juntos
-          </p>
+          {/* No standing footnote about the threshold. When everyone
+              qualifies it says nothing, and the one moment the rule
+              matters — when nothing clears it — the empty state above
+              already explains it. */}
         </>
       )}
     </div>
